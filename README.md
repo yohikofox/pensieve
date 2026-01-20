@@ -13,6 +13,11 @@ Ce repository contient le code source de l'application Pensine :
 
 ```
 pensieve/
+├── infrastructure/      # Docker Compose infrastructure
+│   ├── docker-compose.yml  # PostgreSQL, RabbitMQ, MinIO
+│   ├── .env.example        # Template variables d'environnement
+│   └── README.md           # Guide setup infrastructure
+│
 ├── mobile/               # Application mobile (React Native + Expo)
 │   ├── src/
 │   │   ├── lib/         # Supabase client, utilities
@@ -74,17 +79,23 @@ Pensine utilise une architecture hybride pour optimiser les coûts et le time-to
 
 ### 1. Infrastructure Homelab
 
-Depuis le repo parent (`/pensine/`) :
-
 ```bash
+cd infrastructure
+
 # Copier .env.example vers .env et remplir les credentials
 cp .env.example .env
+
+# Éditer le fichier et ajouter vos credentials Supabase
+nano .env
 
 # Démarrer les services Docker
 docker-compose up -d
 
 # Vérifier que tous les services sont healthy
 docker-compose ps
+
+# Voir le README complet pour l'initialisation MinIO
+cat README.md
 ```
 
 ### 2. Backend (NestJS)

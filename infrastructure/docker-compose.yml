@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # DATABASE: PostgreSQL (App DB only)
+  # Auth DB is on Supabase Cloud
+  # ==========================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: pensine-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pensine
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: pensine
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pensine"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ==========================================
+  # QUEUE: RabbitMQ
+  # Message broker for async processing
+  # ==========================================
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: pensine-queue
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: pensine
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    ports:
+      - "5672:5672"   # AMQP
+      - "15672:15672" # Management UI
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ==========================================
+  # STORAGE: MinIO (S3-compatible)
+  # Stores audio files in homelab
+  # ==========================================
+  minio:
+    image: minio/minio:latest
+    container_name: pensine-storage
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+      # ALTERNATIVE: Mount to NAS for unlimited storage
+      # - /path/to/nas/pensine-audios:/data
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Web Console
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ==========================================
+  # BACKEND: NestJS API (placeholder)
+  # Will be built in subsequent stories
+  # ==========================================
+  # Uncomment when backend is ready:
+  # backend:
+  #   build: ./backend
+  #   container_name: pensine-api
+  #   restart: unless-stopped
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     NODE_ENV: ${NODE_ENV:-development}
+  #
+  #     # Database
+  #     DATABASE_URL: postgres://pensine:${POSTGRES_PASSWORD}@postgres:5432/pensine
+  #
+  #     # Message Queue
+  #     RABBITMQ_URL: amqp://pensine:${RABBITMQ_PASSWORD}@rabbitmq:5672
+  #
+  #     # Supabase Auth
+  #     SUPABASE_URL: ${SUPABASE_URL}
+  #     SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+  #     SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+  #     JWT_SECRET: ${JWT_SECRET}
+  #
+  #     # MinIO Storage
+  #     MINIO_ENDPOINT: minio
+  #     MINIO_PORT: 9000
+  #     MINIO_USE_SSL: false
+  #     MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+  #     MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     rabbitmq:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_healthy
+  #   networks:
+  #     - pensine-network
+  #   healthcheck:
+  #     test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+
+networks:
+  pensine-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  rabbitmq-data:
+    driver: local
+  minio-data:
+    driver: local
