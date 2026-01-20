@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
-import { AppService } from './app.service';
 import { MinioService } from './modules/shared/infrastructure/storage/minio.service';
 import { IdentityModule } from './modules/identity/identity.module';
 import { RgpdModule } from './modules/rgpd/rgpd.module';
@@ -30,6 +29,6 @@ import { RgpdModule } from './modules/rgpd/rgpd.module';
     RgpdModule,
   ],
   controllers: [AppController],
-  providers: [AppService, MinioService],
+  providers: [MinioService],
 })
 export class AppModule {}
