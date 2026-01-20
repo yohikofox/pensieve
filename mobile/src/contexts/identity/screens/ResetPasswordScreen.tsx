@@ -71,7 +71,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
         placeholder="New Password"
         value={newPassword}
         onChangeText={setNewPassword}
-        secureTextEntry
+        secureTextEntry={true}
         autoCapitalize="none"
         editable={!loading}
       />
@@ -81,7 +81,7 @@ export const ResetPasswordScreen = ({ navigation }: any) => {
         placeholder="Confirm Password"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry
+        secureTextEntry={true}
         autoCapitalize="none"
         editable={!loading}
       />
@@ -125,6 +125,8 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    color: '#000',
+    backgroundColor: '#fff',
   },
   requirements: {
     fontSize: 14,

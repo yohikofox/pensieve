@@ -84,7 +84,7 @@ export const RegisterScreen = ({ navigation }: any) => {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
-        autoComplete="email"
+        autoComplete="username"
         editable={!loading}
       />
 
@@ -93,7 +93,7 @@ export const RegisterScreen = ({ navigation }: any) => {
         placeholder="Password"
         value={password}
         onChangeText={setPassword}
-        secureTextEntry
+        secureTextEntry={true}
         autoCapitalize="none"
         editable={!loading}
       />
@@ -103,7 +103,7 @@ export const RegisterScreen = ({ navigation }: any) => {
         placeholder="Confirm Password"
         value={confirmPassword}
         onChangeText={setConfirmPassword}
-        secureTextEntry
+        secureTextEntry={true}
         autoCapitalize="none"
         editable={!loading}
       />
@@ -155,6 +155,8 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    color: '#000',
+    backgroundColor: '#fff',
   },
   requirements: {
     fontSize: 14,

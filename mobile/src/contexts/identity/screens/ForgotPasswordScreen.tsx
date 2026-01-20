@@ -57,7 +57,7 @@ export const ForgotPasswordScreen = ({ navigation }: any) => {
         onChangeText={setEmail}
         keyboardType="email-address"
         autoCapitalize="none"
-        autoComplete="email"
+        autoComplete="username"
         editable={!loading}
       />
 
@@ -105,6 +105,8 @@ const styles = StyleSheet.create({
     padding: 16,
     fontSize: 16,
     marginBottom: 16,
+    color: '#000',
+    backgroundColor: '#fff',
   },
   button: {
     backgroundColor: '#007AFF',
