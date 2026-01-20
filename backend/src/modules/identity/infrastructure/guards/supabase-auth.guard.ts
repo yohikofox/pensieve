@@ -23,6 +23,7 @@ export class SupabaseAuthGuard implements CanActivate {
     const authHeader = request.headers.authorization;
 
     if (!authHeader) {
+      console.log('❌ Auth failed: No authorization header');
       throw new UnauthorizedException('No authorization header');
     }
 
@@ -35,15 +36,23 @@ export class SupabaseAuthGuard implements CanActivate {
         error,
       } = await this.supabase.auth.getUser(token);
 
-      if (error || !user) {
-        throw new UnauthorizedException('Invalid token');
+      if (error) {
+        console.log('❌ Auth failed: Supabase error:', error.message);
+        throw new UnauthorizedException(`Invalid token: ${error.message}`);
+      }
+
+      if (!user) {
+        console.log('❌ Auth failed: No user returned');
+        throw new UnauthorizedException('Invalid token: no user');
       }
 
       // Inject user into request
       request.user = user;
+      console.log(`✅ Auth successful: ${user.email} (${user.id})`);
 
       return true;
     } catch (error) {
+      console.log('❌ Auth failed: Exception:', error.message);
       throw new UnauthorizedException('Authentication failed');
     }
   }

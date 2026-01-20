@@ -31,9 +31,12 @@ export class RgpdService {
       // Create temp directory
       await fs.ensureDir(exportDir);
 
-      // 1. Fetch user profile from Supabase
+      // 0. Ensure user exists in PostgreSQL (for audit log foreign key)
       const userProfile =
         await this.supabaseAdminService.getUserProfile(userId);
+      await this.upsertUser(userId, userProfile.email);
+
+      // 1. Fetch user profile from Supabase
       await fs.writeJson(
         path.join(exportDir, 'user-profile.json'),
         {
