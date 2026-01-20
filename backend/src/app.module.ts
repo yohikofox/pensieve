@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MinioService } from './modules/shared/infrastructure/storage/minio.service';
 import { IdentityModule } from './modules/identity/identity.module';
+import { RgpdModule } from './modules/rgpd/rgpd.module';
 
 @Module({
   imports: [
@@ -25,6 +26,8 @@ import { IdentityModule } from './modules/identity/identity.module';
     }),
     // Identity module (Authentication)
     IdentityModule,
+    // RGPD module (Data export & Account deletion)
+    RgpdModule,
   ],
   controllers: [AppController],
   providers: [AppService, MinioService],

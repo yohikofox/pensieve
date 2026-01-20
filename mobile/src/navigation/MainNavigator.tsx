@@ -1,47 +1,20 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { supabase } from '../lib/supabase';
+import { View, Text, StyleSheet } from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
+import { SettingsScreen } from '../screens/settings/SettingsScreen';
+
+const Tab = createBottomTabNavigator();
 
 const HomeScreen = () => {
   const { user } = useAuthListener();
-
-  const handleLogout = async () => {
-    Alert.alert(
-      'Logout',
-      'Are you sure you want to logout?',
-      [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
-        {
-          text: 'Logout',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await supabase.auth.signOut();
-            } catch (error: any) {
-              Alert.alert('Error', error.message);
-            }
-          },
-        },
-      ],
-    );
-  };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Welcome to Pensine!</Text>
       <Text style={styles.subtitle}>You are logged in</Text>
 
-      {user?.email && (
-        <Text style={styles.email}>{user.email}</Text>
-      )}
-
-      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-        <Text style={styles.logoutButtonText}>Logout</Text>
-      </TouchableOpacity>
+      {user?.email && <Text style={styles.email}>{user.email}</Text>}
 
       <Text style={styles.infoText}>
         Main app features will be implemented in upcoming stories.
@@ -51,7 +24,32 @@ const HomeScreen = () => {
 };
 
 export const MainNavigator = () => {
-  return <HomeScreen />;
+  return (
+    <Tab.Navigator
+      screenOptions={{
+        headerShown: true,
+        tabBarActiveTintColor: '#007AFF',
+        tabBarInactiveTintColor: '#8E8E93',
+      }}
+    >
+      <Tab.Screen
+        name="Home"
+        component={HomeScreen}
+        options={{
+          title: 'Accueil',
+          tabBarLabel: 'Accueil',
+        }}
+      />
+      <Tab.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{
+          title: 'Paramètres',
+          tabBarLabel: 'Paramètres',
+        }}
+      />
+    </Tab.Navigator>
+  );
 };
 
 const styles = StyleSheet.create({
@@ -79,19 +77,6 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     marginBottom: 32,
     textAlign: 'center',
-  },
-  logoutButton: {
-    backgroundColor: '#FF3B30',
-    padding: 16,
-    borderRadius: 8,
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  logoutButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
   },
   infoText: {
     fontSize: 14,
