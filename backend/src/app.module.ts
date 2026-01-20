@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MinioService } from './modules/shared/infrastructure/storage/minio.service';
+import { IdentityModule } from './modules/identity/identity.module';
 
 @Module({
   imports: [
@@ -22,6 +23,8 @@ import { MinioService } from './modules/shared/infrastructure/storage/minio.serv
         logging: process.env.NODE_ENV === 'development',
       }),
     }),
+    // Identity module (Authentication)
+    IdentityModule,
   ],
   controllers: [AppController],
   providers: [AppService, MinioService],

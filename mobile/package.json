@@ -16,6 +16,7 @@
     "@react-navigation/native-stack": "^7.10.1",
     "@supabase/supabase-js": "^2.90.1",
     "expo": "~54.0.31",
+    "expo-apple-authentication": "^8.0.8",
     "expo-auth-session": "~7.0.10",
     "expo-linking": "~8.0.11",
     "expo-status-bar": "~3.0.9",
@@ -28,6 +29,7 @@
   "devDependencies": {
     "@babel/plugin-proposal-decorators": "^7.28.6",
     "@types/react": "~19.1.0",
+    "babel-preset-expo": "^54.0.9",
     "typescript": "~5.9.2"
   },
   "private": true
