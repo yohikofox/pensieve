@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,17 +10,22 @@ import {
 import {
   useAudioRecorder,
   useAudioRecorderState,
-  getRecordingPermissionsAsync,
-  requestRecordingPermissionsAsync,
   RecordingOptions,
-  AudioQuality,
-  IOSOutputFormat
 } from 'expo-audio';
-import { File } from 'expo-file-system';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
+import { PermissionService } from '../../contexts/capture/services/PermissionService';
+import { RecordingService } from '../../contexts/capture/services/RecordingService';
+import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
+import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
+import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
+import { CaptureDevTools } from '../../components/dev/CaptureDevTools';
 
 type RecordingState = 'idle' | 'recording' | 'stopping';
 
+/**
+ * Recording options for expo-audio (SDK 54)
+ * High quality M4A/AAC format compatible with Whisper transcription
+ */
 const recordingOptions: RecordingOptions = {
   extension: '.m4a',
   sampleRate: 44100,
@@ -31,8 +36,7 @@ const recordingOptions: RecordingOptions = {
     audioEncoder: 'aac',
   },
   ios: {
-    outputFormat: IOSOutputFormat.MPEG4AAC,
-    audioQuality: AudioQuality.MAX,
+    outputFormat: 'mpeg4', // SDK 54: use string instead of IOSOutputFormat enum
   },
   web: {
     mimeType: 'audio/webm',
@@ -43,19 +47,70 @@ export const CaptureScreen = () => {
   const { user } = useAuthListener();
   const [state, setState] = useState<RecordingState>('idle');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [showDevTools, setShowDevTools] = useState(false);
 
-  // Use expo-audio hooks
+  // Use expo-audio hooks for actual recording
   const audioRecorder = useAudioRecorder(recordingOptions);
   const recorderState = useAudioRecorderState(audioRecorder, 100); // Update every 100ms
+
+  // Use RecordingService for business logic and persistence
+  const recordingServiceRef = useRef<RecordingService | null>(null);
+  const repositoryRef = useRef<CaptureRepository | null>(null);
+  const fileStorageServiceRef = useRef<FileStorageService | null>(null);
+
+  // Initialize services on mount
+  useEffect(() => {
+    repositoryRef.current = new CaptureRepository();
+    recordingServiceRef.current = new RecordingService(repositoryRef.current);
+    fileStorageServiceRef.current = new FileStorageService();
+  }, []);
 
   // Check permission status on mount
   useEffect(() => {
     checkPermissions();
   }, []);
 
+  // AC4: Crash recovery on app launch
+  useEffect(() => {
+    const performCrashRecovery = async () => {
+      if (!repositoryRef.current) return;
+
+      try {
+        const crashRecoveryService = new CrashRecoveryService(repositoryRef.current);
+        const recovered = await crashRecoveryService.recoverIncompleteRecordings();
+
+        if (recovered.length > 0) {
+          const recoveredCount = recovered.filter((r) => r.state === 'recovered').length;
+          const failedCount = recovered.filter((r) => r.state === 'failed').length;
+
+          let message = '';
+          if (recoveredCount > 0) {
+            message += `${recoveredCount} capture${recoveredCount > 1 ? 's récupérée' : ' récupérée'}${recoveredCount > 1 ? 's' : ''} après interruption.`;
+          }
+          if (failedCount > 0) {
+            if (message) message += '\n';
+            message += `${failedCount} capture${failedCount > 1 ? 's' : ''} non récupérable${failedCount > 1 ? 's' : ''}.`;
+          }
+
+          if (message) {
+            Alert.alert(
+              '🔄 Récupération après interruption',
+              message,
+              [{ text: 'OK' }]
+            );
+          }
+        }
+      } catch (error) {
+        console.error('[CaptureScreen] Crash recovery failed:', error);
+      }
+    };
+
+    performCrashRecovery();
+  }, []);
+
   const checkPermissions = async () => {
-    const { granted } = await getRecordingPermissionsAsync();
-    setHasPermission(granted);
+    const hasPermission = await PermissionService.hasMicrophonePermission();
+    setHasPermission(hasPermission);
   };
 
   const handleTap = async () => {
@@ -68,11 +123,16 @@ export const CaptureScreen = () => {
 
   const startRecording = async () => {
     try {
+      const recordingService = recordingServiceRef.current;
+      if (!recordingService) {
+        throw new Error('RecordingService not initialized');
+      }
+
       // Check/request permissions
       if (!hasPermission) {
-        const result = await requestRecordingPermissionsAsync();
+        const result = await PermissionService.requestMicrophonePermission();
 
-        if (!result.granted) {
+        if (result.status !== 'granted') {
           Alert.alert(
             'Permission refusée',
             result.canAskAgain
@@ -86,9 +146,13 @@ export const CaptureScreen = () => {
         setHasPermission(true);
       }
 
-      // Prepare and start recording
+      // Start RecordingService (creates Capture entity in WatermelonDB)
+      await recordingService.startRecording();
+
+      // Prepare and start expo-audio recording
       await audioRecorder.prepareToRecordAsync();
       audioRecorder.record();
+
       setState('recording');
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -102,27 +166,40 @@ export const CaptureScreen = () => {
     try {
       setState('stopping');
 
-      // Stop recording
+      const recordingService = recordingServiceRef.current;
+      if (!recordingService) {
+        throw new Error('RecordingService not initialized');
+      }
+
+      // Stop expo-audio recording
       await audioRecorder.stop();
 
-      // Get recording info
+      // Get recording info from expo-audio
       const uri = audioRecorder.uri;
       const recordingDuration = recorderState.durationMillis;
 
-      // Verify file exists and get info using new File API
-      let fileSize = 0;
-      if (uri) {
-        try {
-          const audioFile = new File(uri);
-          fileSize = audioFile.size;
-        } catch (error) {
-          console.warn('Could not get file info:', error);
-        }
+      // Stop RecordingService (updates Capture entity in WatermelonDB)
+      // This persists the capture with file path and metadata
+      const result = await recordingService.stopRecording();
+
+      // Move audio file from temp to permanent storage and update metadata
+      if (uri && result.captureId && repositoryRef.current && fileStorageServiceRef.current) {
+        const storageResult = await fileStorageServiceRef.current.moveToStorage(
+          uri,
+          result.captureId,
+          recordingDuration
+        );
+
+        await repositoryRef.current.update(result.captureId, {
+          rawContent: storageResult.permanentPath,
+          duration: storageResult.metadata.duration,
+          fileSize: storageResult.metadata.size,
+        });
       }
 
       Alert.alert(
         'Capture enregistrée!',
-        `Durée: ${Math.floor(recordingDuration / 1000)}s${fileSize ? `\nTaille: ${Math.round(fileSize / 1024)}KB` : ''}\n\nLa transcription sera disponible bientôt.`,
+        `Durée: ${Math.floor(recordingDuration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
         [{ text: 'OK' }]
       );
 
@@ -154,6 +231,21 @@ export const CaptureScreen = () => {
     }
     return '#007AFF'; // Blue
   };
+
+  // Show DevTools if toggled
+  if (showDevTools) {
+    return (
+      <View style={styles.container}>
+        <CaptureDevTools />
+        <TouchableOpacity
+          style={styles.devToolsToggle}
+          onPress={() => setShowDevTools(false)}
+        >
+          <Text style={styles.devToolsToggleText}>📱 Retour UI</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -210,6 +302,14 @@ export const CaptureScreen = () => {
           </Text>
         </View>
       )}
+
+      {/* DevTools toggle button - Development only */}
+      <TouchableOpacity
+        style={styles.devToolsToggle}
+        onPress={() => setShowDevTools(true)}
+      >
+        <Text style={styles.devToolsToggleText}>🔍 DB</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -300,5 +400,26 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#856404',
     textAlign: 'center',
+  },
+  devToolsToggle: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    backgroundColor: '#1E1E1E',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  devToolsToggleText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#007AFF',
   },
 });
