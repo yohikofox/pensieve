@@ -15,7 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.pensine.app"
+      "bundleIdentifier": "com.pensine.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Pensieve a besoin d'accéder au microphone pour enregistrer vos pensées vocales."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -23,6 +26,9 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.pensine.app",
+      "permissions": [
+        "RECORD_AUDIO"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "intentFilters": [
