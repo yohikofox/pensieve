@@ -34,11 +34,32 @@ export const CaptureScreen = () => {
 
   const requestPermissions = async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
+      console.log('🎤 Requesting microphone permission...');
+      const { status, canAskAgain, granted } = await Audio.requestPermissionsAsync();
+      console.log('Permission result:', { status, canAskAgain, granted });
+
       setHasPermission(status === 'granted');
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          canAskAgain
+            ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
+            : 'L\'accès au microphone a été refusé. Activez-le dans les Réglages → Pensieve → Microphone',
+          [
+            { text: 'Réglages', onPress: () => {
+              // Open settings (platform specific)
+              console.log('Open settings');
+            }},
+            { text: 'Annuler', style: 'cancel' }
+          ]
+        );
+      }
+
       return status === 'granted';
     } catch (error) {
-      console.error('Error requesting permissions:', error);
+      console.error('❌ Error requesting permissions:', error);
+      Alert.alert('Erreur', 'Impossible de demander la permission: ' + error.message);
       return false;
     }
   };
@@ -53,15 +74,16 @@ export const CaptureScreen = () => {
 
   const startRecording = async () => {
     try {
+      console.log('🎙️ Starting recording...');
+      console.log('Current hasPermission:', hasPermission);
+
       // Check/request permissions
       if (!hasPermission) {
+        console.log('No permission yet, requesting...');
         const granted = await requestPermissions();
+        console.log('Permission granted?', granted);
         if (!granted) {
-          Alert.alert(
-            'Permission requise',
-            'Pensieve a besoin d\'accéder au microphone pour enregistrer vos pensées vocales.',
-            [{ text: 'OK' }]
-          );
+          console.log('❌ Permission not granted, aborting');
           return;
         }
       }
