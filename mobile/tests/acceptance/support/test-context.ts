@@ -978,6 +978,10 @@ export class MockPermissionManager {
     this._notificationsGranted = granted;
   }
 
+  hasMicrophonePermission(): boolean {
+    return this._microphoneGranted;
+  }
+
   async checkMicrophonePermission(): Promise<boolean> {
     return this._microphoneGranted;
   }
