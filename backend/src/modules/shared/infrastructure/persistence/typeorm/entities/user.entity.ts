@@ -4,23 +4,23 @@ import { AuditLog } from './audit-log.entity';
 @Entity('users')
 export class User {
   @PrimaryColumn('uuid')
-  id: string;  // Supabase user ID
+  id!: string;  // Supabase user ID
 
   @Column({ type: 'varchar', length: 255, unique: true })
-  email: string;
+  email!: string;
 
   @Column({ type: 'varchar', length: 50, default: 'active' })
-  status: 'active' | 'deletion_pending' | 'deleted';
+  status!: 'active' | 'deletion_pending' | 'deleted';
 
   @Column({ type: 'timestamp', nullable: true })
-  deletion_requested_at: Date | null;
+  deletion_requested_at!: Date | null;
 
   @CreateDateColumn({ type: 'timestamp' })
-  created_at: Date;
+  created_at!: Date;
 
   @UpdateDateColumn({ type: 'timestamp' })
-  updated_at: Date;
+  updated_at!: Date;
 
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
-  audit_logs: AuditLog[];
+  audit_logs!: AuditLog[];
 }

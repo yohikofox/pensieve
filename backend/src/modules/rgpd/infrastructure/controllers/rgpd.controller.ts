@@ -13,6 +13,7 @@ import {
 import { SupabaseAuthGuard } from '../../../identity/infrastructure/guards/supabase-auth.guard';
 import { RgpdService } from '../../application/services/rgpd.service';
 import type { Response } from 'express';
+import type { AuthenticatedRequest } from '../../../shared/infrastructure/types/authenticated-request';
 
 @Controller('api/rgpd')
 @UseGuards(SupabaseAuthGuard)
@@ -26,7 +27,7 @@ export class RgpdController {
    * Returns ZIP file with all user data
    */
   @Post('export')
-  async exportUserData(@Req() req, @Res() res: Response) {
+  async exportUserData(@Req() req: AuthenticatedRequest, @Res() res: Response) {
     const userId = req.user.id;
 
     try {
@@ -43,7 +44,7 @@ export class RgpdController {
       });
 
       res.send(zipBuffer);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Export failed:', error);
       res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
         error: 'Export failed',
@@ -65,11 +66,15 @@ export class RgpdController {
   @Delete('delete-account')
   @HttpCode(204)
   async deleteUserAccount(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Body() body: { password: string },
   ) {
     const userId = req.user.id;
     const email = req.user.email;
+
+    if (!email) {
+      throw new UnauthorizedException('Email not found in user session');
+    }
 
     // Re-verify password (security best practice)
     const isValidPassword = await this.rgpdService.verifyPassword(

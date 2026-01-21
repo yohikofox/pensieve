@@ -10,27 +10,27 @@ export type AuditAction =
 @Entity('audit_logs')
 export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column('uuid')
-  user_id: string;
+  user_id!: string;
 
   @Column({ type: 'varchar', length: 100 })
-  action: AuditAction;
+  action!: AuditAction;
 
   @CreateDateColumn({ type: 'timestamp' })
-  timestamp: Date;
+  timestamp!: Date;
 
   @Column({ type: 'varchar', length: 45, nullable: true })
-  ip_address: string | null;
+  ip_address!: string | null;
 
   @Column({ type: 'text', nullable: true })
-  user_agent: string | null;
+  user_agent!: string | null;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any> | null;
+  metadata!: Record<string, any> | null;
 
   @ManyToOne(() => User, (user) => user.audit_logs, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
-  user: User;
+  user!: User;
 }

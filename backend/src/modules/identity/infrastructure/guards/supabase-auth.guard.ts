@@ -51,7 +51,7 @@ export class SupabaseAuthGuard implements CanActivate {
       console.log(`✅ Auth successful: ${user.email} (${user.id})`);
 
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.log('❌ Auth failed: Exception:', error.message);
       throw new UnauthorizedException('Authentication failed');
     }

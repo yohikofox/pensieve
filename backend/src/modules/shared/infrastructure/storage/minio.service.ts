@@ -111,7 +111,7 @@ export class MinioService implements OnModuleInit {
     try {
       await this.client.statObject(this.bucket, objectName);
       return true;
-    } catch (error) {
+    } catch (error: any) {
       if (error.code === 'NotFound') {
         return false;
       }
