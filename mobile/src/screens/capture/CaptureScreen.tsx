@@ -7,61 +7,55 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Audio } from 'expo-av';
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  getRecordingPermissionsAsync,
+  requestRecordingPermissionsAsync,
+  RecordingOptions,
+  AudioQuality,
+  IOSOutputFormat
+} from 'expo-audio';
+import { File } from 'expo-file-system';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
 
 type RecordingState = 'idle' | 'recording' | 'stopping';
 
+const recordingOptions: RecordingOptions = {
+  extension: '.m4a',
+  sampleRate: 44100,
+  numberOfChannels: 2,
+  bitRate: 128000,
+  android: {
+    outputFormat: 'mpeg4',
+    audioEncoder: 'aac',
+  },
+  ios: {
+    outputFormat: IOSOutputFormat.MPEG4AAC,
+    audioQuality: AudioQuality.MAX,
+  },
+  web: {
+    mimeType: 'audio/webm',
+  },
+};
+
 export const CaptureScreen = () => {
   const { user } = useAuthListener();
   const [state, setState] = useState<RecordingState>('idle');
-  const [recording, setRecording] = useState<Audio.Recording | null>(null);
-  const [duration, setDuration] = useState(0);
-  const [hasPermission, setHasPermission] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
 
+  // Use expo-audio hooks
+  const audioRecorder = useAudioRecorder(recordingOptions);
+  const recorderState = useAudioRecorderState(audioRecorder, 100); // Update every 100ms
+
+  // Check permission status on mount
   useEffect(() => {
     checkPermissions();
   }, []);
 
   const checkPermissions = async () => {
-    try {
-      const { status } = await Audio.getPermissionsAsync();
-      setHasPermission(status === 'granted');
-    } catch (error) {
-      console.error('Error checking permissions:', error);
-    }
-  };
-
-  const requestPermissions = async () => {
-    try {
-      console.log('🎤 Requesting microphone permission...');
-      const { status, canAskAgain, granted } = await Audio.requestPermissionsAsync();
-      console.log('Permission result:', { status, canAskAgain, granted });
-
-      setHasPermission(status === 'granted');
-
-      if (status !== 'granted') {
-        Alert.alert(
-          'Permission refusée',
-          canAskAgain
-            ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
-            : 'L\'accès au microphone a été refusé. Activez-le dans les Réglages → Pensieve → Microphone',
-          [
-            { text: 'Réglages', onPress: () => {
-              // Open settings (platform specific)
-              console.log('Open settings');
-            }},
-            { text: 'Annuler', style: 'cancel' }
-          ]
-        );
-      }
-
-      return status === 'granted';
-    } catch (error) {
-      console.error('❌ Error requesting permissions:', error);
-      Alert.alert('Erreur', 'Impossible de demander la permission: ' + error.message);
-      return false;
-    }
+    const { granted } = await getRecordingPermissionsAsync();
+    setHasPermission(granted);
   };
 
   const handleTap = async () => {
@@ -74,88 +68,69 @@ export const CaptureScreen = () => {
 
   const startRecording = async () => {
     try {
-      console.log('🎙️ Starting recording...');
-      console.log('Current hasPermission:', hasPermission);
-
       // Check/request permissions
       if (!hasPermission) {
-        console.log('No permission yet, requesting...');
-        const granted = await requestPermissions();
-        console.log('Permission granted?', granted);
-        if (!granted) {
-          console.log('❌ Permission not granted, aborting');
+        const result = await requestRecordingPermissionsAsync();
+
+        if (!result.granted) {
+          Alert.alert(
+            'Permission refusée',
+            result.canAskAgain
+              ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
+              : 'L\'accès au microphone a été refusé. Activez-le dans Réglages → Pensieve → Microphone',
+            [{ text: 'OK' }]
+          );
           return;
         }
+
+        setHasPermission(true);
       }
 
-      // Configure audio mode
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-      });
-
-      // Create recording
-      const { recording: newRecording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      setRecording(newRecording);
+      // Prepare and start recording
+      await audioRecorder.prepareToRecordAsync();
+      audioRecorder.record();
       setState('recording');
-      setDuration(0);
-
-      // Update duration every 100ms
-      const startTime = Date.now();
-      const interval = setInterval(() => {
-        setDuration(Math.floor((Date.now() - startTime) / 1000));
-      }, 100);
-
-      // Store interval ID for cleanup
-      (newRecording as any)._intervalId = interval;
-
-      console.log('Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
-      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement: ' + errorMessage);
       setState('idle');
     }
   };
 
   const stopRecording = async () => {
-    if (!recording) return;
-
     try {
       setState('stopping');
 
-      // Clear duration interval
-      const intervalId = (recording as any)._intervalId;
-      if (intervalId) {
-        clearInterval(intervalId);
-      }
-
       // Stop recording
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      const status = await recording.getStatusAsync();
+      await audioRecorder.stop();
 
-      // Save capture (simplified for now)
-      console.log('Recording saved:', {
-        uri,
-        duration: status.durationMillis,
-        user: user?.email,
-      });
+      // Get recording info
+      const uri = audioRecorder.uri;
+      const recordingDuration = recorderState.durationMillis;
+
+      // Verify file exists and get info using new File API
+      let fileSize = 0;
+      if (uri) {
+        try {
+          const audioFile = new File(uri);
+          fileSize = audioFile.size;
+        } catch (error) {
+          console.warn('Could not get file info:', error);
+        }
+      }
 
       Alert.alert(
         'Capture enregistrée!',
-        `Durée: ${Math.floor((status.durationMillis || 0) / 1000)}s\n\nLa transcription sera disponible bientôt.`,
+        `Durée: ${Math.floor(recordingDuration / 1000)}s${fileSize ? `\nTaille: ${Math.round(fileSize / 1024)}KB` : ''}\n\nLa transcription sera disponible bientôt.`,
         [{ text: 'OK' }]
       );
 
-      setRecording(null);
       setState('idle');
-      setDuration(0);
     } catch (error) {
       console.error('Failed to stop recording:', error);
-      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement');
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement: ' + errorMessage);
       setState('idle');
     }
   };
@@ -188,7 +163,7 @@ export const CaptureScreen = () => {
           {state === 'idle'
             ? 'Tap pour enregistrer'
             : state === 'recording'
-            ? `Enregistrement... ${duration}s`
+            ? `Enregistrement... ${Math.floor(recorderState.durationMillis / 1000)}s`
             : 'Sauvegarde...'}
         </Text>
       </View>
@@ -225,10 +200,13 @@ export const CaptureScreen = () => {
         </Text>
       </View>
 
-      {!hasPermission && state === 'idle' && (
+      {hasPermission === false && state === 'idle' && (
         <View style={styles.permissionWarning}>
           <Text style={styles.permissionWarningText}>
             ⚠️ Permission microphone requise
+          </Text>
+          <Text style={styles.permissionSubtext}>
+            Tapez "Capturer" pour autoriser
           </Text>
         </View>
       )}
@@ -313,6 +291,13 @@ const styles = StyleSheet.create({
   },
   permissionWarningText: {
     fontSize: 14,
+    color: '#856404',
+    textAlign: 'center',
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  permissionSubtext: {
+    fontSize: 12,
     color: '#856404',
     textAlign: 'center',
   },

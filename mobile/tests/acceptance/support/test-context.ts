@@ -997,6 +997,196 @@ export class MockPermissionManager {
 }
 
 // ============================================================================
+// Mock Keyboard (Story 2.2)
+// ============================================================================
+
+export class MockKeyboard {
+  public isOpen: boolean = false;
+
+  open(): void {
+    this.isOpen = true;
+  }
+
+  close(): void {
+    this.isOpen = false;
+  }
+
+  reset(): void {
+    this.isOpen = false;
+  }
+}
+
+// ============================================================================
+// Mock Text Input (Story 2.2)
+// ============================================================================
+
+export class MockTextInput {
+  private _text: string = '';
+  private _isFocused: boolean = false;
+  private _isOpen: boolean = false;
+  private _lineCount: number = 1;
+  public hasHorizontalScroll: boolean = false;
+
+  open(): void {
+    this._isOpen = true;
+    this._isFocused = true;
+  }
+
+  close(): void {
+    this._isOpen = false;
+    this._isFocused = false;
+  }
+
+  setText(text: string): void {
+    this._text = text;
+    this._lineCount = (text.match(/\n/g) || []).length + 1;
+  }
+
+  getText(): string {
+    return this._text;
+  }
+
+  clear(): void {
+    this._text = '';
+    this._lineCount = 1;
+  }
+
+  get isFocused(): boolean {
+    return this._isFocused;
+  }
+
+  get isOpen(): boolean {
+    return this._isOpen;
+  }
+
+  get lineCount(): number {
+    return this._lineCount;
+  }
+
+  reset(): void {
+    this._text = '';
+    this._isFocused = false;
+    this._isOpen = false;
+    this._lineCount = 1;
+    this.hasHorizontalScroll = false;
+  }
+}
+
+// ============================================================================
+// Mock Dialog (Story 2.2)
+// ============================================================================
+
+export class MockDialog {
+  private _isShown: boolean = false;
+  private _message: string = '';
+  private _options: string[] = [];
+  private _selectedOption: string | null = null;
+
+  show(message: string, options: string[]): void {
+    this._isShown = true;
+    this._message = message;
+    this._options = options;
+  }
+
+  selectOption(option: string): void {
+    if (this._options.includes(option)) {
+      this._selectedOption = option;
+      this._isShown = false;
+    }
+  }
+
+  getMessage(): string {
+    return this._message;
+  }
+
+  getOptions(): string[] {
+    return this._options;
+  }
+
+  getSelectedOption(): string | null {
+    return this._selectedOption;
+  }
+
+  isShown(): boolean {
+    return this._isShown;
+  }
+
+  reset(): void {
+    this._isShown = false;
+    this._message = '';
+    this._options = [];
+    this._selectedOption = null;
+  }
+}
+
+// ============================================================================
+// Mock Draft Storage (Story 2.2 - Crash Recovery)
+// ============================================================================
+
+export class MockDraftStorage {
+  private _drafts: Map<string, string> = new Map();
+
+  saveDraft(text: string, key: string = 'default'): void {
+    this._drafts.set(key, text);
+  }
+
+  getDraft(key: string = 'default'): string | null {
+    return this._drafts.get(key) || null;
+  }
+
+  clearDraft(key: string = 'default'): void {
+    this._drafts.delete(key);
+  }
+
+  hasDraft(key: string = 'default'): boolean {
+    return this._drafts.has(key);
+  }
+
+  reset(): void {
+    this._drafts.clear();
+  }
+}
+
+// ============================================================================
+// Mock App (Story 2.2 - Lifecycle)
+// ============================================================================
+
+export class MockApp {
+  private _isInBackground: boolean = false;
+  private _hasCrashed: boolean = false;
+
+  goToBackground(): void {
+    this._isInBackground = true;
+  }
+
+  returnToForeground(): void {
+    this._isInBackground = false;
+  }
+
+  crash(): void {
+    this._hasCrashed = true;
+  }
+
+  relaunch(): void {
+    this._hasCrashed = false;
+    this._isInBackground = false;
+  }
+
+  isInBackground(): boolean {
+    return this._isInBackground;
+  }
+
+  hasCrashed(): boolean {
+    return this._hasCrashed;
+  }
+
+  reset(): void {
+    this._isInBackground = false;
+    this._hasCrashed = false;
+  }
+}
+
+// ============================================================================
 // Test Context (aggregates all mocks)
 // ============================================================================
 
@@ -1009,6 +1199,13 @@ export class TestContext {
   public storage: MockAsyncStorage;
   public rgpd: MockRGPDService;
 
+  // Story 2.2 - Text Capture mocks
+  public keyboard: MockKeyboard;
+  public textInput: MockTextInput;
+  public dialog: MockDialog;
+  public draftStorage: MockDraftStorage;
+  public app: MockApp;
+
   private _userId: string = 'test-user';
   private _isOffline: boolean = false;
 
@@ -1020,6 +1217,13 @@ export class TestContext {
     this.auth = new MockSupabaseAuth();
     this.storage = new MockAsyncStorage();
     this.rgpd = new MockRGPDService();
+
+    // Story 2.2 mocks
+    this.keyboard = new MockKeyboard();
+    this.textInput = new MockTextInput();
+    this.dialog = new MockDialog();
+    this.draftStorage = new MockDraftStorage();
+    this.app = new MockApp();
   }
 
   setUserId(userId: string): void {
@@ -1046,6 +1250,14 @@ export class TestContext {
     this.auth.reset();
     this.storage.reset();
     this.rgpd.reset();
+
+    // Story 2.2 resets
+    this.keyboard.reset();
+    this.textInput.reset();
+    this.dialog.reset();
+    this.draftStorage.reset();
+    this.app.reset();
+
     this._userId = 'test-user';
     this._isOffline = false;
   }

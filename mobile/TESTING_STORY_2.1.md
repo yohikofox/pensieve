@@ -129,7 +129,7 @@ Recording saved: {
 
 | Aspect | Tests BDD (19 tests) | App Réelle |
 |--------|---------------------|------------|
-| **Services** | ✅ RecordingService mocké | ✅ Utilise expo-av réel |
+| **Services** | ✅ RecordingService mocké | ✅ Utilise expo-audio réel |
 | **Permissions** | ✅ MockPermissionManager | ✅ Permission système réelle |
 | **Audio** | ✅ MockAudioRecorder | ✅ Microphone réel |
 | **Storage** | ✅ MockFileSystem | ⏳ Persistance WatermelonDB (à venir) |
