@@ -10,9 +10,18 @@
     "prebuild": "expo prebuild",
     "prebuild:clean": "expo prebuild --clean",
     "test": "jest",
+    "test:unit": "jest --testPathPatterns=\"src/.*\\.test\\.ts$\"",
+    "test:acceptance": "jest --config jest.config.acceptance.js",
+    "test:acceptance:watch": "jest --config jest.config.acceptance.js --watch",
+    "test:acceptance:story-2-1": "jest --config jest.config.acceptance.js --testPathPatterns=\"tests/acceptance/story-2-1-simple\\.test\\.ts$\"",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "test:ci": "jest --coverage --ci --maxWorkers=2"
+    "test:ci": "jest --coverage --ci --maxWorkers=2",
+    "test:e2e": "detox test --configuration ios.sim.debug",
+    "test:e2e:ios": "detox test --configuration ios.sim.debug",
+    "test:e2e:android": "detox test --configuration android.emu.debug",
+    "test:e2e:build:ios": "detox build --configuration ios.sim.debug",
+    "test:e2e:build:android": "detox build --configuration android.emu.debug"
   },
   "dependencies": {
     "@nozbe/watermelondb": "^0.28.0",
@@ -46,10 +55,16 @@
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.1.0",
+    "@types/uuid": "^10.0.0",
     "babel-preset-expo": "^54.0.9",
+    "detox": "^20.28.3",
     "jest": "^30.2.0",
+    "jest-cucumber": "^4.5.0",
     "jest-expo": "^54.0.16",
-    "typescript": "~5.9.2"
+    "jest-junit": "^16.0.0",
+    "ts-jest": "^29.2.5",
+    "typescript": "~5.9.2",
+    "uuid": "^11.0.3"
   },
   "jest": {
     "preset": "jest-expo",

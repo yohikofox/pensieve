@@ -1,0 +1,1062 @@
+/**
+ * Test Context for BDD Acceptance Tests
+ *
+ * Provides isolated test environment with:
+ * - In-memory database (no SQLite)
+ * - Mocked external dependencies (expo-av, file system)
+ * - Test data fixtures
+ */
+
+import { v4 as uuidv4 } from 'uuid';
+
+// ============================================================================
+// Types
+// ============================================================================
+
+export interface Capture {
+  id: string;
+  type: 'AUDIO' | 'TEXT';
+  state: 'RECORDING' | 'CAPTURED' | 'RECOVERED';
+  rawContent: string;
+  normalizedText: string | null;
+  capturedAt: Date;
+  duration?: number;
+  fileSize?: number;
+  filePath?: string;
+  format?: string;
+  location: string | null;
+  tags: string[];
+  syncStatus: 'pending' | 'synced' | 'failed';
+  recoveredFromCrash?: boolean;
+}
+
+export interface AudioRecordingStatus {
+  isRecording: boolean;
+  durationMillis: number;
+  uri?: string;
+}
+
+// ============================================================================
+// Mock Audio Recorder (replaces expo-av)
+// ============================================================================
+
+export class MockAudioRecorder {
+  private _isRecording = false;
+  private _recordingStartTime: number | null = null;
+  private _currentRecordingUri: string | null = null;
+  private _simulatedDuration = 0;
+
+  async startRecording(): Promise<{ uri: string }> {
+    if (this._isRecording) {
+      throw new Error('RecordingAlreadyInProgress');
+    }
+
+    this._isRecording = true;
+    this._recordingStartTime = Date.now();
+    this._currentRecordingUri = `mock://audio_${Date.now()}.m4a`;
+
+    return { uri: this._currentRecordingUri };
+  }
+
+  async stopRecording(): Promise<{ uri: string; duration: number }> {
+    if (!this._isRecording) {
+      throw new Error('NoRecordingInProgress');
+    }
+
+    this._isRecording = false;
+    const duration = this._simulatedDuration || (Date.now() - this._recordingStartTime!);
+    const uri = this._currentRecordingUri!;
+
+    this._recordingStartTime = null;
+    this._currentRecordingUri = null;
+    this._simulatedDuration = 0;
+
+    return { uri, duration };
+  }
+
+  getStatus(): AudioRecordingStatus {
+    return {
+      isRecording: this._isRecording,
+      durationMillis: this._isRecording
+        ? this._simulatedDuration || (Date.now() - this._recordingStartTime!)
+        : 0,
+      uri: this._currentRecordingUri || undefined,
+    };
+  }
+
+  // Test helper: simulate recording duration without real delay
+  simulateRecording(durationMs: number): void {
+    this._simulatedDuration = durationMs;
+  }
+
+  reset(): void {
+    this._isRecording = false;
+    this._recordingStartTime = null;
+    this._currentRecordingUri = null;
+    this._simulatedDuration = 0;
+  }
+}
+
+// ============================================================================
+// Mock File System (replaces expo-file-system)
+// ============================================================================
+
+export interface MockFile {
+  path: string;
+  content: string;
+  size: number;
+  createdAt: Date;
+}
+
+export class MockFileSystem {
+  private _files: Map<string, MockFile> = new Map();
+  private _availableSpace: number = 1000 * 1024 * 1024; // 1GB par défaut
+
+  async writeFile(path: string, content: string): Promise<void> {
+    const size = content.length;
+
+    if (this.getAvailableSpace() < size) {
+      throw new Error('InsufficientStorage');
+    }
+
+    this._files.set(path, {
+      path,
+      content,
+      size,
+      createdAt: new Date(),
+    });
+  }
+
+  async readFile(path: string): Promise<string> {
+    const file = this._files.get(path);
+    if (!file) {
+      throw new Error(`FileNotFound: ${path}`);
+    }
+    return file.content;
+  }
+
+  async fileExists(path: string): Promise<boolean> {
+    return this._files.has(path);
+  }
+
+  async deleteFile(path: string): Promise<void> {
+    this._files.delete(path);
+  }
+
+  getFiles(): MockFile[] {
+    return Array.from(this._files.values());
+  }
+
+  getFile(path: string): MockFile | undefined {
+    return this._files.get(path);
+  }
+
+  getAvailableSpace(): number {
+    const usedSpace = Array.from(this._files.values()).reduce(
+      (sum, file) => sum + file.size,
+      0
+    );
+    return this._availableSpace - usedSpace;
+  }
+
+  setAvailableSpace(bytes: number): void {
+    this._availableSpace = bytes;
+  }
+
+  reset(): void {
+    this._files.clear();
+    this._availableSpace = 1000 * 1024 * 1024;
+  }
+}
+
+// ============================================================================
+// In-Memory Database (replaces WatermelonDB)
+// ============================================================================
+
+export class InMemoryDatabase {
+  private _captures: Map<string, Capture> = new Map();
+
+  async create(data: Partial<Capture>): Promise<Capture> {
+    const capture: Capture = {
+      id: data.id || uuidv4(),
+      type: data.type || 'AUDIO',
+      state: data.state || 'RECORDING',
+      rawContent: data.rawContent || '',
+      normalizedText: data.normalizedText || null,
+      capturedAt: data.capturedAt || new Date(),
+      duration: data.duration,
+      fileSize: data.fileSize,
+      filePath: data.filePath,
+      format: data.format,
+      location: data.location || null,
+      tags: data.tags || [],
+      syncStatus: data.syncStatus || 'pending',
+      recoveredFromCrash: data.recoveredFromCrash || false,
+    };
+
+    this._captures.set(capture.id, capture);
+    return capture;
+  }
+
+  async update(id: string, updates: Partial<Capture>): Promise<Capture> {
+    const capture = this._captures.get(id);
+    if (!capture) {
+      throw new Error(`CaptureNotFound: ${id}`);
+    }
+
+    const updated = { ...capture, ...updates };
+    this._captures.set(id, updated);
+    return updated;
+  }
+
+  async findById(id: string): Promise<Capture | null> {
+    return this._captures.get(id) || null;
+  }
+
+  async findAll(): Promise<Capture[]> {
+    return Array.from(this._captures.values());
+  }
+
+  async findByState(state: Capture['state']): Promise<Capture[]> {
+    return Array.from(this._captures.values()).filter((c) => c.state === state);
+  }
+
+  async findBySyncStatus(syncStatus: Capture['syncStatus']): Promise<Capture[]> {
+    return Array.from(this._captures.values()).filter(
+      (c) => c.syncStatus === syncStatus
+    );
+  }
+
+  async delete(id: string): Promise<void> {
+    this._captures.delete(id);
+  }
+
+  async count(): Promise<number> {
+    return this._captures.size;
+  }
+
+  reset(): void {
+    this._captures.clear();
+  }
+}
+
+// ============================================================================
+// Auth Types (Supabase-compatible)
+// ============================================================================
+
+export interface User {
+  id: string;
+  email: string;
+  emailConfirmed: boolean;
+  phone?: string;
+  createdAt: Date;
+  updatedAt: Date;
+  lastSignInAt?: Date;
+  role?: string;
+  appMetadata: {
+    provider: 'email' | 'google' | 'apple';
+    providers?: string[];
+  };
+  userMetadata: {
+    name?: string;
+    avatar_url?: string;
+    email_verified?: boolean;
+  };
+}
+
+export interface Session {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: number;
+  expiresIn: number;
+  tokenType: 'bearer';
+  user: User;
+}
+
+export interface AuthError {
+  message: string;
+  status?: number;
+  code?: string;
+}
+
+export interface AuthResponse {
+  data: {
+    user: User | null;
+    session: Session | null;
+  };
+  error: AuthError | null;
+}
+
+export interface OAuthResponse {
+  data: {
+    provider: 'google' | 'apple';
+    url: string;
+  };
+  error: AuthError | null;
+}
+
+// ============================================================================
+// Mock AsyncStorage (replaces @react-native-async-storage/async-storage)
+// ============================================================================
+
+export class MockAsyncStorage {
+  private _storage: Map<string, string> = new Map();
+
+  async getItem(key: string): Promise<string | null> {
+    return this._storage.get(key) || null;
+  }
+
+  async setItem(key: string, value: string): Promise<void> {
+    this._storage.set(key, value);
+  }
+
+  async removeItem(key: string): Promise<void> {
+    this._storage.delete(key);
+  }
+
+  async clear(): Promise<void> {
+    this._storage.clear();
+  }
+
+  async getAllKeys(): Promise<string[]> {
+    return Array.from(this._storage.keys());
+  }
+
+  reset(): void {
+    this._storage.clear();
+  }
+}
+
+// ============================================================================
+// Mock Supabase Auth (replaces @supabase/supabase-js auth)
+// ============================================================================
+
+export class MockSupabaseAuth {
+  private _users: Map<string, User> = new Map();
+  private _sessions: Map<string, Session> = new Map();
+  private _passwords: Map<string, string> = new Map(); // email -> password
+  private _confirmationsSent: Set<string> = new Set(); // emails with confirmation sent
+  private _resetEmailsSent: Set<string> = new Set(); // emails with reset link sent
+  private _failedAttempts: Map<string, number> = new Map(); // email -> count
+  private _rateLimitedUntil: Map<string, number> = new Map(); // email -> timestamp
+
+  async signUp(email: string, password: string): Promise<AuthResponse> {
+    // Validate email format
+    if (!this._isValidEmail(email)) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'Format email invalide', code: 'invalid_email' },
+      };
+    }
+
+    // Validate password strength
+    const passwordError = this._validatePassword(password);
+    if (passwordError) {
+      return {
+        data: { user: null, session: null },
+        error: passwordError,
+      };
+    }
+
+    // Check if user already exists
+    const existingUser = Array.from(this._users.values()).find(
+      (u) => u.email === email.toLowerCase()
+    );
+    if (existingUser) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'Email déjà utilisé', code: 'email_exists' },
+      };
+    }
+
+    // Create user
+    const user: User = {
+      id: uuidv4(),
+      email: email.toLowerCase(),
+      emailConfirmed: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      appMetadata: {
+        provider: 'email',
+        providers: ['email'],
+      },
+      userMetadata: {},
+    };
+
+    this._users.set(user.id, user);
+    this._passwords.set(user.email, password);
+    this._confirmationsSent.add(user.email);
+
+    // Create session
+    const session = this._createSession(user);
+    this._sessions.set(user.id, session);
+
+    return {
+      data: { user, session },
+      error: null,
+    };
+  }
+
+  async signInWithPassword(email: string, password: string): Promise<AuthResponse> {
+    const normalizedEmail = email.toLowerCase();
+
+    // Check rate limiting
+    if (this._isRateLimited(normalizedEmail)) {
+      return {
+        data: { user: null, session: null },
+        error: {
+          message: 'Trop de tentatives, réessayez dans 5 minutes',
+          code: 'rate_limited',
+        },
+      };
+    }
+
+    // Validate email format
+    if (!this._isValidEmail(email)) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'Format email invalide', code: 'invalid_email' },
+      };
+    }
+
+    // Validate password format (for test clarity)
+    const passwordError = this._validatePassword(password);
+    if (passwordError) {
+      return {
+        data: { user: null, session: null },
+        error: passwordError,
+      };
+    }
+
+    // Find user
+    const user = Array.from(this._users.values()).find(
+      (u) => u.email === normalizedEmail
+    );
+
+    if (!user || this._passwords.get(normalizedEmail) !== password) {
+      this._recordFailedAttempt(normalizedEmail);
+      return {
+        data: { user: null, session: null },
+        error: { message: 'Email ou password invalide', code: 'invalid_credentials' },
+      };
+    }
+
+    // Reset failed attempts on success
+    this._failedAttempts.delete(normalizedEmail);
+
+    // Update last sign in
+    user.lastSignInAt = new Date();
+    user.updatedAt = new Date();
+    this._users.set(user.id, user);
+
+    // Create session
+    const session = this._createSession(user);
+    this._sessions.set(user.id, session);
+
+    return {
+      data: { user, session },
+      error: null,
+    };
+  }
+
+  async signInWithOAuth(provider: 'google' | 'apple'): Promise<OAuthResponse> {
+    // Simulate OAuth flow
+    const url = `https://accounts.${provider}.com/oauth/authorize?redirect_uri=pensieve://auth/callback`;
+
+    return {
+      data: {
+        provider,
+        url,
+      },
+      error: null,
+    };
+  }
+
+  async handleOAuthCallback(
+    provider: 'google' | 'apple',
+    email: string,
+    name?: string
+  ): Promise<AuthResponse> {
+    // Check if user exists
+    let user = Array.from(this._users.values()).find(
+      (u) => u.email === email.toLowerCase()
+    );
+
+    if (!user) {
+      // Create new user
+      user = {
+        id: uuidv4(),
+        email: email.toLowerCase(),
+        emailConfirmed: true, // OAuth emails are pre-confirmed
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastSignInAt: new Date(),
+        appMetadata: {
+          provider,
+          providers: [provider],
+        },
+        userMetadata: {
+          name: name || email.split('@')[0],
+          email_verified: true,
+        },
+      };
+      this._users.set(user.id, user);
+    } else {
+      // Update existing user
+      if (!user.appMetadata.providers?.includes(provider)) {
+        user.appMetadata.providers = [
+          ...(user.appMetadata.providers || []),
+          provider,
+        ];
+      }
+      user.lastSignInAt = new Date();
+      user.updatedAt = new Date();
+      this._users.set(user.id, user);
+    }
+
+    // Create session
+    const session = this._createSession(user);
+    this._sessions.set(user.id, session);
+
+    return {
+      data: { user, session },
+      error: null,
+    };
+  }
+
+  async signOut(userId: string): Promise<{ error: AuthError | null }> {
+    this._sessions.delete(userId);
+    return { error: null };
+  }
+
+  async resetPasswordForEmail(email: string): Promise<{ error: AuthError | null }> {
+    const normalizedEmail = email.toLowerCase();
+
+    if (!this._isValidEmail(email)) {
+      return {
+        error: { message: 'Format email invalide', code: 'invalid_email' },
+      };
+    }
+
+    // Mark reset email as sent (always succeeds even if user doesn't exist for security)
+    this._resetEmailsSent.add(normalizedEmail);
+
+    return { error: null };
+  }
+
+  async updateUser(
+    userId: string,
+    attributes: { password?: string; email?: string; data?: any }
+  ): Promise<AuthResponse> {
+    const user = this._users.get(userId);
+    if (!user) {
+      return {
+        data: { user: null, session: null },
+        error: { message: 'User not found', code: 'user_not_found' },
+      };
+    }
+
+    if (attributes.password) {
+      const passwordError = this._validatePassword(attributes.password);
+      if (passwordError) {
+        return {
+          data: { user: null, session: null },
+          error: passwordError,
+        };
+      }
+      this._passwords.set(user.email, attributes.password);
+    }
+
+    if (attributes.email) {
+      user.email = attributes.email.toLowerCase();
+    }
+
+    if (attributes.data) {
+      user.userMetadata = { ...user.userMetadata, ...attributes.data };
+    }
+
+    user.updatedAt = new Date();
+    this._users.set(userId, user);
+
+    const session = this._sessions.get(userId);
+
+    return {
+      data: { user, session: session || null },
+      error: null,
+    };
+  }
+
+  async getSession(userId: string): Promise<{ data: { session: Session | null }; error: AuthError | null }> {
+    const session = this._sessions.get(userId);
+
+    // Check if session expired
+    if (session && Date.now() > session.expiresAt) {
+      // Auto-refresh
+      const refreshed = this._refreshSession(session);
+      this._sessions.set(userId, refreshed);
+      return { data: { session: refreshed }, error: null };
+    }
+
+    return { data: { session: session || null }, error: null };
+  }
+
+  async refreshSession(session: Session): Promise<AuthResponse> {
+    const refreshed = this._refreshSession(session);
+    this._sessions.set(session.user.id, refreshed);
+
+    return {
+      data: { user: session.user, session: refreshed },
+      error: null,
+    };
+  }
+
+  // Test helpers
+  hasConfirmationBeenSent(email: string): boolean {
+    return this._confirmationsSent.has(email.toLowerCase());
+  }
+
+  hasResetEmailBeenSent(email: string): boolean {
+    return this._resetEmailsSent.has(email.toLowerCase());
+  }
+
+  getUser(email: string): User | undefined {
+    return Array.from(this._users.values()).find(
+      (u) => u.email === email.toLowerCase()
+    );
+  }
+
+  deleteUser(userId: string): void {
+    this._users.delete(userId);
+    this._sessions.delete(userId);
+  }
+
+  reset(): void {
+    this._users.clear();
+    this._sessions.clear();
+    this._passwords.clear();
+    this._confirmationsSent.clear();
+    this._resetEmailsSent.clear();
+    this._failedAttempts.clear();
+    this._rateLimitedUntil.clear();
+  }
+
+  // Private helpers
+  private _createSession(user: User): Session {
+    return {
+      accessToken: `mock-token-${uuidv4()}`,
+      refreshToken: `mock-refresh-${uuidv4()}`,
+      expiresAt: Date.now() + 3600 * 1000, // 1 hour
+      expiresIn: 3600,
+      tokenType: 'bearer',
+      user,
+    };
+  }
+
+  private _refreshSession(session: Session): Session {
+    return {
+      ...session,
+      accessToken: `mock-token-${uuidv4()}`,
+      expiresAt: Date.now() + 3600 * 1000,
+      expiresIn: 3600,
+    };
+  }
+
+  private _isValidEmail(email: string): boolean {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  private _validatePassword(password: string): AuthError | null {
+    if (password.length < 8) {
+      return { message: 'Password trop court', code: 'password_too_short' };
+    }
+    if (!/[A-Z]/.test(password)) {
+      return { message: 'Au moins 1 majuscule requise', code: 'password_no_uppercase' };
+    }
+    if (!/[0-9]/.test(password)) {
+      return { message: 'Au moins 1 chiffre requis', code: 'password_no_number' };
+    }
+    return null;
+  }
+
+  private _recordFailedAttempt(email: string): void {
+    const attempts = (this._failedAttempts.get(email) || 0) + 1;
+    this._failedAttempts.set(email, attempts);
+
+    if (attempts >= 5) {
+      this._rateLimitedUntil.set(email, Date.now() + 5 * 60 * 1000); // 5 minutes
+    }
+  }
+
+  private _isRateLimited(email: string): boolean {
+    const limitedUntil = this._rateLimitedUntil.get(email);
+    if (!limitedUntil) return false;
+
+    if (Date.now() > limitedUntil) {
+      this._rateLimitedUntil.delete(email);
+      this._failedAttempts.delete(email);
+      return false;
+    }
+
+    return true;
+  }
+
+  // ============================================================================
+  // Public helper methods for tests
+  // ============================================================================
+
+  confirmEmail(userId: string): void {
+    const user = this._users.get(userId);
+    if (user) {
+      user.emailConfirmed = true;
+      this._users.set(userId, user);
+    }
+  }
+
+  wasConfirmationEmailSent(email: string): boolean {
+    return this._confirmationsSent.has(email.toLowerCase());
+  }
+
+  wasResetEmailSent(email: string): boolean {
+    return this._resetEmailsSent.has(email.toLowerCase());
+  }
+}
+
+// ============================================================================
+// RGPD Types
+// ============================================================================
+
+export interface DataExportMetadata {
+  export_date: string;
+  user_id: string;
+  format_version: string;
+}
+
+export interface DataExportContent {
+  metadata: DataExportMetadata;
+  user_profile: User;
+  captures: any[];
+  transcriptions: any[];
+  ai_digests: any[];
+  actions: any[];
+  audio_files: string[];
+}
+
+export interface DataExportResult {
+  success: boolean;
+  zipPath?: string;
+  zipSizeMB?: number;
+  downloadUrl?: string;
+  expiresAt?: number;
+  error?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  event_type: 'RGPD_DATA_EXPORT' | 'RGPD_ACCOUNT_DELETION';
+  user_id: string;
+  timestamp: Date;
+  ip_address: string;
+  export_size_mb?: number;
+  metadata?: Record<string, any>;
+}
+
+export interface DeletionResult {
+  success: boolean;
+  sources_deleted: {
+    supabase_auth: boolean;
+    postgresql: boolean;
+    minio: boolean;
+    watermelondb: boolean;
+  };
+  error?: string;
+}
+
+// ============================================================================
+// Mock RGPD Service
+// ============================================================================
+
+export class MockRGPDService {
+  private _exports: Map<string, DataExportResult> = new Map();
+  private _auditLogs: AuditLog[] = [];
+  private _deletedUsers: Set<string> = new Set();
+  private _exportInProgress: Set<string> = new Set();
+  private _userDataSizes: Map<string, number> = new Map(); // Test helper
+
+  async requestDataExport(
+    userId: string,
+    ipAddress: string = '127.0.0.1'
+  ): Promise<DataExportResult> {
+    // Check if export already in progress
+    if (this._exportInProgress.has(userId)) {
+      return {
+        success: false,
+        error: 'Export déjà en cours',
+      };
+    }
+
+    // Get user data size (mock)
+    const dataSizeMB = this._calculateDataSize(userId);
+
+    // Small dataset (< 100 MB) - synchronous
+    if (dataSizeMB < 100) {
+      const exportData = this._generateExportData(userId);
+      const zipPath = `/tmp/export_${userId}_${Date.now()}.zip`;
+
+      const result: DataExportResult = {
+        success: true,
+        zipPath,
+        zipSizeMB: dataSizeMB,
+      };
+
+      this._exports.set(userId, result);
+
+      // Log audit trail
+      this._auditLogs.push({
+        id: uuidv4(),
+        event_type: 'RGPD_DATA_EXPORT',
+        user_id: userId,
+        timestamp: new Date(),
+        ip_address: ipAddress,
+        export_size_mb: dataSizeMB,
+      });
+
+      return result;
+    }
+
+    // Large dataset (> 100 MB) - asynchronous
+    this._exportInProgress.add(userId);
+
+    // Simulate async processing
+    setTimeout(() => {
+      const exportData = this._generateExportData(userId);
+      const downloadUrl = `https://storage.pensieve.app/exports/${userId}`;
+      const expiresAt = Date.now() + 24 * 60 * 60 * 1000; // 24 hours
+
+      const result: DataExportResult = {
+        success: true,
+        downloadUrl,
+        zipSizeMB: dataSizeMB,
+        expiresAt,
+      };
+
+      this._exports.set(userId, result);
+      this._exportInProgress.delete(userId);
+
+      // Log audit trail
+      this._auditLogs.push({
+        id: uuidv4(),
+        event_type: 'RGPD_DATA_EXPORT',
+        user_id: userId,
+        timestamp: new Date(),
+        ip_address: ipAddress,
+        export_size_mb: dataSizeMB,
+      });
+    }, 100);
+
+    return {
+      success: true,
+      zipSizeMB: dataSizeMB,
+    };
+  }
+
+  async deleteAccount(
+    userId: string,
+    password: string,
+    ipAddress: string = '127.0.0.1'
+  ): Promise<DeletionResult> {
+    // Verify password (mock - assume valid)
+    if (password !== 'Password123!') {
+      return {
+        success: false,
+        sources_deleted: {
+          supabase_auth: false,
+          postgresql: false,
+          minio: false,
+          watermelondb: false,
+        },
+        error: 'Password incorrect',
+      };
+    }
+
+    // Delete from all sources
+    this._deletedUsers.add(userId);
+
+    // Log audit trail (before deletion)
+    this._auditLogs.push({
+      id: uuidv4(),
+      event_type: 'RGPD_ACCOUNT_DELETION',
+      user_id: userId,
+      timestamp: new Date(),
+      ip_address: ipAddress,
+    });
+
+    return {
+      success: true,
+      sources_deleted: {
+        supabase_auth: true,
+        postgresql: true,
+        minio: true,
+        watermelondb: true,
+      },
+    };
+  }
+
+  getExport(userId: string): DataExportResult | null {
+    return this._exports.get(userId) ?? null;
+  }
+
+  getAuditLogs(userId?: string): AuditLog[] {
+    if (userId) {
+      return this._auditLogs.filter((log) => log.user_id === userId);
+    }
+    return this._auditLogs;
+  }
+
+  isUserDeleted(userId: string): boolean {
+    return this._deletedUsers.has(userId);
+  }
+
+  isExportInProgress(userId: string): boolean {
+    return this._exportInProgress.has(userId);
+  }
+
+  setUserDataSize(userId: string, sizeMB: number): void {
+    this._userDataSizes.set(userId, sizeMB);
+  }
+
+  private _calculateDataSize(userId: string): number {
+    // Use predefined size for testing, or default to small
+    return this._userDataSizes.get(userId) || 50; // Default 50 MB
+  }
+
+  private _generateExportData(userId: string): DataExportContent {
+    return {
+      metadata: {
+        export_date: new Date().toISOString(),
+        user_id: userId,
+        format_version: '1.0',
+      },
+      user_profile: {
+        id: userId,
+        email: 'user@example.com',
+        emailConfirmed: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        appMetadata: { provider: 'email' },
+        userMetadata: {},
+      },
+      captures: [],
+      transcriptions: [],
+      ai_digests: [],
+      actions: [],
+      audio_files: [],
+    };
+  }
+
+  reset(): void {
+    this._exports.clear();
+    this._auditLogs = [];
+    this._deletedUsers.clear();
+    this._exportInProgress.clear();
+    this._userDataSizes.clear();
+  }
+}
+
+// ============================================================================
+// Mock Permission Manager
+// ============================================================================
+
+export class MockPermissionManager {
+  private _microphoneGranted = true;
+  private _notificationsGranted = true;
+
+  setMicrophonePermission(granted: boolean): void {
+    this._microphoneGranted = granted;
+  }
+
+  setNotificationPermission(granted: boolean): void {
+    this._notificationsGranted = granted;
+  }
+
+  async checkMicrophonePermission(): Promise<boolean> {
+    return this._microphoneGranted;
+  }
+
+  async requestMicrophonePermission(): Promise<boolean> {
+    return this._microphoneGranted;
+  }
+
+  reset(): void {
+    this._microphoneGranted = true;
+    this._notificationsGranted = true;
+  }
+}
+
+// ============================================================================
+// Test Context (aggregates all mocks)
+// ============================================================================
+
+export class TestContext {
+  public db: InMemoryDatabase;
+  public audioRecorder: MockAudioRecorder;
+  public fileSystem: MockFileSystem;
+  public permissions: MockPermissionManager;
+  public auth: MockSupabaseAuth;
+  public storage: MockAsyncStorage;
+  public rgpd: MockRGPDService;
+
+  private _userId: string = 'test-user';
+  private _isOffline: boolean = false;
+
+  constructor() {
+    this.db = new InMemoryDatabase();
+    this.audioRecorder = new MockAudioRecorder();
+    this.fileSystem = new MockFileSystem();
+    this.permissions = new MockPermissionManager();
+    this.auth = new MockSupabaseAuth();
+    this.storage = new MockAsyncStorage();
+    this.rgpd = new MockRGPDService();
+  }
+
+  setUserId(userId: string): void {
+    this._userId = userId;
+  }
+
+  getUserId(): string {
+    return this._userId;
+  }
+
+  setOffline(offline: boolean): void {
+    this._isOffline = offline;
+  }
+
+  isOffline(): boolean {
+    return this._isOffline;
+  }
+
+  reset(): void {
+    this.db.reset();
+    this.audioRecorder.reset();
+    this.fileSystem.reset();
+    this.permissions.reset();
+    this.auth.reset();
+    this.storage.reset();
+    this.rgpd.reset();
+    this._userId = 'test-user';
+    this._isOffline = false;
+  }
+}
+
+// ============================================================================
+// Test Helpers
+// ============================================================================
+
+export function generateFilePath(userId: string, timestamp?: number): string {
+  const ts = timestamp || Date.now();
+  const uuid = uuidv4();
+  return `capture_${userId}_${ts}_${uuid}.m4a`;
+}
+
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
