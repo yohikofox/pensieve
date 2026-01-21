@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
+import { CaptureScreen } from '../screens/capture/CaptureScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -38,6 +39,14 @@ export const MainNavigator = () => {
         options={{
           title: 'Accueil',
           tabBarLabel: 'Accueil',
+        }}
+      />
+      <Tab.Screen
+        name="Capture"
+        component={CaptureScreen}
+        options={{
+          title: 'Capturer',
+          tabBarLabel: 'Capturer',
         }}
       />
       <Tab.Screen
