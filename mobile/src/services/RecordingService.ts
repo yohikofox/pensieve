@@ -73,8 +73,19 @@ export class RecordingService {
     // Generate file path with naming convention
     const filePath = this.generateFilePath();
 
+    // Simulate realistic audio file size based on duration
+    // Audio at 1024 kbps (high quality) = ~128 KB per second
+    const estimatedSize = Math.ceil((duration / 1000) * 128 * 1024);
+    const audioContent = 'x'.repeat(estimatedSize); // Simulate file content
+
+    // Check available storage space before writing
+    const availableSpace = this.fileSystem.getAvailableSpace();
+    if (availableSpace < audioContent.length) {
+      throw new Error('InsufficientStorage: Not enough space to save recording');
+    }
+
     // Save audio file to storage
-    await this.fileSystem.writeFile(filePath, `audio_content_${duration}ms`);
+    await this.fileSystem.writeFile(filePath, audioContent);
 
     // Get file size
     const file = this.fileSystem.getFile(filePath);
@@ -107,6 +118,20 @@ export class RecordingService {
    * AC4: Crash Recovery
    */
   async recoverIncompleteRecordings(): Promise<void> {
-    throw new Error('RecordingService.recoverIncompleteRecordings() - Not implemented yet (RED phase)');
+    // Find all captures that are still in RECORDING state (interrupted by crash)
+    const incompleteCaptures = await this.captureRepo.findByState('RECORDING');
+
+    for (const capture of incompleteCaptures) {
+      // Get current duration from recorder if available
+      const status = this.audioRecorder.getStatus();
+      const duration = status.durationMillis || capture.duration || 0;
+
+      // Update capture to RECOVERED state
+      await this.captureRepo.update(capture.id, {
+        state: 'RECOVERED',
+        recoveredFromCrash: true,
+        duration,
+      });
+    }
   }
 }
