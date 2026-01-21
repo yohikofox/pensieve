@@ -3,6 +3,15 @@ import type { Response } from 'express';
 
 @Controller()
 export class AppController {
+  @Get('health')
+  getHealth() {
+    return {
+      status: 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+    };
+  }
+
   @Get()
   async handleAuthCallback(@Res() res: Response) {
     // Serve an HTML page that reads the fragment (#access_token=...)
