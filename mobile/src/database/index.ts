@@ -3,6 +3,7 @@ import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 
 import { schema } from './schema';
 import { migrations } from './migrations';
+import { Capture } from '../contexts/capture/domain/Capture.model';
 
 // Initialize SQLite adapter
 const adapter = new SQLiteAdapter({
@@ -19,7 +20,8 @@ const adapter = new SQLiteAdapter({
 export const database = new Database({
   adapter,
   modelClasses: [
-    // TODO: Register models here as they are created
-    // Example: CaptureModel, KnowledgeModel, etc.
+    Capture,
+    // TODO: Register additional models here as they are created
+    // Example: KnowledgeModel, etc.
   ],
 });
