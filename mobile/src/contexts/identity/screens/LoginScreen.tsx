@@ -12,10 +12,26 @@ import { supabase } from "../../../lib/supabase";
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const LoginScreen = ({ navigation }: any) => {
+type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+  ForgotPassword: undefined;
+};
+
+type LoginScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  "Login"
+>;
+
+interface LoginScreenProps {
+  navigation: LoginScreenNavigationProp;
+}
+
+export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -68,17 +84,29 @@ export const LoginScreen = ({ navigation }: any) => {
 
       if (result.type === "success") {
         const { url } = result;
-        // Extract tokens from URL
-        const params = new URLSearchParams(url.split("#")[1]);
-        const accessToken = params.get("access_token");
-        const refreshToken = params.get("refresh_token");
+        try {
+          // Extract tokens from URL fragment (after #)
+          const fragment = url.split("#")[1];
+          if (!fragment) {
+            throw new Error("No tokens in callback URL");
+          }
 
-        if (accessToken && refreshToken) {
-          // Set session
-          await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken,
-          });
+          const params = new URLSearchParams(fragment);
+          const accessToken = params.get("access_token");
+          const refreshToken = params.get("refresh_token");
+
+          if (accessToken && refreshToken) {
+            // Set session
+            await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+          } else {
+            throw new Error("Missing tokens in callback");
+          }
+        } catch (parseError: any) {
+          console.error("Failed to parse OAuth callback:", parseError);
+          Alert.alert("Authentication Error", "Failed to process Google sign-in response");
         }
       }
     } catch (error: any) {

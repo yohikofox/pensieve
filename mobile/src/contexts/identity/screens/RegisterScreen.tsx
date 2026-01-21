@@ -8,8 +8,23 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const RegisterScreen = ({ navigation }: any) => {
+type AuthStackParamList = {
+  Login: undefined;
+  Register: undefined;
+};
+
+type RegisterScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'Register'
+>;
+
+interface RegisterScreenProps {
+  navigation: RegisterScreenNavigationProp;
+}
+
+export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

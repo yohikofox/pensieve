@@ -8,11 +8,30 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
-import { useRoute } from '@react-navigation/native';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const ResetPasswordScreen = ({ navigation }: any) => {
-  const route = useRoute();
-  const { accessToken } = (route.params as any) || {};
+type AuthStackParamList = {
+  Login: undefined;
+  ResetPassword: {
+    accessToken?: string;
+  };
+};
+
+type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'ResetPassword'
+>;
+
+type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
+
+interface ResetPasswordScreenProps {
+  navigation: ResetPasswordScreenNavigationProp;
+}
+
+export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) => {
+  const route = useRoute<ResetPasswordScreenRouteProp>();
+  const { accessToken } = route.params || {};
 
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

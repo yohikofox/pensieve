@@ -8,8 +8,23 @@ import {
   Alert,
 } from 'react-native';
 import { supabase } from '../../../lib/supabase';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
-export const ForgotPasswordScreen = ({ navigation }: any) => {
+type AuthStackParamList = {
+  Login: undefined;
+  ForgotPassword: undefined;
+};
+
+type ForgotPasswordScreenNavigationProp = NativeStackNavigationProp<
+  AuthStackParamList,
+  'ForgotPassword'
+>;
+
+interface ForgotPasswordScreenProps {
+  navigation: ForgotPasswordScreenNavigationProp;
+}
+
+export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
 
