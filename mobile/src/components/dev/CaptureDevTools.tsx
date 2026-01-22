@@ -5,7 +5,7 @@
  * to view all Captures stored in the local database
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,10 +18,12 @@ import {
 } from 'react-native';
 import * as Network from 'expo-network';
 import * as FileSystem from 'expo-file-system/legacy';
+import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { OfflineSyncService } from '../../contexts/capture/services/OfflineSyncService';
-import { PermissionService } from '../../contexts/capture/services/PermissionService';
+import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 
 export const CaptureDevTools = () => {
   const [captures, setCaptures] = useState<any[]>([]);
@@ -37,6 +39,12 @@ export const CaptureDevTools = () => {
   const repository = new CaptureRepository();
   const crashRecoveryService = new CrashRecoveryService(repository);
   const offlineSyncService = new OfflineSyncService(repository);
+  const permissionServiceRef = useRef<IPermissionService | null>(null);
+
+  // Initialize PermissionService via TSyringe
+  useEffect(() => {
+    permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
+  }, []);
 
   const loadCaptures = async () => {
     try {
@@ -198,7 +206,12 @@ export const CaptureDevTools = () => {
   };
 
   const openAppSettings = async () => {
-    const hasPermission = await PermissionService.hasMicrophonePermission();
+    if (!permissionServiceRef.current) {
+      Alert.alert('Erreur', 'Service de permissions non initialisé');
+      return;
+    }
+
+    const hasPermission = await permissionServiceRef.current.hasMicrophonePermission();
 
     Alert.alert(
       '⚙️ Paramètres de l\'app',
@@ -220,7 +233,12 @@ export const CaptureDevTools = () => {
   };
 
   const checkMicPermission = async () => {
-    const hasPermission = await PermissionService.hasMicrophonePermission();
+    if (!permissionServiceRef.current) {
+      console.warn('[DevTools] PermissionService not initialized yet');
+      return;
+    }
+
+    const hasPermission = await permissionServiceRef.current.hasMicrophonePermission();
     setMicPermission(hasPermission);
   };
 
