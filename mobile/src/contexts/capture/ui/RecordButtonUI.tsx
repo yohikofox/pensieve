@@ -190,8 +190,8 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    width: '100%', // Fix timer alignment
-    paddingHorizontal: 20, // Prevent overflow
+    // Removed width: '100%' - was causing horizontal overflow in row layout
+    // Timer and label are now absolute positioned, so width not needed
   },
   touchable: {
     padding: 10,
