@@ -50,6 +50,8 @@ describe('Audio Capture Integration Tests', () => {
     repository = {
       create: jest.fn(),
       update: jest.fn(),
+      getById: jest.fn(),
+      delete: jest.fn(),
       findById: jest.fn(),
       findByState: jest.fn(),
       findBySyncStatus: jest.fn(),
@@ -574,6 +576,194 @@ describe('Audio Capture Integration Tests', () => {
 
       // Verify capture is still in database (can be retried later)
       expect(repository.update).toHaveBeenCalled();
+    });
+  });
+
+  describe('Story 2.3: Cancel Recording Flow', () => {
+    it('should complete full cancel flow from start to cleanup', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+
+      // Mock repository create for recording start
+      repository.create.mockResolvedValue({
+        type: 'success',
+        data: {
+          id: 'cancel-capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/cancel.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
+      } as any);
+
+      // Mock getById for cancel flow
+      repository.getById = jest.fn().mockResolvedValue({
+        id: 'cancel-capture-1',
+        type: 'audio',
+        state: 'recording',
+        rawContent: '/temp/cancel.m4a',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+        syncStatus: 'pending',
+      } as any);
+
+      // Mock file system for cancel
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+
+      // 1. User starts recording
+      const startResult = await recordingService.startRecording('/temp/cancel.m4a');
+      expect(startResult.type).toBe('success');
+      expect(recordingService.isRecording()).toBe(true);
+
+      // 2. User taps cancel button and confirms
+      await recordingService.cancelRecording();
+
+      // AC1: Verify file was checked for existence
+      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith('/temp/cancel.m4a');
+
+      // AC1: Verify file was deleted
+      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
+        '/temp/cancel.m4a',
+        { idempotent: true }
+      );
+
+      // AC1: Verify capture entity was deleted from DB
+      expect(repository.delete).toHaveBeenCalledWith('cancel-capture-1');
+
+      // AC1: Verify recording state was reset
+      expect(recordingService.isRecording()).toBe(false);
+      expect(recordingService.getCurrentRecordingId()).toBeNull();
+    });
+
+    it('should handle cancel when file does not exist', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+
+      repository.create.mockResolvedValue({
+        type: 'success',
+        data: {
+          id: 'cancel-capture-2',
+          rawContent: '/temp/missing.m4a',
+        },
+      } as any);
+
+      (repository.getById as jest.Mock).mockResolvedValue({
+        id: 'cancel-capture-2',
+        rawContent: '/temp/missing.m4a',
+      } as any);
+
+      // Mock file doesn't exist
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+
+      await recordingService.startRecording('/temp/missing.m4a');
+      await recordingService.cancelRecording();
+
+      // Should not attempt to delete non-existent file
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+
+      // But should still delete the DB entity
+      expect(repository.delete).toHaveBeenCalledWith('cancel-capture-2');
+      expect(recordingService.isRecording()).toBe(false);
+    });
+
+    it('should handle cancel in offline mode (AC5)', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+
+      repository.create.mockResolvedValue({
+        type: 'success',
+        data: {
+          id: 'offline-cancel-1',
+          rawContent: '/temp/offline.m4a',
+        },
+      } as any);
+
+      (repository.getById as jest.Mock).mockResolvedValue({
+        id: 'offline-cancel-1',
+        rawContent: '/temp/offline.m4a',
+      } as any);
+
+      // Mock file system error (simulating offline/storage issues)
+      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('Storage unavailable'));
+
+      await recordingService.startRecording('/temp/offline.m4a');
+
+      // Cancel should not throw even with file system errors
+      await expect(recordingService.cancelRecording()).resolves.not.toThrow();
+
+      // Should still clean up DB entity despite file error
+      expect(repository.delete).toHaveBeenCalledWith('offline-cancel-1');
+      expect(recordingService.isRecording()).toBe(false);
+    });
+
+    it('should do nothing when canceling without active recording', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+
+      // Call cancel without starting recording
+      await recordingService.cancelRecording();
+
+      // Should not call any cleanup methods
+      expect(repository.getById).not.toHaveBeenCalled();
+      expect(repository.delete).not.toHaveBeenCalled();
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+    });
+
+    it('should handle capture with no file URI', async () => {
+      repository.create.mockResolvedValue({
+        type: 'success',
+        data: {
+          id: 'no-uri-capture',
+          rawContent: null,
+        },
+      } as any);
+
+      (repository.getById as jest.Mock).mockResolvedValue({
+        id: 'no-uri-capture',
+        rawContent: null,
+      } as any);
+
+      await recordingService.startRecording('');
+      await recordingService.cancelRecording();
+
+      // Should not attempt file deletion with no URI
+      const FileSystem = require('expo-file-system/legacy');
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+
+      // But should still delete entity
+      expect(repository.delete).toHaveBeenCalledWith('no-uri-capture');
+    });
+
+    it('should prevent starting new recording after cancel completes', async () => {
+      const FileSystem = require('expo-file-system/legacy');
+
+      repository.create.mockResolvedValue({
+        type: 'success',
+        data: {
+          id: 'cancel-then-new',
+          rawContent: '/temp/test.m4a',
+        },
+      } as any);
+
+      (repository.getById as jest.Mock).mockResolvedValue({
+        id: 'cancel-then-new',
+        rawContent: '/temp/test.m4a',
+      } as any);
+
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+
+      // Start, cancel, then start new recording
+      await recordingService.startRecording('/temp/test.m4a');
+      await recordingService.cancelRecording();
+
+      expect(recordingService.isRecording()).toBe(false);
+
+      // Should be able to start new recording after cancel
+      const newResult = await recordingService.startRecording('/temp/new.m4a');
+      expect(newResult.type).toBe('success');
+      expect(recordingService.isRecording()).toBe(true);
     });
   });
 });
