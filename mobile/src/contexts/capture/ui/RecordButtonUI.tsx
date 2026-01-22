@@ -75,7 +75,8 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
         ])
       ).start();
     } else {
-      // Stop pulsing animation
+      // CRITICAL: Stop animation loop BEFORE setValue to prevent artifacts
+      pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
     }
 
