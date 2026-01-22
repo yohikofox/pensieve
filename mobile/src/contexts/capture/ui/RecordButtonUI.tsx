@@ -205,6 +205,8 @@ const styles = StyleSheet.create({
   timerBlock: {
     position: 'absolute',
     top: 110, // Position below record button (80px height + 20px padding + 10px gap)
+    left: 0,
+    right: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -241,12 +243,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FF3B30',
     fontVariant: ['tabular-nums'], // Monospaced numbers
+    textAlign: 'center',
   },
   label: {
     position: 'absolute',
+    left: 0,
+    right: 0,
     fontSize: 14,
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',
+    textAlign: 'center',
   },
   labelIdle: {
     top: 110, // Closer to button when not recording
