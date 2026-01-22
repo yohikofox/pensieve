@@ -337,19 +337,17 @@ export const CaptureDevTools = () => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <Text style={styles.title}>🔍 Capture DevTools</Text>
-          <View style={styles.badgesRow}>
-            <View style={[styles.networkBadge, { backgroundColor: networkDisplay.color }]}>
-              <Text style={styles.networkBadgeText}>
-                {networkDisplay.icon} {networkDisplay.text}
-              </Text>
-            </View>
-            <View style={[styles.networkBadge, { backgroundColor: micDisplay.color }]}>
-              <Text style={styles.networkBadgeText}>
-                {micDisplay.icon} {micDisplay.text}
-              </Text>
-            </View>
+        <Text style={styles.title}>🔍 Capture DevTools</Text>
+        <View style={styles.badgesRow}>
+          <View style={[styles.networkBadge, { backgroundColor: networkDisplay.color }]}>
+            <Text style={styles.networkBadgeText}>
+              {networkDisplay.icon} {networkDisplay.text}
+            </Text>
+          </View>
+          <View style={[styles.networkBadge, { backgroundColor: micDisplay.color }]}>
+            <Text style={styles.networkBadgeText}>
+              {micDisplay.icon} {micDisplay.text}
+            </Text>
           </View>
         </View>
         <Text style={styles.count}>
@@ -526,20 +524,16 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#404040',
   },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
   title: {
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    marginBottom: 12,
   },
   badgesRow: {
     flexDirection: 'row',
     gap: 8,
+    marginBottom: 8,
   },
   networkBadge: {
     paddingHorizontal: 12,
