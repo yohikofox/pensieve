@@ -75,33 +75,29 @@ export const CaptureScreen = () => {
     const performCrashRecovery = async () => {
       if (!repositoryRef.current) return;
 
-      try {
-        const crashRecoveryService = new CrashRecoveryService(repositoryRef.current);
-        const recovered = await crashRecoveryService.recoverIncompleteRecordings();
+      const crashRecoveryService = new CrashRecoveryService(repositoryRef.current);
+      const recovered = await crashRecoveryService.recoverIncompleteRecordings();
 
-        if (recovered.length > 0) {
-          const recoveredCount = recovered.filter((r) => r.state === 'recovered').length;
-          const failedCount = recovered.filter((r) => r.state === 'failed').length;
+      if (recovered.length > 0) {
+        const recoveredCount = recovered.filter((r) => r.state === 'recovered').length;
+        const failedCount = recovered.filter((r) => r.state === 'failed').length;
 
-          let message = '';
-          if (recoveredCount > 0) {
-            message += `${recoveredCount} capture${recoveredCount > 1 ? 's récupérée' : ' récupérée'}${recoveredCount > 1 ? 's' : ''} après interruption.`;
-          }
-          if (failedCount > 0) {
-            if (message) message += '\n';
-            message += `${failedCount} capture${failedCount > 1 ? 's' : ''} non récupérable${failedCount > 1 ? 's' : ''}.`;
-          }
-
-          if (message) {
-            Alert.alert(
-              '🔄 Récupération après interruption',
-              message,
-              [{ text: 'OK' }]
-            );
-          }
+        let message = '';
+        if (recoveredCount > 0) {
+          message += `${recoveredCount} capture${recoveredCount > 1 ? 's récupérée' : ' récupérée'}${recoveredCount > 1 ? 's' : ''} après interruption.`;
         }
-      } catch (error) {
-        console.error('[CaptureScreen] Crash recovery failed:', error);
+        if (failedCount > 0) {
+          if (message) message += '\n';
+          message += `${failedCount} capture${failedCount > 1 ? 's' : ''} non récupérable${failedCount > 1 ? 's' : ''}.`;
+        }
+
+        if (message) {
+          Alert.alert(
+            '🔄 Récupération après interruption',
+            message,
+            [{ text: 'OK' }]
+          );
+        }
       }
     };
 
@@ -122,94 +118,133 @@ export const CaptureScreen = () => {
   };
 
   const startRecording = async () => {
+    const recordingService = recordingServiceRef.current;
+    if (!recordingService) {
+      Alert.alert('Erreur', 'Service d\'enregistrement non initialisé');
+      setState('idle');
+      return;
+    }
+
+    // Check/request permissions
+    if (!hasPermission) {
+      const result = await PermissionService.requestMicrophonePermission();
+
+      if (result.status !== 'granted') {
+        Alert.alert(
+          'Permission refusée',
+          result.canAskAgain
+            ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
+            : 'L\'accès au microphone a été refusé. Activez-le dans Réglages → Pensieve → Microphone',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
+      setHasPermission(true);
+    }
+
+    // Prepare expo-audio recording FIRST to get temporary file URI (external lib - try/catch allowed)
     try {
-      const recordingService = recordingServiceRef.current;
-      if (!recordingService) {
-        throw new Error('RecordingService not initialized');
-      }
-
-      // Check/request permissions
-      if (!hasPermission) {
-        const result = await PermissionService.requestMicrophonePermission();
-
-        if (result.status !== 'granted') {
-          Alert.alert(
-            'Permission refusée',
-            result.canAskAgain
-              ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
-              : 'L\'accès au microphone a été refusé. Activez-le dans Réglages → Pensieve → Microphone',
-            [{ text: 'OK' }]
-          );
-          return;
-        }
-
-        setHasPermission(true);
-      }
-
-      // Start RecordingService (creates Capture entity in WatermelonDB)
-      await recordingService.startRecording();
-
-      // Prepare and start expo-audio recording
       await audioRecorder.prepareToRecordAsync();
-      audioRecorder.record();
+      const tempUri = audioRecorder.uri;
 
+      if (!tempUri) {
+        throw new Error('No URI available after prepare');
+      }
+
+      // NOW create Capture entity with temporary URI
+      const result = await recordingService.startRecording(tempUri);
+
+      if (result.type !== 'success') {
+        console.error('[CaptureScreen] Failed to start recording:', result.type, result.error);
+        Alert.alert('Erreur', result.error ?? 'Impossible de démarrer l\'enregistrement');
+        setState('idle');
+        return;
+      }
+
+      // Start actual recording
+      audioRecorder.record();
       setState('recording');
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      console.error('[CaptureScreen] Audio recorder error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement: ' + errorMessage);
+      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio: ' + errorMessage);
       setState('idle');
     }
   };
 
   const stopRecording = async () => {
+    setState('stopping');
+
+    const recordingService = recordingServiceRef.current;
+    if (!recordingService) {
+      Alert.alert('Erreur', 'Service d\'enregistrement non initialisé');
+      setState('idle');
+      return;
+    }
+
+    // Stop expo-audio recording (external lib - try/catch allowed)
     try {
-      setState('stopping');
-
-      const recordingService = recordingServiceRef.current;
-      if (!recordingService) {
-        throw new Error('RecordingService not initialized');
-      }
-
-      // Stop expo-audio recording
       await audioRecorder.stop();
+    } catch (error) {
+      console.error('[CaptureScreen] Audio recorder stop error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement audio: ' + errorMessage);
+      setState('idle');
+      return;
+    }
 
-      // Get recording info from expo-audio
-      const uri = audioRecorder.uri;
-      const recordingDuration = recorderState.durationMillis;
+    // Get recording info from expo-audio
+    const uri = audioRecorder.uri;
+    const recordingDuration = recorderState.durationMillis;
 
-      // Stop RecordingService (updates Capture entity in WatermelonDB)
-      // This persists the capture with file path and metadata
-      const result = await recordingService.stopRecording();
+    // Stop RecordingService
+    const stopResult = await recordingService.stopRecording();
 
-      // Move audio file from temp to permanent storage and update metadata
-      if (uri && result.captureId && repositoryRef.current && fileStorageServiceRef.current) {
-        const storageResult = await fileStorageServiceRef.current.moveToStorage(
-          uri,
-          result.captureId,
-          recordingDuration
-        );
+    if (stopResult.type !== 'success' || !stopResult.data) {
+      console.error('[CaptureScreen] Failed to stop recording:', stopResult.type, stopResult.error);
+      Alert.alert('Erreur', stopResult.error ?? 'Impossible de sauvegarder la capture');
+      setState('idle');
+      return;
+    }
 
-        await repositoryRef.current.update(result.captureId, {
-          rawContent: storageResult.permanentPath,
-          duration: storageResult.metadata.duration,
-          fileSize: storageResult.metadata.size,
-        });
-      }
-
-      Alert.alert(
-        'Capture enregistrée!',
-        `Durée: ${Math.floor(recordingDuration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
-        [{ text: 'OK' }]
+    // Move audio file from temp to permanent storage
+    if (uri && fileStorageServiceRef.current && repositoryRef.current) {
+      const storageResult = await fileStorageServiceRef.current.moveToStorage(
+        uri,
+        stopResult.data.captureId,
+        recordingDuration
       );
 
-      setState('idle');
-    } catch (error) {
-      console.error('Failed to stop recording:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement: ' + errorMessage);
-      setState('idle');
+      if (storageResult.type !== 'success' || !storageResult.data) {
+        console.error('[CaptureScreen] Failed to move audio file:', storageResult.type, storageResult.error);
+        Alert.alert('Erreur', storageResult.error ?? 'Impossible de déplacer le fichier audio');
+        setState('idle');
+        return;
+      }
+
+      // Update capture with file metadata
+      const updateResult = await repositoryRef.current.update(stopResult.data.captureId, {
+        rawContent: storageResult.data.permanentPath,
+        duration: storageResult.data.metadata.duration,
+        fileSize: storageResult.data.metadata.size,
+      });
+
+      if (updateResult.type !== 'success') {
+        console.error('[CaptureScreen] Failed to update capture metadata:', updateResult.type, updateResult.error);
+        Alert.alert('Erreur', updateResult.error ?? 'Impossible de mettre à jour les métadonnées');
+        setState('idle');
+        return;
+      }
     }
+
+    Alert.alert(
+      'Capture enregistrée!',
+      `Durée: ${Math.floor(recordingDuration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
+      [{ text: 'OK' }]
+    );
+
+    setState('idle');
   };
 
   const getButtonText = () => {

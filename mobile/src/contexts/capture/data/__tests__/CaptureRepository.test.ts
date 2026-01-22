@@ -2,29 +2,180 @@
  * Tests for Capture Repository - Data Access Layer
  *
  * Validates CRUD operations and querying capabilities
- * with WatermelonDB
+ * with OP-SQLite
  *
  * Story: 2.1 - Capture Audio 1-Tap
+ * Migration: WatermelonDB → OP-SQLite
  */
 
 import { CaptureRepository } from '../CaptureRepository';
 import { database } from '../../../../database';
 
+// Mock OP-SQLite database
+jest.mock('../../../../database', () => {
+  const mockDB = new Map<string, any>();
+  let executeImpl: any = null;
+
+  return {
+    database: {
+      execute: jest.fn((sql: string, params?: any[]) => {
+        if (executeImpl) {
+          return executeImpl(sql, params);
+        }
+        return { rows: { _array: [] } };
+      }),
+      transaction: jest.fn((callback: any) => {
+        const mockTransactionDB = {
+          execute: jest.fn((sql: string, params?: any[]) => {
+            if (executeImpl) {
+              return executeImpl(sql, params);
+            }
+            return { rows: { _array: [] } };
+          }),
+        };
+        return callback(mockTransactionDB);
+      }),
+      reset: jest.fn(),
+      _setExecuteImpl: (impl: any) => {
+        executeImpl = impl;
+      },
+      _getStore: () => mockDB,
+    },
+  };
+});
+
 describe('CaptureRepository', () => {
   let repository: CaptureRepository;
+  let mockStore: Map<string, any>;
 
   beforeEach(() => {
     repository = new CaptureRepository();
+    mockStore = (database as any)._getStore();
+    mockStore.clear();
+
+    // Setup mock implementation
+    (database as any)._setExecuteImpl((sql: string, params?: any[]) => {
+      // INSERT
+      if (sql.includes('INSERT INTO captures')) {
+        const [id, type, state, raw_content, duration, file_size, created_at, updated_at, sync_status, sync_version] = params || [];
+        mockStore.set(id, {
+          id,
+          type,
+          state,
+          raw_content,
+          duration,
+          file_size,
+          created_at,
+          updated_at,
+          sync_status,
+          sync_version,
+          last_sync_at: null,
+          server_id: null,
+          conflict_data: null,
+        });
+        return { rows: { _array: [] } };
+      }
+
+      // UPDATE
+      if (sql.includes('UPDATE captures')) {
+        const id = params?.[params.length - 1];
+        const existing = mockStore.get(id);
+        if (!existing) return { rows: { _array: [] } };
+
+        // Parse update fields from SQL
+        const updates: any = {};
+        if (sql.includes('state = ?')) {
+          updates.state = params?.[0];
+        }
+        if (sql.includes('raw_content = ?')) {
+          const idx = sql.includes('state = ?') ? 1 : 0;
+          updates.raw_content = params?.[idx];
+        }
+        if (sql.includes('duration = ?')) {
+          let idx = 0;
+          if (sql.includes('state = ?')) idx++;
+          if (sql.includes('raw_content = ?')) idx++;
+          updates.duration = params?.[idx];
+        }
+        if (sql.includes('file_size = ?')) {
+          let idx = 0;
+          if (sql.includes('state = ?')) idx++;
+          if (sql.includes('raw_content = ?')) idx++;
+          if (sql.includes('duration = ?')) idx++;
+          updates.file_size = params?.[idx];
+        }
+        if (sql.includes('sync_status = ?')) {
+          let idx = 0;
+          if (sql.includes('state = ?')) idx++;
+          if (sql.includes('raw_content = ?')) idx++;
+          if (sql.includes('duration = ?')) idx++;
+          if (sql.includes('file_size = ?')) idx++;
+          updates.sync_status = params?.[idx];
+        }
+
+        // Always update timestamp and version
+        const updatedAtIdx = params!.length - 2;
+        updates.updated_at = params?.[updatedAtIdx];
+        updates.sync_version = (existing.sync_version || 0) + 1;
+
+        mockStore.set(id, { ...existing, ...updates });
+        return { rows: { _array: [] } };
+      }
+
+      // SELECT by ID
+      if (sql.includes('SELECT * FROM captures WHERE id = ?')) {
+        const id = params?.[0];
+        const row = mockStore.get(id);
+        return { rows: { _array: row ? [row] : [] } };
+      }
+
+      // SELECT all
+      if (sql.includes('SELECT * FROM captures') && !sql.includes('WHERE')) {
+        const rows = Array.from(mockStore.values()).sort((a, b) => b.created_at - a.created_at);
+        return { rows: { _array: rows } };
+      }
+
+      // SELECT by state
+      if (sql.includes('WHERE state = ?')) {
+        const state = params?.[0];
+        const rows = Array.from(mockStore.values())
+          .filter((r) => r.state === state)
+          .sort((a, b) => b.created_at - a.created_at);
+        return { rows: { _array: rows } };
+      }
+
+      // SELECT by sync_status
+      if (sql.includes('WHERE sync_status = ?')) {
+        const syncStatus = params?.[0];
+        const rows = Array.from(mockStore.values())
+          .filter((r) => r.sync_status === syncStatus)
+          .sort((a, b) => b.created_at - a.created_at);
+        return { rows: { _array: rows } };
+      }
+
+      // SELECT by type
+      if (sql.includes('WHERE type = ?')) {
+        const type = params?.[0];
+        const rows = Array.from(mockStore.values())
+          .filter((r) => r.type === type)
+          .sort((a, b) => b.created_at - a.created_at);
+        return { rows: { _array: rows } };
+      }
+
+      // DELETE
+      if (sql.includes('DELETE FROM captures')) {
+        const id = params?.[0];
+        mockStore.delete(id);
+        return { rows: { _array: [] } };
+      }
+
+      return { rows: { _array: [] } };
+    });
   });
 
-  afterEach(async () => {
-    // Clean up: delete all captures after each test
-    await database.write(async () => {
-      const allCaptures = await repository.findAll();
-      await Promise.all(
-        allCaptures.map((capture) => capture.destroyPermanently())
-      );
-    });
+  afterEach(() => {
+    mockStore.clear();
+    jest.clearAllMocks();
   });
 
   describe('create', () => {
@@ -37,11 +188,11 @@ describe('CaptureRepository', () => {
       });
 
       expect(capture).toBeDefined();
-      expect(capture._raw.type).toBe('audio');
-      expect(capture._raw.state).toBe('recording');
-      expect(capture._raw.raw_content).toBe('/path/to/audio.m4a');
-      expect(capture._raw.sync_status).toBe('pending');
-      expect(capture._raw.captured_at).toBeGreaterThan(0);
+      expect(capture.type).toBe('audio');
+      expect(capture.state).toBe('recording');
+      expect(capture.rawContent).toBe('/path/to/audio.m4a');
+      expect(capture.syncStatus).toBe('pending');
+      expect(capture.createdAt).toBeInstanceOf(Date);
     });
 
     it('should create a capture with optional fields', async () => {
@@ -50,16 +201,12 @@ describe('CaptureRepository', () => {
         state: 'captured',
         rawContent: '/path/to/audio.m4a',
         syncStatus: 'pending',
-        projectId: 'project-123',
-        normalizedText: 'Transcribed text',
-        location: JSON.stringify({ lat: 48.8566, lon: 2.3522 }),
-        tags: JSON.stringify(['important', 'meeting']),
+        duration: 5000,
+        fileSize: 1024000,
       });
 
-      expect(capture._raw.project_id).toBe('project-123');
-      expect(capture._raw.normalized_text).toBe('Transcribed text');
-      expect(capture._raw.location).toBe(JSON.stringify({ lat: 48.8566, lon: 2.3522 }));
-      expect(capture._raw.tags).toBe(JSON.stringify(['important', 'meeting']));
+      expect(capture.duration).toBe(5000);
+      expect(capture.fileSize).toBe(1024000);
     });
   });
 
@@ -76,7 +223,7 @@ describe('CaptureRepository', () => {
 
       expect(found).toBeDefined();
       expect(found?.id).toBe(created.id);
-      expect(found?._raw.type).toBe('audio');
+      expect(found?.type).toBe('audio');
     });
 
     it('should return null for non-existent id', async () => {
@@ -99,8 +246,9 @@ describe('CaptureRepository', () => {
         state: 'captured',
       });
 
-      expect(updated._raw.state).toBe('captured');
+      expect(updated.state).toBe('captured');
       expect(updated.id).toBe(capture.id);
+      expect(updated.syncVersion).toBe(1); // Incremented from 0
     });
 
     it('should update multiple fields', async () => {
@@ -114,14 +262,16 @@ describe('CaptureRepository', () => {
       const updated = await repository.update(capture.id, {
         state: 'captured',
         rawContent: '/path/to/final.m4a',
-        normalizedText: 'Transcribed content',
+        duration: 10000,
+        fileSize: 2048000,
         syncStatus: 'synced',
       });
 
-      expect(updated._raw.state).toBe('captured');
-      expect(updated._raw.raw_content).toBe('/path/to/final.m4a');
-      expect(updated._raw.normalized_text).toBe('Transcribed content');
-      expect(updated._raw.sync_status).toBe('synced');
+      expect(updated.state).toBe('captured');
+      expect(updated.rawContent).toBe('/path/to/final.m4a');
+      expect(updated.duration).toBe(10000);
+      expect(updated.fileSize).toBe(2048000);
+      expect(updated.syncStatus).toBe('synced');
     });
   });
 
@@ -155,21 +305,21 @@ describe('CaptureRepository', () => {
 
   describe('findByState', () => {
     it('should find captures by state', async () => {
-      const c1 = await repository.create({
+      await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/audio1.m4a',
         syncStatus: 'pending',
       });
 
-      const c2 = await repository.create({
+      await repository.create({
         type: 'audio',
         state: 'captured',
         rawContent: '/audio2.m4a',
         syncStatus: 'pending',
       });
 
-      const c3 = await repository.create({
+      await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/audio3.m4a',
@@ -179,7 +329,7 @@ describe('CaptureRepository', () => {
       const recording = await repository.findByState('recording');
 
       expect(recording).toHaveLength(2);
-      expect(recording.every((c) => c._raw.state === 'recording')).toBe(true);
+      expect(recording.every((c) => c.state === 'recording')).toBe(true);
     });
   });
 
@@ -202,7 +352,7 @@ describe('CaptureRepository', () => {
       const pending = await repository.findBySyncStatus('pending');
 
       expect(pending).toHaveLength(1);
-      expect(pending[0]._raw.sync_status).toBe('pending');
+      expect(pending[0].syncStatus).toBe('pending');
     });
   });
 
@@ -225,12 +375,12 @@ describe('CaptureRepository', () => {
       const audioCaptures = await repository.findByType('audio');
 
       expect(audioCaptures).toHaveLength(1);
-      expect(audioCaptures[0]._raw.type).toBe('audio');
+      expect(audioCaptures[0].type).toBe('audio');
     });
   });
 
   describe('delete', () => {
-    it('should soft delete a capture', async () => {
+    it('should delete a capture', async () => {
       const capture = await repository.create({
         type: 'audio',
         state: 'captured',
@@ -241,12 +391,8 @@ describe('CaptureRepository', () => {
       const id = capture.id;
       await repository.delete(id);
 
-      // Soft deleted records are not returned by findById
-      // They remain in DB but are filtered out by WatermelonDB queries
-      const allCaptures = await repository.findAll();
-      const isDeleted = !allCaptures.some((c) => c.id === id);
-
-      expect(isDeleted).toBe(true);
+      const found = await repository.findById(id);
+      expect(found).toBeNull();
     });
   });
 

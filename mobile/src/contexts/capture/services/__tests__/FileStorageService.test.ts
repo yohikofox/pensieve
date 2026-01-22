@@ -15,10 +15,11 @@
  */
 
 import { FileStorageService } from '../FileStorageService';
-import * as FileSystem from 'expo-file-system';
+import { FileStorageResultType } from '../FileStorageResult';
+import * as FileSystem from 'expo-file-system/legacy';
 
-// Mock expo-file-system
-jest.mock('expo-file-system', () => ({
+// Mock expo-file-system/legacy
+jest.mock('expo-file-system/legacy', () => ({
   documentDirectory: 'file:///mock/documents/',
   getInfoAsync: jest.fn(),
   makeDirectoryAsync: jest.fn(),
@@ -88,6 +89,9 @@ describe('FileStorageService', () => {
 
       const result = await service.moveToStorage(tempUri, captureId, durationMillis);
 
+      expect(result.type).toBe(FileStorageResultType.SUCCESS);
+      expect(result.data).toBeDefined();
+
       // Verify file was moved
       expect(mockMoveAsync).toHaveBeenCalledWith({
         from: tempUri,
@@ -95,17 +99,17 @@ describe('FileStorageService', () => {
       });
 
       // Verify result contains permanent path
-      expect(result.permanentPath).toContain('file:///mock/documents/audio/');
-      expect(result.permanentPath).toContain('capture_capture-123_');
-      expect(result.permanentPath).toContain('.m4a');
+      expect(result.data?.permanentPath).toContain('file:///mock/documents/audio/');
+      expect(result.data?.permanentPath).toContain('capture_capture-123_');
+      expect(result.data?.permanentPath).toContain('.m4a');
 
       // Verify metadata
-      expect(result.metadata.size).toBe(1024000);
-      expect(result.metadata.duration).toBe(5000);
-      expect(result.metadata.createdAt).toBeInstanceOf(Date);
+      expect(result.data?.metadata.size).toBe(1024000);
+      expect(result.data?.metadata.duration).toBe(5000);
+      expect(result.data?.metadata.createdAt).toBeInstanceOf(Date);
     });
 
-    it('should throw error if temp file does not exist', async () => {
+    it('should return error if temp file does not exist', async () => {
       const tempUri = 'file:///temp/missing.m4a';
       const captureId = 'capture-123';
       const durationMillis = 5000;
@@ -116,10 +120,10 @@ describe('FileStorageService', () => {
       // Mock temp file does not exist
       mockGetInfoAsync.mockResolvedValueOnce({ exists: false });
 
-      await expect(
-        service.moveToStorage(tempUri, captureId, durationMillis)
-      ).rejects.toThrow('Temporary file does not exist');
+      const result = await service.moveToStorage(tempUri, captureId, durationMillis);
 
+      expect(result.type).toBe(FileStorageResultType.FILE_NOT_FOUND);
+      expect(result.error).toContain('Temporary file does not exist');
       expect(mockMoveAsync).not.toHaveBeenCalled();
     });
 
@@ -154,22 +158,24 @@ describe('FileStorageService', () => {
         modificationTime: 1640000000000,
       });
 
-      const metadata = await service.getFileMetadata(fileUri, durationMillis);
+      const result = await service.getFileMetadata(fileUri, durationMillis);
 
-      expect(metadata.size).toBe(2048000);
-      expect(metadata.duration).toBe(10000);
-      expect(metadata.createdAt).toEqual(new Date(1640000000000));
+      expect(result.type).toBe(FileStorageResultType.SUCCESS);
+      expect(result.data?.size).toBe(2048000);
+      expect(result.data?.duration).toBe(10000);
+      expect(result.data?.createdAt).toEqual(new Date(1640000000000));
     });
 
-    it('should throw error if file does not exist', async () => {
+    it('should return error if file does not exist', async () => {
       const fileUri = 'file:///mock/audio/missing.m4a';
       const durationMillis = 10000;
 
       mockGetInfoAsync.mockResolvedValueOnce({ exists: false });
 
-      await expect(
-        service.getFileMetadata(fileUri, durationMillis)
-      ).rejects.toThrow('File does not exist');
+      const result = await service.getFileMetadata(fileUri, durationMillis);
+
+      expect(result.type).toBe(FileStorageResultType.FILE_NOT_FOUND);
+      expect(result.error).toContain('File does not exist');
     });
 
     it('should handle missing file size gracefully', async () => {
@@ -182,10 +188,11 @@ describe('FileStorageService', () => {
         modificationTime: 1640000000000,
       });
 
-      const metadata = await service.getFileMetadata(fileUri, durationMillis);
+      const result = await service.getFileMetadata(fileUri, durationMillis);
 
-      expect(metadata.size).toBe(0);
-      expect(metadata.duration).toBe(5000);
+      expect(result.type).toBe(FileStorageResultType.SUCCESS);
+      expect(result.data?.size).toBe(0);
+      expect(result.data?.duration).toBe(5000);
     });
   });
 
@@ -284,9 +291,9 @@ describe('FileStorageService', () => {
       const result2 = await service.moveToStorage(tempUri2, captureId, durationMillis);
 
       // Filenames should be different due to timestamp
-      expect(result1.permanentPath).not.toBe(result2.permanentPath);
-      expect(result1.permanentPath).toContain('capture_capture-123_');
-      expect(result2.permanentPath).toContain('capture_capture-123_');
+      expect(result1.data?.permanentPath).not.toBe(result2.data?.permanentPath);
+      expect(result1.data?.permanentPath).toContain('capture_capture-123_');
+      expect(result2.data?.permanentPath).toContain('capture_capture-123_');
     });
 
     it('should use correct file extension (.m4a)', async () => {
@@ -301,7 +308,7 @@ describe('FileStorageService', () => {
 
       const result = await service.moveToStorage(tempUri, captureId, durationMillis);
 
-      expect(result.permanentPath).toMatch(/\.m4a$/);
+      expect(result.data?.permanentPath).toMatch(/\.m4a$/);
     });
   });
 });

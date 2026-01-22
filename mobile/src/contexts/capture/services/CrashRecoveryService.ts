@@ -12,6 +12,7 @@
  * NFR8: Récupération après crash automatique
  */
 
+import * as FileSystem from 'expo-file-system/legacy';
 import { CaptureRepository } from '../data/CaptureRepository';
 
 export interface RecoveredCapture {
@@ -50,41 +51,24 @@ export class CrashRecoveryService {
   async recoverIncompleteRecordings(): Promise<RecoveredCapture[]> {
     const results: RecoveredCapture[] = [];
 
-    try {
-      // Find all captures still in "recording" state
-      const incompleteCaptures = await this.repository.findByState('recording');
+    // Find all captures still in "recording" state
+    const incompleteCaptures = await this.repository.findByState('recording');
 
-      if (incompleteCaptures.length === 0) {
-        return results;
-      }
-
-      console.log(
-        `[CrashRecovery] Found ${incompleteCaptures.length} incomplete recording(s)`
-      );
-
-      // Process each incomplete capture
-      for (const capture of incompleteCaptures) {
-        try {
-          const result = await this.recoverCapture(capture);
-          results.push(result);
-        } catch (error) {
-          console.error(
-            `[CrashRecovery] Failed to recover capture ${capture.id}:`,
-            error
-          );
-          results.push({
-            captureId: capture.id,
-            state: 'failed',
-            reason: error instanceof Error ? error.message : 'Unknown error',
-          });
-        }
-      }
-
-      return results;
-    } catch (error) {
-      console.error('[CrashRecovery] Recovery scan failed:', error);
+    if (incompleteCaptures.length === 0) {
       return results;
     }
+
+    console.log(
+      `[CrashRecovery] Found ${incompleteCaptures.length} incomplete recording(s), attempting recovery...`
+    );
+
+    // Process each incomplete capture
+    for (const capture of incompleteCaptures) {
+      const result = await this.recoverCapture(capture);
+      results.push(result);
+    }
+
+    return results;
   }
 
   /**
@@ -92,34 +76,41 @@ export class CrashRecoveryService {
    */
   private async recoverCapture(capture: any): Promise<RecoveredCapture> {
     const captureId = capture.id;
-    const filePath = capture._raw.raw_content;
+    const filePath = capture.rawContent;
 
     // Check if audio file exists
     const fileExists = await this.checkFileExists(filePath);
 
     if (fileExists) {
       // File exists - mark as recovered
-      await this.repository.update(captureId, {
+      const updateResult = await this.repository.update(captureId, {
         state: 'captured',
         syncStatus: 'pending',
       });
 
-      console.log(`[CrashRecovery] Successfully recovered capture ${captureId}`);
-
-      return {
-        captureId,
-        state: 'recovered',
-      };
+      if (updateResult.type === 'success') {
+        return {
+          captureId,
+          state: 'recovered',
+        };
+      } else {
+        console.error(`[CrashRecovery] Failed to update capture ${captureId}:`, updateResult.error);
+        return {
+          captureId,
+          state: 'failed',
+          reason: updateResult.error ?? 'Failed to update capture',
+        };
+      }
     } else {
       // File doesn't exist - mark as failed
-      await this.repository.update(captureId, {
+      const updateResult = await this.repository.update(captureId, {
         state: 'failed',
         syncStatus: 'pending',
       });
 
-      console.log(
-        `[CrashRecovery] Failed to recover capture ${captureId}: file not found`
-      );
+      if (updateResult.type !== 'success') {
+        console.error(`[CrashRecovery] Failed to mark capture as failed ${captureId}:`, updateResult.error);
+      }
 
       return {
         captureId,
@@ -130,15 +121,23 @@ export class CrashRecoveryService {
   }
 
   /**
-   * Check if audio file exists
+   * Check if audio file exists on disk
    *
-   * TODO: Implement actual file system check using expo-file-system
-   * For now, assume file exists if path is not empty
+   * Uses expo-file-system to verify file existence
    */
   private async checkFileExists(filePath: string): Promise<boolean> {
-    // Simple check: if path is not empty, assume file exists
-    // In production, use expo-file-system's getInfoAsync()
-    return filePath && filePath.length > 0;
+    // Empty path = no file
+    if (!filePath || filePath.length === 0) {
+      return false;
+    }
+
+    try {
+      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      return fileInfo.exists;
+    } catch (error) {
+      console.error('[CrashRecovery] Error checking file existence:', error);
+      return false;
+    }
   }
 
   /**
@@ -158,13 +157,13 @@ export class CrashRecoveryService {
     let deletedCount = 0;
 
     for (const capture of failedCaptures) {
-      try {
-        await this.repository.delete(capture.id);
+      const deleteResult = await this.repository.delete(capture.id);
+      if (deleteResult.type === 'success') {
         deletedCount++;
-      } catch (error) {
+      } else {
         console.error(
           `[CrashRecovery] Failed to delete capture ${capture.id}:`,
-          error
+          deleteResult.error
         );
       }
     }

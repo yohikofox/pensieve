@@ -16,6 +16,7 @@
 import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { PermissionService } from '../PermissionService';
+import { RepositoryResultType } from '../../domain/Result';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
@@ -41,11 +42,14 @@ describe('RecordingService', () => {
   });
 
   describe('startRecording', () => {
-    it('should throw error if microphone permission is denied', async () => {
+    it('should return validation error if microphone permission is denied', async () => {
       // Mock permission denied
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(false);
 
-      await expect(service.startRecording()).rejects.toThrow('MicrophonePermissionDenied');
+      const result = await service.startRecording();
+
+      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
+      expect(result.error).toBe('MicrophonePermissionDenied');
     });
 
     it('should create a Capture entity with state "recording" when starting', async () => {
@@ -54,16 +58,23 @@ describe('RecordingService', () => {
 
       // Mock repository create
       mockRepository.create.mockResolvedValue({
-        id: 'capture-123',
-        _raw: {
+        type: RepositoryResultType.SUCCESS,
+        data: {
           id: 'capture-123',
           type: 'audio',
           state: 'recording',
-          sync_status: 'pending',
-        },
-      } as any);
+          rawContent: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        } as any,
+      });
 
-      await service.startRecording();
+      const result = await service.startRecording();
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data).toEqual({ captureId: 'capture-123' });
 
       // Verify Capture entity was created with correct state
       expect(mockRepository.create).toHaveBeenCalledWith(
@@ -75,51 +86,69 @@ describe('RecordingService', () => {
       );
     });
 
-    it('should throw error if already recording', async () => {
+    it('should return validation error if already recording', async () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-      mockRepository.create.mockResolvedValue({ id: 'capture-123' } as any);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
 
       // Start first recording
       await service.startRecording();
 
       // Try to start second recording
-      await expect(service.startRecording()).rejects.toThrow('RecordingAlreadyInProgress');
+      const result = await service.startRecording();
+
+      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
+      expect(result.error).toBe('RecordingAlreadyInProgress');
     });
   });
 
   describe('stopRecording', () => {
-    it('should throw error if no recording in progress', async () => {
-      await expect(service.stopRecording()).rejects.toThrow('NoRecordingInProgress');
+    it('should return validation error if no recording in progress', async () => {
+      const result = await service.stopRecording();
+
+      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
+      expect(result.error).toBe('NoRecordingInProgress');
     });
 
     it('should update Capture entity with state "captured" and file metadata', async () => {
       // Start recording first
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-      mockRepository.create.mockResolvedValue({ id: 'capture-123' } as any);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
       await service.startRecording();
 
       // Mock update
       mockRepository.update.mockResolvedValue({
-        id: 'capture-123',
-        _raw: {
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          type: 'audio',
           state: 'captured',
-          raw_content: 'capture_user-123_1234567890_uuid.m4a',
-        },
-      } as any);
+          rawContent: 'capture_user-123_1234567890_uuid.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        } as any,
+      });
 
       const result = await service.stopRecording();
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data).toBeDefined();
+      expect(result.data?.captureId).toBe('capture-123');
 
       // Verify Capture was updated with captured state
       expect(mockRepository.update).toHaveBeenCalledWith(
         'capture-123',
         expect.objectContaining({
           state: 'captured',
-          rawContent: expect.stringContaining('.m4a'),
         })
       );
-
-      expect(result).toBeDefined();
-      expect(result.captureId).toBe('capture-123');
     });
   });
 
@@ -130,7 +159,10 @@ describe('RecordingService', () => {
 
     it('should return capture id when recording', async () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-      mockRepository.create.mockResolvedValue({ id: 'capture-123' } as any);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
 
       await service.startRecording();
 
@@ -145,7 +177,10 @@ describe('RecordingService', () => {
 
     it('should return true when recording', async () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-      mockRepository.create.mockResolvedValue({ id: 'capture-123' } as any);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
 
       await service.startRecording();
 
@@ -154,8 +189,14 @@ describe('RecordingService', () => {
 
     it('should return false after stopping', async () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-      mockRepository.create.mockResolvedValue({ id: 'capture-123' } as any);
-      mockRepository.update.mockResolvedValue({ id: 'capture-123' } as any);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
+      mockRepository.update.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-123' } as any,
+      });
 
       await service.startRecording();
       await service.stopRecording();

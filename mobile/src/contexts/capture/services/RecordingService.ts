@@ -15,6 +15,7 @@
 
 import { CaptureRepository } from '../data/CaptureRepository';
 import { PermissionService } from './PermissionService';
+import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
 
 export interface RecordingResult {
   captureId: string;
@@ -46,41 +47,61 @@ export class RecordingService {
   /**
    * AC1: Start Recording with < 500ms Latency
    * AC5: Check microphone permissions
+   *
+   * @param tempFileUri - Temporary file URI from expo-audio (for crash recovery)
    */
-  async startRecording(): Promise<void> {
+  async startRecording(tempFileUri: string): Promise<RepositoryResult<{ captureId: string }>> {
     // Prevent multiple simultaneous recordings
     if (this.currentCaptureId) {
-      throw new Error('RecordingAlreadyInProgress');
+      return {
+        type: RepositoryResultType.VALIDATION_ERROR,
+        error: 'RecordingAlreadyInProgress',
+      };
     }
 
     // AC5: Check microphone permissions
     const hasPermission = await PermissionService.hasMicrophonePermission();
     if (!hasPermission) {
-      throw new Error('MicrophonePermissionDenied');
+      return {
+        type: RepositoryResultType.VALIDATION_ERROR,
+        error: 'MicrophonePermissionDenied',
+      };
     }
 
-    // AC1: Create Capture entity with status "recording"
-    const capture = await this.repository.create({
+    // AC1: Create Capture entity with status "recording" and temporary file URI
+    // This allows crash recovery to find the file even if app crashes during recording
+    const result = await this.repository.create({
       type: 'audio',
       state: 'recording',
-      rawContent: '', // Will be set when recording stops
+      rawContent: tempFileUri,
       syncStatus: 'pending',
     });
 
-    this.currentCaptureId = capture.id;
+    if (result.type !== RepositoryResultType.SUCCESS || !result.data) {
+      return {
+        type: result.type,
+        error: result.error,
+      };
+    }
+
+    this.currentCaptureId = result.data.id;
     this.recordingStartTime = Date.now();
 
-    // Note: Actual audio recording setup will be handled by React component
-    // using useAudioRecorder hook, as it requires React lifecycle management
-    // This service manages the business logic and persistence
+    return {
+      type: RepositoryResultType.SUCCESS,
+      data: { captureId: result.data.id },
+    };
   }
 
   /**
    * AC2: Stop and Save Recording
    */
-  async stopRecording(): Promise<RecordingResult> {
+  async stopRecording(): Promise<RepositoryResult<RecordingResult>> {
     if (!this.currentCaptureId) {
-      throw new Error('NoRecordingInProgress');
+      return {
+        type: RepositoryResultType.VALIDATION_ERROR,
+        error: 'NoRecordingInProgress',
+      };
     }
 
     const captureId = this.currentCaptureId;
@@ -88,23 +109,27 @@ export class RecordingService {
       ? Date.now() - this.recordingStartTime
       : 0;
 
-    // Generate file path with naming convention
     const filePath = this.generateFilePath();
 
-    // AC2: Update Capture entity with "captured" status and metadata
-    await this.repository.update(captureId, {
+    const result = await this.repository.update(captureId, {
       state: 'captured',
       rawContent: filePath,
     });
 
-    // Reset state
+    if (result.type !== RepositoryResultType.SUCCESS) {
+      return result as RepositoryResult<RecordingResult>;
+    }
+
     this.currentCaptureId = null;
     this.recordingStartTime = null;
 
     return {
-      captureId,
-      filePath,
-      duration,
+      type: RepositoryResultType.SUCCESS,
+      data: {
+        captureId,
+        filePath,
+        duration,
+      },
     };
   }
 

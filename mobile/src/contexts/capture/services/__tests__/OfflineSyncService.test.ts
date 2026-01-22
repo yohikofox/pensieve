@@ -36,23 +36,23 @@ describe('OfflineSyncService', () => {
       const pendingCaptures = [
         {
           id: 'capture-1',
-          _raw: {
-            type: 'audio',
-            state: 'captured',
-            raw_content: '/audio1.m4a',
-            captured_at: 1234567890000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio1.m4a',
+          createdAt: new Date(1234567890000),
+          updatedAt: new Date(1234567890000),
+          capturedAt: new Date(1234567890000),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-2',
-          _raw: {
-            type: 'audio',
-            state: 'captured',
-            raw_content: '/audio2.m4a',
-            captured_at: 1234567891000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio2.m4a',
+          createdAt: new Date(1234567891000),
+          updatedAt: new Date(1234567891000),
+          capturedAt: new Date(1234567891000),
+          syncStatus: 'pending',
         },
       ];
 
@@ -127,17 +127,17 @@ describe('OfflineSyncService', () => {
   describe('getSyncStats', () => {
     it('should return correct sync statistics', async () => {
       const allCaptures = [
-        { id: '1', _raw: { sync_status: 'pending' } },
-        { id: '2', _raw: { sync_status: 'pending' } },
-        { id: '3', _raw: { sync_status: 'synced' } },
+        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'synced' },
       ];
 
       const pendingCaptures = [
-        { id: '1', _raw: { sync_status: 'pending' } },
-        { id: '2', _raw: { sync_status: 'pending' } },
+        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
-      const syncedCaptures = [{ id: '3', _raw: { sync_status: 'synced' } }];
+      const syncedCaptures = [{ id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'synced' }];
 
       mockRepository.findAll.mockResolvedValue(allCaptures);
       mockRepository.findBySyncStatus
@@ -171,43 +171,43 @@ describe('OfflineSyncService', () => {
       const pendingCaptures = [
         {
           id: 'capture-1',
-          _raw: {
-            type: 'audio',
-            state: 'captured',
-            raw_content: '/audio1.m4a',
-            captured_at: 1234567890000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio1.m4a',
+          createdAt: new Date(1234567890000),
+          updatedAt: new Date(1234567890000),
+          capturedAt: new Date(1234567890000),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-2',
-          _raw: {
-            type: 'audio',
-            state: 'recording', // Should be filtered out
-            raw_content: '/audio2.m4a',
-            captured_at: 1234567891000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'recording', // Should be filtered out
+          rawContent: '/audio2.m4a',
+          createdAt: new Date(1234567891000),
+          updatedAt: new Date(1234567891000),
+          capturedAt: new Date(1234567891000),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-3',
-          _raw: {
-            type: 'audio',
-            state: 'ready',
-            raw_content: '/audio3.m4a',
-            captured_at: 1234567892000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'ready',
+          rawContent: '/audio3.m4a',
+          createdAt: new Date(1234567892000),
+          updatedAt: new Date(1234567892000),
+          capturedAt: new Date(1234567892000),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-4',
-          _raw: {
-            type: 'audio',
-            state: 'failed', // Should be filtered out
-            raw_content: '/audio4.m4a',
-            captured_at: 1234567893000,
-            sync_status: 'pending',
-          },
+          type: 'audio',
+          state: 'failed', // Should be filtered out
+          rawContent: '/audio4.m4a',
+          createdAt: new Date(1234567893000),
+          updatedAt: new Date(1234567893000),
+          capturedAt: new Date(1234567893000),
+          syncStatus: 'pending',
         },
       ];
 
@@ -232,7 +232,7 @@ describe('OfflineSyncService', () => {
   describe('hasPendingSync', () => {
     it('should return true when pending captures exist', async () => {
       mockRepository.findBySyncStatus.mockResolvedValue([
-        { id: '1', _raw: { sync_status: 'pending' } },
+        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ]);
 
       const result = await service.hasPendingSync();

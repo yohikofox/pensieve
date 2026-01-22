@@ -61,10 +61,10 @@ export class OfflineSyncService {
       // Map to simplified interface for sync
       return pendingCaptures.map((capture) => ({
         id: capture.id,
-        type: capture._raw.type,
-        state: capture._raw.state,
-        rawContent: capture._raw.raw_content,
-        capturedAt: new Date(capture._raw.captured_at),
+        type: capture.type,
+        state: capture.state,
+        rawContent: capture.rawContent,
+        capturedAt: capture.capturedAt,
       }));
     } catch (error) {
       console.error('[OfflineSync] Failed to get pending captures:', error);
@@ -76,18 +76,17 @@ export class OfflineSyncService {
    * Mark a capture as successfully synced
    */
   async markAsSynced(captureId: string): Promise<void> {
-    try {
-      await this.repository.update(captureId, {
-        syncStatus: 'synced',
-      });
+    const result = await this.repository.update(captureId, {
+      syncStatus: 'synced',
+    });
 
+    if (result.type === 'success') {
       console.log(`[OfflineSync] Marked capture ${captureId} as synced`);
-    } catch (error) {
+    } else {
       console.error(
         `[OfflineSync] Failed to mark capture ${captureId} as synced:`,
-        error
+        result.error
       );
-      throw error;
     }
   }
 
@@ -95,18 +94,17 @@ export class OfflineSyncService {
    * Mark a capture as pending (retry after failed sync)
    */
   async markAsPending(captureId: string): Promise<void> {
-    try {
-      await this.repository.update(captureId, {
-        syncStatus: 'pending',
-      });
+    const result = await this.repository.update(captureId, {
+      syncStatus: 'pending',
+    });
 
+    if (result.type === 'success') {
       console.log(`[OfflineSync] Marked capture ${captureId} as pending`);
-    } catch (error) {
+    } else {
       console.error(
         `[OfflineSync] Failed to mark capture ${captureId} as pending:`,
-        error
+        result.error
       );
-      throw error;
     }
   }
 

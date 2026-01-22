@@ -12,9 +12,18 @@
  *
  * NFR6: Zero data loss tolerance - files must be persisted reliably
  * NFR7: 100% offline availability - local storage only
+ *
+ * Note: Using legacy API from expo-file-system for compatibility
  */
 
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
+import {
+  type FileStorageResult,
+  FileStorageResultType,
+  storageSuccess,
+  fileNotFound,
+  storageError,
+} from './FileStorageResult';
 
 export interface FileMetadata {
   size: number; // Bytes
@@ -54,6 +63,9 @@ export class FileStorageService {
 
   /**
    * Ensure audio directory exists
+   *
+   * EXCEPTION ALLOWED: Called from constructor.
+   * If directory cannot be created, app cannot function - fail fast.
    */
   private async ensureAudioDirectoryExists(): Promise<void> {
     try {
@@ -64,6 +76,7 @@ export class FileStorageService {
       }
     } catch (error) {
       console.error('[FileStorage] Failed to create audio directory:', error);
+      // EXCEPTION ALLOWED: Critical initialization failure at app startup
       throw new Error('Failed to initialize audio storage');
     }
   }
@@ -85,45 +98,44 @@ export class FileStorageService {
    * @param tempUri - Temporary URI from expo-audio
    * @param captureId - Capture entity ID
    * @param durationMillis - Recording duration from expo-audio
-   * @returns Permanent path and file metadata
+   * @returns Result with permanent path and file metadata
    */
   async moveToStorage(
     tempUri: string,
     captureId: string,
     durationMillis: number
-  ): Promise<StorageResult> {
-    try {
-      // Ensure directory exists
-      await this.ensureAudioDirectoryExists();
+  ): Promise<FileStorageResult<StorageResult>> {
+    // Ensure directory exists (can throw - documented exception)
+    await this.ensureAudioDirectoryExists();
 
-      // Generate permanent path
-      const permanentPath = this.generateFilePath(captureId);
+    // Generate permanent path
+    const permanentPath = this.generateFilePath(captureId);
 
-      // Check if temp file exists
-      const tempFileInfo = await FileSystem.getInfoAsync(tempUri);
-      if (!tempFileInfo.exists) {
-        throw new Error(`Temporary file does not exist: ${tempUri}`);
-      }
-
-      // Move file to permanent storage
-      await FileSystem.moveAsync({
-        from: tempUri,
-        to: permanentPath,
-      });
-
-      console.log(`[FileStorage] Moved file: ${tempUri} → ${permanentPath}`);
-
-      // Get file metadata
-      const metadata = await this.getFileMetadata(permanentPath, durationMillis);
-
-      return {
-        permanentPath,
-        metadata,
-      };
-    } catch (error) {
-      console.error('[FileStorage] Failed to move file to storage:', error);
-      throw error;
+    // Check if temp file exists
+    const tempFileInfo = await FileSystem.getInfoAsync(tempUri);
+    if (!tempFileInfo.exists) {
+      return fileNotFound(`Temporary file does not exist: ${tempUri}`);
     }
+
+    // Move file to permanent storage
+    await FileSystem.moveAsync({
+      from: tempUri,
+      to: permanentPath,
+    });
+
+    console.log(`[FileStorage] Moved file: ${tempUri} → ${permanentPath}`);
+
+    // Get file metadata
+    const metadataResult = await this.getFileMetadata(permanentPath, durationMillis);
+
+    if (metadataResult.type !== FileStorageResultType.SUCCESS || !metadataResult.data) {
+      return metadataResult as FileStorageResult<StorageResult>;
+    }
+
+    return storageSuccess({
+      permanentPath,
+      metadata: metadataResult.data,
+    });
   }
 
   /**
@@ -131,46 +143,41 @@ export class FileStorageService {
    *
    * @param fileUri - File URI (permanent or temp)
    * @param durationMillis - Recording duration from expo-audio
-   * @returns File metadata
+   * @returns Result with file metadata
    */
-  async getFileMetadata(fileUri: string, durationMillis: number): Promise<FileMetadata> {
-    try {
-      // Get file size and modification time
-      const fileInfo = await FileSystem.getInfoAsync(fileUri);
-      if (!fileInfo.exists) {
-        throw new Error(`File does not exist: ${fileUri}`);
-      }
-
-      const size = fileInfo.size || 0;
-      const createdAt = new Date(fileInfo.modificationTime || Date.now());
-
-      return {
-        size,
-        duration: durationMillis,
-        createdAt,
-      };
-    } catch (error) {
-      console.error('[FileStorage] Failed to get file metadata:', error);
-      throw error;
+  async getFileMetadata(
+    fileUri: string,
+    durationMillis: number
+  ): Promise<FileStorageResult<FileMetadata>> {
+    const fileInfo = await FileSystem.getInfoAsync(fileUri);
+    if (!fileInfo.exists) {
+      return fileNotFound(`File does not exist: ${fileUri}`);
     }
+
+    const size = fileInfo.size || 0;
+    const createdAt = new Date(fileInfo.modificationTime || Date.now());
+
+    return storageSuccess({
+      size,
+      duration: durationMillis,
+      createdAt,
+    });
   }
 
   /**
    * Delete audio file from storage
    *
    * @param permanentPath - Permanent file path
+   * @returns Result indicating success or failure
    */
-  async deleteFile(permanentPath: string): Promise<void> {
-    try {
-      const fileInfo = await FileSystem.getInfoAsync(permanentPath);
-      if (fileInfo.exists) {
-        await FileSystem.deleteAsync(permanentPath);
-        console.log(`[FileStorage] Deleted file: ${permanentPath}`);
-      }
-    } catch (error) {
-      console.error(`[FileStorage] Failed to delete file ${permanentPath}:`, error);
-      throw error;
+  async deleteFile(permanentPath: string): Promise<FileStorageResult<void>> {
+    const fileInfo = await FileSystem.getInfoAsync(permanentPath);
+    if (fileInfo.exists) {
+      await FileSystem.deleteAsync(permanentPath);
+      console.log(`[FileStorage] Deleted file: ${permanentPath}`);
     }
+
+    return storageSuccess(undefined);
   }
 
   /**

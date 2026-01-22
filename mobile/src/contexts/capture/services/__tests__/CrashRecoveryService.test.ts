@@ -12,6 +12,7 @@
 
 import { CrashRecoveryService } from '../CrashRecoveryService';
 import { CaptureRepository } from '../../data/CaptureRepository';
+import { RepositoryResultType } from '../../domain/Result';
 
 // Mock CaptureRepository
 jest.mock('../../data/CaptureRepository');
@@ -45,14 +46,20 @@ describe('CrashRecoveryService', () => {
     it('should recover captures with valid audio files', async () => {
       const incompleteCapture = {
         id: 'capture-123',
-        _raw: {
-          state: 'recording',
-          raw_content: '/path/to/audio.m4a',
-        },
+        type: 'audio',
+        state: 'recording',
+        rawContent: '/path/to/audio.m4a',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+        syncStatus: 'pending',
       };
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
-      mockRepository.update.mockResolvedValue(incompleteCapture as any);
+      mockRepository.update.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { ...incompleteCapture, state: 'captured' } as any,
+      });
 
       const results = await service.recoverIncompleteRecordings();
 
@@ -72,14 +79,20 @@ describe('CrashRecoveryService', () => {
     it('should mark captures as failed when audio file does not exist', async () => {
       const incompleteCapture = {
         id: 'capture-456',
-        _raw: {
-          state: 'recording',
-          raw_content: '', // Empty path = file doesn't exist
-        },
+        type: 'audio',
+        state: 'recording',
+        rawContent: '', // Empty path = file doesn't exist
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+        syncStatus: 'pending',
       };
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
-      mockRepository.update.mockResolvedValue(incompleteCapture as any);
+      mockRepository.update.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { ...incompleteCapture, state: 'failed' } as any,
+      });
 
       const results = await service.recoverIncompleteRecordings();
 
@@ -101,20 +114,41 @@ describe('CrashRecoveryService', () => {
       const incompleteCaptures = [
         {
           id: 'capture-1',
-          _raw: { state: 'recording', raw_content: '/path/1.m4a' },
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/path/1.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-2',
-          _raw: { state: 'recording', raw_content: '/path/2.m4a' },
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/path/2.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
         },
         {
           id: 'capture-3',
-          _raw: { state: 'recording', raw_content: '' }, // Will fail
+          type: 'audio',
+          state: 'recording',
+          rawContent: '', // Will fail
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
         },
       ];
 
       mockRepository.findByState.mockResolvedValue(incompleteCaptures);
-      mockRepository.update.mockResolvedValue({} as any);
+      mockRepository.update.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {} as any,
+      });
 
       const results = await service.recoverIncompleteRecordings();
 
@@ -126,11 +160,20 @@ describe('CrashRecoveryService', () => {
     it('should handle recovery errors gracefully', async () => {
       const incompleteCapture = {
         id: 'capture-error',
-        _raw: { state: 'recording', raw_content: '/path/error.m4a' },
+        type: 'audio',
+        state: 'recording',
+        rawContent: '/path/error.m4a',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+        syncStatus: 'pending',
       };
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
-      mockRepository.update.mockRejectedValue(new Error('Database error'));
+      mockRepository.update.mockResolvedValue({
+        type: RepositoryResultType.DATABASE_ERROR,
+        error: 'Database error',
+      });
 
       const results = await service.recoverIncompleteRecordings();
 
@@ -146,8 +189,8 @@ describe('CrashRecoveryService', () => {
   describe('getPendingRecoveryCount', () => {
     it('should return count of incomplete recordings', async () => {
       const incompleteCaptures = [
-        { id: '1', _raw: { state: 'recording' } },
-        { id: '2', _raw: { state: 'recording' } },
+        { id: '1', type: 'audio', state: 'recording', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '2', type: 'audio', state: 'recording', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(incompleteCaptures);
@@ -170,12 +213,15 @@ describe('CrashRecoveryService', () => {
   describe('clearFailedCaptures', () => {
     it('should delete all failed captures', async () => {
       const failedCaptures = [
-        { id: 'failed-1', _raw: { state: 'failed' } },
-        { id: 'failed-2', _raw: { state: 'failed' } },
+        { id: 'failed-1', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-2', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(failedCaptures);
-      mockRepository.delete.mockResolvedValue();
+      mockRepository.delete.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: undefined,
+      });
 
       const deletedCount = await service.clearFailedCaptures();
 
@@ -195,14 +241,20 @@ describe('CrashRecoveryService', () => {
 
     it('should handle deletion errors gracefully', async () => {
       const failedCaptures = [
-        { id: 'failed-1', _raw: { state: 'failed' } },
-        { id: 'failed-2', _raw: { state: 'failed' } },
+        { id: 'failed-1', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-2', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(failedCaptures);
       mockRepository.delete
-        .mockResolvedValueOnce() // First delete succeeds
-        .mockRejectedValueOnce(new Error('Delete failed')); // Second fails
+        .mockResolvedValueOnce({
+          type: RepositoryResultType.SUCCESS,
+          data: undefined,
+        }) // First delete succeeds
+        .mockResolvedValueOnce({
+          type: RepositoryResultType.DATABASE_ERROR,
+          error: 'Delete failed',
+        }); // Second fails
 
       const deletedCount = await service.clearFailedCaptures();
 

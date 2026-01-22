@@ -1,29 +1,11 @@
 /**
  * Jest Setup for Pensieve Mobile
  *
- * Critical configuration for testing with WatermelonDB + Expo SDK 54
+ * Critical configuration for testing with OP-SQLite + Expo SDK 54
  *
  * Note: We don't use jest-expo preset to avoid Expo "Winter" runtime issues
  * in Node.js test environment. See jest.config.js for details.
  */
-
-// ==========================================
-// WatermelonDB Test Support
-// ==========================================
-// Mock native SQLite dispatcher to use Node.js version (with better-sqlite3)
-// This allows WatermelonDB to run in Jest without React Native environment
-//
-// Sources:
-// - https://github.com/Nozbe/WatermelonDB/issues/155
-// - https://craigmulligan.com/posts/testing-with-watermelon/
-jest.mock(
-  '@nozbe/watermelondb/adapters/sqlite/makeDispatcher/index.native.js',
-  () => {
-    return jest.requireActual(
-      '@nozbe/watermelondb/adapters/sqlite/makeDispatcher/index.js'
-    );
-  }
-);
 
 // ==========================================
 // React Native Mocks
@@ -90,3 +72,9 @@ jest.mock('./src/lib/supabase', () => ({
     },
   },
 }));
+
+// ==========================================
+// OP-SQLite Mock (per-test basis)
+// ==========================================
+// Note: OP-SQLite is mocked in individual tests using jest.mock()
+// See test files for database mocking strategy

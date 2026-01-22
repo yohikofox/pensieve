@@ -14,11 +14,14 @@ import {
   StyleSheet,
   RefreshControl,
   Alert,
+  Linking,
 } from 'react-native';
 import * as Network from 'expo-network';
+import * as FileSystem from 'expo-file-system/legacy';
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { OfflineSyncService } from '../../contexts/capture/services/OfflineSyncService';
+import { PermissionService } from '../../contexts/capture/services/PermissionService';
 
 export const CaptureDevTools = () => {
   const [captures, setCaptures] = useState<any[]>([]);
@@ -29,6 +32,7 @@ export const CaptureDevTools = () => {
     isConnected: boolean | null;
     type: Network.NetworkStateType | null;
   }>({ isConnected: null, type: null });
+  const [micPermission, setMicPermission] = useState<boolean | null>(null);
 
   const repository = new CaptureRepository();
   const crashRecoveryService = new CrashRecoveryService(repository);
@@ -56,16 +60,17 @@ export const CaptureDevTools = () => {
   const simulateCrash = async () => {
     try {
       // Create a capture in "recording" state to simulate a crash
+      // Use a fake but valid-looking file path
       await repository.create({
         type: 'audio',
         state: 'recording',
-        rawContent: '/temp/crash_test.m4a',
+        rawContent: 'file:///data/user/0/com.pensine.app/cache/Audio/crash_test_fake.m4a',
         syncStatus: 'pending',
       });
 
       Alert.alert(
         '💥 Crash simulé',
-        'Une capture en cours d\'enregistrement a été créée.\n\nRedémarrez l\'app ou tapez "Récupération crash" pour la récupérer.',
+        'Une capture en cours d\'enregistrement a été créée avec un fichier inexistant.\n\nRedémarrez l\'app ou tapez "Récupération crash" pour voir le recovery en action.',
         [{ text: 'OK' }]
       );
 
@@ -102,14 +107,133 @@ export const CaptureDevTools = () => {
     }
   };
 
+  const deleteAllCaptures = async () => {
+    Alert.alert(
+      '⚠️ Supprimer toutes les captures',
+      'Êtes-vous sûr de vouloir supprimer TOUTES les captures de la base de données?\n\nCette action est irréversible.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer tout',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              const allCaptures = await repository.findAll();
+              let deletedCount = 0;
+
+              for (const capture of allCaptures) {
+                const deleteResult = await repository.delete(capture.id);
+                if (deleteResult.type === 'success') {
+                  deletedCount++;
+                }
+              }
+
+              Alert.alert('✅ Succès', `${deletedCount} capture(s) supprimée(s)`);
+              await loadCaptures();
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible de supprimer les captures');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const deleteFailedCaptures = async () => {
+    try {
+      const deletedCount = await crashRecoveryService.clearFailedCaptures();
+      Alert.alert('✅ Succès', `${deletedCount} capture(s) échouée(s) supprimée(s)`);
+      await loadCaptures();
+    } catch (error) {
+      Alert.alert('Erreur', 'Impossible de supprimer les captures échouées');
+    }
+  };
+
+  const purgeAudioFiles = async () => {
+    Alert.alert(
+      '🧹 Purger les fichiers audio',
+      'Supprimer tous les fichiers audio (cache expo-audio + stockage permanent)?\n\nLes entrées en base de données seront conservées.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Purger',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              let deletedCount = 0;
+
+              // Purge cache expo-audio
+              const cacheAudioDir = `${FileSystem.cacheDirectory}Audio/`;
+              const cacheInfo = await FileSystem.getInfoAsync(cacheAudioDir);
+
+              if (cacheInfo.exists) {
+                const cacheFiles = await FileSystem.readDirectoryAsync(cacheAudioDir);
+                for (const file of cacheFiles) {
+                  await FileSystem.deleteAsync(`${cacheAudioDir}${file}`, { idempotent: true });
+                  deletedCount++;
+                }
+              }
+
+              // Purge stockage permanent
+              const audioDir = `${FileSystem.documentDirectory}audio/`;
+              const audioInfo = await FileSystem.getInfoAsync(audioDir);
+
+              if (audioInfo.exists) {
+                const audioFiles = await FileSystem.readDirectoryAsync(audioDir);
+                for (const file of audioFiles) {
+                  await FileSystem.deleteAsync(`${audioDir}${file}`, { idempotent: true });
+                  deletedCount++;
+                }
+              }
+
+              Alert.alert('✅ Succès', `${deletedCount} fichier(s) audio supprimé(s)`);
+            } catch (error) {
+              console.error('[DevTools] Purge audio files error:', error);
+              Alert.alert('Erreur', 'Impossible de purger les fichiers audio');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const openAppSettings = async () => {
+    const hasPermission = await PermissionService.hasMicrophonePermission();
+
+    Alert.alert(
+      '⚙️ Paramètres de l\'app',
+      `Permission microphone: ${hasPermission ? '✅ Accordée' : '❌ Refusée'}\n\nPour modifier la permission microphone:\n1. Ouvrir les paramètres de l'app\n2. Aller dans Autorisations\n3. Activer/Désactiver Microphone`,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Ouvrir Paramètres',
+          onPress: async () => {
+            try {
+              await Linking.openSettings();
+            } catch (error) {
+              Alert.alert('Erreur', 'Impossible d\'ouvrir les paramètres');
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const checkMicPermission = async () => {
+    const hasPermission = await PermissionService.hasMicrophonePermission();
+    setMicPermission(hasPermission);
+  };
+
   const onRefresh = async () => {
     setRefreshing(true);
     await loadCaptures();
+    await checkMicPermission();
     setRefreshing(false);
   };
 
   useEffect(() => {
     loadCaptures();
+    checkMicPermission();
   }, []);
 
   // Monitor network status changes
@@ -180,15 +304,34 @@ export const CaptureDevTools = () => {
 
   const networkDisplay = getNetworkStatusDisplay();
 
+  const getMicPermissionDisplay = () => {
+    if (micPermission === null) {
+      return { icon: '⏳', text: 'Checking...', color: '#8E8E93' };
+    }
+    if (micPermission) {
+      return { icon: '🎤', text: 'Microphone OK', color: '#34C759' };
+    }
+    return { icon: '🔇', text: 'Micro refusé', color: '#FF3B30' };
+  };
+
+  const micDisplay = getMicPermissionDisplay();
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <Text style={styles.title}>🔍 Capture DevTools</Text>
-          <View style={[styles.networkBadge, { backgroundColor: networkDisplay.color }]}>
-            <Text style={styles.networkBadgeText}>
-              {networkDisplay.icon} {networkDisplay.text}
-            </Text>
+          <View style={styles.badgesRow}>
+            <View style={[styles.networkBadge, { backgroundColor: networkDisplay.color }]}>
+              <Text style={styles.networkBadgeText}>
+                {networkDisplay.icon} {networkDisplay.text}
+              </Text>
+            </View>
+            <View style={[styles.networkBadge, { backgroundColor: micDisplay.color }]}>
+              <Text style={styles.networkBadgeText}>
+                {micDisplay.icon} {micDisplay.text}
+              </Text>
+            </View>
           </View>
         </View>
         <Text style={styles.count}>
@@ -222,6 +365,30 @@ export const CaptureDevTools = () => {
         </TouchableOpacity>
       </View>
 
+      {/* Cleanup Buttons */}
+      <View style={styles.actionButtonsContainer}>
+        <TouchableOpacity style={[styles.actionButton, styles.warningButton]} onPress={deleteFailedCaptures}>
+          <Text style={styles.actionButtonText}>🗑️ Supprimer failed</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.actionButton, styles.dangerButton]} onPress={deleteAllCaptures}>
+          <Text style={styles.actionButtonText}>💣 Tout supprimer</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* File Cleanup Button */}
+      <View style={styles.settingsButtonContainer}>
+        <TouchableOpacity style={[styles.fullWidthButton, styles.warningButton]} onPress={purgeAudioFiles}>
+          <Text style={styles.actionButtonText}>🧹 Purger fichiers audio</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Permission Settings Button */}
+      <View style={styles.settingsButtonContainer}>
+        <TouchableOpacity style={[styles.fullWidthButton, styles.settingsButton]} onPress={openAppSettings}>
+          <Text style={styles.actionButtonText}>⚙️ Ouvrir Paramètres</Text>
+        </TouchableOpacity>
+      </View>
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>❌ Erreur: {error}</Text>
@@ -247,11 +414,11 @@ export const CaptureDevTools = () => {
               <View style={styles.captureHeader}>
                 <Text style={styles.captureIndex}>#{index + 1}</Text>
                 <View style={styles.badgesContainer}>
-                  <View style={[styles.stateBadge, getStateColor(capture._raw.state)]}>
-                    <Text style={styles.badgeText}>{capture._raw.state}</Text>
+                  <View style={[styles.stateBadge, getStateColor(capture.state)]}>
+                    <Text style={styles.badgeText}>{capture.state}</Text>
                   </View>
-                  <View style={[styles.syncBadge, getSyncColor(capture._raw.sync_status)]}>
-                    <Text style={styles.badgeText}>{capture._raw.sync_status}</Text>
+                  <View style={[styles.syncBadge, getSyncColor(capture.syncStatus)]}>
+                    <Text style={styles.badgeText}>{capture.syncStatus}</Text>
                   </View>
                 </View>
               </View>
@@ -263,24 +430,42 @@ export const CaptureDevTools = () => {
 
               <View style={styles.captureRow}>
                 <Text style={styles.label}>Type:</Text>
-                <Text style={styles.value}>{capture._raw.type}</Text>
+                <Text style={styles.value}>{capture.type}</Text>
               </View>
 
               <View style={styles.captureRow}>
                 <Text style={styles.label}>État:</Text>
-                <Text style={styles.value}>{capture._raw.state}</Text>
+                <Text style={styles.value}>{capture.state}</Text>
               </View>
 
               <View style={styles.captureRow}>
                 <Text style={styles.label}>Sync:</Text>
-                <Text style={styles.value}>{capture._raw.sync_status}</Text>
+                <Text style={styles.value}>{capture.syncStatus}</Text>
               </View>
 
-              {capture._raw.raw_content && (
+              {capture.rawContent && (
                 <View style={styles.captureRow}>
                   <Text style={styles.label}>Fichier:</Text>
                   <Text style={styles.valueSmall} numberOfLines={2}>
-                    {capture._raw.raw_content}
+                    {capture.rawContent}
+                  </Text>
+                </View>
+              )}
+
+              {capture.duration && (
+                <View style={styles.captureRow}>
+                  <Text style={styles.label}>Durée:</Text>
+                  <Text style={styles.valueSmall}>
+                    {Math.floor(capture.duration / 1000)}s
+                  </Text>
+                </View>
+              )}
+
+              {capture.fileSize && (
+                <View style={styles.captureRow}>
+                  <Text style={styles.label}>Taille:</Text>
+                  <Text style={styles.valueSmall}>
+                    {(capture.fileSize / 1024).toFixed(1)} KB
                   </Text>
                 </View>
               )}
@@ -288,15 +473,15 @@ export const CaptureDevTools = () => {
               <View style={styles.captureRow}>
                 <Text style={styles.label}>Créé:</Text>
                 <Text style={styles.valueSmall}>
-                  {new Date(capture._raw.created_at).toLocaleString('fr-FR')}
+                  {capture.createdAt.toLocaleString('fr-FR')}
                 </Text>
               </View>
 
-              {capture._raw.normalized_text && (
+              {capture.normalizedText && (
                 <View style={styles.captureRow}>
                   <Text style={styles.label}>Transcription:</Text>
                   <Text style={styles.valueSmall} numberOfLines={3}>
-                    {capture._raw.normalized_text}
+                    {capture.normalizedText}
                   </Text>
                 </View>
               )}
@@ -333,6 +518,10 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#FFFFFF',
+  },
+  badgesRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
   networkBadge: {
     paddingHorizontal: 12,
@@ -458,8 +647,27 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  fullWidthButton: {
+    backgroundColor: '#FF3B30',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
   actionButtonSecondary: {
     backgroundColor: '#007AFF',
+  },
+  warningButton: {
+    backgroundColor: '#FF9500',
+  },
+  dangerButton: {
+    backgroundColor: '#8E1A1A',
+  },
+  settingsButtonContainer: {
+    paddingHorizontal: 16,
+    marginTop: 8,
+  },
+  settingsButton: {
+    backgroundColor: '#8E8E93',
   },
   actionButtonText: {
     color: '#FFFFFF',
