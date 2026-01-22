@@ -178,7 +178,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
         </View>
       )}
 
-      {/* Button label */}
+      {/* Button label - absolute positioned so it doesn't affect record button alignment */}
       <Text style={styles.label}>
         {isRecording ? 'Tap to Stop' : 'Tap to Record'}
       </Text>
@@ -237,7 +237,8 @@ const styles = StyleSheet.create({
     fontVariant: ['tabular-nums'], // Monospaced numbers
   },
   label: {
-    marginTop: 8,
+    position: 'absolute',
+    top: 210, // Below timerBlock (110 + timer height ~40 + cancel 40 + margins ~20)
     fontSize: 14,
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',
