@@ -193,6 +193,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+    minWidth: 200, // Ensure enough width for centered text (timer, labels) to not wrap
     // Removed width: '100%' - was causing horizontal overflow in row layout
     // Timer and label are now absolute positioned, so width not needed
   },
