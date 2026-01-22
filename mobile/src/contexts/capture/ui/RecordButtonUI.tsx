@@ -22,6 +22,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  Pressable,
   StyleSheet,
   Platform,
   Animated,
@@ -144,12 +145,12 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <Pressable
         testID="record-button"
         onPress={handlePress}
-        activeOpacity={0.7}
         disabled={disabled}
         style={styles.touchable}
+        android_ripple={{ color: 'transparent' }}
       >
         <Animated.View
           style={[
@@ -160,7 +161,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
         >
           {isRecording && <View style={styles.recordingDot} />}
         </Animated.View>
-      </TouchableOpacity>
+      </Pressable>
 
       {/* Absolute positioned block: timer + cancel button - doesn't affect layout */}
       {isRecording && (
@@ -168,14 +169,14 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
           <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
 
           {/* Story 2.3 AC1: Cancel button - below timer */}
-          <TouchableOpacity
+          <Pressable
             testID="cancel-button"
             onPress={handleCancel}
-            activeOpacity={0.7}
             style={styles.cancelButton}
+            android_ripple={{ color: 'transparent' }}
           >
             <Text style={styles.cancelButtonText}>✕</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       )}
 
@@ -196,6 +197,7 @@ const styles = StyleSheet.create({
   },
   touchable: {
     padding: 10,
+    backgroundColor: 'transparent', // Prevent focus/blur white background
   },
   timerBlock: {
     position: 'absolute',
