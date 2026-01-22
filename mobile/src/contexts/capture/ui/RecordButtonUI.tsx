@@ -200,8 +200,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 20, // Space between record and cancel buttons
-    maxWidth: 300, // Prevent buttons from being too far apart
+    gap: 12, // Reduced gap for tighter spacing
   },
   touchable: {
     padding: 10,
@@ -249,9 +248,9 @@ const styles = StyleSheet.create({
   },
   // Story 2.3: Cancel button styles
   cancelButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: 'rgba(255, 59, 48, 0.1)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -260,8 +259,9 @@ const styles = StyleSheet.create({
     // Removed position: absolute - now uses flexbox in buttonRow
   },
   cancelButtonText: {
-    fontSize: 24,
+    fontSize: 20,
     color: '#FF3B30',
     fontWeight: '600',
+    lineHeight: 20, // Better vertical centering
   },
 });
