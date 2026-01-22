@@ -9,11 +9,11 @@
 import { RecordingService } from '@/contexts/Capture/services/RecordingService';
 import { CrashRecoveryService } from '@/contexts/Capture/services/CrashRecoveryService';
 import { Audio } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Mock expo modules
 jest.mock('expo-av');
-jest.mock('expo-file-system');
+jest.mock('expo-file-system/legacy');
 jest.mock('expo-haptics');
 
 describe('RecordingService Integration Tests', () => {

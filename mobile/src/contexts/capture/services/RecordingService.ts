@@ -21,7 +21,7 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';

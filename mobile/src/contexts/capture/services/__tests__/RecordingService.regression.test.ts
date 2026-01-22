@@ -12,11 +12,11 @@
 import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   getInfoAsync: jest.fn(),
   deleteAsync: jest.fn(),
 }));
