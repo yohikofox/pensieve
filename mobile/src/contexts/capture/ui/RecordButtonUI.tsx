@@ -193,9 +193,6 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 200, // Ensure enough width for centered text (timer, labels) to not wrap
-    // Removed width: '100%' - was causing horizontal overflow in row layout
-    // Timer and label are now absolute positioned, so width not needed
   },
   touchable: {
     // No padding - was creating 100x100 square that could show white background
@@ -206,8 +203,7 @@ const styles = StyleSheet.create({
   timerBlock: {
     position: 'absolute',
     top: 110, // Position below record button (80px height + 20px padding + 10px gap)
-    left: 0,
-    right: 0,
+    width: 200,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -248,8 +244,7 @@ const styles = StyleSheet.create({
   },
   label: {
     position: 'absolute',
-    left: 0,
-    right: 0,
+    width: 200,
     fontSize: 14,
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',

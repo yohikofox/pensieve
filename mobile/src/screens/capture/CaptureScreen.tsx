@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
   captureButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 24,
+    gap: 32,
   },
   recordButton: {
     width: 200,
