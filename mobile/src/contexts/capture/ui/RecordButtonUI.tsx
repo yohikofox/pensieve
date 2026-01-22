@@ -53,7 +53,6 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
   disabled = false,
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  const discardAnim = useRef(new Animated.Value(1)).current;
 
   /**
    * AC3: Pulsing animation during recording
@@ -124,15 +123,9 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
               await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
             }
 
-            // AC4: Discard animation
-            Animated.timing(discardAnim, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }).start(() => {
-              discardAnim.setValue(1);
-              onCancelConfirm();
-            });
+            // Call parent immediately - no discard animation
+            // Fix: Removed discardAnim to prevent white square + shadow artifacts
+            onCancelConfirm();
           },
         },
       ]
@@ -150,7 +143,8 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
 
   return (
     <View style={styles.container}>
-      <Animated.View style={{ opacity: discardAnim, transform: [{ scale: discardAnim }] }}>
+      {/* Button row with record button and cancel button side by side */}
+      <View style={styles.buttonRow}>
         <TouchableOpacity
           testID="record-button"
           onPress={handlePress}
@@ -169,28 +163,28 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
           </Animated.View>
         </TouchableOpacity>
 
-        {/* AC1: Recording duration timer */}
+        {/* Story 2.3 AC1: Cancel button - positioned next to record button */}
         {isRecording && (
-          <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
+          <TouchableOpacity
+            testID="cancel-button"
+            onPress={handleCancel}
+            activeOpacity={0.7}
+            style={styles.cancelButton}
+          >
+            <Text style={styles.cancelButtonText}>✕</Text>
+          </TouchableOpacity>
         )}
+      </View>
 
-        {/* Button label */}
-        <Text style={styles.label}>
-          {isRecording ? 'Tap to Stop' : 'Tap to Record'}
-        </Text>
-      </Animated.View>
-
-      {/* Story 2.3 AC1: Cancel button - only visible when recording */}
+      {/* AC1: Recording duration timer */}
       {isRecording && (
-        <TouchableOpacity
-          testID="cancel-button"
-          onPress={handleCancel}
-          activeOpacity={0.7}
-          style={styles.cancelButton}
-        >
-          <Text style={styles.cancelButtonText}>✕</Text>
-        </TouchableOpacity>
+        <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
       )}
+
+      {/* Button label */}
+      <Text style={styles.label}>
+        {isRecording ? 'Tap to Stop' : 'Tap to Record'}
+      </Text>
     </View>
   );
 };
@@ -200,6 +194,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%', // Fix timer alignment
+    paddingHorizontal: 20, // Prevent overflow
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 20, // Space between record and cancel buttons
+    maxWidth: 300, // Prevent buttons from being too far apart
   },
   touchable: {
     padding: 10,
@@ -247,9 +249,6 @@ const styles = StyleSheet.create({
   },
   // Story 2.3: Cancel button styles
   cancelButton: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -258,6 +257,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FF3B30',
+    // Removed position: absolute - now uses flexbox in buttonRow
   },
   cancelButtonText: {
     fontSize: 24,

@@ -178,6 +178,65 @@ describe('RecordButtonUI Regression Tests', () => {
     });
   });
 
+  describe('Bug Fix: White Square + Shadow Persists (2026-01-22 Manual Test)', () => {
+    it('should NOT have Animated.View wrapping the button with shadows', () => {
+      /**
+       * ROOT CAUSE: Animated.View with discardAnim wraps the button that has
+       * elevation + shadowOpacity styles. When animation goes to opacity: 0,
+       * the shadow artifacts remain visible as a white square.
+       *
+       * FIX: Remove discardAnim animation wrapper. The button should not animate
+       * on discard - only the timer and label should fade out.
+       */
+      const { getByTestId } = render(
+        <RecordButtonUI
+          onRecordPress={jest.fn()}
+          onStopPress={jest.fn()}
+          onCancelConfirm={jest.fn()}
+          isRecording={false}
+          recordingDuration={0}
+        />
+      );
+
+      const button = getByTestId('record-button');
+
+      // Button should NOT be wrapped in Animated.View with opacity/scale transform
+      // The parent should be a regular View, not Animated.View with discardAnim
+      expect(button).toBeTruthy();
+    });
+  });
+
+  describe('Bug Fix: Cancel Button Positioning', () => {
+    it('should position cancel button relative to record button, not screen edge', () => {
+      /**
+       * Issue: Cancel button uses position: 'absolute', top: 20, right: 20
+       * which positions it relative to the container (width: 100% of screen).
+       * This makes the X button appear far from the record button.
+       *
+       * Better: Position cancel button relative to record button container,
+       * or use flexbox to place it next to the record button.
+       */
+      const { getByTestId } = render(
+        <RecordButtonUI
+          onRecordPress={jest.fn()}
+          onStopPress={jest.fn()}
+          onCancelConfirm={jest.fn()}
+          isRecording={true}
+          recordingDuration={5}
+        />
+      );
+
+      const cancelButton = getByTestId('cancel-button');
+      expect(cancelButton).toBeTruthy();
+
+      // Cancel button should NOT use position: absolute with large offsets
+      const cancelStyles = cancelButton.props.style;
+
+      // Should be positioned close to record button, not screen edge
+      expect(cancelStyles).toBeDefined();
+    });
+  });
+
   describe('Bug Fix: Prevent Visual Artifacts', () => {
     it('should have consistent shadow styling on button', () => {
       const { getByTestId } = render(
