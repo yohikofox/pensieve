@@ -89,7 +89,7 @@ jest.mock('expo-haptics', () => ({
 }));
 
 // Mock expo-file-system
-jest.mock('expo-file-system', () => ({
+jest.mock('expo-file-system/legacy', () => ({
   getInfoAsync: jest.fn(),
   deleteAsync: jest.fn(),
 }));
