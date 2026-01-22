@@ -6,6 +6,7 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import {
   useAudioRecorder,
@@ -16,11 +17,14 @@ import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
+import { TextCaptureService } from '../../contexts/capture/services/TextCaptureService';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 import { CaptureDevTools } from '../../components/dev/CaptureDevTools';
+import { TextCaptureInput } from '../../components/capture/TextCaptureInput';
+import { RecordButtonUI } from '../../contexts/capture/ui/RecordButtonUI';
 
 type RecordingState = 'idle' | 'recording' | 'stopping';
 
@@ -50,6 +54,8 @@ export const CaptureScreen = () => {
   const [state, setState] = useState<RecordingState>('idle');
   const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showDevTools, setShowDevTools] = useState(false);
+  const [showTextCapture, setShowTextCapture] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0); // Story 2.3: Timer for RecordButtonUI
 
   // Use expo-audio hooks for actual recording
   const audioRecorder = useAudioRecorder(recordingOptions);
@@ -57,6 +63,7 @@ export const CaptureScreen = () => {
 
   // Use RecordingService for business logic and persistence (via TSyringe)
   const recordingServiceRef = useRef<RecordingService | null>(null);
+  const textCaptureServiceRef = useRef<TextCaptureService | null>(null);
   const repositoryRef = useRef<ICaptureRepository | null>(null);
   const permissionServiceRef = useRef<IPermissionService | null>(null);
   const fileStorageServiceRef = useRef<FileStorageService | null>(null);
@@ -64,6 +71,7 @@ export const CaptureScreen = () => {
   // Initialize services on mount via TSyringe container
   useEffect(() => {
     recordingServiceRef.current = container.resolve(RecordingService);
+    textCaptureServiceRef.current = container.resolve(TextCaptureService);
     repositoryRef.current = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
     permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
     fileStorageServiceRef.current = container.resolve(FileStorageService);
@@ -113,13 +121,24 @@ export const CaptureScreen = () => {
     setHasPermission(hasPermission);
   };
 
-  const handleTap = async () => {
+  // Story 2.3: Timer for recording duration display
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+
     if (state === 'recording') {
-      await stopRecording();
+      interval = setInterval(() => {
+        setRecordingDuration((prev) => prev + 1);
+      }, 1000);
     } else {
-      await startRecording();
+      setRecordingDuration(0);
     }
-  };
+
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [state]);
 
   const startRecording = async () => {
     const recordingService = recordingServiceRef.current;
@@ -237,7 +256,7 @@ export const CaptureScreen = () => {
       const updateResult = await repositoryRef.current.update(stopResult.data.captureId, {
         rawContent: storageResult.data.permanentPath,
         duration: storageResult.data.metadata.duration,
-        fileSize: storageResult.data.metadata.size,
+        // fileSize not in ICaptureRepository interface - stored in metadata
       });
 
       if (updateResult.type !== 'success') {
@@ -257,24 +276,67 @@ export const CaptureScreen = () => {
     setState('idle');
   };
 
-  const getButtonText = () => {
-    if (state === 'recording') {
-      return 'Arrêter';
+  /**
+   * Story 2.3: Cancel recording with immediate stop
+   * AC1: Cancel Recording with Immediate Stop
+   * - Stops expo-audio recorder
+   * - Deletes partial audio file
+   * - Removes Capture entity from WatermelonDB
+   */
+  const cancelRecording = async () => {
+    const recordingService = recordingServiceRef.current;
+    if (!recordingService) {
+      Alert.alert('Erreur', 'Service d\'enregistrement non initialisé');
+      setState('idle');
+      return;
     }
-    if (state === 'stopping') {
-      return 'Enregistrement...';
+
+    // AC1: Stop expo-audio recorder FIRST (fixes code review issue #4)
+    try {
+      await audioRecorder.stop();
+    } catch (error) {
+      console.error('[CaptureScreen] Failed to stop audio recorder during cancel:', error);
+      // Continue with cancel even if stop fails
     }
-    return 'Capturer';
+
+    // AC1: Delete file + DB entity via RecordingService
+    await recordingService.cancelRecording();
+
+    // Reset state
+    setState('idle');
   };
 
-  const getButtonColor = () => {
-    if (state === 'recording') {
-      return '#FF3B30'; // Red
+  const handleTextCaptureSave = async (text: string): Promise<void> => {
+    // AC2: Save text capture using TextCaptureService
+    const textCaptureService = textCaptureServiceRef.current;
+    if (!textCaptureService) {
+      Alert.alert('Erreur', 'Service non initialisé');
+      throw new Error('Service non initialisé');
     }
-    if (state === 'stopping') {
-      return '#8E8E93'; // Gray
+
+    // Use service layer instead of direct repository access
+    const result = await textCaptureService.createTextCapture(text);
+
+    if (result.type !== 'success' || !result.data) {
+      const errorMsg = result.error ?? 'Impossible de sauvegarder la capture';
+      Alert.alert('Erreur', errorMsg);
+      throw new Error(errorMsg);
     }
-    return '#007AFF'; // Blue
+
+    // Close modal
+    setShowTextCapture(false);
+
+    // Show success message
+    Alert.alert(
+      'Capture enregistrée!',
+      `Votre pensée a été sauvegardée localement.
+La synchronisation se fera automatiquement.`,
+      [{ text: 'OK' }]
+    );
+  };
+
+  const handleTextCaptureCancel = () => {
+    setShowTextCapture(false);
   };
 
   // Show DevTools if toggled
@@ -300,24 +362,39 @@ export const CaptureScreen = () => {
           {state === 'idle'
             ? 'Tap pour enregistrer'
             : state === 'recording'
-            ? `Enregistrement... ${Math.floor(recorderState.durationMillis / 1000)}s`
+            ? 'Enregistrement en cours...'
             : 'Sauvegarde...'}
         </Text>
       </View>
 
       <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={[styles.recordButton, { backgroundColor: getButtonColor() }]}
-          onPress={handleTap}
-          disabled={state === 'stopping'}
-          activeOpacity={0.8}
-        >
-          {state === 'stopping' ? (
-            <ActivityIndicator size="large" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.buttonText}>{getButtonText()}</Text>
-          )}
-        </TouchableOpacity>
+        <View style={styles.captureButtons}>
+          {/* Story 2.3: RecordButtonUI with cancel functionality */}
+          <RecordButtonUI
+            onRecordPress={startRecording}
+            onStopPress={stopRecording}
+            onCancelConfirm={cancelRecording}
+            isRecording={state === 'recording'}
+            recordingDuration={recordingDuration}
+            disabled={state === 'stopping'}
+          />
+
+          {/* Text Capture Button - AC1: Distinct icon, 44x44 tap target */}
+          <TouchableOpacity
+            style={styles.textCaptureButton}
+            onPress={() => setShowTextCapture(true)}
+            disabled={state !== 'idle'}
+            activeOpacity={0.8}
+            testID="text-capture-button"
+            accessibilityLabel="Capturer du texte"
+            accessibilityHint="Ouvre le clavier pour saisir une pensée sous forme de texte"
+            accessibilityRole="button"
+            accessibilityState={{ disabled: state !== 'idle' }}
+          >
+            <Text style={styles.textCaptureIcon}>✏️</Text>
+            <Text style={styles.textCaptureLabel}>Texte</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.infoContainer}>
@@ -348,6 +425,19 @@ export const CaptureScreen = () => {
       >
         <Text style={styles.devToolsToggleText}>🔍 DB</Text>
       </TouchableOpacity>
+
+      {/* Text Capture Modal */}
+      <Modal
+        visible={showTextCapture}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={handleTextCaptureCancel}
+      >
+        <TextCaptureInput
+          onSave={handleTextCaptureSave}
+          onCancel={handleTextCaptureCancel}
+        />
+      </Modal>
     </View>
   );
 };
@@ -378,6 +468,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  captureButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 24,
+  },
   recordButton: {
     width: 200,
     height: 200,
@@ -389,6 +484,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 8,
+  },
+  textCaptureButton: {
+    width: 80,
+    height: 80,
+    borderRadius: 12,
+    backgroundColor: '#34C759', // Green for text
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  textCaptureIcon: {
+    fontSize: 32,
+    marginBottom: 4,
+  },
+  textCaptureLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   buttonText: {
     fontSize: 24,
