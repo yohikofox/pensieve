@@ -222,8 +222,14 @@ export class CaptureRepository implements ICaptureRepository {
    * soft delete by adding a deleted_at column.
    */
   async delete(id: string): Promise<RepositoryResult<void>> {
-    database.execute('DELETE FROM captures WHERE id = ?', [id]);
-    return success(undefined);
+    try {
+      database.execute('DELETE FROM captures WHERE id = ?', [id]);
+      return success(undefined);
+    } catch (error) {
+      console.error('[CaptureRepository] Database error during delete:', id, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+      return databaseError(`Failed to delete capture: ${errorMessage}`);
+    }
   }
 
   /**

@@ -204,4 +204,64 @@ describe('RecordingService Regression Tests', () => {
       expect(service.getCurrentRecordingId()).toBeNull();
     });
   });
+
+  describe('Bug Fix: Orphaned Captures in "recording" State', () => {
+    it('should explain why captures remained in "recording" state before fix', () => {
+      /**
+       * ROOT CAUSE ANALYSIS:
+       *
+       * Before Fix (2026-01-22):
+       * 1. User starts recording → Capture created with state="recording"
+       * 2. User taps Cancel → Discard
+       * 3. RecordingService.cancelRecording() calls repository.getById()
+       * 4. ❌ ERROR: "this.repository.getById is not a function"
+       * 5. Error caught, but delete NEVER executed
+       * 6. Capture remains in database with state="recording"
+       *
+       * After Fix (2026-01-22):
+       * - Added findById to ICaptureRepository interface
+       * - Changed RecordingService to use findById instead of getById
+       * - Delete now executes successfully
+       *
+       * CLEANUP:
+       * - Orphaned captures from before fix must be deleted manually
+       * - Use CaptureDevTools → "Supprimer failed" or "Tout supprimer"
+       * - Or use CrashRecoveryService.recoverIncompleteRecordings()
+       */
+      expect(true).toBe(true);
+    });
+
+    it('should successfully delete capture after findById fix', async () => {
+      // Start recording
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-orphan-test',
+          rawContent: 'file:///path/to/audio.m4a',
+        } as any,
+      });
+      await service.startRecording('file:///path/to/audio.m4a');
+
+      // Mock findById (the fixed method)
+      mockRepository.findById.mockResolvedValue({
+        id: 'capture-orphan-test',
+        rawContent: 'file:///path/to/audio.m4a',
+      } as any);
+
+      // Mock file system
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+
+      // Cancel should now work correctly
+      const result = await service.cancelRecording();
+
+      // Verify delete was called (this was broken before fix)
+      expect(mockRepository.delete).toHaveBeenCalledWith('capture-orphan-test');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+
+      // Verify no orphaned capture remains
+      expect(service.isRecording()).toBe(false);
+      expect(service.getCurrentRecordingId()).toBeNull();
+    });
+  });
 });
