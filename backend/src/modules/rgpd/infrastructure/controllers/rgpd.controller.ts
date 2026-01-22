@@ -10,7 +10,7 @@ import {
   UnauthorizedException,
   HttpStatus,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../identity/infrastructure/guards/supabase-auth.guard';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { RgpdService } from '../../application/services/rgpd.service';
 import type { Response } from 'express';
 import type { AuthenticatedRequest } from '../../../shared/infrastructure/types/authenticated-request';

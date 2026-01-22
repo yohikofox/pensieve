@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, ExecutionContext } from '@nestjs/common';
 import { RgpdController } from './rgpd.controller';
 import { RgpdService } from '../../application/services/rgpd.service';
-import { SupabaseAuthGuard } from '../../../identity/infrastructure/guards/supabase-auth.guard';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import type { Response } from 'express';
 
 describe('RgpdController', () => {

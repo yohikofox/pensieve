@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
-import { MinioService } from './modules/shared/infrastructure/storage/minio.service';
+import { SharedModule } from './modules/shared/shared.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { RgpdModule } from './modules/rgpd/rgpd.module';
 
@@ -23,12 +23,14 @@ import { RgpdModule } from './modules/rgpd/rgpd.module';
         logging: process.env.NODE_ENV === 'development',
       }),
     }),
+    // Shared services (MinioService, Guards)
+    SharedModule,
     // Identity module (Authentication)
     IdentityModule,
     // RGPD module (Data export & Account deletion)
     RgpdModule,
   ],
   controllers: [AppController],
-  providers: [MinioService],
+  providers: [],
 })
 export class AppModule {}
