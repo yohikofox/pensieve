@@ -394,10 +394,13 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
+    lineHeight: 28,
+    textAlignVertical: 'center',
   },
   infoContainer: {
     marginTop: 40,
     alignItems: 'center',
+    minHeight: 48, // 2 lignes * lineHeight(24) pour éviter le décalage du bouton
   },
   infoText: {
     fontSize: 16,
