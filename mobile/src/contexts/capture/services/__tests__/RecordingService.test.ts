@@ -233,7 +233,10 @@ describe('RecordingService', () => {
       (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
 
       // Cancel recording
-      await service.cancelRecording();
+      const result = await service.cancelRecording();
+
+      // Should return success
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Should check if file exists
       expect(FileSystem.getInfoAsync).toHaveBeenCalledWith('file:///path/to/audio.m4a');
@@ -271,8 +274,9 @@ describe('RecordingService', () => {
       // Mock file doesn't exist
       (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
 
-      // Cancel should not throw
-      await expect(service.cancelRecording()).resolves.not.toThrow();
+      // Cancel should return success
+      const result = await service.cancelRecording();
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Should still delete entity
       expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
@@ -297,8 +301,9 @@ describe('RecordingService', () => {
       // Mock file system error
       (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('File system error'));
 
-      // Cancel should not throw
-      await expect(service.cancelRecording()).resolves.not.toThrow();
+      // Cancel should return success (file errors are non-critical)
+      const result = await service.cancelRecording();
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Should still delete entity
       expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
@@ -306,7 +311,10 @@ describe('RecordingService', () => {
 
     it('should do nothing if not currently recording', async () => {
       // Call cancel without starting recording
-      await service.cancelRecording();
+      const result = await service.cancelRecording();
+
+      // Should return success (no-op is not an error)
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Should not call any repository methods
       expect(mockRepository.getById).not.toHaveBeenCalled();
@@ -331,11 +339,44 @@ describe('RecordingService', () => {
         rawContent: null,
       } as any);
 
-      // Cancel should not attempt file deletion
-      await service.cancelRecording();
+      // Cancel should return success
+      const result = await service.cancelRecording();
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
       expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
+    });
+
+    it('should return database error when deletion fails', async () => {
+      // Start recording
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          rawContent: 'file:///path/to/audio.m4a',
+        } as any,
+      });
+      await service.startRecording('file:///path/to/audio.m4a');
+
+      mockRepository.getById.mockResolvedValue({
+        id: 'capture-123',
+        rawContent: 'file:///path/to/audio.m4a',
+      } as any);
+
+      // Mock file operations succeed but DB deletion fails
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockRepository.delete.mockRejectedValue(new Error('Database connection lost'));
+
+      // Cancel should return error
+      const result = await service.cancelRecording();
+      expect(result.type).toBe(RepositoryResultType.DATABASE_ERROR);
+      expect(result.error).toContain('Failed to cancel recording');
+      expect(result.error).toContain('Database connection lost');
+
+      // Should still reset state
+      expect(service.isRecording()).toBe(false);
+      expect(service.getCurrentRecordingId()).toBeNull();
     });
   });
 });

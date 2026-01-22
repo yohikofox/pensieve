@@ -147,37 +147,63 @@ export class RecordingService {
    * - Deletes partial audio file from storage
    * - Removes Capture entity from database
    * - Works identically offline (AC5)
+   *
+   * @returns Result indicating success or failure with error details
    */
-  async cancelRecording(): Promise<void> {
+  async cancelRecording(): Promise<RepositoryResult<void>> {
     if (!this.currentCaptureId) {
-      return;
+      // No recording in progress - this is not an error, just a no-op
+      return {
+        type: RepositoryResultType.SUCCESS,
+        data: undefined,
+      };
     }
 
     const captureId = this.currentCaptureId;
 
-    // AC1: Get the capture entity to retrieve file URI
-    const capture = await this.repository.getById(captureId);
+    try {
+      // AC1: Get the capture entity to retrieve file URI
+      const capture = await this.repository.getById(captureId);
 
-    // AC1: Delete partial audio file if it exists
-    if (capture && capture.rawContent) {
-      try {
-        const fileInfo = await FileSystem.getInfoAsync(capture.rawContent);
-        if (fileInfo.exists) {
-          await FileSystem.deleteAsync(capture.rawContent, { idempotent: true });
+      // AC1: Delete partial audio file if it exists
+      if (capture && capture.rawContent) {
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(capture.rawContent);
+          if (fileInfo.exists) {
+            await FileSystem.deleteAsync(capture.rawContent, { idempotent: true });
+          }
+        } catch (fileError) {
+          // AC5: Log file deletion errors but don't fail the cancel operation
+          // Offline: File system operations work identically
+          console.warn('[RecordingService] File deletion warning (non-critical):', fileError);
+          // Continue with DB cleanup even if file deletion failed
         }
-      } catch (error) {
-        // AC5: Handle file deletion errors gracefully (file might not exist yet)
-        // Offline: File system operations work identically
-        console.warn('[RecordingService] File deletion warning:', error);
       }
+
+      // AC1: Delete the capture entity from WatermelonDB
+      await this.repository.delete(captureId);
+
+      // Reset state
+      this.currentCaptureId = null;
+      this.recordingStartTime = null;
+
+      return {
+        type: RepositoryResultType.SUCCESS,
+        data: undefined,
+      };
+    } catch (error) {
+      // Critical error during cancel (likely DB deletion failure)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      // Still try to reset state even if cleanup failed
+      this.currentCaptureId = null;
+      this.recordingStartTime = null;
+
+      return {
+        type: RepositoryResultType.DATABASE_ERROR,
+        error: `Failed to cancel recording: ${errorMessage}`,
+      };
     }
-
-    // AC1: Delete the capture entity from WatermelonDB
-    await this.repository.delete(captureId);
-
-    // Reset state
-    this.currentCaptureId = null;
-    this.recordingStartTime = null;
   }
 
   /**

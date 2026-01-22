@@ -300,9 +300,18 @@ export const CaptureScreen = () => {
     }
 
     // AC1: Delete file + DB entity via RecordingService
-    await recordingService.cancelRecording();
+    const result = await recordingService.cancelRecording();
 
-    // Reset state
+    if (result.type !== 'success') {
+      console.error('[CaptureScreen] Failed to cancel recording:', result.type, result.error);
+      Alert.alert(
+        'Attention',
+        'L\'enregistrement a été arrêté mais le nettoyage a échoué. Vous pouvez réessayer.',
+        [{ text: 'OK' }]
+      );
+    }
+
+    // Always reset state, even if cancel failed
     setState('idle');
   };
 
