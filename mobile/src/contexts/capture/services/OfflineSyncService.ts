@@ -13,41 +13,36 @@
  * - Ensure WatermelonDB sync protocol compatibility
  *
  * NFR7: Disponibilité capture offline = 100%
+ * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-import { CaptureRepository } from '../data/CaptureRepository';
-
-export interface SyncStats {
-  pendingCount: number;
-  syncedCount: number;
-  totalCount: number;
-}
-
-export interface PendingCapture {
-  id: string;
-  type: string;
-  state: string;
-  rawContent: string;
-  capturedAt: Date;
-}
+import 'reflect-metadata';
+import { injectable, inject } from 'tsyringe';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import {
+  type IOfflineSyncService,
+  type SyncStats,
+  type PendingCapture,
+} from '../domain/IOfflineSyncService';
 
 /**
  * OfflineSyncService manages the offline queue of captures
  *
- * Usage pattern:
+ * Usage pattern with TSyringe:
  * ```typescript
- * const service = new OfflineSyncService(repository);
+ * import { container } from 'tsyringe';
+ * const service = container.resolve<IOfflineSyncService>(TOKENS.IOfflineSyncService);
  * const pending = await service.getPendingCaptures();
  * // ... sync to cloud ...
  * await service.markAsSynced(captureId);
  * ```
  */
-export class OfflineSyncService {
-  private repository: CaptureRepository;
-
-  constructor(repository: CaptureRepository) {
-    this.repository = repository;
-  }
+@injectable()
+export class OfflineSyncService implements IOfflineSyncService {
+  constructor(
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+  ) {}
 
   /**
    * Get all captures pending synchronization

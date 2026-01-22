@@ -22,6 +22,18 @@ Fonctionnalité: Capture Audio 1-Tap
     Alors une Capture est sauvegardée avec le statut "CAPTURED"
     Et la durée est de 2000ms
 
+  @AC3 @offline
+  Scénario: Enregistrer en mode offline
+    Étant donné que l'utilisateur "user-123" est authentifié
+    Et le service d'enregistrement est initialisé
+    Et le réseau est en mode offline
+    Quand l'utilisateur démarre un enregistrement
+    Et l'utilisateur enregistre pendant 2 secondes
+    Et l'utilisateur arrête l'enregistrement
+    Alors une Capture est sauvegardée avec le statut "CAPTURED"
+    Et la durée est de 2000ms
+    Et le syncStatus est "pending"
+
   @AC5 @permissions
   Scénario: Vérifier les permissions avant d'enregistrer
     Étant donné que l'utilisateur "user-123" est authentifié

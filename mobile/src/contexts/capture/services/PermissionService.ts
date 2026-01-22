@@ -1,8 +1,14 @@
+import 'reflect-metadata';
+import { injectable } from 'tsyringe';
 import {
   requestRecordingPermissionsAsync,
   getRecordingPermissionsAsync,
 } from 'expo-audio';
 import { Linking } from 'react-native';
+import {
+  type IPermissionService,
+  type PermissionResult,
+} from '../domain/IPermissionService';
 
 /**
  * Permission Service for Audio Recording
@@ -14,15 +20,13 @@ import { Linking } from 'react-native';
  * AC5: Microphone Permission Handling
  *
  * Docs: https://docs.expo.dev/versions/latest/sdk/audio/
+ *
+ * Story: 2.1 - Capture Audio 1-Tap
+ * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-export interface PermissionResult {
-  status: 'granted' | 'denied' | 'undetermined';
-  canAskAgain: boolean;
-  expires?: 'never' | number;
-}
-
-export class PermissionService {
+@injectable()
+export class PermissionService implements IPermissionService {
   /**
    * Request microphone permission from user
    * Prompts the user if permission not yet determined
@@ -31,7 +35,7 @@ export class PermissionService {
    *
    * @returns Permission result with status and canAskAgain flag
    */
-  static async requestMicrophonePermission(): Promise<PermissionResult> {
+  async requestMicrophonePermission(): Promise<PermissionResult> {
     try {
       const permission = await requestRecordingPermissionsAsync();
 
@@ -57,7 +61,7 @@ export class PermissionService {
    *
    * @returns Current permission status
    */
-  static async checkMicrophonePermission(): Promise<PermissionResult> {
+  async checkMicrophonePermission(): Promise<PermissionResult> {
     try {
       const permission = await getRecordingPermissionsAsync();
 
@@ -80,8 +84,8 @@ export class PermissionService {
    *
    * @returns true if permission granted, false otherwise
    */
-  static async hasMicrophonePermission(): Promise<boolean> {
-    const permission = await PermissionService.checkMicrophonePermission();
+  async hasMicrophonePermission(): Promise<boolean> {
+    const permission = await this.checkMicrophonePermission();
     return permission.status === 'granted';
   }
 
@@ -89,7 +93,7 @@ export class PermissionService {
    * Open device settings to allow user to manually grant permission
    * Useful when canAskAgain is false
    */
-  static async openSettings(): Promise<void> {
+  async openSettings(): Promise<void> {
     try {
       await Linking.openSettings();
     } catch (error) {

@@ -2,7 +2,7 @@
  * Recording Service - Audio Capture Business Logic
  *
  * Orchestrates audio recording with:
- * - expo-audio for recording
+ * - expo-audio (or mock) for recording
  * - CaptureRepository for persistence
  * - PermissionService for microphone access
  * - File system for audio storage
@@ -11,10 +11,17 @@
  * AC1: Start Recording with < 500ms Latency
  * AC2: Stop and Save Recording
  * AC5: Microphone Permission Handling
+ *
+ * Architecture: Uses TSyringe IoC for dependency injection
  */
 
-import { CaptureRepository } from '../data/CaptureRepository';
-import { PermissionService } from './PermissionService';
+import 'reflect-metadata';
+import { injectable, inject } from 'tsyringe';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import { type IPermissionService } from '../domain/IPermissionService';
+import { type IAudioRecorder } from '../domain/IAudioRecorder';
+import { type IFileSystem } from '../domain/IFileSystem';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
 
 export interface RecordingResult {
@@ -27,30 +34,37 @@ export interface RecordingResult {
 /**
  * RecordingService manages audio recording lifecycle
  *
- * Usage pattern:
+ * Usage pattern with TSyringe:
  * ```typescript
- * const service = new RecordingService(repository);
+ * import { container } from 'tsyringe';
+ * const service = container.resolve(RecordingService);
  * await service.startRecording();
  * // ... user speaks ...
  * const result = await service.stopRecording();
  * ```
  */
+@injectable()
 export class RecordingService {
-  private repository: CaptureRepository;
   private currentCaptureId: string | null = null;
   private recordingStartTime: number | null = null;
 
-  constructor(repository: CaptureRepository) {
-    this.repository = repository;
-  }
+  constructor(
+    @inject(TOKENS.IAudioRecorder) private audioRecorder: IAudioRecorder,
+    @inject(TOKENS.IFileSystem) private fileSystem: IFileSystem,
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
+    @inject(TOKENS.IPermissionService) private permissions: IPermissionService
+  ) {}
 
   /**
    * AC1: Start Recording with < 500ms Latency
    * AC5: Check microphone permissions
    *
-   * @param tempFileUri - Temporary file URI from expo-audio (for crash recovery)
+   * This method orchestrates the complete recording start sequence:
+   * 1. Check microphone permissions
+   * 2. Start audio recording (via audioRecorder)
+   * 3. Create Capture entity with temporary file URI
    */
-  async startRecording(tempFileUri: string): Promise<RepositoryResult<{ captureId: string }>> {
+  async startRecording(): Promise<RepositoryResult<{ captureId: string }>> {
     // Prevent multiple simultaneous recordings
     if (this.currentCaptureId) {
       return {
@@ -60,11 +74,22 @@ export class RecordingService {
     }
 
     // AC5: Check microphone permissions
-    const hasPermission = await PermissionService.hasMicrophonePermission();
+    const hasPermission = await this.permissions.hasMicrophonePermission();
     if (!hasPermission) {
       return {
         type: RepositoryResultType.VALIDATION_ERROR,
         error: 'MicrophonePermissionDenied',
+      };
+    }
+
+    // AC1: Start audio recording and get temporary file URI
+    // This is atomic and fast (< 500ms target)
+    const recordingResult = await this.audioRecorder.startRecording();
+
+    if (recordingResult.type !== RepositoryResultType.SUCCESS || !recordingResult.data) {
+      return {
+        type: recordingResult.type,
+        error: recordingResult.error,
       };
     }
 
@@ -73,11 +98,14 @@ export class RecordingService {
     const result = await this.repository.create({
       type: 'audio',
       state: 'recording',
-      rawContent: tempFileUri,
+      rawContent: recordingResult.data.uri,
       syncStatus: 'pending',
     });
 
     if (result.type !== RepositoryResultType.SUCCESS || !result.data) {
+      // Recording started but DB failed - we should stop recording (best effort cleanup)
+      await this.audioRecorder.stopRecording();
+
       return {
         type: result.type,
         error: result.error,
@@ -95,6 +123,11 @@ export class RecordingService {
 
   /**
    * AC2: Stop and Save Recording
+   *
+   * This method orchestrates the complete recording stop sequence:
+   * 1. Stop audio recording (via audioRecorder)
+   * 2. Get recording metadata (duration, URI)
+   * 3. Update Capture entity with final file path and metadata
    */
   async stopRecording(): Promise<RepositoryResult<RecordingResult>> {
     if (!this.currentCaptureId) {
@@ -105,19 +138,32 @@ export class RecordingService {
     }
 
     const captureId = this.currentCaptureId;
-    const duration = this.recordingStartTime
-      ? Date.now() - this.recordingStartTime
-      : 0;
+
+    // AC2: Stop audio recording and get metadata
+    const stopResult = await this.audioRecorder.stopRecording();
+
+    if (stopResult.type !== RepositoryResultType.SUCCESS || !stopResult.data) {
+      return {
+        type: stopResult.type,
+        error: stopResult.error,
+      };
+    }
 
     const filePath = this.generateFilePath();
+    const duration = stopResult.data.duration;
 
+    // AC2: Update Capture entity with final state and metadata
     const result = await this.repository.update(captureId, {
       state: 'captured',
       rawContent: filePath,
+      duration,
     });
 
     if (result.type !== RepositoryResultType.SUCCESS) {
-      return result as RepositoryResult<RecordingResult>;
+      return {
+        type: result.type,
+        error: result.error,
+      };
     }
 
     this.currentCaptureId = null;

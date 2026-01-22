@@ -20,8 +20,8 @@
 
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import { TestContext } from './support/test-context';
-import { RecordingService } from '../../src/services/RecordingService';
-import { CaptureRepository } from '../../src/repositories/CaptureRepository';
+import { RecordingService } from '../../src/contexts/capture/services/RecordingService';
+import { CaptureRepository } from '../../src/contexts/capture/data/CaptureRepository';
 
 const feature = loadFeature('tests/acceptance/features/story-2-1-capture-audio.feature');
 
@@ -34,7 +34,7 @@ defineFeature(feature, (test) => {
 
   beforeEach(() => {
     context = new TestContext();
-    captureRepo = new CaptureRepository(context.db);
+    captureRepo = new CaptureRepository();
     recordingService = new RecordingService(
       context.audioRecorder,
       context.fileSystem,

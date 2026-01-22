@@ -8,6 +8,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { type RepositoryResult, RepositoryResultType, success, validationError } from '../../../src/contexts/capture/domain/Result';
 
 // ============================================================================
 // Types
@@ -46,21 +47,21 @@ export class MockAudioRecorder {
   private _currentRecordingUri: string | null = null;
   private _simulatedDuration = 0;
 
-  async startRecording(): Promise<{ uri: string }> {
+  async startRecording(): Promise<RepositoryResult<{ uri: string }>> {
     if (this._isRecording) {
-      throw new Error('RecordingAlreadyInProgress');
+      return validationError('RecordingAlreadyInProgress');
     }
 
     this._isRecording = true;
     this._recordingStartTime = Date.now();
     this._currentRecordingUri = `mock://audio_${Date.now()}.m4a`;
 
-    return { uri: this._currentRecordingUri };
+    return success({ uri: this._currentRecordingUri });
   }
 
-  async stopRecording(): Promise<{ uri: string; duration: number }> {
+  async stopRecording(): Promise<RepositoryResult<{ uri: string; duration: number }>> {
     if (!this._isRecording) {
-      throw new Error('NoRecordingInProgress');
+      return validationError('NoRecordingInProgress');
     }
 
     this._isRecording = false;
@@ -71,7 +72,7 @@ export class MockAudioRecorder {
     this._currentRecordingUri = null;
     this._simulatedDuration = 0;
 
-    return { uri, duration };
+    return success({ uri, duration });
   }
 
   getStatus(): AudioRecordingStatus {
@@ -112,11 +113,11 @@ export class MockFileSystem {
   private _files: Map<string, MockFile> = new Map();
   private _availableSpace: number = 1000 * 1024 * 1024; // 1GB par défaut
 
-  async writeFile(path: string, content: string): Promise<void> {
+  async writeFile(path: string, content: string): Promise<RepositoryResult<void>> {
     const size = content.length;
 
     if (this.getAvailableSpace() < size) {
-      throw new Error('InsufficientStorage');
+      return validationError('InsufficientStorage');
     }
 
     this._files.set(path, {
@@ -125,22 +126,25 @@ export class MockFileSystem {
       size,
       createdAt: new Date(),
     });
+
+    return success(undefined as void);
   }
 
-  async readFile(path: string): Promise<string> {
+  async readFile(path: string): Promise<RepositoryResult<string>> {
     const file = this._files.get(path);
     if (!file) {
-      throw new Error(`FileNotFound: ${path}`);
+      return validationError(`FileNotFound: ${path}`);
     }
-    return file.content;
+    return success(file.content);
   }
 
-  async fileExists(path: string): Promise<boolean> {
-    return this._files.has(path);
+  async fileExists(path: string): Promise<RepositoryResult<boolean>> {
+    return success(this._files.has(path));
   }
 
-  async deleteFile(path: string): Promise<void> {
+  async deleteFile(path: string): Promise<RepositoryResult<void>> {
     this._files.delete(path);
+    return success(undefined as void);
   }
 
   getFiles(): MockFile[] {
@@ -978,7 +982,7 @@ export class MockPermissionManager {
     this._notificationsGranted = granted;
   }
 
-  hasMicrophonePermission(): boolean {
+  async hasMicrophonePermission(): Promise<boolean> {
     return this._microphoneGranted;
   }
 

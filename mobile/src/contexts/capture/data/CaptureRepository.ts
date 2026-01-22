@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { database } from '../../../database';
 import { type Capture, mapRowToCapture, type CaptureRow } from '../domain/Capture.model';
 import { type RepositoryResult, success, databaseError } from '../domain/Result';
+import { type ICaptureRepository } from '../domain/ICaptureRepository';
 
 export interface CreateCaptureData {
   type: 'audio' | 'text' | 'image' | 'url';
@@ -43,7 +44,7 @@ export interface UpdateCaptureData {
   fileSize?: number; // File size in bytes
 }
 
-export class CaptureRepository {
+export class CaptureRepository implements ICaptureRepository {
   /**
    * Create a new Capture entity
    */

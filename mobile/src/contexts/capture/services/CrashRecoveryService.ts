@@ -10,35 +10,37 @@
  * - Notify user of recovered captures
  *
  * NFR8: Récupération après crash automatique
+ * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
+import 'reflect-metadata';
+import { injectable, inject } from 'tsyringe';
 import * as FileSystem from 'expo-file-system/legacy';
-import { CaptureRepository } from '../data/CaptureRepository';
-
-export interface RecoveredCapture {
-  captureId: string;
-  state: 'recovered' | 'failed';
-  reason?: string;
-}
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import {
+  type ICrashRecoveryService,
+  type RecoveredCapture,
+} from '../domain/ICrashRecoveryService';
 
 /**
  * CrashRecoveryService detects and recovers interrupted recordings
  *
- * Usage pattern:
+ * Usage pattern with TSyringe:
  * ```typescript
- * const service = new CrashRecoveryService(repository);
+ * import { container } from 'tsyringe';
+ * const service = container.resolve<ICrashRecoveryService>(TOKENS.ICrashRecoveryService);
  * const recovered = await service.recoverIncompleteRecordings();
  * if (recovered.length > 0) {
  *   // Notify user
  * }
  * ```
  */
-export class CrashRecoveryService {
-  private repository: CaptureRepository;
-
-  constructor(repository: CaptureRepository) {
-    this.repository = repository;
-  }
+@injectable()
+export class CrashRecoveryService implements ICrashRecoveryService {
+  constructor(
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+  ) {}
 
   /**
    * AC4: Detect and recover incomplete recordings

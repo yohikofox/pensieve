@@ -1,0 +1,24 @@
+/**
+ * Dependency Injection Tokens
+ *
+ * Symbol-based tokens for TSyringe IoC container.
+ * Used to inject dependencies into services and repositories.
+ *
+ * Story: 2.1 - Capture Audio 1-Tap
+ * Architecture Decision: ADR-IoC - TSyringe for Dependency Injection
+ */
+
+export const TOKENS = {
+  // Domain Repositories
+  ICaptureRepository: Symbol.for('ICaptureRepository'),
+
+  // Hardware/Platform Adapters
+  IAudioRecorder: Symbol.for('IAudioRecorder'),
+  IFileSystem: Symbol.for('IFileSystem'),
+
+  // Application Services
+  IPermissionService: Symbol.for('IPermissionService'),
+  IFileStorageService: Symbol.for('IFileStorageService'),
+  IOfflineSyncService: Symbol.for('IOfflineSyncService'),
+  ICrashRecoveryService: Symbol.for('ICrashRecoveryService'),
+};

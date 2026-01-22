@@ -14,8 +14,11 @@
  * NFR7: 100% offline availability - local storage only
  *
  * Note: Using legacy API from expo-file-system for compatibility
+ * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
+import 'reflect-metadata';
+import { injectable } from 'tsyringe';
 import * as FileSystem from 'expo-file-system/legacy';
 import {
   type FileStorageResult,
@@ -24,24 +27,19 @@ import {
   fileNotFound,
   storageError,
 } from './FileStorageResult';
-
-export interface FileMetadata {
-  size: number; // Bytes
-  duration: number; // Milliseconds
-  createdAt: Date;
-}
-
-export interface StorageResult {
-  permanentPath: string;
-  metadata: FileMetadata;
-}
+import {
+  type IFileStorageService,
+  type FileMetadata,
+  type StorageResult,
+} from '../domain/IFileStorageService';
 
 /**
  * FileStorageService manages permanent audio file storage
  *
- * Usage pattern:
+ * Usage pattern with TSyringe:
  * ```typescript
- * const service = new FileStorageService();
+ * import { container } from 'tsyringe';
+ * const service = container.resolve<IFileStorageService>(TOKENS.IFileStorageService);
  *
  * // After recording completes
  * const tempUri = audioRecorder.uri;
@@ -54,7 +52,8 @@ export interface StorageResult {
  * });
  * ```
  */
-export class FileStorageService {
+@injectable()
+export class FileStorageService implements IFileStorageService {
   private readonly AUDIO_DIR = `${FileSystem.documentDirectory}audio/`;
 
   constructor() {
