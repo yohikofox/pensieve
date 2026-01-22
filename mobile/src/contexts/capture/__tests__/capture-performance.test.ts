@@ -54,19 +54,22 @@ describe('Audio Capture Performance Tests', () => {
   describe('NFR1: Start Recording Latency < 500ms', () => {
     it('should start recording within 500ms from service call', async () => {
       repository.create.mockResolvedValue({
-        id: 'perf-capture-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'perf-capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/perf.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       const startTime = performance.now();
 
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/perf.m4a');
 
       const endTime = performance.now();
       const latency = endTime - startTime;
@@ -92,32 +95,38 @@ describe('Audio Capture Performance Tests', () => {
 
     it('should batch database operations efficiently', async () => {
       repository.create.mockResolvedValue({
-        id: 'batch-capture',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'batch-capture',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/batch.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'batch-capture',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'batch-capture',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/batch.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       const startTime = performance.now();
 
       // Simulate starting multiple captures sequentially
       for (let i = 0; i < 10; i++) {
-        await recordingService.startRecording();
+        await recordingService.startRecording(`/temp/batch${i}.m4a`);
         await recordingService.stopRecording(); // Stop before starting next
       }
 
@@ -133,29 +142,35 @@ describe('Audio Capture Performance Tests', () => {
   describe('Stop Recording Performance', () => {
     it('should stop recording and save quickly', async () => {
       repository.create.mockResolvedValue({
-        id: 'stop-perf-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'stop-perf-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/stop.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'stop-perf-1',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'stop-perf-1',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/stop.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Start recording first
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/stop.m4a');
 
       const startTime = performance.now();
 
@@ -324,30 +339,36 @@ describe('Audio Capture Performance Tests', () => {
   describe('Memory Usage (Simulated)', () => {
     it('should not leak memory during multiple recordings', async () => {
       repository.create.mockResolvedValue({
-        id: 'memory-test',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'memory-test',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/memory.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'memory-test',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'memory-test',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/memory.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Simulate 50 sequential recordings
       for (let i = 0; i < 50; i++) {
-        await recordingService.startRecording();
+        await recordingService.startRecording(`/temp/memory${i}.m4a`);
         await recordingService.stopRecording();
       }
 
@@ -361,28 +382,34 @@ describe('Audio Capture Performance Tests', () => {
 
     it('should clean up references after recording stops', async () => {
       repository.create.mockResolvedValue({
-        id: 'cleanup-test',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'cleanup-test',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/cleanup.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'cleanup-test',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'cleanup-test',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/cleanup.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/cleanup.m4a');
 
       // Recording ID should exist during recording
       expect(recordingService.getCurrentRecordingId()).toBe('cleanup-test');
@@ -397,32 +424,38 @@ describe('Audio Capture Performance Tests', () => {
   describe('Stress Testing', () => {
     it('should handle rapid start/stop cycles', async () => {
       repository.create.mockResolvedValue({
-        id: 'stress-test',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'stress-test',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/stress.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'stress-test',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'stress-test',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/stress.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       const startTime = performance.now();
 
       // Simulate 100 rapid recordings
       for (let i = 0; i < 100; i++) {
-        await recordingService.startRecording();
+        await recordingService.startRecording(`/temp/stress${i}.m4a`);
         await recordingService.stopRecording();
       }
 
@@ -441,25 +474,31 @@ describe('Audio Capture Performance Tests', () => {
   describe('Real-World Scenarios Performance', () => {
     it('should simulate typical user workflow efficiently', async () => {
       repository.create.mockResolvedValue({
-        id: 'workflow-test',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'workflow-test',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/workflow.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'workflow-test',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'workflow-test',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/workflow.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       fileStorageService.moveToStorage.mockResolvedValue({
@@ -475,7 +514,7 @@ describe('Audio Capture Performance Tests', () => {
 
       // Typical workflow: check permission, start, wait, stop, save
       await PermissionService.hasMicrophonePermission();
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/workflow.m4a');
       // (user speaks for ~1 minute - simulated)
       await recordingService.stopRecording();
       await fileStorageService.moveToStorage('/temp/file.m4a', 'workflow-test', 60000);

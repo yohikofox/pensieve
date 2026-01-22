@@ -22,7 +22,7 @@ jest.mock('../../../../database', () => {
         if (executeImpl) {
           return executeImpl(sql, params);
         }
-        return { rows: { _array: [] } };
+        return { rows: [] };
       }),
       transaction: jest.fn((callback: any) => {
         const mockTransactionDB = {
@@ -30,7 +30,7 @@ jest.mock('../../../../database', () => {
             if (executeImpl) {
               return executeImpl(sql, params);
             }
-            return { rows: { _array: [] } };
+            return { rows: [] };
           }),
         };
         return callback(mockTransactionDB);
@@ -73,14 +73,14 @@ describe('CaptureRepository', () => {
           server_id: null,
           conflict_data: null,
         });
-        return { rows: { _array: [] } };
+        return { rows: [] };
       }
 
       // UPDATE
       if (sql.includes('UPDATE captures')) {
         const id = params?.[params.length - 1];
         const existing = mockStore.get(id);
-        if (!existing) return { rows: { _array: [] } };
+        if (!existing) return { rows: [] };
 
         // Parse update fields from SQL
         const updates: any = {};
@@ -119,20 +119,20 @@ describe('CaptureRepository', () => {
         updates.sync_version = (existing.sync_version || 0) + 1;
 
         mockStore.set(id, { ...existing, ...updates });
-        return { rows: { _array: [] } };
+        return { rows: [] };
       }
 
       // SELECT by ID
       if (sql.includes('SELECT * FROM captures WHERE id = ?')) {
         const id = params?.[0];
         const row = mockStore.get(id);
-        return { rows: { _array: row ? [row] : [] } };
+        return { rows: row ? [row] : [] };
       }
 
       // SELECT all
       if (sql.includes('SELECT * FROM captures') && !sql.includes('WHERE')) {
         const rows = Array.from(mockStore.values()).sort((a, b) => b.created_at - a.created_at);
-        return { rows: { _array: rows } };
+        return { rows: rows };
       }
 
       // SELECT by state
@@ -141,7 +141,7 @@ describe('CaptureRepository', () => {
         const rows = Array.from(mockStore.values())
           .filter((r) => r.state === state)
           .sort((a, b) => b.created_at - a.created_at);
-        return { rows: { _array: rows } };
+        return { rows: rows };
       }
 
       // SELECT by sync_status
@@ -150,7 +150,7 @@ describe('CaptureRepository', () => {
         const rows = Array.from(mockStore.values())
           .filter((r) => r.sync_status === syncStatus)
           .sort((a, b) => b.created_at - a.created_at);
-        return { rows: { _array: rows } };
+        return { rows: rows };
       }
 
       // SELECT by type
@@ -159,17 +159,17 @@ describe('CaptureRepository', () => {
         const rows = Array.from(mockStore.values())
           .filter((r) => r.type === type)
           .sort((a, b) => b.created_at - a.created_at);
-        return { rows: { _array: rows } };
+        return { rows: rows };
       }
 
       // DELETE
       if (sql.includes('DELETE FROM captures')) {
         const id = params?.[0];
         mockStore.delete(id);
-        return { rows: { _array: [] } };
+        return { rows: [] };
       }
 
-      return { rows: { _array: [] } };
+      return { rows: [] };
     });
   });
 
@@ -180,23 +180,24 @@ describe('CaptureRepository', () => {
 
   describe('create', () => {
     it('should create a new capture with required fields', async () => {
-      const capture = await repository.create({
+      const result = await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/audio.m4a',
         syncStatus: 'pending',
       });
 
-      expect(capture).toBeDefined();
-      expect(capture.type).toBe('audio');
-      expect(capture.state).toBe('recording');
-      expect(capture.rawContent).toBe('/path/to/audio.m4a');
-      expect(capture.syncStatus).toBe('pending');
-      expect(capture.createdAt).toBeInstanceOf(Date);
+      expect(result.type).toBe('success');
+      expect(result.data).toBeDefined();
+      expect(result.data!.type).toBe('audio');
+      expect(result.data!.state).toBe('recording');
+      expect(result.data!.rawContent).toBe('/path/to/audio.m4a');
+      expect(result.data!.syncStatus).toBe('pending');
+      expect(result.data!.createdAt).toBeInstanceOf(Date);
     });
 
     it('should create a capture with optional fields', async () => {
-      const capture = await repository.create({
+      const result = await repository.create({
         type: 'audio',
         state: 'captured',
         rawContent: '/path/to/audio.m4a',
@@ -205,24 +206,27 @@ describe('CaptureRepository', () => {
         fileSize: 1024000,
       });
 
-      expect(capture.duration).toBe(5000);
-      expect(capture.fileSize).toBe(1024000);
+      expect(result.type).toBe('success');
+      expect(result.data).toBeDefined();
+      expect(result.data!.duration).toBe(5000);
+      expect(result.data!.fileSize).toBe(1024000);
     });
   });
 
   describe('findById', () => {
     it('should find a capture by id', async () => {
-      const created = await repository.create({
+      const createResult = await repository.create({
         type: 'audio',
         state: 'captured',
         rawContent: '/path/to/audio.m4a',
         syncStatus: 'pending',
       });
 
-      const found = await repository.findById(created.id);
+      expect(createResult.type).toBe('success');
+      const found = await repository.findById(createResult.data!.id);
 
       expect(found).toBeDefined();
-      expect(found?.id).toBe(created.id);
+      expect(found?.id).toBe(createResult.data!.id);
       expect(found?.type).toBe('audio');
     });
 
@@ -235,31 +239,37 @@ describe('CaptureRepository', () => {
 
   describe('update', () => {
     it('should update capture state', async () => {
-      const capture = await repository.create({
+      const createResult = await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/audio.m4a',
         syncStatus: 'pending',
       });
 
-      const updated = await repository.update(capture.id, {
+      expect(createResult.type).toBe('success');
+
+      const updateResult = await repository.update(createResult.data!.id, {
         state: 'captured',
       });
 
-      expect(updated.state).toBe('captured');
-      expect(updated.id).toBe(capture.id);
-      expect(updated.syncVersion).toBe(1); // Incremented from 0
+      expect(updateResult.type).toBe('success');
+      expect(updateResult.data).toBeDefined();
+      expect(updateResult.data!.state).toBe('captured');
+      expect(updateResult.data!.id).toBe(createResult.data!.id);
+      expect(updateResult.data!.syncVersion).toBe(1); // Incremented from 0
     });
 
     it('should update multiple fields', async () => {
-      const capture = await repository.create({
+      const createResult = await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/temp.m4a',
         syncStatus: 'pending',
       });
 
-      const updated = await repository.update(capture.id, {
+      expect(createResult.type).toBe('success');
+
+      const updateResult = await repository.update(createResult.data!.id, {
         state: 'captured',
         rawContent: '/path/to/final.m4a',
         duration: 10000,
@@ -267,11 +277,13 @@ describe('CaptureRepository', () => {
         syncStatus: 'synced',
       });
 
-      expect(updated.state).toBe('captured');
-      expect(updated.rawContent).toBe('/path/to/final.m4a');
-      expect(updated.duration).toBe(10000);
-      expect(updated.fileSize).toBe(2048000);
-      expect(updated.syncStatus).toBe('synced');
+      expect(updateResult.type).toBe('success');
+      expect(updateResult.data).toBeDefined();
+      expect(updateResult.data!.state).toBe('captured');
+      expect(updateResult.data!.rawContent).toBe('/path/to/final.m4a');
+      expect(updateResult.data!.duration).toBe(10000);
+      expect(updateResult.data!.fileSize).toBe(2048000);
+      expect(updateResult.data!.syncStatus).toBe('synced');
     });
   });
 

@@ -28,6 +28,13 @@ import { PermissionService } from '../services/PermissionService';
 jest.mock('../data/CaptureRepository');
 jest.mock('../services/FileStorageService');
 jest.mock('../services/PermissionService');
+jest.mock('expo-file-system/legacy', () => ({
+  getInfoAsync: jest.fn(),
+  readDirectoryAsync: jest.fn(),
+  deleteAsync: jest.fn(),
+  cacheDirectory: '/mock/cache/',
+  documentDirectory: '/mock/document/',
+}));
 
 describe('Audio Capture Integration Tests', () => {
   let recordingService: RecordingService;
@@ -69,30 +76,36 @@ describe('Audio Capture Integration Tests', () => {
 
   describe('AC1 & AC2: Complete Recording Flow - Tap to Save', () => {
     it('should complete full recording lifecycle from start to file storage', async () => {
-      // Mock repository create for recording start
+      // Mock repository create for recording start (Result Pattern)
       repository.create.mockResolvedValue({
-        id: 'capture-123',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '/temp/recording.m4a',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-123',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/recording.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
-      // Mock repository update for recording stop
+      // Mock repository update for recording stop (Result Pattern)
       repository.update.mockResolvedValue({
-        id: 'capture-123',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '/permanent/capture_capture-123_123456.m4a',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
-        duration: 5000,
-        fileSize: 1024000,
+        type: 'success',
+        data: {
+          id: 'capture-123',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/permanent/capture_capture-123_123456.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+          duration: 5000,
+          fileSize: 1024000,
+        },
       } as any);
 
       // Mock file storage
@@ -105,20 +118,29 @@ describe('Audio Capture Integration Tests', () => {
         },
       });
 
-      // 1. User taps record button → start recording
-      await recordingService.startRecording();
+      // 1. User taps record button → start recording (with temp file URI)
+      const startResult = await recordingService.startRecording('/temp/recording.m4a');
 
       // Verify capture entity created with "recording" state
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'audio',
           state: 'recording',
+          rawContent: '/temp/recording.m4a',
           syncStatus: 'pending',
         })
       );
 
+      // Verify result is successful
+      expect(startResult.type).toBe('success');
+      expect(startResult.data?.captureId).toBe('capture-123');
+
       // 2. User taps stop button → stop recording
-      const result = await recordingService.stopRecording();
+      const stopResult = await recordingService.stopRecording();
+
+      // Verify result is successful
+      expect(stopResult.type).toBe('success');
+      expect(stopResult.data).toBeDefined();
 
       // Verify capture entity updated with "captured" state
       expect(repository.update).toHaveBeenCalledWith(
@@ -130,7 +152,7 @@ describe('Audio Capture Integration Tests', () => {
       );
 
       // Verify result contains capture ID
-      expect(result.captureId).toBe('capture-123');
+      expect(stopResult.data!.captureId).toBe('capture-123');
 
       // 3. Simulate file movement to permanent storage (this would happen in CaptureScreen)
       const storageResult = await fileStorageService.moveToStorage(
@@ -165,11 +187,18 @@ describe('Audio Capture Integration Tests', () => {
     });
 
     it('should handle recording lifecycle errors gracefully', async () => {
-      // Mock repository failure
-      repository.create.mockRejectedValue(new Error('Database error'));
+      // Mock repository failure (Result Pattern)
+      repository.create.mockResolvedValue({
+        type: 'database_error',
+        error: 'Database error',
+      } as any);
 
       // Attempt to start recording
-      await expect(recordingService.startRecording()).rejects.toThrow('Database error');
+      const result = await recordingService.startRecording('/temp/recording.m4a');
+
+      // Verify error result
+      expect(result.type).toBe('database_error');
+      expect(result.error).toBe('Database error');
 
       // Verify recording state is not corrupted
       expect(recordingService.isRecording()).toBe(false);
@@ -178,31 +207,37 @@ describe('Audio Capture Integration Tests', () => {
 
   describe('AC3: Offline Functionality', () => {
     it('should create captures offline with pending sync status', async () => {
-      // Mock offline capture creation
+      // Mock offline capture creation (Result Pattern)
       repository.create.mockResolvedValue({
-        id: 'offline-capture-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending', // Marked for later sync
+        type: 'success',
+        data: {
+          id: 'offline-capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/offline.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending', // Marked for later sync
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'offline-capture-1',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'offline-capture-1',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/offline.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Simulate recording offline
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/offline.m4a');
       await recordingService.stopRecording();
 
       // Verify capture is marked for sync
@@ -270,19 +305,23 @@ describe('Audio Capture Integration Tests', () => {
         },
       ] as any);
 
-      // Mock file exists check
-      fileStorageService.fileExists.mockResolvedValue(true);
+      // Mock file exists check (FileSystem.getInfoAsync)
+      const FileSystem = require('expo-file-system/legacy');
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
 
-      // Mock update to recovered state
+      // Mock update to recovered state (Result Pattern)
       repository.update.mockResolvedValue({
-        id: 'crashed-capture',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '/temp/incomplete.m4a',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'crashed-capture',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/temp/incomplete.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Simulate app restart → crash recovery
@@ -320,14 +359,17 @@ describe('Audio Capture Integration Tests', () => {
       ] as any);
 
       repository.update.mockResolvedValue({
-        id: 'lost-capture',
-        type: 'audio',
-        state: 'failed',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'lost-capture',
+          type: 'audio',
+          state: 'failed',
+          rawContent: '',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Attempt recovery
@@ -351,9 +393,11 @@ describe('Audio Capture Integration Tests', () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(false);
 
       // Attempt to start recording
-      await expect(recordingService.startRecording()).rejects.toThrow(
-        'MicrophonePermissionDenied'
-      );
+      const result = await recordingService.startRecording('/temp/test.m4a');
+
+      // Verify error result
+      expect(result.type).toBe('validation_error');
+      expect(result.error).toBe('MicrophonePermissionDenied');
 
       // Verify permission was checked
       expect(PermissionService.hasMicrophonePermission).toHaveBeenCalled();
@@ -364,20 +408,24 @@ describe('Audio Capture Integration Tests', () => {
       (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
 
       repository.create.mockResolvedValue({
-        id: 'capture-with-permission',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-with-permission',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/test.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Start recording
-      await recordingService.startRecording();
+      const result = await recordingService.startRecording('/temp/test.m4a');
 
       // Verify recording started
+      expect(result.type).toBe('success');
       expect(repository.create).toHaveBeenCalled();
       expect(recordingService.isRecording()).toBe(true);
     });
@@ -385,58 +433,70 @@ describe('Audio Capture Integration Tests', () => {
 
   describe('Multiple Captures Workflow', () => {
     it('should handle multiple sequential captures correctly', async () => {
-      // Mock first capture
+      // Mock first capture (Result Pattern)
       repository.create.mockResolvedValueOnce({
-        id: 'capture-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/capture1.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValueOnce({
-        id: 'capture-1',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-1',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/capture1.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // First capture
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/capture1.m4a');
       await recordingService.stopRecording();
 
-      // Mock second capture
+      // Mock second capture (Result Pattern)
       repository.create.mockResolvedValueOnce({
-        id: 'capture-2',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-2',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/capture2.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValueOnce({
-        id: 'capture-2',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-2',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/capture2.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Second capture
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/capture2.m4a');
       await recordingService.stopRecording();
 
       // Verify both captures were created
@@ -446,55 +506,65 @@ describe('Audio Capture Integration Tests', () => {
 
     it('should prevent starting new recording while one is in progress', async () => {
       repository.create.mockResolvedValue({
-        id: 'capture-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/capture1.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Start first recording
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/capture1.m4a');
 
       // Try to start second recording while first is active
-      await expect(recordingService.startRecording()).rejects.toThrow(
-        'RecordingAlreadyInProgress'
-      );
+      const result = await recordingService.startRecording('/temp/capture2.m4a');
+
+      expect(result.type).toBe('validation_error');
+      expect(result.error).toBe('RecordingAlreadyInProgress');
     });
   });
 
   describe('Error Recovery', () => {
     it('should handle file storage errors during save', async () => {
       repository.create.mockResolvedValue({
-        id: 'capture-1',
-        type: 'audio',
-        state: 'recording',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-1',
+          type: 'audio',
+          state: 'recording',
+          rawContent: '/temp/file.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       repository.update.mockResolvedValue({
-        id: 'capture-1',
-        type: 'audio',
-        state: 'captured',
-        rawContent: '',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        capturedAt: new Date(),
-        syncStatus: 'pending',
+        type: 'success',
+        data: {
+          id: 'capture-1',
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/audio/file.m4a',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          capturedAt: new Date(),
+          syncStatus: 'pending',
+        },
       } as any);
 
       // Mock file storage failure
       fileStorageService.moveToStorage.mockRejectedValue(new Error('Disk full'));
 
       // Start and stop recording
-      await recordingService.startRecording();
+      await recordingService.startRecording('/temp/file.m4a');
       await recordingService.stopRecording();
 
       // Attempt file storage (simulating CaptureScreen logic)

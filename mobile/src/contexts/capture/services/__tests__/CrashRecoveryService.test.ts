@@ -17,6 +17,15 @@ import { RepositoryResultType } from '../../domain/Result';
 // Mock CaptureRepository
 jest.mock('../../data/CaptureRepository');
 
+// Mock expo-file-system/legacy
+jest.mock('expo-file-system/legacy', () => ({
+  getInfoAsync: jest.fn(),
+  readDirectoryAsync: jest.fn(),
+  deleteAsync: jest.fn(),
+  cacheDirectory: '/mock/cache/',
+  documentDirectory: '/mock/document/',
+}));
+
 describe('CrashRecoveryService', () => {
   let service: CrashRecoveryService;
   let mockRepository: jest.Mocked<CaptureRepository>;
@@ -54,6 +63,10 @@ describe('CrashRecoveryService', () => {
         capturedAt: new Date(),
         syncStatus: 'pending',
       };
+
+      // Mock file exists
+      const FileSystem = require('expo-file-system/legacy');
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({
@@ -144,6 +157,15 @@ describe('CrashRecoveryService', () => {
         },
       ];
 
+      // Mock file exists for capture-1 and capture-2
+      const FileSystem = require('expo-file-system/legacy');
+      (FileSystem.getInfoAsync as jest.Mock).mockImplementation((path: string) => {
+        if (path === '/path/1.m4a' || path === '/path/2.m4a') {
+          return Promise.resolve({ exists: true });
+        }
+        return Promise.resolve({ exists: false });
+      });
+
       mockRepository.findByState.mockResolvedValue(incompleteCaptures);
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
@@ -168,6 +190,10 @@ describe('CrashRecoveryService', () => {
         capturedAt: new Date(),
         syncStatus: 'pending',
       };
+
+      // Mock file exists
+      const FileSystem = require('expo-file-system/legacy');
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({
