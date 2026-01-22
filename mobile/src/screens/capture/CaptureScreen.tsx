@@ -315,14 +315,7 @@ export const CaptureScreen = () => {
           {state === 'stopping' ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
           ) : (
-            <>
-              <Text style={styles.buttonText}>{getButtonText()}</Text>
-              {state === 'recording' && (
-                <View style={styles.recordingIndicator}>
-                  <View style={styles.recordingDot} />
-                </View>
-              )}
-            </>
+            <Text style={styles.buttonText}>{getButtonText()}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -401,17 +394,6 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFFFFF',
-  },
-  recordingIndicator: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-  },
-  recordingDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: '#FFFFFF',
   },
   infoContainer: {
     marginTop: 40,
