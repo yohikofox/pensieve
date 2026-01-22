@@ -163,7 +163,7 @@ export class RecordingService {
 
     try {
       // AC1: Get the capture entity to retrieve file URI
-      const capture = await this.repository.getById(captureId);
+      const capture = await this.repository.findById(captureId);
 
       // AC1: Delete partial audio file if it exists
       if (capture && capture.rawContent) {

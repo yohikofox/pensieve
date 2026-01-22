@@ -41,6 +41,11 @@ export interface ICaptureRepository {
   delete(id: string): Promise<RepositoryResult<void>>;
 
   /**
+   * Find a Capture by ID
+   */
+  findById(id: string): Promise<Capture | null>;
+
+  /**
    * Find all Captures by state
    */
   findByState(

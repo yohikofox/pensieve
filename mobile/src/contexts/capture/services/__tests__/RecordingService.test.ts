@@ -41,7 +41,6 @@ describe('RecordingService', () => {
     mockRepository = {
       create: jest.fn(),
       update: jest.fn(),
-      getById: jest.fn(),
       delete: jest.fn(),
       findById: jest.fn(),
       findByState: jest.fn(),
@@ -217,7 +216,7 @@ describe('RecordingService', () => {
       await service.startRecording('file:///path/to/audio.m4a');
 
       // Mock getById to return the capture
-      mockRepository.getById.mockResolvedValue({
+      mockRepository.findById.mockResolvedValue({
         id: 'capture-123',
         type: 'audio',
         state: 'recording',
@@ -266,7 +265,7 @@ describe('RecordingService', () => {
       });
       await service.startRecording('file:///path/to/audio.m4a');
 
-      mockRepository.getById.mockResolvedValue({
+      mockRepository.findById.mockResolvedValue({
         id: 'capture-123',
         rawContent: 'file:///path/to/audio.m4a',
       } as any);
@@ -293,7 +292,7 @@ describe('RecordingService', () => {
       });
       await service.startRecording('file:///path/to/audio.m4a');
 
-      mockRepository.getById.mockResolvedValue({
+      mockRepository.findById.mockResolvedValue({
         id: 'capture-123',
         rawContent: 'file:///path/to/audio.m4a',
       } as any);
@@ -317,7 +316,7 @@ describe('RecordingService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Should not call any repository methods
-      expect(mockRepository.getById).not.toHaveBeenCalled();
+      expect(mockRepository.findById).not.toHaveBeenCalled();
       expect(mockRepository.delete).not.toHaveBeenCalled();
       expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
     });
@@ -334,7 +333,7 @@ describe('RecordingService', () => {
       await service.startRecording('');
 
       // Mock getById returns capture with no URI
-      mockRepository.getById.mockResolvedValue({
+      mockRepository.findById.mockResolvedValue({
         id: 'capture-123',
         rawContent: null,
       } as any);
@@ -358,7 +357,7 @@ describe('RecordingService', () => {
       });
       await service.startRecording('file:///path/to/audio.m4a');
 
-      mockRepository.getById.mockResolvedValue({
+      mockRepository.findById.mockResolvedValue({
         id: 'capture-123',
         rawContent: 'file:///path/to/audio.m4a',
       } as any);

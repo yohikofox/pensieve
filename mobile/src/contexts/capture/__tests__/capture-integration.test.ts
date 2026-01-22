@@ -50,7 +50,6 @@ describe('Audio Capture Integration Tests', () => {
     repository = {
       create: jest.fn(),
       update: jest.fn(),
-      getById: jest.fn(),
       delete: jest.fn(),
       findById: jest.fn(),
       findByState: jest.fn(),
@@ -599,7 +598,7 @@ describe('Audio Capture Integration Tests', () => {
       } as any);
 
       // Mock getById for cancel flow
-      repository.getById = jest.fn().mockResolvedValue({
+      repository.findById = jest.fn().mockResolvedValue({
         id: 'cancel-capture-1',
         type: 'audio',
         state: 'recording',
@@ -650,7 +649,7 @@ describe('Audio Capture Integration Tests', () => {
         },
       } as any);
 
-      (repository.getById as jest.Mock).mockResolvedValue({
+      (repository.findById as jest.Mock).mockResolvedValue({
         id: 'cancel-capture-2',
         rawContent: '/temp/missing.m4a',
       } as any);
@@ -680,7 +679,7 @@ describe('Audio Capture Integration Tests', () => {
         },
       } as any);
 
-      (repository.getById as jest.Mock).mockResolvedValue({
+      (repository.findById as jest.Mock).mockResolvedValue({
         id: 'offline-cancel-1',
         rawContent: '/temp/offline.m4a',
       } as any);
@@ -719,7 +718,7 @@ describe('Audio Capture Integration Tests', () => {
         },
       } as any);
 
-      (repository.getById as jest.Mock).mockResolvedValue({
+      (repository.findById as jest.Mock).mockResolvedValue({
         id: 'no-uri-capture',
         rawContent: null,
       } as any);
@@ -746,7 +745,7 @@ describe('Audio Capture Integration Tests', () => {
         },
       } as any);
 
-      (repository.getById as jest.Mock).mockResolvedValue({
+      (repository.findById as jest.Mock).mockResolvedValue({
         id: 'cancel-then-new',
         rawContent: '/temp/test.m4a',
       } as any);

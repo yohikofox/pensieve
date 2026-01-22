@@ -199,6 +199,7 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%', // Fix timer alignment
   },
   touchable: {
     padding: 10,
@@ -226,9 +227,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 59, 48, 0.3)',
   },
   recordingDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
+    width: 12,
+    height: 12,
+    borderRadius: 6, // Fully round
     backgroundColor: '#FFFFFF',
   },
   timer: {
