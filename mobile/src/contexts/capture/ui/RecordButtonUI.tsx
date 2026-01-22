@@ -246,11 +246,11 @@ const styles = StyleSheet.create({
     top: 110, // Closer to button when not recording
   },
   labelRecording: {
-    top: 210, // Below timerBlock when recording
+    top: 222, // Below timerBlock: 110 + 40 (timer) + 16 (gap) + 40 (cancel) + 16 (gap)
   },
   // Story 2.3: Cancel button styles - positioned below timer in timerBlock
   cancelButton: {
-    marginTop: 12, // Space between timer and cancel button
+    marginTop: 16, // Equal spacing between timer and cancel
     width: 40,
     height: 40,
     borderRadius: 20,
