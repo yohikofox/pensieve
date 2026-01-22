@@ -58,7 +58,7 @@ jest.mock('react-native', () => {
       View: (props: any) =>
         React.createElement('Animated.View', props, props.children),
       timing: jest.fn(() => ({
-        start: jest.fn(),
+        start: jest.fn((callback?: any) => callback && callback()),
       })),
       sequence: jest.fn(() => ({
         start: jest.fn(),
@@ -70,6 +70,9 @@ jest.mock('react-native', () => {
     Platform: {
       OS: 'ios',
       select: jest.fn((obj) => obj.ios),
+    },
+    Alert: {
+      alert: jest.fn(),
     },
   };
   return RN;
@@ -83,6 +86,12 @@ jest.mock('expo-haptics', () => ({
     Medium: 'medium',
     Heavy: 'heavy',
   },
+}));
+
+// Mock expo-file-system
+jest.mock('expo-file-system', () => ({
+  getInfoAsync: jest.fn(),
+  deleteAsync: jest.fn(),
 }));
 
 // Mock tsyringe container
@@ -223,6 +232,179 @@ describe('RecordButton', () => {
       expect(formatDuration(5)).toBe('00:05');
       expect(formatDuration(65)).toBe('01:05');
       expect(formatDuration(125)).toBe('02:05');
+    });
+  });
+
+  describe('Story 2.3: Cancel Button', () => {
+    it('should show cancel button only when recording', async () => {
+      mockRecordingService.startRecording.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { captureId: 'test-capture-1' },
+      });
+
+      const { getByTestId, queryByTestId } = render(<RecordButton />);
+
+      // Initially no cancel button
+      expect(queryByTestId('cancel-button')).toBeNull();
+
+      // Start recording
+      await act(async () => {
+        fireEvent.press(getByTestId('record-button'));
+        await flushPromises();
+      });
+
+      // Cancel button should appear
+      await waitFor(() => {
+        expect(getByTestId('cancel-button')).toBeTruthy();
+      });
+    });
+
+    it('should call cancelRecording and show confirmation on cancel button press', async () => {
+      const { Alert } = require('react-native');
+      mockRecordingService.startRecording.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { captureId: 'test-capture-1' },
+      });
+      mockRecordingService.cancelRecording.mockResolvedValue(undefined);
+
+      const { getByTestId } = render(<RecordButton />);
+
+      // Start recording
+      await act(async () => {
+        fireEvent.press(getByTestId('record-button'));
+        await flushPromises();
+      });
+
+      // Press cancel button
+      await act(async () => {
+        fireEvent.press(getByTestId('cancel-button'));
+        await flushPromises();
+      });
+
+      // Should show confirmation dialog
+      expect(Alert.alert).toHaveBeenCalledWith(
+        'Discard this recording?',
+        'This recording will be permanently deleted.',
+        expect.arrayContaining([
+          expect.objectContaining({ text: 'Keep Recording' }),
+          expect.objectContaining({ text: 'Discard' }),
+        ])
+      );
+    });
+
+    it('should trigger haptic feedback on cancel with "Heavy" impact', async () => {
+      const { Alert } = require('react-native');
+      mockRecordingService.startRecording.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { captureId: 'test-capture-1' },
+      });
+      mockRecordingService.cancelRecording.mockResolvedValue(undefined);
+
+      // Mock Alert to simulate user clicking "Discard"
+      Alert.alert.mockImplementation((title, message, buttons) => {
+        const discardButton = buttons?.find((b: any) => b.text === 'Discard');
+        if (discardButton?.onPress) {
+          discardButton.onPress();
+        }
+      });
+
+      const { getByTestId } = render(<RecordButton />);
+
+      // Start recording
+      await act(async () => {
+        fireEvent.press(getByTestId('record-button'));
+        await flushPromises();
+      });
+
+      // Clear previous haptic calls
+      (Haptics.impactAsync as jest.Mock).mockClear();
+
+      // Press cancel button and confirm
+      await act(async () => {
+        fireEvent.press(getByTestId('cancel-button'));
+        await flushPromises();
+      });
+
+      // Should trigger Heavy haptic feedback for cancel
+      expect(Haptics.impactAsync).toHaveBeenCalledWith(
+        Haptics.ImpactFeedbackStyle.Heavy
+      );
+    });
+
+    it('should call onRecordingCancel callback when discarded', async () => {
+      const { Alert } = require('react-native');
+      const onRecordingCancel = jest.fn();
+
+      mockRecordingService.startRecording.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { captureId: 'test-capture-1' },
+      });
+      mockRecordingService.cancelRecording.mockResolvedValue(undefined);
+
+      // Mock Alert to simulate user clicking "Discard"
+      Alert.alert.mockImplementation((title, message, buttons) => {
+        const discardButton = buttons?.find((b: any) => b.text === 'Discard');
+        if (discardButton?.onPress) {
+          discardButton.onPress();
+        }
+      });
+
+      const { getByTestId } = render(<RecordButton onRecordingCancel={onRecordingCancel} />);
+
+      // Start recording
+      await act(async () => {
+        fireEvent.press(getByTestId('record-button'));
+        await flushPromises();
+      });
+
+      // Press cancel button and confirm
+      await act(async () => {
+        fireEvent.press(getByTestId('cancel-button'));
+        await flushPromises();
+      });
+
+      await waitFor(() => {
+        expect(onRecordingCancel).toHaveBeenCalled();
+        expect(mockRecordingService.cancelRecording).toHaveBeenCalled();
+      });
+    });
+
+    it('should not cancel recording if user chooses "Keep Recording"', async () => {
+      const { Alert } = require('react-native');
+      mockRecordingService.startRecording.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { captureId: 'test-capture-1' },
+      });
+
+      // Mock Alert to simulate user clicking "Keep Recording"
+      Alert.alert.mockImplementation((title, message, buttons) => {
+        const keepButton = buttons?.find((b: any) => b.text === 'Keep Recording');
+        if (keepButton?.onPress) {
+          keepButton.onPress();
+        }
+      });
+
+      const { getByTestId, queryByText } = render(<RecordButton />);
+
+      // Start recording
+      await act(async () => {
+        fireEvent.press(getByTestId('record-button'));
+        await flushPromises();
+      });
+
+      // Press cancel button but choose "Keep Recording"
+      await act(async () => {
+        fireEvent.press(getByTestId('cancel-button'));
+        await flushPromises();
+      });
+
+      // Should NOT call cancelRecording
+      expect(mockRecordingService.cancelRecording).not.toHaveBeenCalled();
+
+      // Should still show recording UI
+      await waitFor(() => {
+        expect(queryByText('Tap to Stop')).toBeTruthy();
+      });
     });
   });
 });

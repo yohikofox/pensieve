@@ -12,11 +12,16 @@
  * AC2: Stop and Save Recording
  * AC5: Microphone Permission Handling
  *
+ * Story: 2.3 - Annuler Capture Audio
+ * AC1: Cancel Recording with Immediate Stop
+ * AC5: Offline Cancellation Support
+ *
  * Architecture: Uses TSyringe IoC for dependency injection
  */
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+import * as FileSystem from 'expo-file-system';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
@@ -138,7 +143,10 @@ export class RecordingService {
   }
 
   /**
-   * Cancel current recording without saving
+   * Story 2.3 AC1: Cancel current recording without saving
+   * - Deletes partial audio file from storage
+   * - Removes Capture entity from database
+   * - Works identically offline (AC5)
    */
   async cancelRecording(): Promise<void> {
     if (!this.currentCaptureId) {
@@ -147,7 +155,24 @@ export class RecordingService {
 
     const captureId = this.currentCaptureId;
 
-    // Delete the capture entity
+    // AC1: Get the capture entity to retrieve file URI
+    const capture = await this.repository.getById(captureId);
+
+    // AC1: Delete partial audio file if it exists
+    if (capture && capture.rawContent) {
+      try {
+        const fileInfo = await FileSystem.getInfoAsync(capture.rawContent);
+        if (fileInfo.exists) {
+          await FileSystem.deleteAsync(capture.rawContent, { idempotent: true });
+        }
+      } catch (error) {
+        // AC5: Handle file deletion errors gracefully (file might not exist yet)
+        // Offline: File system operations work identically
+        console.warn('[RecordingService] File deletion warning:', error);
+      }
+    }
+
+    // AC1: Delete the capture entity from WatermelonDB
     await this.repository.delete(captureId);
 
     // Reset state

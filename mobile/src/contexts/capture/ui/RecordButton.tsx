@@ -20,6 +20,7 @@ import {
   StyleSheet,
   Animated,
   Platform,
+  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { container } from 'tsyringe';
@@ -33,6 +34,7 @@ interface RecordButtonProps {
     filePath: string;
     duration: number;
   }) => void;
+  onRecordingCancel?: () => void;
   onError?: (error: string) => void;
 }
 
@@ -51,11 +53,13 @@ interface RecordButtonProps {
 export const RecordButton: React.FC<RecordButtonProps> = ({
   onRecordingStart,
   onRecordingStop,
+  onRecordingCancel,
   onError,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const discardAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const recordingService = useRef(container.resolve(RecordingService)).current;
 
@@ -137,6 +141,51 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
   };
 
   /**
+   * Story 2.3: Handle cancel button press with confirmation
+   * AC2: Cancel Gesture with Confirmation
+   * AC3: Haptic Feedback on Cancellation
+   */
+  const handleCancel = async () => {
+    Alert.alert(
+      'Discard this recording?',
+      'This recording will be permanently deleted.',
+      [
+        {
+          text: 'Keep Recording',
+          style: 'cancel',
+        },
+        {
+          text: 'Discard',
+          style: 'destructive',
+          onPress: async () => {
+            // AC3: Haptic feedback on cancellation (Heavy for warning)
+            if (Platform.OS === 'ios' || Platform.OS === 'android') {
+              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+            }
+
+            // AC4: Discard animation
+            Animated.timing(discardAnim, {
+              toValue: 0,
+              duration: 200,
+              useNativeDriver: true,
+            }).start(async () => {
+              // Cancel recording
+              await recordingService.cancelRecording();
+
+              // Reset state
+              setIsRecording(false);
+              discardAnim.setValue(1);
+
+              // Notify parent
+              onRecordingCancel?.();
+            });
+          },
+        },
+      ]
+    );
+  };
+
+  /**
    * Format recording duration as MM:SS
    */
   const formatDuration = (seconds: number): string => {
@@ -147,32 +196,46 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity
-        testID="record-button"
-        onPress={handlePress}
-        activeOpacity={0.7}
-        style={styles.touchable}
-      >
-        <Animated.View
-          style={[
-            styles.button,
-            isRecording ? styles.recording : styles.idle,
-            { transform: [{ scale: pulseAnim }] },
-          ]}
+      <Animated.View style={{ opacity: discardAnim, transform: [{ scale: discardAnim }] }}>
+        <TouchableOpacity
+          testID="record-button"
+          onPress={handlePress}
+          activeOpacity={0.7}
+          style={styles.touchable}
         >
-          {isRecording && <View style={styles.recordingDot} />}
-        </Animated.View>
-      </TouchableOpacity>
+          <Animated.View
+            style={[
+              styles.button,
+              isRecording ? styles.recording : styles.idle,
+              { transform: [{ scale: pulseAnim }] },
+            ]}
+          >
+            {isRecording && <View style={styles.recordingDot} />}
+          </Animated.View>
+        </TouchableOpacity>
 
-      {/* AC1: Recording duration timer */}
+        {/* AC1: Recording duration timer */}
+        {isRecording && (
+          <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
+        )}
+
+        {/* Button label */}
+        <Text style={styles.label}>
+          {isRecording ? 'Tap to Stop' : 'Tap to Record'}
+        </Text>
+      </Animated.View>
+
+      {/* Story 2.3 AC1: Cancel button - only visible when recording */}
       {isRecording && (
-        <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
+        <TouchableOpacity
+          testID="cancel-button"
+          onPress={handleCancel}
+          activeOpacity={0.7}
+          style={styles.cancelButton}
+        >
+          <Text style={styles.cancelButtonText}>✕</Text>
+        </TouchableOpacity>
       )}
-
-      {/* Button label */}
-      <Text style={styles.label}>
-        {isRecording ? 'Tap to Stop' : 'Tap to Record'}
-      </Text>
     </View>
   );
 };
@@ -225,5 +288,24 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',
+  },
+  // Story 2.3: Cancel button styles
+  cancelButton: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FF3B30',
+  },
+  cancelButtonText: {
+    fontSize: 24,
+    color: '#FF3B30',
+    fontWeight: '600',
   },
 });

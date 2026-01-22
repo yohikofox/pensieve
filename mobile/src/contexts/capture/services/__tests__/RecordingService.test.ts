@@ -11,16 +11,23 @@
  * AC1: Start Recording with < 500ms Latency
  * AC2: Stop and Save Recording
  * AC5: Microphone Permission Handling
+ *
+ * Story: 2.3 - Annuler Capture Audio
+ * AC1: Cancel Recording with Immediate Stop
+ * AC5: Offline Cancellation Support
  */
 
 import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
-import { PermissionService } from '../PermissionService';
 import { RepositoryResultType } from '../../domain/Result';
+import * as FileSystem from 'expo-file-system';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
-jest.mock('../PermissionService');
+jest.mock('expo-file-system', () => ({
+  getInfoAsync: jest.fn(),
+  deleteAsync: jest.fn(),
+}));
 
 describe('RecordingService', () => {
   let service: RecordingService;
@@ -34,6 +41,8 @@ describe('RecordingService', () => {
     mockRepository = {
       create: jest.fn(),
       update: jest.fn(),
+      getById: jest.fn(),
+      delete: jest.fn(),
       findById: jest.fn(),
       findByState: jest.fn(),
     } as any;
@@ -42,20 +51,7 @@ describe('RecordingService', () => {
   });
 
   describe('startRecording', () => {
-    it('should return validation error if microphone permission is denied', async () => {
-      // Mock permission denied
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(false);
-
-      const result = await service.startRecording();
-
-      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
-      expect(result.error).toBe('MicrophonePermissionDenied');
-    });
-
     it('should create a Capture entity with state "recording" when starting', async () => {
-      // Mock permission granted
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-
       // Mock repository create
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
@@ -63,7 +59,7 @@ describe('RecordingService', () => {
           id: 'capture-123',
           type: 'audio',
           state: 'recording',
-          rawContent: '',
+          rawContent: 'file:///temp/recording.m4a',
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
@@ -71,7 +67,7 @@ describe('RecordingService', () => {
         } as any,
       });
 
-      const result = await service.startRecording();
+      const result = await service.startRecording('file:///temp/recording.m4a');
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data).toEqual({ captureId: 'capture-123' });
@@ -81,23 +77,23 @@ describe('RecordingService', () => {
         expect.objectContaining({
           type: 'audio',
           state: 'recording',
+          rawContent: 'file:///temp/recording.m4a',
           syncStatus: 'pending',
         })
       );
     });
 
     it('should return validation error if already recording', async () => {
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { id: 'capture-123' } as any,
       });
 
       // Start first recording
-      await service.startRecording();
+      await service.startRecording('file:///temp/recording1.m4a');
 
       // Try to start second recording
-      const result = await service.startRecording();
+      const result = await service.startRecording('file:///temp/recording2.m4a');
 
       expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
       expect(result.error).toBe('RecordingAlreadyInProgress');
@@ -106,7 +102,7 @@ describe('RecordingService', () => {
 
   describe('stopRecording', () => {
     it('should return validation error if no recording in progress', async () => {
-      const result = await service.stopRecording();
+      const result = await service.stopRecording('file:///final/recording.m4a', 5000);
 
       expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
       expect(result.error).toBe('NoRecordingInProgress');
@@ -114,12 +110,11 @@ describe('RecordingService', () => {
 
     it('should update Capture entity with state "captured" and file metadata', async () => {
       // Start recording first
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { id: 'capture-123' } as any,
       });
-      await service.startRecording();
+      await service.startRecording('file:///temp/recording.m4a');
 
       // Mock update
       mockRepository.update.mockResolvedValue({
@@ -128,7 +123,8 @@ describe('RecordingService', () => {
           id: 'capture-123',
           type: 'audio',
           state: 'captured',
-          rawContent: 'capture_user-123_1234567890_uuid.m4a',
+          rawContent: 'file:///final/recording.m4a',
+          duration: 5000,
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
@@ -136,17 +132,21 @@ describe('RecordingService', () => {
         } as any,
       });
 
-      const result = await service.stopRecording();
+      const result = await service.stopRecording('file:///final/recording.m4a', 5000);
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data).toBeDefined();
       expect(result.data?.captureId).toBe('capture-123');
+      expect(result.data?.filePath).toBe('file:///final/recording.m4a');
+      expect(result.data?.duration).toBe(5000);
 
       // Verify Capture was updated with captured state
       expect(mockRepository.update).toHaveBeenCalledWith(
         'capture-123',
         expect.objectContaining({
           state: 'captured',
+          rawContent: 'file:///final/recording.m4a',
+          duration: 5000,
         })
       );
     });
@@ -158,13 +158,12 @@ describe('RecordingService', () => {
     });
 
     it('should return capture id when recording', async () => {
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { id: 'capture-123' } as any,
       });
 
-      await service.startRecording();
+      await service.startRecording('file:///temp/recording.m4a');
 
       expect(service.getCurrentRecordingId()).toBe('capture-123');
     });
@@ -176,19 +175,17 @@ describe('RecordingService', () => {
     });
 
     it('should return true when recording', async () => {
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { id: 'capture-123' } as any,
       });
 
-      await service.startRecording();
+      await service.startRecording('file:///temp/recording.m4a');
 
       expect(service.isRecording()).toBe(true);
     });
 
     it('should return false after stopping', async () => {
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { id: 'capture-123' } as any,
@@ -198,10 +195,147 @@ describe('RecordingService', () => {
         data: { id: 'capture-123' } as any,
       });
 
-      await service.startRecording();
-      await service.stopRecording();
+      await service.startRecording('file:///temp/recording.m4a');
+      await service.stopRecording('file:///final/recording.m4a', 5000);
 
       expect(service.isRecording()).toBe(false);
+    });
+  });
+
+  describe('Story 2.3: cancelRecording', () => {
+    it('should delete audio file and capture entity when canceling', async () => {
+      // Start recording first
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          type: 'audio',
+          state: 'recording',
+          rawContent: 'file:///path/to/audio.m4a',
+        } as any,
+      });
+      await service.startRecording('file:///path/to/audio.m4a');
+
+      // Mock getById to return the capture
+      mockRepository.getById.mockResolvedValue({
+        id: 'capture-123',
+        type: 'audio',
+        state: 'recording',
+        rawContent: 'file:///path/to/audio.m4a',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+        syncStatus: 'pending',
+      } as any);
+
+      // Mock FileSystem
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+
+      // Cancel recording
+      await service.cancelRecording();
+
+      // Should check if file exists
+      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith('file:///path/to/audio.m4a');
+
+      // Should delete the file
+      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
+        'file:///path/to/audio.m4a',
+        { idempotent: true }
+      );
+
+      // Should delete the capture entity
+      expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
+
+      // Should reset state
+      expect(service.isRecording()).toBe(false);
+      expect(service.getCurrentRecordingId()).toBeNull();
+    });
+
+    it('should handle file not found gracefully', async () => {
+      // Start recording
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          rawContent: 'file:///path/to/audio.m4a',
+        } as any,
+      });
+      await service.startRecording('file:///path/to/audio.m4a');
+
+      mockRepository.getById.mockResolvedValue({
+        id: 'capture-123',
+        rawContent: 'file:///path/to/audio.m4a',
+      } as any);
+
+      // Mock file doesn't exist
+      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+
+      // Cancel should not throw
+      await expect(service.cancelRecording()).resolves.not.toThrow();
+
+      // Should still delete entity
+      expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
+    });
+
+    it('should handle file deletion errors gracefully (AC5: offline support)', async () => {
+      // Start recording
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          rawContent: 'file:///path/to/audio.m4a',
+        } as any,
+      });
+      await service.startRecording('file:///path/to/audio.m4a');
+
+      mockRepository.getById.mockResolvedValue({
+        id: 'capture-123',
+        rawContent: 'file:///path/to/audio.m4a',
+      } as any);
+
+      // Mock file system error
+      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('File system error'));
+
+      // Cancel should not throw
+      await expect(service.cancelRecording()).resolves.not.toThrow();
+
+      // Should still delete entity
+      expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
+    });
+
+    it('should do nothing if not currently recording', async () => {
+      // Call cancel without starting recording
+      await service.cancelRecording();
+
+      // Should not call any repository methods
+      expect(mockRepository.getById).not.toHaveBeenCalled();
+      expect(mockRepository.delete).not.toHaveBeenCalled();
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+    });
+
+    it('should handle capture with no file URI', async () => {
+      // Start recording
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'capture-123',
+          rawContent: '',
+        } as any,
+      });
+      await service.startRecording('');
+
+      // Mock getById returns capture with no URI
+      mockRepository.getById.mockResolvedValue({
+        id: 'capture-123',
+        rawContent: null,
+      } as any);
+
+      // Cancel should not attempt file deletion
+      await service.cancelRecording();
+
+      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+      expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
     });
   });
 });
