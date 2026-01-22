@@ -12,6 +12,8 @@
  * Migration: WatermelonDB → OP-SQLite
  */
 
+import 'reflect-metadata';
+import { injectable } from 'tsyringe';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from '../../../database';
 import { type Capture, mapRowToCapture, type CaptureRow } from '../domain/Capture.model';
@@ -44,6 +46,7 @@ export interface UpdateCaptureData {
   fileSize?: number; // File size in bytes
 }
 
+@injectable()
 export class CaptureRepository implements ICaptureRepository {
   /**
    * Create a new Capture entity

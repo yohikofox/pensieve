@@ -16,6 +16,7 @@ import { TOKENS } from './tokens';
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
 
 // Services
+import { RecordingService } from '../../contexts/capture/services/RecordingService';
 import { PermissionService } from '../../contexts/capture/services/PermissionService';
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
 import { OfflineSyncService } from '../../contexts/capture/services/OfflineSyncService';
@@ -42,6 +43,7 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IFileSystem, ExpoFileSystemAdapter);
 
   // Application Services
+  container.registerSingleton(RecordingService); // Direct class registration
   container.registerSingleton(TOKENS.IPermissionService, PermissionService);
   container.registerSingleton(TOKENS.IFileStorageService, FileStorageService);
   container.registerSingleton(TOKENS.IOfflineSyncService, OfflineSyncService);

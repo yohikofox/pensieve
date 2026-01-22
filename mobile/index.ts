@@ -1,3 +1,4 @@
+import 'reflect-metadata'; // MUST be first for TSyringe decorators
 import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';

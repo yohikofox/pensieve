@@ -9,7 +9,7 @@ import { ActivityIndicator, View } from 'react-native';
 import { registerServices } from './src/infrastructure/di/container';
 import { container } from 'tsyringe';
 import { TOKENS } from './src/infrastructure/di/tokens';
-import type { ICrashRecoveryService } from './src/contexts/capture/domain/ICrashRecoveryService';
+import { type ICrashRecoveryService } from './src/contexts/capture/domain/ICrashRecoveryService';
 import { showCrashRecoveryNotification } from './src/shared/utils/notificationUtils';
 
 // Initialize IoC container with production services
@@ -24,9 +24,8 @@ export default function App() {
   useEffect(() => {
     const checkCrashRecovery = async () => {
       try {
-        const crashRecoveryService = container.resolve<ICrashRecoveryService>(
-          TOKENS.ICrashRecoveryService
-        );
+        // Resolve by token as registered in container.ts
+        const crashRecoveryService = container.resolve<ICrashRecoveryService>(TOKENS.ICrashRecoveryService);
         const recovered = await crashRecoveryService.recoverIncompleteRecordings();
 
         // Show notification if any recordings were recovered
