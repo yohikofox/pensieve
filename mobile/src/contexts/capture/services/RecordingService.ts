@@ -19,9 +19,6 @@ import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
-import { type IPermissionService } from '../domain/IPermissionService';
-import { type IAudioRecorder } from '../domain/IAudioRecorder';
-import { type IFileSystem } from '../domain/IFileSystem';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
 
 export interface RecordingResult {
@@ -49,22 +46,18 @@ export class RecordingService {
   private recordingStartTime: number | null = null;
 
   constructor(
-    @inject(TOKENS.IAudioRecorder) private audioRecorder: IAudioRecorder,
-    @inject(TOKENS.IFileSystem) private fileSystem: IFileSystem,
-    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
-    @inject(TOKENS.IPermissionService) private permissions: IPermissionService
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
   ) {}
 
   /**
    * AC1: Start Recording with < 500ms Latency
-   * AC5: Check microphone permissions
    *
-   * This method orchestrates the complete recording start sequence:
-   * 1. Check microphone permissions
-   * 2. Start audio recording (via audioRecorder)
-   * 3. Create Capture entity with temporary file URI
+   * Creates a Capture entity in "recording" state with temporary URI
+   *
+   * @param tempUri - Temporary URI from expo-audio recorder
+   * @returns Result with captureId
    */
-  async startRecording(): Promise<RepositoryResult<{ captureId: string }>> {
+  async startRecording(tempUri: string): Promise<RepositoryResult<{ captureId: string }>> {
     // Prevent multiple simultaneous recordings
     if (this.currentCaptureId) {
       return {
@@ -73,39 +66,16 @@ export class RecordingService {
       };
     }
 
-    // AC5: Check microphone permissions
-    const hasPermission = await this.permissions.hasMicrophonePermission();
-    if (!hasPermission) {
-      return {
-        type: RepositoryResultType.VALIDATION_ERROR,
-        error: 'MicrophonePermissionDenied',
-      };
-    }
-
-    // AC1: Start audio recording and get temporary file URI
-    // This is atomic and fast (< 500ms target)
-    const recordingResult = await this.audioRecorder.startRecording();
-
-    if (recordingResult.type !== RepositoryResultType.SUCCESS || !recordingResult.data) {
-      return {
-        type: recordingResult.type,
-        error: recordingResult.error,
-      };
-    }
-
     // AC1: Create Capture entity with status "recording" and temporary file URI
     // This allows crash recovery to find the file even if app crashes during recording
     const result = await this.repository.create({
       type: 'audio',
       state: 'recording',
-      rawContent: recordingResult.data.uri,
+      rawContent: tempUri,
       syncStatus: 'pending',
     });
 
     if (result.type !== RepositoryResultType.SUCCESS || !result.data) {
-      // Recording started but DB failed - we should stop recording (best effort cleanup)
-      await this.audioRecorder.stopRecording();
-
       return {
         type: result.type,
         error: result.error,
@@ -124,12 +94,13 @@ export class RecordingService {
   /**
    * AC2: Stop and Save Recording
    *
-   * This method orchestrates the complete recording stop sequence:
-   * 1. Stop audio recording (via audioRecorder)
-   * 2. Get recording metadata (duration, URI)
-   * 3. Update Capture entity with final file path and metadata
+   * Updates Capture entity to "captured" state
+   *
+   * @param uri - Final recording URI from expo-audio
+   * @param duration - Recording duration in milliseconds
+   * @returns Result with captureId, filePath, and duration
    */
-  async stopRecording(): Promise<RepositoryResult<RecordingResult>> {
+  async stopRecording(uri: string, duration: number): Promise<RepositoryResult<RecordingResult>> {
     if (!this.currentCaptureId) {
       return {
         type: RepositoryResultType.VALIDATION_ERROR,
@@ -139,23 +110,10 @@ export class RecordingService {
 
     const captureId = this.currentCaptureId;
 
-    // AC2: Stop audio recording and get metadata
-    const stopResult = await this.audioRecorder.stopRecording();
-
-    if (stopResult.type !== RepositoryResultType.SUCCESS || !stopResult.data) {
-      return {
-        type: stopResult.type,
-        error: stopResult.error,
-      };
-    }
-
-    const filePath = this.generateFilePath();
-    const duration = stopResult.data.duration;
-
     // AC2: Update Capture entity with final state and metadata
     const result = await this.repository.update(captureId, {
       state: 'captured',
-      rawContent: filePath,
+      rawContent: uri,
       duration,
     });
 
@@ -173,7 +131,7 @@ export class RecordingService {
       type: RepositoryResultType.SUCCESS,
       data: {
         captureId,
-        filePath,
+        filePath: uri,
         duration,
       },
     };
@@ -211,28 +169,4 @@ export class RecordingService {
     return this.currentCaptureId !== null;
   }
 
-  /**
-   * Generate file path following naming convention:
-   * capture_{userId}_{timestamp}_{uuid}.m4a
-   *
-   * Note: In production, userId should come from auth context
-   */
-  private generateFilePath(): string {
-    const timestamp = Date.now();
-    const uuid = this.generateUUID();
-    const userId = 'user-123'; // TODO: Get from auth context
-
-    return `capture_${userId}_${timestamp}_${uuid}.m4a`;
-  }
-
-  /**
-   * Simple UUID v4 generator
-   */
-  private generateUUID(): string {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
-      const r = (Math.random() * 16) | 0;
-      const v = c === 'x' ? r : (r & 0x3) | 0x8;
-      return v.toString(16);
-    });
-  }
 }

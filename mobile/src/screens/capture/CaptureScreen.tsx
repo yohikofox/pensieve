@@ -12,12 +12,14 @@ import {
   useAudioRecorderState,
   RecordingOptions,
 } from 'expo-audio';
+import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
-import { PermissionService } from '../../contexts/capture/services/PermissionService';
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
-import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
+import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
+import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 import { CaptureDevTools } from '../../components/dev/CaptureDevTools';
 
 type RecordingState = 'idle' | 'recording' | 'stopping';
@@ -53,16 +55,18 @@ export const CaptureScreen = () => {
   const audioRecorder = useAudioRecorder(recordingOptions);
   const recorderState = useAudioRecorderState(audioRecorder, 100); // Update every 100ms
 
-  // Use RecordingService for business logic and persistence
+  // Use RecordingService for business logic and persistence (via TSyringe)
   const recordingServiceRef = useRef<RecordingService | null>(null);
-  const repositoryRef = useRef<CaptureRepository | null>(null);
+  const repositoryRef = useRef<ICaptureRepository | null>(null);
+  const permissionServiceRef = useRef<IPermissionService | null>(null);
   const fileStorageServiceRef = useRef<FileStorageService | null>(null);
 
-  // Initialize services on mount
+  // Initialize services on mount via TSyringe container
   useEffect(() => {
-    repositoryRef.current = new CaptureRepository();
-    recordingServiceRef.current = new RecordingService(repositoryRef.current);
-    fileStorageServiceRef.current = new FileStorageService();
+    recordingServiceRef.current = container.resolve(RecordingService);
+    repositoryRef.current = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+    permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
+    fileStorageServiceRef.current = container.resolve(FileStorageService);
   }, []);
 
   // Check permission status on mount
@@ -73,9 +77,8 @@ export const CaptureScreen = () => {
   // AC4: Crash recovery on app launch
   useEffect(() => {
     const performCrashRecovery = async () => {
-      if (!repositoryRef.current) return;
-
-      const crashRecoveryService = new CrashRecoveryService(repositoryRef.current);
+      // Resolve via TSyringe container
+      const crashRecoveryService = container.resolve(CrashRecoveryService);
       const recovered = await crashRecoveryService.recoverIncompleteRecordings();
 
       if (recovered.length > 0) {
@@ -105,7 +108,8 @@ export const CaptureScreen = () => {
   }, []);
 
   const checkPermissions = async () => {
-    const hasPermission = await PermissionService.hasMicrophonePermission();
+    if (!permissionServiceRef.current) return;
+    const hasPermission = await permissionServiceRef.current.hasMicrophonePermission();
     setHasPermission(hasPermission);
   };
 
@@ -126,8 +130,8 @@ export const CaptureScreen = () => {
     }
 
     // Check/request permissions
-    if (!hasPermission) {
-      const result = await PermissionService.requestMicrophonePermission();
+    if (!hasPermission && permissionServiceRef.current) {
+      const result = await permissionServiceRef.current.requestMicrophonePermission();
 
       if (result.status !== 'granted') {
         Alert.alert(
@@ -198,8 +202,14 @@ export const CaptureScreen = () => {
     const uri = audioRecorder.uri;
     const recordingDuration = recorderState.durationMillis;
 
+    if (!uri) {
+      Alert.alert('Erreur', 'Aucun fichier audio disponible');
+      setState('idle');
+      return;
+    }
+
     // Stop RecordingService
-    const stopResult = await recordingService.stopRecording();
+    const stopResult = await recordingService.stopRecording(uri, recordingDuration);
 
     if (stopResult.type !== 'success' || !stopResult.data) {
       console.error('[CaptureScreen] Failed to stop recording:', stopResult.type, stopResult.error);
@@ -209,11 +219,11 @@ export const CaptureScreen = () => {
     }
 
     // Move audio file from temp to permanent storage
-    if (uri && fileStorageServiceRef.current && repositoryRef.current) {
+    if (fileStorageServiceRef.current && repositoryRef.current) {
       const storageResult = await fileStorageServiceRef.current.moveToStorage(
-        uri,
+        stopResult.data.filePath,
         stopResult.data.captureId,
-        recordingDuration
+        stopResult.data.duration
       );
 
       if (storageResult.type !== 'success' || !storageResult.data) {
@@ -240,7 +250,7 @@ export const CaptureScreen = () => {
 
     Alert.alert(
       'Capture enregistrée!',
-      `Durée: ${Math.floor(recordingDuration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
+      `Durée: ${Math.floor(stopResult.data.duration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
       [{ text: 'OK' }]
     );
 

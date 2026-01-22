@@ -44,6 +44,7 @@ export function registerServices() {
 
   // Application Services
   container.registerSingleton(RecordingService); // Direct class registration
+  container.registerSingleton(FileStorageService); // Direct class registration
   container.registerSingleton(TOKENS.IPermissionService, PermissionService);
   container.registerSingleton(TOKENS.IFileStorageService, FileStorageService);
   container.registerSingleton(TOKENS.IOfflineSyncService, OfflineSyncService);
