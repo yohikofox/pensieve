@@ -143,28 +143,30 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Button row with record button and cancel button side by side */}
-      <View style={styles.buttonRow}>
-        <TouchableOpacity
-          testID="record-button"
-          onPress={handlePress}
-          activeOpacity={0.7}
-          disabled={disabled}
-          style={styles.touchable}
+      <TouchableOpacity
+        testID="record-button"
+        onPress={handlePress}
+        activeOpacity={0.7}
+        disabled={disabled}
+        style={styles.touchable}
+      >
+        <Animated.View
+          style={[
+            styles.button,
+            isRecording ? styles.recording : styles.idle,
+            { transform: [{ scale: pulseAnim }] },
+          ]}
         >
-          <Animated.View
-            style={[
-              styles.button,
-              isRecording ? styles.recording : styles.idle,
-              { transform: [{ scale: pulseAnim }] },
-            ]}
-          >
-            {isRecording && <View style={styles.recordingDot} />}
-          </Animated.View>
-        </TouchableOpacity>
+          {isRecording && <View style={styles.recordingDot} />}
+        </Animated.View>
+      </TouchableOpacity>
 
-        {/* Story 2.3 AC1: Cancel button - positioned next to record button */}
-        {isRecording && (
+      {/* Absolute positioned block: timer + cancel button - doesn't affect layout */}
+      {isRecording && (
+        <View style={styles.timerBlock}>
+          <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
+
+          {/* Story 2.3 AC1: Cancel button - below timer */}
           <TouchableOpacity
             testID="cancel-button"
             onPress={handleCancel}
@@ -173,12 +175,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
           >
             <Text style={styles.cancelButtonText}>✕</Text>
           </TouchableOpacity>
-        )}
-      </View>
-
-      {/* AC1: Recording duration timer */}
-      {isRecording && (
-        <Text style={styles.timer}>{formatDuration(recordingDuration)}</Text>
+        </View>
       )}
 
       {/* Button label */}
@@ -196,14 +193,14 @@ const styles = StyleSheet.create({
     width: '100%', // Fix timer alignment
     paddingHorizontal: 20, // Prevent overflow
   },
-  buttonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12, // Reduced gap for tighter spacing
-  },
   touchable: {
     padding: 10,
+  },
+  timerBlock: {
+    position: 'absolute',
+    top: 110, // Position below record button (80px height + 20px padding + 10px gap)
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   button: {
     width: 80,
@@ -234,7 +231,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   timer: {
-    marginTop: 12,
     fontSize: 32,
     fontWeight: '600',
     color: '#FF3B30',
@@ -246,8 +242,9 @@ const styles = StyleSheet.create({
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',
   },
-  // Story 2.3: Cancel button styles
+  // Story 2.3: Cancel button styles - positioned below timer in timerBlock
   cancelButton: {
+    marginTop: 12, // Space between timer and cancel button
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -256,7 +253,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: '#FF3B30',
-    // Removed position: absolute - now uses flexbox in buttonRow
   },
   cancelButtonText: {
     fontSize: 20,
