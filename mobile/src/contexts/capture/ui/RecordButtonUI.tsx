@@ -151,6 +151,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
         disabled={disabled}
         style={styles.touchable}
         android_ripple={{ color: 'transparent' }}
+        hitSlop={10}
       >
         <Animated.View
           style={[
@@ -196,8 +197,10 @@ const styles = StyleSheet.create({
     // Timer and label are now absolute positioned, so width not needed
   },
   touchable: {
-    padding: 10,
-    backgroundColor: 'transparent', // Prevent focus/blur white background
+    // No padding - was creating 100x100 square that could show white background
+    backgroundColor: 'transparent',
+    borderRadius: 50, // Match button roundness to prevent square artifacts
+    overflow: 'hidden', // Clip any visual artifacts
   },
   timerBlock: {
     position: 'absolute',
