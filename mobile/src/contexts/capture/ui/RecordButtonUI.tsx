@@ -179,7 +179,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
       )}
 
       {/* Button label - absolute positioned so it doesn't affect record button alignment */}
-      <Text style={styles.label}>
+      <Text style={[styles.label, isRecording ? styles.labelRecording : styles.labelIdle]}>
         {isRecording ? 'Tap to Stop' : 'Tap to Record'}
       </Text>
     </View>
@@ -238,10 +238,15 @@ const styles = StyleSheet.create({
   },
   label: {
     position: 'absolute',
-    top: 210, // Below timerBlock (110 + timer height ~40 + cancel 40 + margins ~20)
     fontSize: 14,
     color: '#8E8E93', // iOS secondary label
     fontWeight: '500',
+  },
+  labelIdle: {
+    top: 110, // Closer to button when not recording
+  },
+  labelRecording: {
+    top: 210, // Below timerBlock when recording
   },
   // Story 2.3: Cancel button styles - positioned below timer in timerBlock
   cancelButton: {
