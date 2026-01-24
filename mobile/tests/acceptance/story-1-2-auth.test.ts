@@ -227,6 +227,8 @@ defineFeature(feature, (test) => {
   // AC3: Apple Sign-In
   // ============================================================================
 
+  // DISABLED: Apple Sign-In requires paid Apple Developer account
+  /*
   test('Connexion avec Apple Sign-In', ({ given, when, and, then }) => {
     let oauthUrl: string | null = null;
 
@@ -302,6 +304,7 @@ defineFeature(feature, (test) => {
       expect(user.appMetadata.provider).toBe('apple');
     });
   });
+  */
 
   // ============================================================================
   // AC4: Logout

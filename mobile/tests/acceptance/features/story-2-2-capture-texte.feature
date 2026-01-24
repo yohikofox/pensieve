@@ -41,7 +41,7 @@ Fonctionnalité: Capture Texte Rapide
       | champ        | valeur                  |
       | type         | TEXT                    |
       | state        | CAPTURED                |
-      | syncStatus   | pending                 |
+    Et la capture est dans la queue de synchronisation
     Et le rawContent contient "<texte>"
     Et le normalizedText est égal au rawContent
     Et le champ texte est vidé pour la prochaine capture
@@ -63,8 +63,8 @@ Fonctionnalité: Capture Texte Rapide
       | rawContent    | string   | non vide    |
       | normalizedText| string   | non vide    |
       | capturedAt    | datetime | aujourd'hui |
-      | syncStatus    | string   | pending     |
       | state         | string   | CAPTURED    |
+    Et la capture est dans la queue de synchronisation
 
   @AC2 @clear-input
   Scénario: Vider le champ après sauvegarde
@@ -122,14 +122,14 @@ Fonctionnalité: Capture Texte Rapide
     Quand l'utilisateur crée une capture texte "Pensée offline"
     Et l'utilisateur sauvegarde la capture
     Alors la capture fonctionne de manière identique au mode en ligne
-    Et la Capture a syncStatus = "pending"
+    Et la capture est dans la queue de synchronisation
     Et aucune erreur réseau n'est levée
 
   @AC4 @sync-queue
   Scénario: Ajouter à la queue de synchronisation
     Étant donné que l'appareil est hors ligne
     Quand l'utilisateur crée 3 captures texte
-    Alors les 3 Captures ont syncStatus = "pending"
+    Alors les 3 captures sont dans la queue de synchronisation
     Et elles seront synchronisées quand le réseau reviendra
 
   @AC4 @mixed-types
@@ -137,7 +137,7 @@ Fonctionnalité: Capture Texte Rapide
     Étant donné que l'appareil est hors ligne
     Quand l'utilisateur crée 2 captures audio
     Et l'utilisateur crée 3 captures texte
-    Alors les 5 Captures ont syncStatus = "pending"
+    Alors les 5 captures sont dans la queue de synchronisation
     Et elles sont triées par capturedAt dans la queue de sync
 
   # ============================================================================

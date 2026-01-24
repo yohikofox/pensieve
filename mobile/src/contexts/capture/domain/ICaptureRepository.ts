@@ -13,12 +13,12 @@ import { type Capture } from './Capture';
 export interface ICaptureRepository {
   /**
    * Create a new Capture entity
+   * Note: Sync status is now managed via sync_queue table (v2 architecture)
    */
   create(data: {
     type: 'audio' | 'text' | 'image' | 'url';
     state: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
     rawContent: string;
-    syncStatus: 'pending' | 'synced';
     duration?: number;
   }): Promise<RepositoryResult<Capture>>;
 
@@ -31,7 +31,6 @@ export interface ICaptureRepository {
       state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
       rawContent?: string;
       duration?: number;
-      syncStatus?: 'pending' | 'synced';
     }
   ): Promise<RepositoryResult<Capture>>;
 
@@ -53,12 +52,35 @@ export interface ICaptureRepository {
   ): Promise<Capture[]>;
 
   /**
-   * Find all Captures by sync status
-   */
-  findBySyncStatus(syncStatus: 'pending' | 'synced'): Promise<Capture[]>;
-
-  /**
    * Find all Captures
    */
   findAll(): Promise<Capture[]>;
+
+  /**
+   * Find captures pending synchronization
+   * Returns captures that exist in sync_queue with operation IN ('create', 'update', 'delete')
+   */
+  findPendingSync(): Promise<Capture[]>;
+
+  /**
+   * Find captures that are already synchronized
+   * Returns captures that do NOT exist in sync_queue
+   */
+  findSynced(): Promise<Capture[]>;
+
+  /**
+   * Find captures with synchronization conflicts
+   * Returns captures that exist in sync_queue with operation = 'conflict'
+   */
+  findConflicts(): Promise<Capture[]>;
+
+  /**
+   * Check if a capture is pending synchronization
+   */
+  isPendingSync(captureId: string): Promise<boolean>;
+
+  /**
+   * Check if a capture has a synchronization conflict
+   */
+  hasConflict(captureId: string): Promise<boolean>;
 }

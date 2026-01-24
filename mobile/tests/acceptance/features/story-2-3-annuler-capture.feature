@@ -189,10 +189,10 @@ Fonctionnalité: Annuler Capture Audio en Cours
   Scénario: Vérifier queue de sync après annulation offline
     Étant donné que l'appareil est hors ligne
     Et l'utilisateur enregistre de l'audio
-    Et une Capture avec syncStatus "pending" est créée
+    Et une Capture dans la queue de synchronisation est créée
     Quand l'utilisateur annule l'enregistrement
     Alors la Capture est supprimée de la base
-    Et aucune Capture avec syncStatus "pending" n'existe
+    Et aucune capture n'est dans la queue de synchronisation
     Et la queue de synchronisation ne contient pas cette capture
 
   # ============================================================================

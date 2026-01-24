@@ -66,12 +66,6 @@ export interface Capture {
   tags?: string | null;
 
   /**
-   * Sync status for offline-first
-   * Values: 'pending' | 'synced' | 'conflict'
-   */
-  syncStatus: string;
-
-  /**
    * Audio duration in milliseconds
    * Null for non-audio captures
    */
@@ -100,6 +94,7 @@ export interface Capture {
 
 /**
  * Database row type (snake_case from SQLite)
+ * Note: sync status is now managed via sync_queue table (v2 architecture)
  */
 export interface CaptureRow {
   id: string;
@@ -110,7 +105,6 @@ export interface CaptureRow {
   file_size: number | null;
   created_at: number;
   updated_at: number;
-  sync_status: string;
   sync_version: number;
   last_sync_at: number | null;
   server_id: string | null;
@@ -119,6 +113,7 @@ export interface CaptureRow {
 
 /**
  * Map database row to domain model
+ * Note: syncStatus is now queried separately via sync_queue table
  */
 export function mapRowToCapture(row: CaptureRow): Capture {
   return {
@@ -131,7 +126,6 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     capturedAt: new Date(row.created_at), // Same as createdAt for now
-    syncStatus: row.sync_status,
     syncVersion: row.sync_version,
     lastSyncAt: row.last_sync_at ? new Date(row.last_sync_at) : null,
     serverId: row.server_id,

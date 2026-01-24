@@ -21,6 +21,10 @@ import { PermissionService } from '../../contexts/capture/services/PermissionSer
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
 import { OfflineSyncService } from '../../contexts/capture/services/OfflineSyncService';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
+import { SyncQueueService } from '../../contexts/capture/services/SyncQueueService';
+import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
+import { RetentionPolicyService } from '../../contexts/capture/services/RetentionPolicyService';
+import { EncryptionService } from '../../contexts/capture/services/EncryptionService';
 
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
@@ -49,4 +53,8 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IFileStorageService, FileStorageService);
   container.registerSingleton(TOKENS.IOfflineSyncService, OfflineSyncService);
   container.registerSingleton(TOKENS.ICrashRecoveryService, CrashRecoveryService);
+  container.registerSingleton(TOKENS.ISyncQueueService, SyncQueueService);
+  container.registerSingleton(TOKENS.IStorageMonitorService, StorageMonitorService);
+  container.registerSingleton(TOKENS.IRetentionPolicyService, RetentionPolicyService);
+  container.registerSingleton(TOKENS.IEncryptionService, EncryptionService);
 }

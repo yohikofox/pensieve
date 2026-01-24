@@ -20,6 +20,7 @@ import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import { type ISyncQueueService } from '../domain/ISyncQueueService';
 import {
   type IOfflineSyncService,
   type SyncStats,
@@ -41,17 +42,18 @@ import {
 @injectable()
 export class OfflineSyncService implements IOfflineSyncService {
   constructor(
-    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
+    @inject(TOKENS.ISyncQueueService) private syncQueueService: ISyncQueueService
   ) {}
 
   /**
    * Get all captures pending synchronization
    *
-   * Returns captures in 'captured' or 'ready' state with syncStatus: 'pending'
+   * Returns captures that exist in sync_queue
    */
   async getPendingCaptures(): Promise<PendingCapture[]> {
     try {
-      const pendingCaptures = await this.repository.findBySyncStatus('pending');
+      const pendingCaptures = await this.repository.findPendingSync();
 
       // Map to simplified interface for sync
       return pendingCaptures.map((capture) => ({
@@ -69,36 +71,62 @@ export class OfflineSyncService implements IOfflineSyncService {
 
   /**
    * Mark a capture as successfully synced
+   * Removes all pending sync queue items for this capture
    */
   async markAsSynced(captureId: string): Promise<void> {
-    const result = await this.repository.update(captureId, {
-      syncStatus: 'synced',
-    });
+    try {
+      // Get all pending queue items for this capture
+      const queueItems = await this.syncQueueService.getPendingOperationsForEntity(
+        'capture',
+        captureId
+      );
 
-    if (result.type === 'success') {
-      console.log(`[OfflineSync] Marked capture ${captureId} as synced`);
-    } else {
+      // Mark each queue item as synced (removes from queue)
+      for (const item of queueItems) {
+        await this.syncQueueService.markAsSynced(item.id);
+      }
+
+      console.log(`[OfflineSync] Marked capture ${captureId} as synced (removed ${queueItems.length} queue items)`);
+    } catch (error) {
       console.error(
         `[OfflineSync] Failed to mark capture ${captureId} as synced:`,
-        result.error
+        error
       );
     }
   }
 
   /**
    * Mark a capture as pending (retry after failed sync)
+   * Adds the capture back to the sync queue
    */
   async markAsPending(captureId: string): Promise<void> {
-    const result = await this.repository.update(captureId, {
-      syncStatus: 'pending',
-    });
+    try {
+      // Get the capture to add to queue
+      const capture = await this.repository.findById(captureId);
+      if (!capture) {
+        console.error(`[OfflineSync] Cannot mark as pending: capture ${captureId} not found`);
+        return;
+      }
 
-    if (result.type === 'success') {
-      console.log(`[OfflineSync] Marked capture ${captureId} as pending`);
-    } else {
+      // Add to sync queue
+      await this.syncQueueService.enqueue(
+        'capture',
+        capture.id,
+        'update', // Use 'update' for retry
+        {
+          type: capture.type,
+          state: capture.state,
+          rawContent: capture.rawContent,
+          duration: capture.duration,
+          fileSize: capture.fileSize,
+        }
+      );
+
+      console.log(`[OfflineSync] Marked capture ${captureId} as pending (added to queue)`);
+    } catch (error) {
       console.error(
         `[OfflineSync] Failed to mark capture ${captureId} as pending:`,
-        result.error
+        error
       );
     }
   }
@@ -109,8 +137,8 @@ export class OfflineSyncService implements IOfflineSyncService {
   async getSyncStats(): Promise<SyncStats> {
     try {
       const allCaptures = await this.repository.findAll();
-      const pendingCaptures = await this.repository.findBySyncStatus('pending');
-      const syncedCaptures = await this.repository.findBySyncStatus('synced');
+      const pendingCaptures = await this.repository.findPendingSync();
+      const syncedCaptures = await this.repository.findSynced();
 
       return {
         pendingCount: pendingCaptures.length,
@@ -151,7 +179,7 @@ export class OfflineSyncService implements IOfflineSyncService {
    */
   async hasPendingSync(): Promise<boolean> {
     try {
-      const pending = await this.repository.findBySyncStatus('pending');
+      const pending = await this.repository.findPendingSync();
       return pending.length > 0;
     } catch (error) {
       console.error('[OfflineSync] Failed to check pending sync:', error);

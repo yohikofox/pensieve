@@ -21,4 +21,8 @@ export const TOKENS = {
   IFileStorageService: Symbol.for('IFileStorageService'),
   IOfflineSyncService: Symbol.for('IOfflineSyncService'),
   ICrashRecoveryService: Symbol.for('ICrashRecoveryService'),
+  ISyncQueueService: Symbol.for('ISyncQueueService'),
+  IStorageMonitorService: Symbol.for('IStorageMonitorService'),
+  IRetentionPolicyService: Symbol.for('IRetentionPolicyService'),
+  IEncryptionService: Symbol.for('IEncryptionService'),
 };

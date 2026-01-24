@@ -6,10 +6,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  Platform,
 } from "react-native";
 import { supabase } from "../../../lib/supabase";
-import * as AppleAuthentication from "expo-apple-authentication";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -116,47 +114,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
   };
 
-  // Apple Sign-In
-  const handleAppleSignIn = async () => {
-    if (Platform.OS !== "ios") {
-      Alert.alert("Error", "Apple Sign-In only available on iOS");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const credential = await AppleAuthentication.signInAsync({
-        requestedScopes: [
-          AppleAuthentication.AppleAuthenticationScope.FULL_NAME,
-          AppleAuthentication.AppleAuthenticationScope.EMAIL,
-        ],
-      });
-
-      const { identityToken } = credential;
-
-      if (!identityToken) {
-        throw new Error("No identity token received");
-      }
-
-      // Exchange Apple token for Supabase session
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: "apple",
-        token: identityToken,
-      });
-
-      if (error) throw error;
-
-      // Navigation handled by auth state listener
-    } catch (error: any) {
-      if (error.code === "ERR_CANCELED") {
-        // User cancelled, do nothing
-      } else {
-        Alert.alert("Apple Sign-In Failed", error.message);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <View style={styles.container}>
@@ -226,17 +183,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
       >
         <Text style={styles.googleButtonText}>Continue with Google</Text>
       </TouchableOpacity>
-
-      {/* Apple Sign-In (iOS only) */}
-      {Platform.OS === "ios" && (
-        <TouchableOpacity
-          style={[styles.button, styles.appleButton]}
-          onPress={handleAppleSignIn}
-          disabled={loading}
-        >
-          <Text style={styles.appleButtonText}>Sign in with Apple</Text>
-        </TouchableOpacity>
-      )}
 
       {/* Register Link */}
       <View style={styles.registerContainer}>

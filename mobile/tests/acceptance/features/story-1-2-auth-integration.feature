@@ -67,22 +67,24 @@ Fonctionnalité: Authentification Supabase (Email, Google, Apple)
   # AC3: Apple Sign-In
   # ============================================================================
 
-  @AC3 @oauth @apple
-  Scénario: Connexion avec Apple Sign-In
-    Étant donné que je veux utiliser Apple pour m'authentifier
-    Quand je tape sur "Se connecter avec Apple"
-    Et j'autorise avec Face ID ou Touch ID
-    Alors je suis redirigé vers l'app
-    Et un JWT token est reçu et stocké
-    Et un compte utilisateur est créé ou lié automatiquement
-    Et mon email est géré correctement (même avec "Masquer mon email")
+  # DISABLED: Apple Sign-In requires paid Apple Developer account
+  # @AC3 @oauth @apple
+  # Scénario: Connexion avec Apple Sign-In
+  #   Étant donné que je veux utiliser Apple pour m'authentifier
+  #   Quand je tape sur "Se connecter avec Apple"
+  #   Et j'autorise avec Face ID ou Touch ID
+  #   Alors je suis redirigé vers l'app
+  #   Et un JWT token est reçu et stocké
+  #   Et un compte utilisateur est créé ou lié automatiquement
+  #   Et mon email est géré correctement (même avec "Masquer mon email")
 
-  @AC3 @oauth @apple @hide-email
-  Scénario: Apple Sign-In avec "Masquer mon email"
-    Étant donné que j'utilise la fonctionnalité "Masquer mon email" d'Apple
-    Quand je me connecte avec Apple Sign-In
-    Alors l'email proxy Apple est accepté et stocké
-    Et mon compte fonctionne normalement avec cet email proxy
+  # DISABLED: Apple Sign-In requires paid Apple Developer account
+  # @AC3 @oauth @apple @hide-email
+  # Scénario: Apple Sign-In avec "Masquer mon email"
+  #   Étant donné que j'utilise la fonctionnalité "Masquer mon email" d'Apple
+  #   Quand je me connecte avec Apple Sign-In
+  #   Alors l'email proxy Apple est accepté et stocké
+  #   Et mon compte fonctionne normalement avec cet email proxy
 
   # ============================================================================
   # AC4: Logout

@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -34,7 +34,7 @@ export const CREATE_CAPTURES_TABLE = `
     updated_at INTEGER NOT NULL,
 
     -- Sync fields (for custom backend sync)
-    sync_status TEXT NOT NULL DEFAULT 'pending' CHECK(sync_status IN ('pending', 'synced', 'conflict')),
+    -- Note: sync status is managed via sync_queue table (presence = pending, absence = synced)
     sync_version INTEGER NOT NULL DEFAULT 0,
     last_sync_at INTEGER,
     server_id TEXT,                -- Backend ID if different from local ID
@@ -47,6 +47,9 @@ export const CREATE_CAPTURES_TABLE = `
  *
  * Stores pending operations to be synced with backend when online.
  * Enables reliable offline-first architecture with retry logic.
+ *
+ * FK Constraint: entity_id references captures(id) for referential integrity
+ * Operation types: 'create'/'update'/'delete' for sync, 'conflict' for conflicts
  */
 export const CREATE_SYNC_QUEUE_TABLE = `
   CREATE TABLE IF NOT EXISTS sync_queue (
@@ -57,25 +60,25 @@ export const CREATE_SYNC_QUEUE_TABLE = `
     entity_id TEXT NOT NULL,
 
     -- Operation
-    operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete')),
+    operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
     payload TEXT NOT NULL,         -- JSON serialized entity data
 
     -- Retry management
     created_at INTEGER NOT NULL,
     retry_count INTEGER NOT NULL DEFAULT 0,
     last_error TEXT,
-    max_retries INTEGER NOT NULL DEFAULT 3
+    max_retries INTEGER NOT NULL DEFAULT 3,
+
+    -- Foreign key for referential integrity
+    FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
   );
 `;
 
 /**
  * Performance Indexes
  * Note: Each index must be a separate statement for OP-SQLite
+ * Note: sync_status index removed in v2 (status is now managed via sync_queue table)
  */
-export const CREATE_INDEX_CAPTURES_SYNC_STATUS = `
-  CREATE INDEX IF NOT EXISTS idx_captures_sync_status ON captures(sync_status)
-`;
-
 export const CREATE_INDEX_CAPTURES_CREATED_AT = `
   CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)
 `;
@@ -98,7 +101,6 @@ export const CREATE_INDEX_SYNC_QUEUE_CREATED_AT = `
 export const SCHEMA_DDL = [
   CREATE_CAPTURES_TABLE,
   CREATE_SYNC_QUEUE_TABLE,
-  CREATE_INDEX_CAPTURES_SYNC_STATUS,
   CREATE_INDEX_CAPTURES_CREATED_AT,
   CREATE_INDEX_CAPTURES_STATE,
   CREATE_INDEX_SYNC_QUEUE_ENTITY,

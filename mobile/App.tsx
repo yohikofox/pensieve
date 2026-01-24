@@ -11,9 +11,20 @@ import { container } from 'tsyringe';
 import { TOKENS } from './src/infrastructure/di/tokens';
 import { type ICrashRecoveryService } from './src/contexts/capture/domain/ICrashRecoveryService';
 import { showCrashRecoveryNotification } from './src/shared/utils/notificationUtils';
+import NetInfo from '@react-native-community/netinfo';
+import { InAppLogger } from './src/components/dev/InAppLogger';
 
 // Initialize IoC container with production services
 registerServices();
+
+// Configure NetInfo for real internet reachability detection
+NetInfo.configure({
+  reachabilityUrl: 'https://clients3.google.com/generate_204',
+  reachabilityTest: async (response) => response.status === 204,
+  reachabilityShortTimeout: 5 * 1000, // 5s
+  reachabilityLongTimeout: 60 * 1000, // 60s
+  reachabilityRequestTimeout: 15 * 1000, // 15s
+});
 
 export default function App() {
   const { user, loading } = useAuthListener();
@@ -50,8 +61,11 @@ export default function App() {
   }
 
   return (
-    <NavigationContainer>
-      {user ? <MainNavigator /> : <AuthNavigator />}
-    </NavigationContainer>
+    <>
+      <NavigationContainer>
+        {user ? <MainNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+      <InAppLogger />
+    </>
   );
 }

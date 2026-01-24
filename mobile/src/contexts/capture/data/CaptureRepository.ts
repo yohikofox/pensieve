@@ -13,12 +13,14 @@
  */
 
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
+import { injectable, inject } from 'tsyringe';
 import { v4 as uuidv4 } from 'uuid';
 import { database } from '../../../database';
 import { type Capture, mapRowToCapture, type CaptureRow } from '../domain/Capture.model';
 import { type RepositoryResult, success, databaseError } from '../domain/Result';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import { type ISyncQueueService } from '../domain/ISyncQueueService';
+import { TOKENS } from '../../../infrastructure/di/tokens';
 
 export interface CreateCaptureData {
   type: 'audio' | 'text' | 'image' | 'url';
@@ -29,7 +31,6 @@ export interface CreateCaptureData {
   capturedAt?: Date;
   location?: string; // JSON GeoPoint
   tags?: string; // JSON array
-  syncStatus: 'pending' | 'synced';
   duration?: number; // Audio duration in milliseconds
   fileSize?: number; // File size in bytes
 }
@@ -41,13 +42,16 @@ export interface UpdateCaptureData {
   normalizedText?: string;
   location?: string;
   tags?: string;
-  syncStatus?: 'pending' | 'synced';
   duration?: number; // Audio duration in milliseconds
   fileSize?: number; // File size in bytes
 }
 
 @injectable()
 export class CaptureRepository implements ICaptureRepository {
+  constructor(
+    @inject(TOKENS.ISyncQueueService) private syncQueueService: ISyncQueueService
+  ) {}
+
   /**
    * Create a new Capture entity
    */
@@ -60,8 +64,8 @@ export class CaptureRepository implements ICaptureRepository {
       database.execute(
         `INSERT INTO captures (
           id, type, state, raw_content, duration, file_size,
-          created_at, updated_at, sync_status, sync_version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          created_at, updated_at, sync_version
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           data.type,
@@ -71,7 +75,6 @@ export class CaptureRepository implements ICaptureRepository {
           data.fileSize ?? null,
           now,
           now,
-          data.syncStatus,
           0,
         ]
       );
@@ -86,6 +89,27 @@ export class CaptureRepository implements ICaptureRepository {
       }
 
       const capture = mapRowToCapture(row);
+
+      // Story 2.4 AC4: Add to sync queue automatically (all new captures need sync)
+      try {
+        await this.syncQueueService.enqueue(
+          'capture',
+          capture.id,
+          'create',
+          {
+            type: capture.type,
+            state: capture.state,
+            rawContent: capture.rawContent,
+            duration: capture.duration,
+            fileSize: capture.fileSize,
+          }
+        );
+        console.log('[CaptureRepository] Added to sync queue:', capture.id);
+      } catch (queueError) {
+        console.error('[CaptureRepository] Failed to add to sync queue:', queueError);
+        // Don't fail the capture creation if queue fails
+      }
+
       return success(capture);
     } catch (error) {
       console.error('[CaptureRepository] Database error during create:', error);
@@ -119,10 +143,6 @@ export class CaptureRepository implements ICaptureRepository {
       if (updates.fileSize !== undefined) {
         fields.push('file_size = ?');
         values.push(updates.fileSize);
-      }
-      if (updates.syncStatus !== undefined) {
-        fields.push('sync_status = ?');
-        values.push(updates.syncStatus);
       }
 
       fields.push('updated_at = ?');
@@ -190,19 +210,6 @@ export class CaptureRepository implements ICaptureRepository {
   }
 
   /**
-   * Find Captures by syncStatus (pending, synced, failed)
-   */
-  async findBySyncStatus(syncStatus: string): Promise<Capture[]> {
-    const result = database.execute(
-      'SELECT * FROM captures WHERE sync_status = ? ORDER BY created_at DESC',
-      [syncStatus]
-    );
-
-    const rows = (result.rows ?? []) as CaptureRow[];
-    return rows.map(mapRowToCapture);
-  }
-
-  /**
    * Find Captures by type (audio, text, image, url)
    */
   async findByType(type: string): Promise<Capture[]> {
@@ -239,5 +246,86 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async destroyPermanently(id: string): Promise<RepositoryResult<void>> {
     return this.delete(id);
+  }
+
+  /**
+   * Find captures pending synchronization
+   * Returns captures that exist in sync_queue with operation IN ('create', 'update', 'delete')
+   */
+  async findPendingSync(): Promise<Capture[]> {
+    const result = database.execute(
+      `SELECT c.* FROM captures c
+       INNER JOIN sync_queue sq ON c.id = sq.entity_id
+       WHERE sq.entity_type = 'capture'
+         AND sq.operation IN ('create', 'update', 'delete')
+       ORDER BY c.created_at DESC`
+    );
+    const rows = (result.rows ?? []) as CaptureRow[];
+    return rows.map(mapRowToCapture);
+  }
+
+  /**
+   * Find captures that are already synchronized
+   * Returns captures that do NOT exist in sync_queue
+   */
+  async findSynced(): Promise<Capture[]> {
+    const result = database.execute(
+      `SELECT c.* FROM captures c
+       WHERE NOT EXISTS (
+         SELECT 1 FROM sync_queue sq
+         WHERE sq.entity_id = c.id
+           AND sq.entity_type = 'capture'
+           AND sq.operation IN ('create', 'update', 'delete')
+       )
+       ORDER BY c.created_at DESC`
+    );
+    const rows = (result.rows ?? []) as CaptureRow[];
+    return rows.map(mapRowToCapture);
+  }
+
+  /**
+   * Find captures with synchronization conflicts
+   * Returns captures that exist in sync_queue with operation = 'conflict'
+   */
+  async findConflicts(): Promise<Capture[]> {
+    const result = database.execute(
+      `SELECT c.* FROM captures c
+       INNER JOIN sync_queue sq ON c.id = sq.entity_id
+       WHERE sq.entity_type = 'capture'
+         AND sq.operation = 'conflict'
+       ORDER BY c.created_at DESC`
+    );
+    const rows = (result.rows ?? []) as CaptureRow[];
+    return rows.map(mapRowToCapture);
+  }
+
+  /**
+   * Check if a capture is pending synchronization
+   */
+  async isPendingSync(captureId: string): Promise<boolean> {
+    const result = database.execute(
+      `SELECT 1 FROM sync_queue
+       WHERE entity_type = 'capture'
+         AND entity_id = ?
+         AND operation IN ('create', 'update', 'delete')
+       LIMIT 1`,
+      [captureId]
+    );
+    return (result.rows?.length ?? 0) > 0;
+  }
+
+  /**
+   * Check if a capture has a synchronization conflict
+   */
+  async hasConflict(captureId: string): Promise<boolean> {
+    const result = database.execute(
+      `SELECT 1 FROM sync_queue
+       WHERE entity_type = 'capture'
+         AND entity_id = ?
+         AND operation = 'conflict'
+       LIMIT 1`,
+      [captureId]
+    );
+    return (result.rows?.length ?? 0) > 0;
   }
 }

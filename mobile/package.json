@@ -21,11 +21,13 @@
     "test:e2e:ios": "detox test --configuration ios.sim.debug",
     "test:e2e:android": "detox test --configuration android.emu.debug",
     "test:e2e:build:ios": "detox build --configuration ios.sim.debug",
-    "test:e2e:build:android": "detox build --configuration android.emu.debug"
+    "test:e2e:build:android": "detox build --configuration android.emu.debug",
+    "wipe:ios": "xcrun simctl shutdown booted && xcrun simctl erase all && npm run ios"
   },
   "dependencies": {
     "@op-engineering/op-sqlite": "^15.2.3",
     "@react-native-async-storage/async-storage": "^2.2.0",
+    "@react-native-community/netinfo": "^11.4.1",
     "@react-native-masked-view/masked-view": "0.3.2",
     "@react-navigation/bottom-tabs": "^7.10.1",
     "@react-navigation/native": "^7.1.28",
@@ -34,7 +36,6 @@
     "@supabase/supabase-js": "^2.90.1",
     "dotenv": "^17.2.3",
     "expo": "~54.0.31",
-    "expo-apple-authentication": "^8.0.8",
     "expo-asset": "~12.0.12",
     "expo-audio": "~1.1.1",
     "expo-auth-session": "~7.0.10",

@@ -27,8 +27,18 @@ export interface Capture {
   format?: string;
   location: string | null;
   tags: string[];
-  syncStatus: 'pending' | 'synced' | 'failed';
   recoveredFromCrash?: boolean;
+}
+
+export interface SyncQueueItem {
+  id: number;
+  entityType: 'capture' | 'user' | 'settings';
+  entityId: string;
+  operation: 'create' | 'update' | 'delete' | 'conflict';
+  payload: any;
+  createdAt: Date;
+  retryCount: number;
+  maxRetries: number;
 }
 
 export interface AudioRecordingStatus {
@@ -174,11 +184,13 @@ export class MockFileSystem {
 }
 
 // ============================================================================
-// In-Memory Database (replaces WatermelonDB)
+// In-Memory Database (replaces WatermelonDB & OP-SQLite)
 // ============================================================================
 
 export class InMemoryDatabase {
   private _captures: Map<string, Capture> = new Map();
+  private _syncQueue: Map<number, SyncQueueItem> = new Map();
+  private _nextSyncQueueId: number = 1;
 
   async create(data: Partial<Capture>): Promise<Capture> {
     const capture: Capture = {
@@ -194,11 +206,28 @@ export class InMemoryDatabase {
       format: data.format,
       location: data.location || null,
       tags: data.tags || [],
-      syncStatus: data.syncStatus || 'pending',
       recoveredFromCrash: data.recoveredFromCrash || false,
     };
 
     this._captures.set(capture.id, capture);
+
+    // Auto-add to sync queue (mimics CaptureRepository behavior)
+    await this.addToSyncQueue({
+      entityType: 'capture',
+      entityId: capture.id,
+      operation: 'create',
+      payload: {
+        type: capture.type,
+        state: capture.state,
+        rawContent: capture.rawContent,
+        duration: capture.duration,
+        fileSize: capture.fileSize,
+      },
+      createdAt: new Date(),
+      retryCount: 0,
+      maxRetries: 3,
+    });
+
     return capture;
   }
 
@@ -225,14 +254,87 @@ export class InMemoryDatabase {
     return Array.from(this._captures.values()).filter((c) => c.state === state);
   }
 
-  async findBySyncStatus(syncStatus: Capture['syncStatus']): Promise<Capture[]> {
-    return Array.from(this._captures.values()).filter(
-      (c) => c.syncStatus === syncStatus
+  /**
+   * Find captures pending synchronization (exist in sync_queue)
+   */
+  async findPendingSync(): Promise<Capture[]> {
+    const pendingIds = new Set(
+      Array.from(this._syncQueue.values())
+        .filter((item) => item.entityType === 'capture' && ['create', 'update', 'delete'].includes(item.operation))
+        .map((item) => item.entityId)
     );
+    return Array.from(this._captures.values()).filter((c) => pendingIds.has(c.id));
+  }
+
+  /**
+   * Find captures already synchronized (not in sync_queue)
+   */
+  async findSynced(): Promise<Capture[]> {
+    const pendingIds = new Set(
+      Array.from(this._syncQueue.values())
+        .filter((item) => item.entityType === 'capture')
+        .map((item) => item.entityId)
+    );
+    return Array.from(this._captures.values()).filter((c) => !pendingIds.has(c.id));
+  }
+
+  /**
+   * Find captures with conflicts (operation = 'conflict' in sync_queue)
+   */
+  async findConflicts(): Promise<Capture[]> {
+    const conflictIds = new Set(
+      Array.from(this._syncQueue.values())
+        .filter((item) => item.entityType === 'capture' && item.operation === 'conflict')
+        .map((item) => item.entityId)
+    );
+    return Array.from(this._captures.values()).filter((c) => conflictIds.has(c.id));
+  }
+
+  /**
+   * Check if capture is pending sync
+   */
+  async isPendingSync(captureId: string): Promise<boolean> {
+    return Array.from(this._syncQueue.values()).some(
+      (item) => item.entityType === 'capture' && item.entityId === captureId && ['create', 'update', 'delete'].includes(item.operation)
+    );
+  }
+
+  /**
+   * Check if capture has conflict
+   */
+  async hasConflict(captureId: string): Promise<boolean> {
+    return Array.from(this._syncQueue.values()).some(
+      (item) => item.entityType === 'capture' && item.entityId === captureId && item.operation === 'conflict'
+    );
+  }
+
+  /**
+   * Sync Queue Management
+   */
+  async addToSyncQueue(item: Omit<SyncQueueItem, 'id'>): Promise<number> {
+    const id = this._nextSyncQueueId++;
+    this._syncQueue.set(id, { ...item, id });
+    return id;
+  }
+
+  async removeFromSyncQueue(itemId: number): Promise<void> {
+    this._syncQueue.delete(itemId);
+  }
+
+  async removeFromSyncQueueByEntityId(entityId: string): Promise<void> {
+    const itemsToRemove = Array.from(this._syncQueue.values())
+      .filter((item) => item.entityId === entityId);
+    itemsToRemove.forEach((item) => this._syncQueue.delete(item.id));
+  }
+
+  async getSyncQueueSize(): Promise<number> {
+    return this._syncQueue.size;
   }
 
   async delete(id: string): Promise<void> {
     this._captures.delete(id);
+    // FK CASCADE behavior: remove from sync_queue
+    await this.removeFromSyncQueueByEntityId(id);
   }
 
   async count(): Promise<number> {
@@ -241,6 +343,8 @@ export class InMemoryDatabase {
 
   reset(): void {
     this._captures.clear();
+    this._syncQueue.clear();
+    this._nextSyncQueueId = 1;
   }
 }
 

@@ -10,8 +10,8 @@ import {
 } from 'react-native';
 import {
   useAudioRecorder,
-  useAudioRecorderState,
-  RecordingOptions,
+  RecordingPresets,
+  setAudioModeAsync,
 } from 'expo-audio';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
@@ -20,6 +20,7 @@ import { RecordingService } from '../../contexts/capture/services/RecordingServi
 import { TextCaptureService } from '../../contexts/capture/services/TextCaptureService';
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
+import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 import { CaptureDevTools } from '../../components/dev/CaptureDevTools';
@@ -29,37 +30,93 @@ import { RecordButtonUI } from '../../contexts/capture/ui/RecordButtonUI';
 type RecordingState = 'idle' | 'recording' | 'stopping';
 
 /**
- * Recording options for expo-audio (SDK 54)
- * High quality M4A/AAC format compatible with Whisper transcription
+ * Permission & Audio Mode Initializer
+ * Ensures permissions are granted AND audio mode is configured BEFORE creating the audio recorder
  */
-const recordingOptions: RecordingOptions = {
-  extension: '.m4a',
-  sampleRate: 44100,
-  numberOfChannels: 2,
-  bitRate: 128000,
-  android: {
-    outputFormat: 'mpeg4',
-    audioEncoder: 'aac',
-  },
-  ios: {
-    outputFormat: 'mpeg4', // SDK 54: use string instead of IOSOutputFormat enum
-  },
-  web: {
-    mimeType: 'audio/webm',
-  },
+const CaptureScreenWithAudioMode = () => {
+  const [isReady, setIsReady] = useState(false);
+  const [permissionDenied, setPermissionDenied] = useState(false);
+
+  useEffect(() => {
+    const initialize = async () => {
+      try {
+        // Step 1: Get permission service
+        const permissionService = container.resolve<IPermissionService>(TOKENS.IPermissionService);
+
+        // Step 2: Check/request microphone permission FIRST
+        let hasPermission = await permissionService.hasMicrophonePermission();
+
+        if (!hasPermission) {
+          console.log('[CaptureScreen] Requesting microphone permission...');
+          const result = await permissionService.requestMicrophonePermission();
+
+          if (result.status !== 'granted') {
+            console.log('[CaptureScreen] ❌ Microphone permission denied');
+            setPermissionDenied(true);
+            return;
+          }
+
+          hasPermission = true;
+          console.log('[CaptureScreen] ✅ Microphone permission granted');
+        }
+
+        // Step 3: Configure audio mode
+        await setAudioModeAsync({
+          playsInSilentMode: true,
+          allowsRecording: true,
+        });
+        console.log('[CaptureScreen] ✅ Audio mode initialized for recording');
+
+        // Step 4: Everything ready, can create recorder now
+        setIsReady(true);
+      } catch (error) {
+        console.error('[CaptureScreen] ❌ Failed to initialize:', error);
+        // Set ready anyway to avoid blocking the UI
+        setIsReady(true);
+      }
+    };
+    initialize();
+  }, []);
+
+  // Show permission denied message
+  if (permissionDenied) {
+    return (
+      <View style={styles.container}>
+        <Text style={{ color: '#666', textAlign: 'center', padding: 20 }}>
+          Permission microphone refusée.{'\n'}
+          Activez-la dans Réglages → Pensieve → Microphone
+        </Text>
+      </View>
+    );
+  }
+
+  // Show loading indicator while initializing
+  if (!isReady) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={{ marginTop: 16, color: '#666' }}>Initialisation...</Text>
+      </View>
+    );
+  }
+
+  // Once ready (permissions + audio mode), render the actual CaptureScreen with recorder
+  return <CaptureScreenContent />;
 };
 
-export const CaptureScreen = () => {
+/**
+ * Actual CaptureScreen content
+ * Only rendered after permissions are granted and audio mode is initialized
+ */
+const CaptureScreenContent = () => {
   const { user } = useAuthListener();
   const [state, setState] = useState<RecordingState>('idle');
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [showDevTools, setShowDevTools] = useState(false);
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0); // Story 2.3: Timer for RecordButtonUI
 
-  // Use expo-audio hooks for actual recording
-  const audioRecorder = useAudioRecorder(recordingOptions);
-  const recorderState = useAudioRecorderState(audioRecorder, 100); // Update every 100ms
+  // Create recorder using official HIGH_QUALITY preset (permissions + audio mode already configured by parent)
+  const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
   // Use RecordingService for business logic and persistence (via TSyringe)
   const recordingServiceRef = useRef<RecordingService | null>(null);
@@ -67,6 +124,7 @@ export const CaptureScreen = () => {
   const repositoryRef = useRef<ICaptureRepository | null>(null);
   const permissionServiceRef = useRef<IPermissionService | null>(null);
   const fileStorageServiceRef = useRef<FileStorageService | null>(null);
+  const storageMonitorServiceRef = useRef<StorageMonitorService | null>(null);
 
   // Initialize services on mount via TSyringe container
   useEffect(() => {
@@ -75,11 +133,7 @@ export const CaptureScreen = () => {
     repositoryRef.current = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
     permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
     fileStorageServiceRef.current = container.resolve(FileStorageService);
-  }, []);
-
-  // Check permission status on mount
-  useEffect(() => {
-    checkPermissions();
+    storageMonitorServiceRef.current = container.resolve(StorageMonitorService);
   }, []);
 
   // AC4: Crash recovery on app launch
@@ -115,12 +169,6 @@ export const CaptureScreen = () => {
     performCrashRecovery();
   }, []);
 
-  const checkPermissions = async () => {
-    if (!permissionServiceRef.current) return;
-    const hasPermission = await permissionServiceRef.current.hasMicrophonePermission();
-    setHasPermission(hasPermission);
-  };
-
   // Story 2.3: Timer for recording duration display
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
@@ -148,25 +196,36 @@ export const CaptureScreen = () => {
       return;
     }
 
-    // Check/request permissions
-    if (!hasPermission && permissionServiceRef.current) {
-      const result = await permissionServiceRef.current.requestMicrophonePermission();
+    // AC2: Check storage before recording
+    const storageMonitor = storageMonitorServiceRef.current;
+    if (!storageMonitor) {
+      Alert.alert(
+        'Erreur',
+        'Service de surveillance du stockage non disponible. Impossible de vérifier l\'espace disponible.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
 
-      if (result.status !== 'granted') {
+    try {
+      const isCritical = await storageMonitor.isStorageCriticallyLow();
+      if (isCritical) {
+        const storageInfo = await storageMonitor.getStorageInfo();
         Alert.alert(
-          'Permission refusée',
-          result.canAskAgain
-            ? 'Veuillez autoriser l\'accès au microphone pour enregistrer.'
-            : 'L\'accès au microphone a été refusé. Activez-le dans Réglages → Pensieve → Microphone',
+          'Espace de stockage faible',
+          `Il ne reste que ${storageInfo.freeFormatted} d'espace disponible. Libérez de l'espace avant d'enregistrer pour éviter la perte de données.`,
           [{ text: 'OK' }]
         );
         return;
       }
-
-      setHasPermission(true);
+    } catch (error) {
+      console.error('[CaptureScreen] Storage check failed:', error);
+      // If storage check fails, proceed with caution but warn user
+      console.warn('[CaptureScreen] Proceeding without storage verification (check failed)');
     }
 
-    // Prepare expo-audio recording FIRST to get temporary file URI (external lib - try/catch allowed)
+    // Permissions and audio mode already configured by parent component
+    // Prepare expo-audio recording (external lib - try/catch allowed)
     try {
       await audioRecorder.prepareToRecordAsync();
       const tempUri = audioRecorder.uri;
@@ -219,7 +278,9 @@ export const CaptureScreen = () => {
 
     // Get recording info from expo-audio
     const uri = audioRecorder.uri;
-    const recordingDuration = recorderState.durationMillis;
+    // Use our manually tracked duration instead of recorderState (disabled to avoid iOS crash)
+    // recordingDuration is in seconds, convert to milliseconds
+    const durationMs = recordingDuration * 1000;
 
     if (!uri) {
       Alert.alert('Erreur', 'Aucun fichier audio disponible');
@@ -228,7 +289,7 @@ export const CaptureScreen = () => {
     }
 
     // Stop RecordingService
-    const stopResult = await recordingService.stopRecording(uri, recordingDuration);
+    const stopResult = await recordingService.stopRecording(uri, durationMs);
 
     if (stopResult.type !== 'success' || !stopResult.data) {
       console.error('[CaptureScreen] Failed to stop recording:', stopResult.type, stopResult.error);
@@ -311,7 +372,6 @@ export const CaptureScreen = () => {
       );
     }
 
-    // Always reset state, even if cancel failed
     setState('idle');
   };
 
@@ -415,17 +475,6 @@ La synchronisation se fera automatiquement.`,
             : 'Sauvegarde en cours...'}
         </Text>
       </View>
-
-      {hasPermission === false && state === 'idle' && (
-        <View style={styles.permissionWarning}>
-          <Text style={styles.permissionWarningText}>
-            ⚠️ Permission microphone requise
-          </Text>
-          <Text style={styles.permissionSubtext}>
-            Tapez "Capturer" pour autoriser
-          </Text>
-        </View>
-      )}
 
       {/* DevTools toggle button - Development only */}
       <TouchableOpacity
@@ -579,3 +628,6 @@ const styles = StyleSheet.create({
     color: '#007AFF',
   },
 });
+
+// Export the wrapper component that initializes audio mode first
+export { CaptureScreenWithAudioMode as CaptureScreen };

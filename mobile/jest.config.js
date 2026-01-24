@@ -24,7 +24,7 @@ module.exports = {
     '^.+\\.(js|jsx|ts|tsx)$': 'babel-jest',
   },
   transformIgnorePatterns: [
-    'node_modules/(?!(@nozbe/watermelondb)/)',
+    'node_modules/(?!(@nozbe/watermelondb|expo-file-system|expo-haptics|expo-network|expo-modules-core|@react-native-community/netinfo)/)',
   ],
   setupFilesAfterEnv: ['<rootDir>/jest-setup.js'],
   moduleNameMapper: {

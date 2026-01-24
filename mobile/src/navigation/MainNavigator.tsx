@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
+import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
 
 const Tab = createBottomTabNavigator();
 
@@ -26,38 +27,41 @@ const HomeScreen = () => {
 
 export const MainNavigator = () => {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: true,
-        tabBarActiveTintColor: '#007AFF',
-        tabBarInactiveTintColor: '#8E8E93',
-      }}
-    >
-      <Tab.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{
-          title: 'Accueil',
-          tabBarLabel: 'Accueil',
+    <>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: true,
+          tabBarActiveTintColor: '#007AFF',
+          tabBarInactiveTintColor: '#8E8E93',
         }}
-      />
-      <Tab.Screen
-        name="Capture"
-        component={CaptureScreen}
-        options={{
-          title: 'Capturer',
-          tabBarLabel: 'Capturer',
-        }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{
-          title: 'Paramètres',
-          tabBarLabel: 'Paramètres',
-        }}
-      />
-    </Tab.Navigator>
+      >
+        <Tab.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{
+            title: 'Accueil',
+            tabBarLabel: 'Accueil',
+          }}
+        />
+        <Tab.Screen
+          name="Capture"
+          component={CaptureScreen}
+          options={{
+            title: 'Capturer',
+            tabBarLabel: 'Capturer',
+          }}
+        />
+        <Tab.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{
+            title: 'Paramètres',
+            tabBarLabel: 'Paramètres',
+          }}
+        />
+      </Tab.Navigator>
+      <OfflineIndicator />
+    </>
   );
 };
 

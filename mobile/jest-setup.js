@@ -8,6 +8,11 @@
  */
 
 // ==========================================
+// Global React Native Variables
+// ==========================================
+global.__DEV__ = true;
+
+// ==========================================
 // React Native Mocks
 // ==========================================
 // Mock AsyncStorage (required by Supabase and other RN libraries)
@@ -26,6 +31,17 @@ jest.mock('react-native', () => ({
     OS: 'ios',
     select: jest.fn((obj) => obj.ios),
   },
+}));
+
+// ==========================================
+// Expo File System Mock
+// ==========================================
+// Mock expo-file-system/legacy to avoid native module dependencies
+jest.mock('expo-file-system/legacy', () => ({
+  deleteAsync: jest.fn(() => Promise.resolve()),
+  getFreeDiskStorageAsync: jest.fn(() => Promise.resolve(1024 * 1024 * 1024)), // 1GB default
+  documentDirectory: 'file:///mock/documents/',
+  cacheDirectory: 'file:///mock/cache/',
 }));
 
 // ==========================================

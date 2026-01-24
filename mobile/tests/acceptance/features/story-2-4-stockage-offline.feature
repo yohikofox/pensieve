@@ -15,7 +15,7 @@ Fonctionnalité: Stockage Offline des Captures
     Quand l'utilisateur crée une capture audio
     Alors la Capture est persistée dans WatermelonDB
     Et le fichier audio est stocké dans le storage sécurisé
-    Et la Capture a un champ syncStatus avec valeur "pending"
+    Et la Capture est dans la queue de synchronisation
     Et la Capture est ajoutée à la queue de synchronisation
 
   @AC1 @secure-storage
@@ -33,13 +33,13 @@ Fonctionnalité: Stockage Offline des Captures
     Alors la Capture est persistée dans WatermelonDB
     Et le texte est stocké dans le champ rawContent
     Et aucun fichier audio n'est créé (filePath = null)
-    Et la Capture a syncStatus = "pending"
+    Et la capture est dans la queue de synchronisation
 
   @AC1 @sync-queue
   Scénario: Queue de synchronisation pour captures pending
     Étant donné que l'utilisateur crée 5 captures en mode offline
     Quand toutes les captures sont sauvegardées
-    Alors les 5 Captures ont syncStatus = "pending"
+    Alors les 5 captures sont dans la queue de synchronisation
     Et les 5 Captures sont dans la SyncQueue
     Et la SyncQueue.getQueueSize() retourne 5
 
@@ -48,7 +48,7 @@ Fonctionnalité: Stockage Offline des Captures
     Étant donné que l'appareil est hors ligne
     Quand l'utilisateur crée une capture de type "<type>"
     Alors la Capture est persistée avec type "<type>"
-    Et la Capture a syncStatus = "pending"
+    Et la capture est dans la queue de synchronisation
 
     Exemples:
       | type  |
@@ -65,7 +65,7 @@ Fonctionnalité: Stockage Offline des Captures
     Quand l'utilisateur crée 10 captures audio successivement
     Alors toutes les 10 captures sont sauvegardées sans erreurs
     Et aucune exception réseau n'est levée
-    Et toutes les Captures ont syncStatus = "pending"
+    Et toutes les captures sont dans la queue de synchronisation
 
   @AC2 @storage-monitoring
   Scénario: Monitoring de l'espace de stockage
@@ -113,8 +113,8 @@ Fonctionnalité: Stockage Offline des Captures
 
   @AC3 @offline-indicator
   Scénario: Afficher indicateur offline dans le feed
-    Étant donné que l'utilisateur a 3 captures avec syncStatus "pending"
-    Et l'utilisateur a 2 captures avec syncStatus "synced"
+    Étant donné que l'utilisateur a 3 captures dans la queue de synchronisation
+    Et l'utilisateur a 2 captures synchronisées
     Quand l'utilisateur ouvre le feed
     Alors les 3 captures pending affichent une icône cloud slash
     Et les 2 captures synced n'affichent pas d'icône offline
@@ -163,10 +163,10 @@ Fonctionnalité: Stockage Offline des Captures
 
   @AC4 @sync-status-preservation
   Scénario: Préserver syncStatus après crash
-    Étant donné que l'utilisateur a 3 captures avec syncStatus "pending"
+    Étant donné que l'utilisateur a 3 captures dans la queue de synchronisation
     Et l'application crash
     Quand l'utilisateur relance l'application
-    Alors les 3 captures ont toujours syncStatus "pending"
+    Alors les 3 captures sont toujours dans la queue de synchronisation
     Et elles sont toujours dans la SyncQueue
 
   @AC4 @zero-data-loss @NFR6

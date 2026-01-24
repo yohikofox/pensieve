@@ -25,7 +25,7 @@ Fonctionnalité: Capture Audio 1-Tap
       | champ      | valeur                    |
       | type       | AUDIO                     |
       | state      | RECORDING                 |
-      | syncStatus | pending                   |
+    Et la capture est dans la queue de synchronisation
     Et la capture a un ID unique généré
     Et la capture a un timestamp capturedAt
 
@@ -41,7 +41,7 @@ Fonctionnalité: Capture Audio 1-Tap
       | champ        | valeur                  |
       | state        | CAPTURED                |
       | duration     | <durée_ms>              |
-      | syncStatus   | pending                 |
+    Et la capture est dans la queue de synchronisation
     Et le fichier audio existe avec le nom "capture_user-123_*.m4a"
     Et les métadonnées incluent la durée <durée_ms>ms
 
@@ -85,14 +85,14 @@ Fonctionnalité: Capture Audio 1-Tap
     Quand l'utilisateur enregistre pendant 2 secondes
     Et l'utilisateur arrête l'enregistrement
     Alors la capture fonctionne de manière identique au mode en ligne
-    Et la Capture a le statut syncStatus = "pending"
+    Et la capture est dans la queue de synchronisation
     Et aucune erreur réseau n'est levée
 
   @AC3 @sync
   Scénario: Marquer pour synchronisation future
     Étant donné que l'appareil est hors ligne
     Quand l'utilisateur complète une capture
-    Alors la Capture a syncStatus = "pending"
+    Alors la capture est dans la queue de synchronisation
     Et la Capture sera éligible pour sync quand le réseau reviendra
 
   # ============================================================================

@@ -47,6 +47,10 @@ class DatabaseConnection {
 
       console.log('[DB] ✅ Database connection opened');
 
+      // Enable foreign key constraints (disabled by default in SQLite)
+      this.db.executeSync('PRAGMA foreign_keys = ON');
+      console.log('[DB] ✅ Foreign key constraints enabled');
+
       // Run migrations
       const applied = runMigrations(this.db);
 

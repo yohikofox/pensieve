@@ -21,6 +21,7 @@ import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import {
   type ICrashRecoveryService,
   type RecoveredCapture,
+  type OrphanedFile,
 } from '../domain/ICrashRecoveryService';
 
 /**
@@ -169,6 +170,107 @@ export class CrashRecoveryService implements ICrashRecoveryService {
         );
       }
     }
+
+    return deletedCount;
+  }
+
+  /**
+   * Story 2.4 AC4: Detect orphaned audio files
+   *
+   * Scans audio directory for files without DB records
+   * Helps identify files left behind after crashes
+   */
+  async detectOrphanedFiles(): Promise<OrphanedFile[]> {
+    const orphans: OrphanedFile[] = [];
+
+    try {
+      // Get audio directory path
+      const audioDir = `${FileSystem.documentDirectory}audio/`;
+
+      // Read all files in audio directory
+      const files = await FileSystem.readDirectoryAsync(audioDir);
+
+      if (files.length === 0) {
+        return orphans;
+      }
+
+      console.log(`[CrashRecovery] Scanning ${files.length} audio files for orphans...`);
+
+      // Get all captures from DB
+      const allCaptures = await this.repository.findAll();
+      const knownFilePaths = new Set(allCaptures.map((c) => c.rawContent));
+
+      // Check each file
+      for (const filename of files) {
+        const filePath = `${audioDir}${filename}`;
+
+        // Skip if this file is in DB
+        if (knownFilePaths.has(filePath)) {
+          continue;
+        }
+
+        // File not in DB - it's orphaned
+        try {
+          const fileInfo = await FileSystem.getInfoAsync(filePath);
+
+          if (fileInfo.exists) {
+            orphans.push({
+              filePath,
+              sizeBytes: fileInfo.size || 0,
+              createdAt: new Date(fileInfo.modificationTime || Date.now()),
+            });
+
+            console.warn('[CrashRecovery] Orphaned file detected:', filePath);
+          }
+        } catch (error) {
+          console.error('[CrashRecovery] Error checking file:', filePath, error);
+        }
+      }
+
+      if (orphans.length > 0) {
+        console.warn(`[CrashRecovery] Found ${orphans.length} orphaned file(s)`);
+      }
+
+      return orphans;
+    } catch (error) {
+      console.error('[CrashRecovery] Error detecting orphaned files:', error);
+      return orphans;
+    }
+  }
+
+  /**
+   * Story 2.4 AC4: Clean up orphaned files
+   *
+   * Deletes audio files without DB records
+   * Logs all deletions for audit trail
+   */
+  async cleanupOrphanedFiles(): Promise<number> {
+    const orphans = await this.detectOrphanedFiles();
+
+    if (orphans.length === 0) {
+      return 0;
+    }
+
+    let deletedCount = 0;
+
+    console.log(`[CrashRecovery] Cleaning up ${orphans.length} orphaned file(s)...`);
+
+    for (const orphan of orphans) {
+      try {
+        await FileSystem.deleteAsync(orphan.filePath, { idempotent: true });
+        deletedCount++;
+
+        console.log('[CrashRecovery] Deleted orphaned file:', {
+          path: orphan.filePath,
+          size: orphan.sizeBytes,
+          createdAt: orphan.createdAt.toISOString(),
+        });
+      } catch (error) {
+        console.error('[CrashRecovery] Failed to delete orphaned file:', orphan.filePath, error);
+      }
+    }
+
+    console.log(`[CrashRecovery] Cleanup complete: ${deletedCount}/${orphans.length} files deleted`);
 
     return deletedCount;
   }
