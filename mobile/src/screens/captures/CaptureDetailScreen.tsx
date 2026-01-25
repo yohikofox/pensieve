@@ -22,8 +22,12 @@ import {
   TextInput,
   Keyboard,
   Pressable,
+  Modal,
+  FlatList,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as Contacts from 'expo-contacts';
+import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
@@ -159,6 +163,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     postProcess: boolean;
   }>({ transcribe: false, postProcess: false });
 
+  // Action items interactive state
+  const [editingActionIndex, setEditingActionIndex] = useState<number | null>(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [contacts, setContacts] = useState<Contacts.Contact[]>([]);
+  const [contactSearchQuery, setContactSearchQuery] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [localActionItems, setLocalActionItems] = useState<ActionItem[] | null>(null);
+
   useEffect(() => {
     loadCapture();
   }, [captureId]);
@@ -167,6 +181,14 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     loadAnalyses();
   }, [captureId]);
+
+  // Sync local action items when analyses change
+  useEffect(() => {
+    if (analyses[ANALYSIS_TYPES.ACTION_ITEMS]) {
+      const parsed = parseActionItems(analyses[ANALYSIS_TYPES.ACTION_ITEMS].content);
+      setLocalActionItems(parsed);
+    }
+  }, [analyses[ANALYSIS_TYPES.ACTION_ITEMS]]);
 
   // Auto-expand analysis section if startAnalysis is true
   // Wait for loading to complete (ensures editedText is set)
@@ -278,6 +300,112 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   };
 
   const isAnyAnalysisLoading = Object.values(analysisLoading).some(Boolean);
+
+  // Handler to open date picker for an action item
+  const handleOpenDatePicker = (index: number, existingDate: string | null) => {
+    setEditingActionIndex(index);
+    if (existingDate) {
+      // Parse "JJ-MM-AAAA, HH:mm" format
+      const match = existingDate.match(/^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/);
+      if (match) {
+        const [, day, month, year, hours, minutes] = match;
+        setSelectedDate(new Date(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+          parseInt(hours, 10),
+          parseInt(minutes, 10)
+        ));
+      } else {
+        setSelectedDate(new Date());
+      }
+    } else {
+      setSelectedDate(new Date());
+    }
+    setShowDatePicker(true);
+  };
+
+  // Handler for date confirmation
+  const handleDateConfirm = (date: Date) => {
+    if (editingActionIndex !== null && localActionItems) {
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      const dateStr = `${day}-${month}-${year}, ${hours}:${minutes}`;
+
+      const updatedItems = [...localActionItems];
+      updatedItems[editingActionIndex] = {
+        ...updatedItems[editingActionIndex],
+        deadline_date: dateStr,
+        deadline_text: null, // Clear text when a specific date is set
+      };
+      setLocalActionItems(updatedItems);
+      setSelectedDate(date);
+    }
+    setShowDatePicker(false);
+    setEditingActionIndex(null);
+  };
+
+  // Handler for date picker cancel
+  const handleDateCancel = () => {
+    setShowDatePicker(false);
+    setEditingActionIndex(null);
+  };
+
+  // Handler to open contact picker
+  const handleOpenContactPicker = async (index: number) => {
+    setEditingActionIndex(index);
+    setContactSearchQuery('');
+    setLoadingContacts(true);
+    setShowContactPicker(true);
+
+    try {
+      const { status } = await Contacts.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission requise', 'L\'accès aux contacts est nécessaire pour cette fonctionnalité.');
+        setShowContactPicker(false);
+        setLoadingContacts(false);
+        return;
+      }
+
+      const { data } = await Contacts.getContactsAsync({
+        fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers, Contacts.Fields.Emails],
+        sort: Contacts.SortTypes.FirstName,
+      });
+
+      setContacts(data);
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Failed to load contacts:', error);
+      Alert.alert('Erreur', 'Impossible de charger les contacts.');
+      setShowContactPicker(false);
+    } finally {
+      setLoadingContacts(false);
+    }
+  };
+
+  // Handler for contact selection
+  const handleSelectContact = (contact: Contacts.Contact) => {
+    if (editingActionIndex !== null && localActionItems) {
+      const updatedItems = [...localActionItems];
+      updatedItems[editingActionIndex] = {
+        ...updatedItems[editingActionIndex],
+        target: contact.name || 'Contact sans nom',
+      };
+      setLocalActionItems(updatedItems);
+    }
+    setShowContactPicker(false);
+    setEditingActionIndex(null);
+    setContactSearchQuery('');
+  };
+
+  // Filter contacts based on search query
+  const filteredContacts = contacts.filter(contact => {
+    if (!contactSearchQuery) return true;
+    const name = contact.name?.toLowerCase() || '';
+    return name.includes(contactSearchQuery.toLowerCase());
+  });
 
   // Reprocessing handlers
   const handleReTranscribe = async () => {
@@ -836,7 +964,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     </TouchableOpacity>
                   </View>
                   {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (() => {
-                    const actionItems = parseActionItems(analyses[ANALYSIS_TYPES.ACTION_ITEMS].content);
+                    const actionItems = localActionItems;
                     if (actionItems && actionItems.length > 0) {
                       return (
                         <View style={styles.actionItemsList}>
@@ -848,26 +976,44 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                   {item.title}
                                 </Text>
                               </View>
-                              {(item.deadline_text || item.deadline_date || item.target) && (
-                                <View style={styles.actionItemMeta}>
-                                  {(item.deadline_date || item.deadline_text) && (
-                                    <View style={styles.actionItemTag}>
-                                      <Text style={styles.actionItemTagIcon}>📅</Text>
-                                      <Text style={styles.actionItemTagText}>
-                                        {item.deadline_date
-                                          ? formatDeadlineDate(item.deadline_date)
-                                          : item.deadline_text}
-                                      </Text>
-                                    </View>
-                                  )}
-                                  {item.target && (
-                                    <View style={styles.actionItemTag}>
-                                      <Text style={styles.actionItemTagIcon}>👤</Text>
-                                      <Text style={styles.actionItemTagText}>{item.target}</Text>
-                                    </View>
-                                  )}
-                                </View>
-                              )}
+                              <View style={styles.actionItemMeta}>
+                                {/* Deadline tag - always clickable */}
+                                <TouchableOpacity
+                                  style={[
+                                    styles.actionItemTag,
+                                    styles.actionItemTagClickable,
+                                    !item.deadline_date && !item.deadline_text && styles.actionItemTagEmpty,
+                                  ]}
+                                  onPress={() => handleOpenDatePicker(index, item.deadline_date)}
+                                >
+                                  <Text style={styles.actionItemTagIcon}>📅</Text>
+                                  <Text style={[
+                                    styles.actionItemTagText,
+                                    !item.deadline_date && !item.deadline_text && styles.actionItemTagTextEmpty,
+                                  ]}>
+                                    {item.deadline_date
+                                      ? formatDeadlineDate(item.deadline_date)
+                                      : item.deadline_text || 'Ajouter date'}
+                                  </Text>
+                                </TouchableOpacity>
+                                {/* Target tag - always clickable */}
+                                <TouchableOpacity
+                                  style={[
+                                    styles.actionItemTag,
+                                    styles.actionItemTagClickable,
+                                    !item.target && styles.actionItemTagEmpty,
+                                  ]}
+                                  onPress={() => handleOpenContactPicker(index)}
+                                >
+                                  <Text style={styles.actionItemTagIcon}>👤</Text>
+                                  <Text style={[
+                                    styles.actionItemTagText,
+                                    !item.target && styles.actionItemTagTextEmpty,
+                                  ]}>
+                                    {item.target || 'Ajouter contact'}
+                                  </Text>
+                                </TouchableOpacity>
+                              </View>
                             </View>
                           ))}
                         </View>
@@ -974,6 +1120,95 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           </View>
         )}
       </ScrollView>
+
+      {/* Date Picker Modal - Fonctionne sur iOS et Android */}
+      <DateTimePickerModal
+        isVisible={showDatePicker}
+        mode="datetime"
+        date={selectedDate}
+        onConfirm={handleDateConfirm}
+        onCancel={handleDateCancel}
+        locale="fr"
+        confirmTextIOS="OK"
+        cancelTextIOS="Annuler"
+      />
+
+      {/* Contact Picker Modal */}
+      {showContactPicker && (
+        <Modal
+          visible={showContactPicker}
+          animationType="slide"
+          onRequestClose={() => {
+            setShowContactPicker(false);
+            setEditingActionIndex(null);
+            setContactSearchQuery('');
+          }}
+        >
+        <View style={styles.contactPickerContainer}>
+          <View style={styles.contactPickerHeader}>
+            <TouchableOpacity
+              style={styles.contactPickerCloseButton}
+              onPress={() => {
+                setShowContactPicker(false);
+                setEditingActionIndex(null);
+                setContactSearchQuery('');
+              }}
+            >
+              <Text style={styles.contactPickerCloseText}>Fermer</Text>
+            </TouchableOpacity>
+            <Text style={styles.contactPickerTitle}>Choisir un contact</Text>
+            <View style={{ width: 60 }} />
+          </View>
+          <View style={styles.contactSearchContainer}>
+            <TextInput
+              style={styles.contactSearchInput}
+              placeholder="Rechercher..."
+              placeholderTextColor="#8E8E93"
+              value={contactSearchQuery}
+              onChangeText={setContactSearchQuery}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          {loadingContacts ? (
+            <View style={styles.contactLoadingContainer}>
+              <ActivityIndicator size="large" color="#9C27B0" />
+              <Text style={styles.contactLoadingText}>Chargement des contacts...</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={filteredContacts}
+              keyExtractor={(item, index) => (item as { id?: string }).id || `contact-${index}`}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.contactItem}
+                  onPress={() => handleSelectContact(item)}
+                >
+                  <View style={styles.contactAvatar}>
+                    <Text style={styles.contactAvatarText}>
+                      {item.name?.charAt(0).toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                  <View style={styles.contactInfo}>
+                    <Text style={styles.contactName}>{item.name || 'Sans nom'}</Text>
+                    {item.phoneNumbers && item.phoneNumbers.length > 0 && (
+                      <Text style={styles.contactPhone}>
+                        {item.phoneNumbers[0].number}
+                      </Text>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <View style={styles.contactEmptyContainer}>
+                  <Text style={styles.contactEmptyText}>Aucun contact trouve</Text>
+                </View>
+              }
+            />
+          )}
+        </View>
+      </Modal>
+      )}
 
       {/* Action Bar */}
       <View style={styles.actionBar}>
@@ -1609,5 +1844,112 @@ const styles = StyleSheet.create({
     marginTop: 8,
     textAlign: 'center',
     fontStyle: 'italic',
+  },
+  // Action item interactive styles
+  actionItemTagClickable: {
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+  },
+  actionItemTagEmpty: {
+    backgroundColor: '#FAFAFA',
+    borderStyle: 'dashed',
+    borderColor: '#CE93D8',
+  },
+  actionItemTagTextEmpty: {
+    color: '#9C27B0',
+    fontStyle: 'italic',
+  },
+  // Contact Picker styles
+  contactPickerContainer: {
+    flex: 1,
+    backgroundColor: '#F2F2F7',
+  },
+  contactPickerHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 16,
+    paddingTop: 60,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  contactPickerCloseButton: {
+    width: 60,
+  },
+  contactPickerCloseText: {
+    fontSize: 17,
+    color: '#9C27B0',
+  },
+  contactPickerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#000',
+  },
+  contactSearchContainer: {
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  contactSearchInput: {
+    backgroundColor: '#F2F2F7',
+    borderRadius: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+    color: '#000',
+  },
+  contactLoadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  contactLoadingText: {
+    marginTop: 12,
+    fontSize: 15,
+    color: '#666',
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  contactAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#9C27B0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  contactAvatarText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  contactInfo: {
+    flex: 1,
+  },
+  contactName: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#000',
+  },
+  contactPhone: {
+    fontSize: 14,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  contactEmptyContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  contactEmptyText: {
+    fontSize: 16,
+    color: '#8E8E93',
   },
 });

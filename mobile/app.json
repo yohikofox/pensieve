@@ -70,7 +70,8 @@
           "sounds": []
         }
       ],
-      "react-native-audio-api"
+      "react-native-audio-api",
+      "@react-native-community/datetimepicker"
     ]
   }
 }
