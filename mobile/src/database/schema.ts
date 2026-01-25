@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 6;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -26,6 +26,7 @@ export const CREATE_CAPTURES_TABLE = `
 
     -- Content
     raw_content TEXT,              -- File path (audio) or text content
+    normalized_text TEXT,          -- Transcription result (audio) or normalized text
     duration INTEGER,              -- Milliseconds (audio only)
     file_size INTEGER,             -- Bytes (audio only)
 

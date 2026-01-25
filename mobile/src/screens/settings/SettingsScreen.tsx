@@ -14,6 +14,7 @@ import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
+import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 
 export const SettingsScreen = () => {
   const [exportLoading, setExportLoading] = useState(false);
@@ -224,6 +225,12 @@ export const SettingsScreen = () => {
   return (
     <>
       <ScrollView style={styles.container}>
+        {/* Transcription Section */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderTitle}>Transcription</Text>
+        </View>
+        <WhisperModelCard modelSize="tiny" />
+
         {/* RGPD Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Confidentialité & Données</Text>
@@ -313,6 +320,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
+  },
+  sectionHeader: {
+    marginTop: 20,
+    marginHorizontal: 16,
+    marginBottom: 8,
+  },
+  sectionHeaderTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#8E8E93',
+    textTransform: 'uppercase',
   },
   section: {
     marginTop: 20,

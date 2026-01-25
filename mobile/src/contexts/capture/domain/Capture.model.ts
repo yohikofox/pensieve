@@ -101,6 +101,7 @@ export interface CaptureRow {
   type: string;
   state: string;
   raw_content: string;
+  normalized_text: string | null;
   duration: number | null;
   file_size: number | null;
   created_at: number;
@@ -121,6 +122,7 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     type: row.type,
     state: row.state,
     rawContent: row.raw_content,
+    normalizedText: row.normalized_text,
     duration: row.duration,
     fileSize: row.file_size,
     createdAt: new Date(row.created_at),
