@@ -9,7 +9,8 @@
  * - Delete capture
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Animated } from 'react-native';
 import {
   View,
   Text,
@@ -129,6 +130,59 @@ type CapturesStackParamList = {
 };
 
 type Props = NativeStackScreenProps<CapturesStackParamList, 'CaptureDetail'>;
+
+/** Animated checkmark component with fade and scale */
+function SavedIndicator({ visible, onHidden }: { visible: boolean; onHidden: () => void }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.8)).current;
+
+  useEffect(() => {
+    if (visible) {
+      // Fade in + scale up
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 6,
+          tension: 100,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Start fade out after 1.5s (total visible ~2s)
+      const timer = setTimeout(() => {
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => {
+          // Reset scale for next time
+          scale.setValue(0.8);
+          onHidden();
+        });
+      }, 1500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [visible, opacity, scale, onHidden]);
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      style={[
+        styles.actionItemSaveIndicator,
+        { opacity, transform: [{ scale }] },
+      ]}
+    >
+      <Text style={styles.actionItemSavedIcon}>✓</Text>
+    </Animated.View>
+  );
+}
 
 export function CaptureDetailScreen({ route, navigation }: Props) {
   const { captureId, startAnalysis } = route.params;
@@ -362,14 +416,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
       console.log('[CaptureDetailScreen] Action items saved');
 
-      // Show saved indicator
+      // Show saved indicator (animation handles the timeout)
       setSavingActionIndex(null);
       setSavedActionIndex(itemIndex);
-
-      // Hide saved indicator after 2 seconds
-      setTimeout(() => {
-        setSavedActionIndex(prev => prev === itemIndex ? null : prev);
-      }, 2000);
     } catch (error) {
       console.error('[CaptureDetailScreen] Failed to save action items:', error);
       setSavingActionIndex(null);
@@ -396,7 +445,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       setSelectedDate(date);
 
       // Auto-save
-      saveActionItems(updatedItems);
+      saveActionItems(updatedItems, editingActionIndex);
     }
     setShowDatePicker(false);
     setEditingActionIndex(null);
@@ -442,15 +491,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   // Handler for contact selection
   const handleSelectContact = (contact: Contacts.Contact) => {
     if (editingActionIndex !== null && localActionItems) {
+      const currentIndex = editingActionIndex;
       const updatedItems = [...localActionItems];
-      updatedItems[editingActionIndex] = {
-        ...updatedItems[editingActionIndex],
+      updatedItems[currentIndex] = {
+        ...updatedItems[currentIndex],
         target: contact.name || 'Contact sans nom',
       };
       setLocalActionItems(updatedItems);
 
-      // Auto-save
-      saveActionItems(updatedItems);
+      // Auto-save (capture index before clearing)
+      saveActionItems(updatedItems, currentIndex);
     }
     setShowContactPicker(false);
     setEditingActionIndex(null);
@@ -1033,6 +1083,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                   {item.title}
                                 </Text>
                               </View>
+                              {/* Save indicator */}
+                              {savingActionIndex === index && (
+                                <View style={styles.actionItemSaveIndicator}>
+                                  <ActivityIndicator size="small" color="#9C27B0" />
+                                </View>
+                              )}
+                              <SavedIndicator
+                                visible={savedActionIndex === index}
+                                onHidden={() => setSavedActionIndex(null)}
+                              />
                               <View style={styles.actionItemMeta}>
                                 {/* Deadline tag - always clickable */}
                                 <TouchableOpacity
@@ -1915,6 +1975,16 @@ const styles = StyleSheet.create({
   actionItemTagTextEmpty: {
     color: '#9C27B0',
     fontStyle: 'italic',
+  },
+  actionItemSaveIndicator: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+  },
+  actionItemSavedIcon: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#32CD32', // Lime green
   },
   // Contact Picker styles
   contactPickerContainer: {
