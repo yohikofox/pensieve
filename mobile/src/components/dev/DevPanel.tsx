@@ -168,7 +168,7 @@ export function DevPanel() {
     {
       id: 'queue',
       label: '🎙️ Queue',
-      component: <TranscriptionQueueDebug />,
+      component: <TranscriptionQueueDebug alwaysExpanded />,
       priority: 200,
     },
     {
