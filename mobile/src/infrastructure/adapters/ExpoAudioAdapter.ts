@@ -29,7 +29,11 @@ import {
 
 /**
  * Default recording configuration
- * Uses m4a format for compatibility and file size
+ *
+ * iOS: WAV (LinearPCM) - can be decoded by react-native-audio-api without FFmpeg
+ * Android: m4a format (AAC) - standard format
+ *
+ * AudioConversionService resamples to 16kHz mono for whisper.rn
  */
 const RECORDING_OPTIONS: RecordingOptions = {
   androidConfig: {
@@ -41,11 +45,11 @@ const RECORDING_OPTIONS: RecordingOptions = {
     bitRate: 128000,
   },
   iosConfig: {
-    extension: '.m4a',
-    audioQuality: 0x7F, // MAX
-    sampleRate: 44100,
-    numberOfChannels: 2,
-    bitRate: 128000,
+    extension: '.wav',
+    audioQuality: 0x7F, // MAX (ignored for LinearPCM)
+    sampleRate: 44100, // High quality recording, resampled to 16kHz for Whisper
+    numberOfChannels: 2, // Stereo recording, mixed to mono for Whisper
+    bitRate: 1411200, // 44100 * 16 * 2 = 1411.2 kbps for stereo 16-bit
     linearPCMBitDepth: 16,
     linearPCMIsBigEndian: false,
     linearPCMIsFloat: false,

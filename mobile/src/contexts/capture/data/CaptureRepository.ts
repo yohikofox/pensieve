@@ -21,6 +21,8 @@ import { type RepositoryResult, success, databaseError } from '../domain/Result'
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import { type ISyncQueueService } from '../domain/ISyncQueueService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
+import type { EventBus } from '../../shared/events/EventBus';
+import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../events/CaptureEvents';
 
 export interface CreateCaptureData {
   type: 'audio' | 'text' | 'image' | 'url';
@@ -49,7 +51,8 @@ export interface UpdateCaptureData {
 @injectable()
 export class CaptureRepository implements ICaptureRepository {
   constructor(
-    @inject(TOKENS.ISyncQueueService) private syncQueueService: ISyncQueueService
+    @inject(TOKENS.ISyncQueueService) private syncQueueService: ISyncQueueService,
+    @inject('EventBus') private eventBus: EventBus
   ) {}
 
   /**
@@ -110,6 +113,37 @@ export class CaptureRepository implements ICaptureRepository {
         // Don't fail the capture creation if queue fails
       }
 
+      // Story 2.5: Publish CaptureRecorded event (ADR-019)
+      // IMPORTANT: Only publish if state='captured' (not 'recording')
+      // Audio captures start with state='recording' and transition to 'captured' on stopRecording()
+      // We only want to trigger transcription when the capture is fully completed
+      console.log('[CaptureRepository] create() - Capture state:', capture.state, 'type:', capture.type);
+      if (capture.state === 'captured') {
+        try {
+          console.log('[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:', capture.id);
+          const event: CaptureRecordedEvent = {
+            type: 'CaptureRecorded',
+            timestamp: Date.now(),
+            payload: {
+              captureId: capture.id,
+              captureType: capture.type,
+              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+              audioDuration: capture.duration,
+              textContent: capture.type === 'text' ? capture.rawContent : undefined,
+              createdAt: capture.createdAt.getTime(),
+            },
+          };
+          console.log('[CaptureRepository] Event payload:', JSON.stringify(event.payload));
+          this.eventBus.publish(event);
+          console.log('[CaptureRepository] ✅ Published CaptureRecorded event:', capture.id);
+        } catch (eventError) {
+          console.error('[CaptureRepository] ❌ Failed to publish CaptureRecorded event:', eventError);
+          // Don't fail the capture creation if event publish fails
+        }
+      } else {
+        console.log('[CaptureRepository] ⏭️  Skipping event publish (state is not "captured")');
+      }
+
       return success(capture);
     } catch (error) {
       console.error('[CaptureRepository] Database error during create:', error);
@@ -144,6 +178,10 @@ export class CaptureRepository implements ICaptureRepository {
         fields.push('file_size = ?');
         values.push(updates.fileSize);
       }
+      if (updates.normalizedText !== undefined) {
+        fields.push('normalized_text = ?');
+        values.push(updates.normalizedText);
+      }
 
       fields.push('updated_at = ?');
       values.push(now);
@@ -168,6 +206,36 @@ export class CaptureRepository implements ICaptureRepository {
       }
 
       const capture = mapRowToCapture(row);
+
+      // Story 2.5: Publish CaptureRecorded event when transitioning to 'captured' state
+      // This happens when stopRecording() updates the capture from 'recording' to 'captured'
+      console.log('[CaptureRepository] update() - New state:', updates.state, 'type:', capture.type);
+      if (updates.state === 'captured') {
+        try {
+          console.log('[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:', capture.id);
+          const event: CaptureRecordedEvent = {
+            type: 'CaptureRecorded',
+            timestamp: Date.now(),
+            payload: {
+              captureId: capture.id,
+              captureType: capture.type,
+              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+              audioDuration: capture.duration,
+              textContent: capture.type === 'text' ? capture.rawContent : undefined,
+              createdAt: capture.createdAt.getTime(),
+            },
+          };
+          console.log('[CaptureRepository] Event payload:', JSON.stringify(event.payload));
+          this.eventBus.publish(event);
+          console.log('[CaptureRepository] ✅ Published CaptureRecorded event:', capture.id);
+        } catch (eventError) {
+          console.error('[CaptureRepository] ❌ Failed to publish CaptureRecorded event:', eventError);
+          // Don't fail the update if event publish fails
+        }
+      } else {
+        console.log('[CaptureRepository] ⏭️  Skipping event publish (state update is not "captured")');
+      }
+
       return success(capture);
     } catch (error) {
       console.error('[CaptureRepository] Database error during update:', id, error);
@@ -230,7 +298,31 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async delete(id: string): Promise<RepositoryResult<void>> {
     try {
+      // Fetch capture before deleting (needed for CaptureDeleted event)
+      const capture = await this.findById(id);
+
       database.execute('DELETE FROM captures WHERE id = ?', [id]);
+
+      // Story 2.5: Publish CaptureDeleted event (ADR-019)
+      if (capture) {
+        try {
+          const event: CaptureDeletedEvent = {
+            type: 'CaptureDeleted',
+            timestamp: Date.now(),
+            payload: {
+              captureId: capture.id,
+              captureType: capture.type,
+              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+            },
+          };
+          this.eventBus.publish(event);
+          console.log('[CaptureRepository] Published CaptureDeleted event:', capture.id);
+        } catch (eventError) {
+          console.error('[CaptureRepository] Failed to publish CaptureDeleted event:', eventError);
+          // Don't fail the delete if event publish fails
+        }
+      }
+
       return success(undefined);
     } catch (error) {
       console.error('[CaptureRepository] Database error during delete:', id, error);

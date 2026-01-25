@@ -26,9 +26,19 @@ import { StorageMonitorService } from '../../contexts/capture/services/StorageMo
 import { RetentionPolicyService } from '../../contexts/capture/services/RetentionPolicyService';
 import { EncryptionService } from '../../contexts/capture/services/EncryptionService';
 
+// Normalization Services (Story 2.5)
+import { AudioConversionService } from '../../contexts/Normalization/services/AudioConversionService';
+import { TranscriptionService } from '../../contexts/Normalization/services/TranscriptionService';
+import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
+import { TranscriptionQueueProcessor } from '../../contexts/Normalization/processors/TranscriptionQueueProcessor';
+import { TranscriptionWorker } from '../../contexts/Normalization/workers/TranscriptionWorker';
+
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
 import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
+
+// Event Infrastructure (ADR-019)
+import { eventBus } from '../../contexts/shared/events/EventBus';
 
 /**
  * Register all production services and repositories
@@ -39,6 +49,10 @@ import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 export function registerServices() {
+  // Event Infrastructure (ADR-019)
+  // Register EventBus singleton instance (shared message bus)
+  container.registerInstance('EventBus', eventBus);
+
   // Domain Repositories
   container.registerSingleton(TOKENS.ICaptureRepository, CaptureRepository);
 
@@ -57,4 +71,11 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IStorageMonitorService, StorageMonitorService);
   container.registerSingleton(TOKENS.IRetentionPolicyService, RetentionPolicyService);
   container.registerSingleton(TOKENS.IEncryptionService, EncryptionService);
+
+  // Normalization Services (Story 2.5 - Transcription)
+  container.registerSingleton(AudioConversionService);
+  container.registerSingleton(TranscriptionService);
+  container.registerSingleton(TranscriptionQueueService);
+  container.registerSingleton(TranscriptionQueueProcessor);
+  container.registerSingleton(TranscriptionWorker);
 }

@@ -1,18 +1,30 @@
 /**
  * Notification Utilities - User Notifications
  *
- * Simple notification helpers using React Native Alert API
- * for MVP implementation (no external dependencies)
+ * Provides both in-app alerts (Alert API) and local push notifications
+ * (expo-notifications) for background notifications.
  *
  * Story: 2.1 - Capture Audio 1-Tap
  * AC4: Crash Recovery - Notify user of recovered captures
  *
- * Note: Uses native Alert for MVP. Can be replaced with
- * Toast library (react-native-toast-message) in future iterations.
+ * Story: 2.5 - Transcription On-Device
+ * Task 5.3: Transcription completion notification
  */
 
-import { Alert, Platform } from 'react-native';
+import { Alert, Platform, AppState } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import type { RecoveredCapture } from '../../contexts/capture/domain/ICrashRecoveryService';
+
+// Configure notification handling behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 /**
  * Show notification when captures are recovered after crash
@@ -108,4 +120,144 @@ export function showSuccessNotification(title: string, message: string): void {
       style: 'default',
     },
   ]);
+}
+
+// ============================================
+// Transcription Notifications (Story 2.5)
+// ============================================
+
+/**
+ * Request notification permissions
+ *
+ * Should be called early in app lifecycle (e.g., App.tsx useEffect)
+ *
+ * @returns true if permissions granted, false otherwise
+ */
+export async function requestNotificationPermissions(): Promise<boolean> {
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+    if (existingStatus === 'granted') {
+      return true;
+    }
+
+    const { status } = await Notifications.requestPermissionsAsync();
+    return status === 'granted';
+  } catch (error) {
+    console.error('[Notifications] Permission request failed:', error);
+    return false;
+  }
+}
+
+/**
+ * Show transcription completion notification
+ *
+ * Story 2.5 - Task 5.3: Send local notification when transcription completes
+ *
+ * @param captureId - ID of the transcribed capture
+ * @param previewText - First few words of the transcription (optional)
+ */
+export async function showTranscriptionCompleteNotification(
+  captureId: string,
+  previewText?: string
+): Promise<void> {
+  // Only show push notification if app is backgrounded
+  const appState = AppState.currentState;
+
+  if (appState === 'active') {
+    // App is in foreground - skip notification (user can see the list update)
+    console.log('[Notifications] App active, skipping transcription notification');
+    return;
+  }
+
+  try {
+    const title = 'Transcription terminée';
+    const body = previewText
+      ? `"${previewText.substring(0, 50)}${previewText.length > 50 ? '...' : ''}"`
+      : 'Votre pensée est prête à être lue';
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title,
+        body,
+        data: {
+          type: 'transcription_complete',
+          captureId,
+        },
+        sound: true,
+      },
+      trigger: null, // Show immediately
+    });
+
+    console.log('[Notifications] Transcription complete notification sent for:', captureId);
+  } catch (error) {
+    console.error('[Notifications] Failed to send transcription notification:', error);
+  }
+}
+
+/**
+ * Show transcription failed notification
+ *
+ * @param captureId - ID of the failed capture
+ * @param errorMessage - Brief error description (optional)
+ */
+export async function showTranscriptionFailedNotification(
+  captureId: string,
+  errorMessage?: string
+): Promise<void> {
+  // Only show push notification if app is backgrounded
+  const appState = AppState.currentState;
+
+  if (appState === 'active') {
+    // App is in foreground - skip notification
+    return;
+  }
+
+  try {
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Transcription échouée',
+        body: errorMessage || 'La transcription a échoué. Appuyez pour réessayer.',
+        data: {
+          type: 'transcription_failed',
+          captureId,
+        },
+        sound: true,
+      },
+      trigger: null,
+    });
+
+    console.log('[Notifications] Transcription failed notification sent for:', captureId);
+  } catch (error) {
+    console.error('[Notifications] Failed to send error notification:', error);
+  }
+}
+
+/**
+ * Setup notification response handler
+ *
+ * Call this in App.tsx to handle notification taps
+ *
+ * @param onTranscriptionTap - Callback when transcription notification is tapped
+ */
+export function setupNotificationResponseHandler(
+  onTranscriptionTap?: (captureId: string) => void
+): () => void {
+  const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    const data = response.notification.request.content.data;
+
+    if (data?.type === 'transcription_complete' || data?.type === 'transcription_failed') {
+      const captureId = data.captureId as string;
+      console.log('[Notifications] User tapped transcription notification:', captureId);
+
+      if (onTranscriptionTap && captureId) {
+        onTranscriptionTap(captureId);
+      }
+    }
+  });
+
+  // Return cleanup function
+  return () => {
+    subscription.remove();
+  };
 }

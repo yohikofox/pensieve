@@ -5,14 +5,23 @@ import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { MainNavigator } from './src/navigation/MainNavigator';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, View, AppState, type AppStateStatus } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { registerServices } from './src/infrastructure/di/container';
 import { container } from 'tsyringe';
 import { TOKENS } from './src/infrastructure/di/tokens';
 import { type ICrashRecoveryService } from './src/contexts/capture/domain/ICrashRecoveryService';
-import { showCrashRecoveryNotification } from './src/shared/utils/notificationUtils';
+import {
+  showCrashRecoveryNotification,
+  requestNotificationPermissions,
+  setupNotificationResponseHandler,
+} from './src/shared/utils/notificationUtils';
 import NetInfo from '@react-native-community/netinfo';
-import { InAppLogger } from './src/components/dev/InAppLogger';
+import { TranscriptionQueueProcessor } from './src/contexts/Normalization/processors/TranscriptionQueueProcessor';
+import { TranscriptionWorker } from './src/contexts/Normalization/workers/TranscriptionWorker';
+import { registerTranscriptionBackgroundTask } from './src/contexts/Normalization/tasks/transcriptionBackgroundTask';
+import { DevPanelProvider } from './src/components/dev/DevPanelContext';
+import { DevPanel } from './src/components/dev/DevPanel';
 
 // Initialize IoC container with production services
 registerServices();
@@ -52,20 +61,96 @@ export default function App() {
     checkCrashRecovery();
   }, []); // Run once on mount
 
+  // Story 2.5 - Request notification permissions for transcription notifications
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        const granted = await requestNotificationPermissions();
+        console.log('[App] Notification permissions:', granted ? 'granted' : 'denied');
+      } catch (error) {
+        console.error('[App] Notification setup failed:', error);
+      }
+    };
+
+    setupNotifications();
+
+    // Setup notification response handler (when user taps notification)
+    const cleanup = setupNotificationResponseHandler((captureId) => {
+      console.log('[App] User tapped transcription notification for:', captureId);
+      // TODO: Navigate to capture detail when implemented
+    });
+
+    return cleanup;
+  }, []);
+
+  // Story 2.5 - Initialize Transcription Services
+  useEffect(() => {
+    const initializeTranscription = async () => {
+      try {
+        console.log('[App] Initializing transcription services...');
+
+        // Resolve services from DI container
+        const queueProcessor = container.resolve(TranscriptionQueueProcessor);
+        const worker = container.resolve(TranscriptionWorker);
+
+        // Start event listener (auto-enqueue captures)
+        queueProcessor.start();
+        console.log('[App] ✅ TranscriptionQueueProcessor started');
+
+        // Start foreground worker (process queue)
+        await worker.start();
+        console.log('[App] ✅ TranscriptionWorker started');
+
+        // Register background task (15-min periodic checks)
+        await registerTranscriptionBackgroundTask();
+        console.log('[App] ✅ Background transcription task registered');
+
+        // Handle app lifecycle (foreground/background)
+        const appStateListener = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+          if (nextAppState === 'background') {
+            console.log('[App] App backgrounding - pausing transcription worker');
+            await worker.pause();
+          } else if (nextAppState === 'active') {
+            console.log('[App] App foregrounding - resuming transcription worker');
+            await worker.resume();
+          }
+        });
+
+        // Cleanup on unmount
+        return () => {
+          console.log('[App] Cleaning up transcription services...');
+          queueProcessor.stop();
+          worker.stop();
+          appStateListener.remove();
+        };
+      } catch (error) {
+        // Silent fail - don't block app startup
+        console.error('[App] Transcription services initialization failed:', error);
+      }
+    };
+
+    initializeTranscription();
+  }, []); // Run once on mount
+
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" />
-      </View>
+      <SafeAreaProvider>
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" />
+        </View>
+      </SafeAreaProvider>
     );
   }
 
   return (
-    <>
-      <NavigationContainer>
-        {user ? <MainNavigator /> : <AuthNavigator />}
-      </NavigationContainer>
-      <InAppLogger />
-    </>
+    <SafeAreaProvider>
+      <DevPanelProvider>
+        <NavigationContainer>
+          {user ? <MainNavigator /> : <AuthNavigator />}
+        </NavigationContainer>
+        {/* Global DevPanel - Floating button accessible from any screen */}
+        <DevPanel />
+      </DevPanelProvider>
+    </SafeAreaProvider>
   );
 }

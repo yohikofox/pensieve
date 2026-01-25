@@ -115,9 +115,13 @@ export class RecordingService {
 
     const captureId = this.currentCaptureId;
 
-    // AC2: Update Capture entity with final state and metadata
+    // AC2: Update Capture entity with metadata (NOT state='captured' yet)
+    // IMPORTANT: We keep state='recording' here because:
+    // 1. CaptureScreen will move the file to permanent storage
+    // 2. CaptureScreen will then set state='captured' with the permanent path
+    // 3. This ensures CaptureRecorded event is published with the correct (permanent) path
+    // See: CaptureScreen.tsx stopRecording() flow
     const result = await this.repository.update(captureId, {
-      state: 'captured',
       rawContent: uri,
       duration,
     });

@@ -107,7 +107,7 @@ describe('RecordingService', () => {
       expect(result.error).toBe('NoRecordingInProgress');
     });
 
-    it('should update Capture entity with state "captured" and file metadata', async () => {
+    it('should update Capture entity with file metadata (state NOT changed to captured)', async () => {
       // Start recording first
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
@@ -121,7 +121,7 @@ describe('RecordingService', () => {
         data: {
           id: 'capture-123',
           type: 'audio',
-          state: 'captured',
+          state: 'recording', // Note: state remains 'recording', CaptureScreen sets 'captured' after file move
           rawContent: 'file:///final/recording.m4a',
           duration: 5000,
           createdAt: new Date(),
@@ -139,13 +139,21 @@ describe('RecordingService', () => {
       expect(result.data?.filePath).toBe('file:///final/recording.m4a');
       expect(result.data?.duration).toBe(5000);
 
-      // Verify Capture was updated with captured state
+      // Verify Capture was updated with rawContent and duration (but NOT state)
+      // Note: state='captured' is now set by CaptureScreen AFTER file is moved to permanent storage
+      // This ensures CaptureRecorded event is published with the permanent path
       expect(mockRepository.update).toHaveBeenCalledWith(
         'capture-123',
         expect.objectContaining({
-          state: 'captured',
           rawContent: 'file:///final/recording.m4a',
           duration: 5000,
+        })
+      );
+      // Verify state is NOT included in the update
+      expect(mockRepository.update).not.toHaveBeenCalledWith(
+        'capture-123',
+        expect.objectContaining({
+          state: 'captured',
         })
       );
     });

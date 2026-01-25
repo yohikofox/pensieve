@@ -1,9 +1,13 @@
 /**
  * InAppLogger - Dev-only log viewer for testing offline
- * Shows console.log messages in-app when Metro disconnected
+ *
+ * Architecture (Event-Driven):
+ * - Uses Zustand store (logsDebugStore) for reactive state
+ * - Console interception feeds logs to store
+ * - Pure observer pattern, no manual polling
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,65 +18,93 @@ import {
   Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLogsDebugStore, type LogEntry } from './stores/logsDebugStore';
 
-interface LogEntry {
-  timestamp: Date;
-  level: 'log' | 'error' | 'warn';
-  message: string;
-}
-
-export const InAppLogger: React.FC = () => {
-  const [visible, setVisible] = useState(false);
-  const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [sniffing, setSniffing] = useState(true);
+/**
+ * LogsViewer - Embedded logs display for DevPanel
+ */
+export const LogsViewer: React.FC = () => {
+  // Zustand store - reactive state
+  const { logs, sniffing, setSniffing, clearLogs } = useLogsDebugStore();
   const scrollRef = useRef<ScrollView>(null);
 
+  // Auto-scroll to bottom when new logs arrive
   useEffect(() => {
-    // Only in DEV mode
-    if (!__DEV__) return;
+    if (scrollRef.current && logs.length > 0) {
+      scrollRef.current.scrollToEnd({ animated: true });
+    }
+  }, [logs]);
 
-    // Intercept console methods
-    const originalLog = console.log;
-    const originalError = console.error;
-    const originalWarn = console.warn;
+  if (!__DEV__) return null;
 
-    console.log = (...args) => {
-      const message = args.map(arg =>
-        typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
-      ).join(' ');
+  return (
+    <View style={styles.embeddedContainer}>
+      {/* Header Controls */}
+      <View style={styles.embeddedHeader}>
+        <Text style={styles.embeddedTitle}>Dev Logs ({logs.length})</Text>
+        <View style={styles.headerButtons}>
+          <View style={styles.sniffingControl}>
+            <Text style={styles.sniffingLabel}>Sniff</Text>
+            <Switch
+              value={sniffing}
+              onValueChange={setSniffing}
+              trackColor={{ false: '#767577', true: '#81b0ff' }}
+              thumbColor={sniffing ? '#007AFF' : '#f4f3f4'}
+            />
+          </View>
+          <TouchableOpacity style={styles.clearButton} onPress={clearLogs}>
+            <Text style={styles.clearButtonText}>Clear</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-      if (sniffing) {
-        setLogs(prev => [...prev, { timestamp: new Date(), level: 'log', message }]);
-      }
-      originalLog(...args);
-    };
+      {/* Logs List */}
+      <ScrollView
+        ref={scrollRef}
+        style={styles.logContainer}
+        contentContainerStyle={styles.logContent}
+      >
+        {logs.length === 0 ? (
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyStateText}>No logs yet</Text>
+            <Text style={styles.emptyStateSubtext}>
+              {sniffing ? 'Waiting for console messages...' : 'Sniffing is disabled'}
+            </Text>
+          </View>
+        ) : (
+          logs.map((log: LogEntry, index: number) => (
+            <View
+              key={index}
+              style={[
+                styles.logEntry,
+                log.level === 'error' && styles.logError,
+                log.level === 'warn' && styles.logWarn,
+              ]}
+            >
+              <Text style={styles.logTime}>
+                {log.timestamp.toLocaleTimeString()}
+              </Text>
+              <Text style={styles.logMessage}>{log.message}</Text>
+            </View>
+          ))
+        )}
+      </ScrollView>
+    </View>
+  );
+};
 
-    console.error = (...args) => {
-      const message = args.map(arg => String(arg)).join(' ');
-      if (sniffing) {
-        setLogs(prev => [...prev, { timestamp: new Date(), level: 'error', message }]);
-      }
-      originalError(...args);
-    };
+/**
+ * InAppLogger - Floating button + modal version
+ * Kept for backward compatibility if needed elsewhere
+ */
+export const InAppLogger: React.FC = () => {
+  const [visible, setVisible] = React.useState(false);
+  const { logs, sniffing, setSniffing, clearLogs } = useLogsDebugStore();
+  const scrollRef = useRef<ScrollView>(null);
 
-    console.warn = (...args) => {
-      const message = args.map(arg => String(arg)).join(' ');
-      if (sniffing) {
-        setLogs(prev => [...prev, { timestamp: new Date(), level: 'warn', message }]);
-      }
-      originalWarn(...args);
-    };
-
-    return () => {
-      console.log = originalLog;
-      console.error = originalError;
-      console.warn = originalWarn;
-    };
-  }, [sniffing]);
-
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom when modal is visible
   useEffect(() => {
-    if (visible && scrollRef.current) {
+    if (visible && scrollRef.current && logs.length > 0) {
       scrollRef.current.scrollToEnd({ animated: true });
     }
   }, [logs, visible]);
@@ -86,7 +118,7 @@ export const InAppLogger: React.FC = () => {
         style={styles.floatingButton}
         onPress={() => setVisible(true)}
       >
-        <Text style={styles.floatingButtonText}>📋 {logs.length}</Text>
+        <Text style={styles.floatingButtonText}>{logs.length}</Text>
       </TouchableOpacity>
 
       {/* Log viewer modal */}
@@ -108,10 +140,7 @@ export const InAppLogger: React.FC = () => {
                   thumbColor={sniffing ? '#007AFF' : '#f4f3f4'}
                 />
               </View>
-              <TouchableOpacity
-                style={styles.clearButton}
-                onPress={() => setLogs([])}
-              >
+              <TouchableOpacity style={styles.clearButton} onPress={clearLogs}>
                 <Text style={styles.clearButtonText}>Clear</Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -128,7 +157,7 @@ export const InAppLogger: React.FC = () => {
             style={styles.logContainer}
             contentContainerStyle={styles.logContent}
           >
-            {logs.map((log, index) => (
+            {logs.map((log: LogEntry, index: number) => (
               <View
                 key={index}
                 style={[
@@ -151,6 +180,44 @@ export const InAppLogger: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
+  // Embedded version styles (for DevPanel)
+  embeddedContainer: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  embeddedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#1a1a1a',
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  embeddedTitle: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyStateText: {
+    color: '#888',
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  emptyStateSubtext: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  // Original floating button + modal styles
   floatingButton: {
     position: 'absolute',
     bottom: 100,

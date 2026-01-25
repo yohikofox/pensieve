@@ -1,11 +1,14 @@
 /**
- * CaptureDevTools - Development component to inspect WatermelonDB Captures
+ * CaptureDevTools - Development component to inspect Captures
  *
- * Usage: Add this component to any screen during development
- * to view all Captures stored in the local database
+ * Architecture (Event-Driven):
+ * - Uses Zustand store (captureDebugStore) for reactive state
+ * - CaptureDebugStoreSync syncs EventBus events → Store
+ * - NO polling for captures, pure observer pattern
+ * - Network status still polled (no events available)
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -20,60 +23,71 @@ import * as Network from 'expo-network';
 import * as FileSystem from 'expo-file-system/legacy';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
-import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
-import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
-import { OfflineSyncService } from '../../contexts/capture/services/OfflineSyncService';
+import type { EventBus } from '../../contexts/shared/events/EventBus';
+import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
+import type { ICrashRecoveryService } from '../../contexts/capture/domain/ICrashRecoveryService';
+import type { IOfflineSyncService } from '../../contexts/capture/domain/IOfflineSyncService';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
+import { useCaptureDebugStore } from './stores/captureDebugStore';
+import { CaptureDebugStoreSync } from './stores/CaptureDebugStoreSync';
 
 export const CaptureDevTools = () => {
-  const [captures, setCaptures] = useState<any[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [syncStats, setSyncStats] = useState({ pending: 0, synced: 0, total: 0 });
-  const [networkStatus, setNetworkStatus] = useState<{
+  // Zustand store - reactive state
+  const { captures, syncStats, error } = useCaptureDebugStore();
+
+  // Local UI state (not persisted)
+  const [refreshing, setRefreshing] = React.useState(false);
+  const [networkStatus, setNetworkStatus] = React.useState<{
     isConnected: boolean | null;
     type: Network.NetworkStateType | null;
   }>({ isConnected: null, type: null });
-  const [micPermission, setMicPermission] = useState<boolean | null>(null);
+  const [micPermission, setMicPermission] = React.useState<boolean | null>(null);
 
-  const repository = new CaptureRepository();
-  const crashRecoveryService = new CrashRecoveryService(repository);
-  const offlineSyncService = new OfflineSyncService(repository);
+  // Services refs (for actions)
+  const repositoryRef = useRef<ICaptureRepository | null>(null);
+  const crashRecoveryServiceRef = useRef<ICrashRecoveryService | null>(null);
+  const offlineSyncServiceRef = useRef<IOfflineSyncService | null>(null);
   const permissionServiceRef = useRef<IPermissionService | null>(null);
+  const syncRef = useRef<CaptureDebugStoreSync | null>(null);
 
-  // Initialize PermissionService via TSyringe
+  // Initialize services and store sync
   useEffect(() => {
+    const eventBus = container.resolve<EventBus>('EventBus');
+    repositoryRef.current = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+    crashRecoveryServiceRef.current = container.resolve<ICrashRecoveryService>(TOKENS.ICrashRecoveryService);
+    offlineSyncServiceRef.current = container.resolve<IOfflineSyncService>(TOKENS.IOfflineSyncService);
     permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
+
+    // Start store sync
+    syncRef.current = new CaptureDebugStoreSync(
+      eventBus,
+      repositoryRef.current,
+      offlineSyncServiceRef.current
+    );
+    syncRef.current.start();
+
+    // Check mic permission on mount
+    checkMicPermission();
+
+    return () => {
+      // Cleanup sync on unmount
+      if (syncRef.current) {
+        syncRef.current.stop();
+        syncRef.current = null;
+      }
+    };
   }, []);
 
-  const loadCaptures = async () => {
-    try {
-      setError(null);
-      const allCaptures = await repository.findAll();
-      setCaptures(allCaptures);
-
-      // Load sync stats
-      const stats = await offlineSyncService.getSyncStats();
-      setSyncStats({
-        pending: stats.pendingCount,
-        synced: stats.syncedCount,
-        total: stats.totalCount,
-      });
-    } catch (err) {
-      console.error('Failed to load captures:', err);
-      setError(err instanceof Error ? err.message : 'Unknown error');
-    }
-  };
-
   const simulateCrash = async () => {
+    if (!repositoryRef.current) return;
+
     try {
       // Create a capture in "recording" state to simulate a crash
       // Use a fake but valid-looking file path
-      await repository.create({
+      await repositoryRef.current.create({
         type: 'audio',
         state: 'recording',
         rawContent: 'file:///data/user/0/com.pensine.app/cache/Audio/crash_test_fake.m4a',
-        syncStatus: 'pending',
       });
 
       Alert.alert(
@@ -81,16 +95,17 @@ export const CaptureDevTools = () => {
         'Une capture en cours d\'enregistrement a été créée avec un fichier inexistant.\n\nRedémarrez l\'app ou tapez "Récupération crash" pour voir le recovery en action.',
         [{ text: 'OK' }]
       );
-
-      await loadCaptures();
+      // Store auto-updates via CaptureRecorded event
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de simuler le crash');
     }
   };
 
   const runCrashRecovery = async () => {
+    if (!crashRecoveryServiceRef.current) return;
+
     try {
-      const recovered = await crashRecoveryService.recoverIncompleteRecordings();
+      const recovered = await crashRecoveryServiceRef.current.recoverIncompleteRecordings();
 
       if (recovered.length === 0) {
         Alert.alert(
@@ -108,14 +123,15 @@ export const CaptureDevTools = () => {
           [{ text: 'OK' }]
         );
       }
-
-      await loadCaptures();
+      // Store auto-updates via events
     } catch (error) {
       Alert.alert('Erreur', 'Échec de la récupération');
     }
   };
 
   const deleteAllCaptures = async () => {
+    if (!repositoryRef.current) return;
+
     Alert.alert(
       '⚠️ Supprimer toutes les captures',
       'Êtes-vous sûr de vouloir supprimer TOUTES les captures de la base de données?\n\nCette action est irréversible.',
@@ -125,19 +141,20 @@ export const CaptureDevTools = () => {
           text: 'Supprimer tout',
           style: 'destructive',
           onPress: async () => {
+            if (!repositoryRef.current) return;
+
             try {
-              const allCaptures = await repository.findAll();
+              const allCaptures = await repositoryRef.current.findAll();
               let deletedCount = 0;
 
               for (const capture of allCaptures) {
-                const deleteResult = await repository.delete(capture.id);
+                const deleteResult = await repositoryRef.current.delete(capture.id);
                 if (deleteResult.type === 'success') {
                   deletedCount++;
                 }
               }
 
               Alert.alert('✅ Succès', `${deletedCount} capture(s) supprimée(s)`);
-              await loadCaptures();
             } catch (error) {
               Alert.alert('Erreur', 'Impossible de supprimer les captures');
             }
@@ -148,10 +165,12 @@ export const CaptureDevTools = () => {
   };
 
   const deleteFailedCaptures = async () => {
+    if (!crashRecoveryServiceRef.current) return;
+
     try {
-      const deletedCount = await crashRecoveryService.clearFailedCaptures();
+      const deletedCount = await crashRecoveryServiceRef.current.clearFailedCaptures();
       Alert.alert('✅ Succès', `${deletedCount} capture(s) échouée(s) supprimée(s)`);
-      await loadCaptures();
+      // Store auto-updates via CaptureDeleted events
     } catch (error) {
       Alert.alert('Erreur', 'Impossible de supprimer les captures échouées');
     }
@@ -244,15 +263,13 @@ export const CaptureDevTools = () => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadCaptures();
+    // Reload store from repository
+    if (syncRef.current) {
+      await syncRef.current.loadInitialState();
+    }
     await checkMicPermission();
     setRefreshing(false);
   };
-
-  useEffect(() => {
-    loadCaptures();
-    checkMicPermission();
-  }, []);
 
   // Monitor network status changes
   useEffect(() => {
