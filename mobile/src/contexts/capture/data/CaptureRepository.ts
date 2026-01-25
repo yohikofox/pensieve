@@ -46,6 +46,8 @@ export interface UpdateCaptureData {
   tags?: string;
   duration?: number; // Audio duration in milliseconds
   fileSize?: number; // File size in bytes
+  wavPath?: string | null; // Path to debug WAV file (debug mode only)
+  transcriptPrompt?: string | null; // Prompt used during transcription (custom vocabulary)
 }
 
 @injectable()
@@ -181,6 +183,14 @@ export class CaptureRepository implements ICaptureRepository {
       if (updates.normalizedText !== undefined) {
         fields.push('normalized_text = ?');
         values.push(updates.normalizedText);
+      }
+      if (updates.wavPath !== undefined) {
+        fields.push('wav_path = ?');
+        values.push(updates.wavPath);
+      }
+      if (updates.transcriptPrompt !== undefined) {
+        fields.push('transcript_prompt = ?');
+        values.push(updates.transcriptPrompt);
       }
 
       fields.push('updated_at = ?');

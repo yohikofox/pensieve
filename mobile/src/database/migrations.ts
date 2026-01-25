@@ -675,6 +675,169 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v6 completed');
     },
   },
+  {
+    version: 7,
+    name: 'Add wav_path column to captures for debug WAV persistence',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v7: Adding wav_path column to captures');
+
+      // Add wav_path column to captures table
+      db.executeSync(`
+        ALTER TABLE captures ADD COLUMN wav_path TEXT
+      `);
+
+      console.log('[DB] ✅ Migration v7: wav_path column added to captures');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v7');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE captures_v6 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT
+        )
+      `);
+
+      db.executeSync(`
+        INSERT INTO captures_v6 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        FROM captures
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v6 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Recreate sync_queue FK constraint
+      db.executeSync(`
+        CREATE TABLE sync_queue_v6 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v6 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v6 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      console.log('[DB] ✅ Rollback v7 completed');
+    },
+  },
+  {
+    version: 8,
+    name: 'Add transcript_prompt column to captures for transcription context',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v8: Adding transcript_prompt column to captures');
+
+      // Add transcript_prompt column to store the prompt used during transcription
+      db.executeSync(`
+        ALTER TABLE captures ADD COLUMN transcript_prompt TEXT
+      `);
+
+      console.log('[DB] ✅ Migration v8: transcript_prompt column added to captures');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v8');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE captures_v7 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT,
+          wav_path TEXT
+        )
+      `);
+
+      db.executeSync(`
+        INSERT INTO captures_v7 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data, wav_path
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data, wav_path
+        FROM captures
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v7 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Recreate sync_queue FK constraint
+      db.executeSync(`
+        CREATE TABLE sync_queue_v7 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v7 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v7 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      console.log('[DB] ✅ Rollback v8 completed');
+    },
+  },
 ];
 
 /**

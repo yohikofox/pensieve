@@ -78,6 +78,18 @@ export interface Capture {
   fileSize?: number | null;
 
   /**
+   * Path to converted WAV file (debug mode only)
+   * Null unless debug mode was enabled during transcription
+   */
+  wavPath?: string | null;
+
+  /**
+   * Prompt used during transcription (custom vocabulary)
+   * Null if no custom prompt was used
+   */
+  transcriptPrompt?: string | null;
+
+  /**
    * Auto-managed timestamps
    */
   createdAt: Date;
@@ -104,6 +116,8 @@ export interface CaptureRow {
   normalized_text: string | null;
   duration: number | null;
   file_size: number | null;
+  wav_path: string | null;
+  transcript_prompt: string | null;
   created_at: number;
   updated_at: number;
   sync_version: number;
@@ -125,6 +139,8 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     normalizedText: row.normalized_text,
     duration: row.duration,
     fileSize: row.file_size,
+    wavPath: row.wav_path,
+    transcriptPrompt: row.transcript_prompt,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     capturedAt: new Date(row.created_at), // Same as createdAt for now

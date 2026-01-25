@@ -31,6 +31,9 @@ export interface ICaptureRepository {
       state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
       rawContent?: string;
       duration?: number;
+      normalizedText?: string;
+      wavPath?: string | null;
+      transcriptPrompt?: string | null;
     }
   ): Promise<RepositoryResult<Capture>>;
 
