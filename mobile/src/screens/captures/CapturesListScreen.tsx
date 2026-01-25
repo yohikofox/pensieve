@@ -11,7 +11,7 @@
  * - Retry button for "failed" state
  */
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -33,14 +33,18 @@ import type { Capture } from "../../contexts/capture/domain/Capture.model";
 import { TranscriptionQueueService } from "../../contexts/Normalization/services/TranscriptionQueueService";
 import { WhisperModelService } from "../../contexts/Normalization/services/WhisperModelService";
 import { useSettingsStore } from "../../stores/settingsStore";
-import type { CapturesStackParamList } from "../../navigation/CapturesStackNavigator";
+// Override with extended param list that includes startAnalysis
+type CapturesStackParamListExtended = {
+  CapturesList: undefined;
+  CaptureDetail: { captureId: string; startAnalysis?: boolean };
+};
 
 type CaptureWithTranscription = Capture & {
   transcriptionStatus?: "pending" | "processing" | "completed" | "failed";
 };
 
 type NavigationProp = NativeStackNavigationProp<
-  CapturesStackParamList,
+  CapturesStackParamListExtended,
   "CapturesList"
 >;
 
@@ -330,8 +334,20 @@ export function CapturesListScreen() {
             </View>
           )}
           {isAudio && isReady && (
-            <View style={[styles.statusBadge, styles.statusReady]}>
-              <Text style={styles.statusText}>✅ Prêt</Text>
+            <View style={styles.readyRow}>
+              <View style={[styles.statusBadge, styles.statusReady]}>
+                <Text style={styles.statusText}>✅ Prêt</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.analyzeButton}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  console.log('[CapturesListScreen] Analyze button pressed for capture:', item.id);
+                  navigation.navigate('CaptureDetail', { captureId: item.id, startAnalysis: true });
+                }}
+              >
+                <Text style={styles.analyzeButtonText}>📊 Analyser</Text>
+              </TouchableOpacity>
             </View>
           )}
           {isAudio && isFailed && (
@@ -548,6 +564,22 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  readyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  analyzeButton: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    backgroundColor: "#9C27B0",
+    borderRadius: 8,
+  },
+  analyzeButtonText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
   statusBadge: {
     flexDirection: "row",

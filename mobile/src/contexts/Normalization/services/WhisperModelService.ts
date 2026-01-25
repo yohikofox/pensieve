@@ -3,6 +3,7 @@ import { injectable } from 'tsyringe';
 import { fetch } from 'expo/fetch';
 import { File, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fileHash } from '@preeternal/react-native-file-hash';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
@@ -39,22 +40,27 @@ export class WhisperModelService {
     tiny: {
       filename: 'ggml-tiny.bin',
       expectedSize: 75 * 1024 * 1024, // ~75MB
+      sha256: 'be07e048e1e599ad46341c8d2a135645097a538221678b7acdd1b1919c6e1b21',
     },
     base: {
       filename: 'ggml-base.bin',
       expectedSize: 142 * 1024 * 1024, // ~142MB
+      sha256: '60ed5bc3dd14eea856493d334349b405782ddcaf0028d4b5df4088345fba2efe',
     },
     small: {
       filename: 'ggml-small.bin',
       expectedSize: 466 * 1024 * 1024, // ~466MB
+      sha256: '1be3a9b2063867b937e64e2ec7483364a79917e157fa98c5d94b5c1fffea987b',
     },
     medium: {
       filename: 'ggml-medium.bin',
       expectedSize: 1500 * 1024 * 1024, // ~1.5GB
+      sha256: null as string | null, // To be added if needed
     },
     'large-v3': {
       filename: 'ggml-large-v3.bin',
       expectedSize: 3100 * 1024 * 1024, // ~3.1GB
+      sha256: null as string | null, // To be added if needed
     },
   };
 
@@ -156,6 +162,14 @@ export class WhisperModelService {
 
       console.log('[WhisperModelService] ✅ Download completed:', modelFile.uri);
 
+      // Verify checksum
+      const isValid = await this.verifyChecksum(modelSize);
+      if (!isValid) {
+        // Delete corrupted file
+        await this.deleteModel(modelSize);
+        throw new Error(`Checksum verification failed for ${modelSize} model. File deleted.`);
+      }
+
       return modelFile.uri;
     } catch (error) {
       console.error('[WhisperModelService] ❌ Download failed:', error);
@@ -214,6 +228,37 @@ export class WhisperModelService {
         `Failed to delete ${modelSize} model: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
     }
+  }
+
+  /**
+   * Verify SHA256 checksum of a downloaded model
+   *
+   * @param modelSize - Model size to verify
+   * @returns true if checksum matches or no checksum defined, false otherwise
+   */
+  async verifyChecksum(modelSize: WhisperModelSize): Promise<boolean> {
+    const config = this.MODEL_CONFIGS[modelSize];
+    if (!config.sha256) {
+      console.warn(`[WhisperModelService] No checksum for ${modelSize}, skipping verification`);
+      return true;
+    }
+
+    const filePath = this.getModelPath(modelSize);
+    // Remove file:// prefix if present
+    const cleanPath = filePath.startsWith('file://') ? filePath.slice(7) : filePath;
+
+    console.log(`[WhisperModelService] Verifying checksum for ${modelSize}...`);
+    const hash = await fileHash(cleanPath, 'SHA-256');
+
+    if (hash.toLowerCase() !== config.sha256.toLowerCase()) {
+      console.error(`[WhisperModelService] ❌ Checksum mismatch for ${modelSize}`);
+      console.error(`  Expected: ${config.sha256}`);
+      console.error(`  Got:      ${hash}`);
+      return false;
+    }
+
+    console.log(`[WhisperModelService] ✅ Checksum verified for ${modelSize}`);
+    return true;
   }
 
   /**

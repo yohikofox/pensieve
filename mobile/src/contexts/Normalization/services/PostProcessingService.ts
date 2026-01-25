@@ -78,9 +78,9 @@ export class PostProcessingService {
   /**
    * Initialize the service and prepare for processing
    *
-   * Selects the appropriate backend based on device capabilities:
-   * - Google Pixel with TPU: MediaPipeBackend (Gemma 3n)
-   * - Apple/Samsung/Others: LlamaRnBackend (GGUF models with GPU acceleration)
+   * Priority:
+   * 1. Use the user's selected model (if available)
+   * 2. Fall back to device-preferred backend if no selection
    *
    * @returns true if ready to process
    */
@@ -92,63 +92,86 @@ export class PostProcessingService {
     try {
       // Detect NPU capabilities
       const npuInfo = await this.npuDetection.detectNPU();
-      const preferredBackend = await this.npuDetection.getPreferredBackend();
 
-      console.log('[PostProcessingService] Initializing with backend:', preferredBackend, {
+      // Check user's selected model first
+      const selectedModelId = await this.modelService.getSelectedModel();
+      let targetBackend: LLMBackendType | null = null;
+      let targetModelId: LLMModelId | null = null;
+
+      if (selectedModelId && await this.modelService.isModelDownloaded(selectedModelId)) {
+        // Use the user's selected model
+        const selectedConfig = this.modelService.getModelConfig(selectedModelId);
+        targetBackend = selectedConfig.backend;
+        targetModelId = selectedModelId;
+        console.log('[PostProcessingService] Using user-selected model:', selectedModelId, 'backend:', targetBackend);
+      } else {
+        // Fall back to best available model
+        targetModelId = await this.modelService.getBestAvailableModel();
+        if (targetModelId) {
+          targetBackend = this.modelService.getModelConfig(targetModelId).backend;
+          console.log('[PostProcessingService] Using best available model:', targetModelId, 'backend:', targetBackend);
+        }
+      }
+
+      if (!targetModelId || !targetBackend) {
+        console.warn('[PostProcessingService] No model available');
+        return false;
+      }
+
+      console.log('[PostProcessingService] Initializing backend:', targetBackend, {
         manufacturer: npuInfo.manufacturer,
         type: npuInfo.type,
         generation: npuInfo.generation,
       });
 
-      // Try to initialize preferred backend
-      if (preferredBackend === 'mediapipe') {
-        // MediaPipe is only for Google Tensor TPU
+      // Initialize the appropriate backend for the selected model
+      if (targetBackend === 'mediapipe') {
         const mediapipe = new MediaPipeBackend();
         if (await mediapipe.initialize()) {
           this.backend = mediapipe;
           console.log('[PostProcessingService] Using MediaPipe backend (Tensor TPU)');
         } else {
-          // Fallback to llama.rn
-          console.log('[PostProcessingService] MediaPipe not available, falling back to llama.rn');
-          const llamarn = new LlamaRnBackend();
-          if (await llamarn.initialize()) {
-            this.backend = llamarn;
+          // MediaPipe failed - fall back to llama.rn with a GGUF model
+          console.warn('[PostProcessingService] MediaPipe unavailable, falling back to llama.rn');
+          targetBackend = 'llamarn';
+          targetModelId = await this.modelService.getBestAvailableModel('llamarn');
+          if (!targetModelId) {
+            console.error('[PostProcessingService] No llama.rn model available for fallback');
+            return false;
           }
+          console.log('[PostProcessingService] Fallback to llama.rn model:', targetModelId);
         }
-      } else {
-        // For Apple (CoreML via llama.rn), Samsung, and others
+      }
+
+      // If backend not yet set (llamarn selected or mediapipe fallback)
+      if (!this.backend) {
+        // For llamarn backend
         const llamarn = new LlamaRnBackend();
         if (await llamarn.initialize()) {
           this.backend = llamarn;
           const backendDesc = npuInfo.type === 'neural-engine'
             ? 'llama.rn (Apple Neural Engine)'
-            : npuInfo.type === 'samsung-npu'
-              ? 'llama.rn (Samsung NPU)'
-              : 'llama.rn (GPU/CPU)';
+            : npuInfo.type === 'tensor-tpu'
+              ? 'llama.rn (Tensor GPU)'
+              : npuInfo.type === 'samsung-npu'
+                ? 'llama.rn (Samsung NPU)'
+                : 'llama.rn (GPU/CPU)';
           console.log(`[PostProcessingService] Using ${backendDesc}`);
+        } else {
+          console.error('[PostProcessingService] LlamaRn initialization failed');
+          return false;
         }
       }
 
-      if (!this.backend) {
-        console.error('[PostProcessingService] No backend available');
-        return false;
-      }
-
       // Load the model
-      const modelId = await this.getBestModelForBackend();
-      if (!modelId) {
-        console.warn('[PostProcessingService] No model available');
-        return false;
-      }
-
-      const modelConfig = this.modelService.getModelConfig(modelId);
-      const modelPath = this.modelService.getModelPath(modelId);
+      const modelConfig = this.modelService.getModelConfig(targetModelId);
+      const modelPath = this.modelService.getModelPath(targetModelId);
       const loaded = await this.backend.loadModel(modelPath, modelConfig.promptTemplate);
 
       if (loaded) {
-        this.currentModelId = modelId;
+        this.currentModelId = targetModelId;
         this.isReady = true;
-        console.log('[PostProcessingService] Ready with model:', modelId);
+        console.log('[PostProcessingService] Ready with model:', targetModelId);
         return true;
       }
 

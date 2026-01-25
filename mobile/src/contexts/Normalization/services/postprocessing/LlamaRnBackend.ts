@@ -128,7 +128,7 @@ export class LlamaRnBackend implements IPostProcessingBackend {
 
       this.context = await llama.initLlama({
         model: modelPath,
-        n_ctx: 2048, // Context window
+        n_ctx: 4096, // Context window (increased for longer transcripts)
         n_gpu_layers: 99, // Use GPU when available
         use_mlock: true, // Lock memory to prevent swapping
       });
@@ -178,18 +178,29 @@ export class LlamaRnBackend implements IPostProcessingBackend {
     // Build the prompt
     const prompt = this.buildPrompt(text);
 
-    console.log('[LlamaRnBackend] Processing text:', text.substring(0, 50) + '...');
+    console.log('[LlamaRnBackend] Processing text:', {
+      inputLength: text.length,
+      inputPreview: text.substring(0, 50) + '...',
+      promptLength: prompt.length,
+    });
 
     try {
       const result = await this.context.completion({
         prompt,
-        n_predict: 512, // Max tokens to generate
+        n_predict: 2048, // Max tokens to generate (increased for longer transcripts)
         temperature: 0.1, // Low temperature for deterministic output
         top_p: 0.9,
         stop: this.getStopTokens(),
       });
 
       const processingDuration = Date.now() - startTime;
+
+      // Log raw output before cleaning
+      console.log('[LlamaRnBackend] Raw model output:', {
+        rawLength: result.text.length,
+        rawText: result.text.substring(0, 200) + (result.text.length > 200 ? '...' : ''),
+        stopTokens: this.getStopTokens(),
+      });
 
       // Clean up the result
       let processedText = result.text.trim();
@@ -245,6 +256,8 @@ export class LlamaRnBackend implements IPostProcessingBackend {
         duration: processingDuration,
         inputLength: text.length,
         outputLength: processedText.length,
+        ratio: (processedText.length / text.length).toFixed(2),
+        outputPreview: processedText.substring(0, 100) + '...',
       });
 
       return {
@@ -334,6 +347,146 @@ ${text}
    */
   getSystemPrompt(): string {
     return debugPromptManager.getPrompt();
+  }
+
+  /**
+   * Process text with a custom prompt
+   *
+   * @param systemPrompt - The system prompt to use
+   * @param userText - The text to process
+   * @returns Processing result
+   */
+  async processWithCustomPrompt(
+    systemPrompt: string,
+    userText: string
+  ): Promise<PostProcessingResult> {
+    if (!this.context) {
+      throw new Error('No model loaded. Call loadModel() first.');
+    }
+
+    const startTime = Date.now();
+
+    // Build prompt with custom system prompt
+    const prompt = this.buildPromptWithCustomSystem(systemPrompt, userText);
+
+    console.log('[LlamaRnBackend] Processing with custom prompt:', systemPrompt.substring(0, 50) + '...');
+
+    try {
+      const result = await this.context.completion({
+        prompt,
+        n_predict: 1024, // More tokens for analysis output
+        temperature: 0.3, // Slightly higher for more creative analysis
+        top_p: 0.9,
+        stop: this.getStopTokens(),
+      });
+
+      const processingDuration = Date.now() - startTime;
+
+      // Clean up the result
+      let processedText = result.text.trim();
+
+      // Remove any leading/trailing quotes
+      if (processedText.startsWith('"') && processedText.endsWith('"')) {
+        processedText = processedText.slice(1, -1);
+      }
+
+      // Remove any leaked special tokens
+      processedText = this.cleanSpecialTokens(processedText);
+
+      console.log('[LlamaRnBackend] Custom prompt processing completed:', {
+        duration: processingDuration,
+        inputLength: userText.length,
+        outputLength: processedText.length,
+      });
+
+      return {
+        text: processedText,
+        processingDuration,
+        backend: 'llamarn',
+        model: this.modelPath || 'unknown',
+      };
+    } catch (error) {
+      console.error('[LlamaRnBackend] Custom prompt processing failed:', error);
+      throw new Error(
+        `LLM processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
+   * Build prompt with a custom system prompt
+   */
+  private buildPromptWithCustomSystem(systemPrompt: string, userText: string): string {
+    switch (this.promptTemplate) {
+      case 'gemma':
+        return `<start_of_turn>user
+${systemPrompt}
+
+${userText}<end_of_turn>
+<start_of_turn>model
+`;
+
+      case 'phi':
+        return `<|system|>
+${systemPrompt}<|end|>
+<|user|>
+${userText}<|end|>
+<|assistant|>
+`;
+
+      case 'llama':
+        return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+
+${systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
+
+${userText}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+
+`;
+
+      case 'chatml':
+      default:
+        return `<|im_start|>system
+${systemPrompt}
+<|im_end|>
+<|im_start|>user
+${userText}
+<|im_end|>
+<|im_start|>assistant
+`;
+    }
+  }
+
+  /**
+   * Clean special tokens from output
+   */
+  private cleanSpecialTokens(text: string): string {
+    return text
+      // Llama 3.x tokens
+      .replace(/<\|begin_of_text\|>/g, '')
+      .replace(/<\|end_of_text\|>/g, '')
+      .replace(/<\|start_header_id\|>/g, '')
+      .replace(/<\|end_header_id\|>/g, '')
+      .replace(/<\|eot_id\|>/g, '')
+      // Llama 2 tokens
+      .replace(/<<SYS>>/g, '')
+      .replace(/<\/SYS>>/g, '')
+      .replace(/\[INST\]/g, '')
+      .replace(/\[\/INST\]/g, '')
+      // ChatML tokens
+      .replace(/<\|im_start\|>/g, '')
+      .replace(/<\|im_end\|>/g, '')
+      // Gemma tokens
+      .replace(/<start_of_turn>/g, '')
+      .replace(/<end_of_turn>/g, '')
+      // Phi tokens
+      .replace(/<\|system\|>/g, '')
+      .replace(/<\|user\|>/g, '')
+      .replace(/<\|assistant\|>/g, '')
+      .replace(/<\|end\|>/g, '')
+      // General cleanup
+      .replace(/<s>/g, '')
+      .replace(/<\/s>/g, '')
+      .trim();
   }
 
   /**

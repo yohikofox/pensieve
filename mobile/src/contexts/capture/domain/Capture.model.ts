@@ -43,15 +43,11 @@ export interface Capture {
   rawContent: string;
 
   /**
-   * Raw transcript from Whisper (before LLM post-processing)
-   * Null until transcription completes
-   */
-  rawTranscript?: string | null;
-
-  /**
    * Normalized text after LLM post-processing
    * Falls back to rawTranscript if no post-processing applied
    * Null until transcription completes
+   *
+   * Note: Raw transcript is now stored in capture_metadata table (key: 'raw_transcript')
    */
   normalizedText?: string | null;
 
@@ -91,13 +87,9 @@ export interface Capture {
   wavPath?: string | null;
 
   /**
-   * Prompt used during transcription (custom vocabulary)
-   * Null if no custom prompt was used
-   */
-  transcriptPrompt?: string | null;
-
-  /**
    * Auto-managed timestamps
+   *
+   * Note: Transcript prompt is now stored in capture_metadata table (key: 'transcript_prompt')
    */
   createdAt: Date;
   updatedAt: Date;
@@ -114,18 +106,17 @@ export interface Capture {
 /**
  * Database row type (snake_case from SQLite)
  * Note: sync status is now managed via sync_queue table (v2 architecture)
+ * Note: raw_transcript and transcript_prompt moved to capture_metadata table (v10)
  */
 export interface CaptureRow {
   id: string;
   type: string;
   state: string;
   raw_content: string;
-  raw_transcript: string | null;
   normalized_text: string | null;
   duration: number | null;
   file_size: number | null;
   wav_path: string | null;
-  transcript_prompt: string | null;
   created_at: number;
   updated_at: number;
   sync_version: number;
@@ -137,6 +128,7 @@ export interface CaptureRow {
 /**
  * Map database row to domain model
  * Note: syncStatus is now queried separately via sync_queue table
+ * Note: raw_transcript and transcript_prompt are now in capture_metadata table
  */
 export function mapRowToCapture(row: CaptureRow): Capture {
   return {
@@ -144,12 +136,10 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     type: row.type,
     state: row.state,
     rawContent: row.raw_content,
-    rawTranscript: row.raw_transcript,
     normalizedText: row.normalized_text,
     duration: row.duration,
     fileSize: row.file_size,
     wavPath: row.wav_path,
-    transcriptPrompt: row.transcript_prompt,
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
     capturedAt: new Date(row.created_at), // Same as createdAt for now

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { Platform } from "react-native";
+import { File } from "expo-file-system/next";
 import { initWhisper, WhisperContext } from "whisper.rn";
 import { AudioConversionService } from "./AudioConversionService";
 import { WhisperModelService } from "./WhisperModelService";
@@ -81,7 +82,34 @@ export class TranscriptionService {
       }
 
       // Step 3: Get custom vocabulary prompt
-      const prompt = await this.whisperModelService.getPromptString();
+      const vocabulary = await this.whisperModelService.getPromptString();
+      // const prompt = `Transcription d'une note vocale en français. Vocabulaire technique possible.
+      //   ${vocabulary ? `Termes spécifiques à inclure: ${vocabulary}` : ""}
+      //   `;
+
+      const prompt = `
+Transcription fidèle d'une note vocale en français.
+
+Contexte :
+- Dictée vocale naturelle
+- Contenu professionnel et technique
+- Présence possible de termes anglais techniques
+
+Règles :
+- Transcrire exactement ce qui est dit
+- Ne pas reformuler
+- Conserver les noms propres
+- Conserver les termes techniques et acronymes
+- Ne pas corriger le style
+
+${
+  vocabulary
+    ? `Glossaire prioritaire (à reconnaître tel quel) :
+${vocabulary}
+`
+    : ""
+}
+`;
 
       console.log("[TranscriptionService] 🔄 Transcribing WAV:", {
         original: audioFilePath,
@@ -180,11 +208,45 @@ export class TranscriptionService {
       modelPath,
     );
 
+    // Check if model file exists (Expo 54+ File API)
+    const modelFile = new File(modelPath);
+    const exists = modelFile.exists;
+    const size = exists ? modelFile.size : null;
+
+    console.log("[TranscriptionService] Model file info:", {
+      exists,
+      size,
+      uri: modelPath,
+    });
+
+    if (!exists) {
+      throw new Error(`Whisper model file not found: ${modelPath}`);
+    }
+
+    if (size === 0) {
+      throw new Error(`Whisper model file is empty (0 bytes): ${modelPath}`);
+    }
+
     try {
-      this.whisperContext = await initWhisper({
-        filePath: modelPath,
-        useGpu: true, // Use GPU acceleration if available
-      });
+      // Try with GPU first, fallback to CPU if it fails
+      console.log(
+        "[TranscriptionService] Attempting to load model with GPU...",
+      );
+      try {
+        this.whisperContext = await initWhisper({
+          filePath: modelPath,
+          useGpu: true,
+        });
+      } catch (gpuError) {
+        console.warn(
+          "[TranscriptionService] GPU init failed, trying CPU:",
+          gpuError,
+        );
+        this.whisperContext = await initWhisper({
+          filePath: modelPath,
+          useGpu: false,
+        });
+      }
       console.log(
         "[TranscriptionService] ✅ Model loaded successfully, GPU:",
         this.whisperContext.gpu,

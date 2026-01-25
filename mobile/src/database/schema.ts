@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 9;
+export const SCHEMA_VERSION = 11;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -94,6 +94,60 @@ export const CREATE_INDEX_SYNC_QUEUE_ENTITY = `
 
 export const CREATE_INDEX_SYNC_QUEUE_CREATED_AT = `
   CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)
+`;
+
+/**
+ * Capture Metadata Table - Key-Value Store for Capture Metadata
+ *
+ * Stores flexible metadata for captures (transcription details, models used, etc.)
+ * Each row represents a single key-value pair associated with a capture.
+ */
+export const CREATE_CAPTURE_METADATA_TABLE = `
+  CREATE TABLE IF NOT EXISTS capture_metadata (
+    id TEXT PRIMARY KEY NOT NULL,
+    capture_id TEXT NOT NULL,
+    key TEXT NOT NULL,
+    value TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_CAPTURE_METADATA_CAPTURE_ID = `
+  CREATE INDEX IF NOT EXISTS idx_capture_metadata_capture_id ON capture_metadata(capture_id)
+`;
+
+export const CREATE_INDEX_CAPTURE_METADATA_CAPTURE_KEY = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_metadata_capture_key ON capture_metadata(capture_id, key)
+`;
+
+/**
+ * Capture Analysis Table - LLM Analysis Results
+ *
+ * Stores analysis results for captures (summary, highlights, action_items).
+ * Each capture can have multiple analysis entries, one per type.
+ */
+export const CREATE_CAPTURE_ANALYSIS_TABLE = `
+  CREATE TABLE IF NOT EXISTS capture_analysis (
+    id TEXT PRIMARY KEY NOT NULL,
+    capture_id TEXT NOT NULL,
+    analysis_type TEXT NOT NULL CHECK(analysis_type IN ('summary', 'highlights', 'action_items')),
+    content TEXT NOT NULL,
+    model_id TEXT,
+    processing_duration_ms INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_CAPTURE_ANALYSIS_CAPTURE_ID = `
+  CREATE INDEX IF NOT EXISTS idx_capture_analysis_capture_id ON capture_analysis(capture_id)
+`;
+
+export const CREATE_INDEX_CAPTURE_ANALYSIS_CAPTURE_TYPE = `
+  CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_analysis_capture_type ON capture_analysis(capture_id, analysis_type)
 `;
 
 /**

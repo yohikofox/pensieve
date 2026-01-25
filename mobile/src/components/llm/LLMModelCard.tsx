@@ -26,8 +26,9 @@ import {
   type LLMModelConfig,
   type DownloadProgress,
 } from '../../contexts/Normalization/services/LLMModelService';
+import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 
-type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready';
+type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready' | 'auth_required';
 
 interface LLMModelCardProps {
   modelId: LLMModelId;
@@ -48,8 +49,10 @@ export function LLMModelCard({
   const [error, setError] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
   const [config, setConfig] = useState<LLMModelConfig | null>(null);
+  const [canDownload, setCanDownload] = useState(true);
 
-  const modelService = new LLMModelService();
+  const npuDetection = new NPUDetectionService();
+  const modelService = new LLMModelService(npuDetection);
 
   // Load model config
   useEffect(() => {
@@ -65,8 +68,20 @@ export function LLMModelCard({
   const checkModelStatus = useCallback(async () => {
     setStatus('checking');
     try {
+      // Initialize auth service
+      await modelService.initialize();
+
       const isDownloaded = await modelService.isModelDownloaded(modelId);
-      setStatus(isDownloaded ? 'ready' : 'not_downloaded');
+      const canDl = modelService.canDownloadModel(modelId);
+      setCanDownload(canDl);
+
+      if (isDownloaded) {
+        setStatus('ready');
+      } else if (!canDl && modelService.modelRequiresAuth(modelId)) {
+        setStatus('auth_required');
+      } else {
+        setStatus('not_downloaded');
+      }
     } catch (err) {
       setStatus('not_downloaded');
     }
@@ -235,6 +250,22 @@ export function LLMModelCard({
         </View>
       )}
 
+      {/* Status: Auth Required */}
+      {status === 'auth_required' && (
+        <View style={styles.content}>
+          <View style={styles.statusContainer}>
+            <View style={[styles.statusBadge, styles.statusAuthRequired]}>
+              <Text style={styles.statusBadgeText}>🔒 Connexion requise</Text>
+            </View>
+          </View>
+
+          <Text style={styles.authRequiredText}>
+            Ce modèle nécessite une connexion HuggingFace pour accepter la licence Gemma.
+            Connectez-vous dans la section ci-dessus.
+          </Text>
+        </View>
+      )}
+
       {/* Status: Not Downloaded */}
       {status === 'not_downloaded' && (
         <View style={styles.content}>
@@ -242,6 +273,11 @@ export function LLMModelCard({
             <View style={[styles.statusBadge, styles.statusNotDownloaded]}>
               <Text style={styles.statusBadgeText}>⬇️ Non téléchargé</Text>
             </View>
+            {config?.requiresAuth && (
+              <View style={[styles.statusBadge, styles.statusAuthOk]}>
+                <Text style={styles.statusBadgeText}>🔓 Autorisé</Text>
+              </View>
+            )}
           </View>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
@@ -445,6 +481,13 @@ const styles = StyleSheet.create({
   statusReady: {
     backgroundColor: '#E8F5E9',
   },
+  statusAuthRequired: {
+    backgroundColor: '#FFEBEE',
+  },
+  statusAuthOk: {
+    backgroundColor: '#E8F5E9',
+    marginLeft: 8,
+  },
   statusBadgeText: {
     fontSize: 13,
     fontWeight: '500',
@@ -459,6 +502,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#D32F2F',
     marginBottom: 12,
+  },
+  authRequiredText: {
+    fontSize: 13,
+    color: '#666',
+    lineHeight: 18,
+    marginTop: 4,
   },
   progressContainer: {
     flexDirection: 'row',

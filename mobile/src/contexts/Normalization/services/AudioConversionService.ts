@@ -257,6 +257,14 @@ export class AudioConversionService {
    * Write WAV data to file using base64 encoding
    */
   private async writeWavFile(path: string, data: Uint8Array): Promise<void> {
+    // Ensure parent directory exists
+    const parentDir = path.substring(0, path.lastIndexOf('/'));
+    const dirInfo = await FileSystemLegacy.getInfoAsync(parentDir);
+    if (!dirInfo.exists) {
+      console.log("[AudioConversionService] 📁 Creating directory:", parentDir);
+      await FileSystemLegacy.makeDirectoryAsync(parentDir, { intermediates: true });
+    }
+
     // Convert Uint8Array to base64
     const base64 = this.uint8ArrayToBase64(data);
 
@@ -281,8 +289,9 @@ export class AudioConversionService {
   /**
    * Generate output path for converted WAV file
    *
-   * Input: /path/to/recording.m4a
-   * Output: /path/to/recording_whisper.wav
+   * Uses cache directory for temporary WAV files (always writable)
+   * Input: /path/to/capture_xxx_timestamp.m4a
+   * Output: {cacheDir}/capture_xxx_timestamp_whisper.wav
    */
   private generateOutputPath(inputPath: string): string {
     // Remove file:// prefix if present (normalize path)
@@ -291,12 +300,22 @@ export class AudioConversionService {
       normalizedPath = normalizedPath.replace("file://", "");
     }
 
-    // Replace extension with _whisper.wav
-    const lastDotIndex = normalizedPath.lastIndexOf(".");
-    if (lastDotIndex === -1) {
-      return `${normalizedPath}_whisper.wav`;
+    // Extract filename without extension
+    const lastSlashIndex = normalizedPath.lastIndexOf("/");
+    const filename = lastSlashIndex === -1 ? normalizedPath : normalizedPath.substring(lastSlashIndex + 1);
+    const lastDotIndex = filename.lastIndexOf(".");
+    const basename = lastDotIndex === -1 ? filename : filename.substring(0, lastDotIndex);
+
+    // Use cache directory (always writable) for temporary WAV files
+    const cacheDir = FileSystemLegacy.cacheDirectory;
+    if (!cacheDir) {
+      // Fallback to same directory if cache not available
+      const inputDir = normalizedPath.substring(0, lastSlashIndex);
+      return `${inputDir}/${basename}_whisper.wav`;
     }
 
-    return `${normalizedPath.substring(0, lastDotIndex)}_whisper.wav`;
+    // Remove trailing slash from cacheDir if present
+    const cleanCacheDir = cacheDir.endsWith("/") ? cacheDir.slice(0, -1) : cacheDir;
+    return `${cleanCacheDir}/${basename}_whisper.wav`;
   }
 }

@@ -10,7 +10,7 @@
  * - Different sections for TPU and standard models
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -20,33 +20,58 @@ import {
   Alert,
   TextInput,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
+import { container } from 'tsyringe';
 import { LLMModelCard } from '../../components/llm/LLMModelCard';
 import {
   LLMModelService,
   type LLMModelId,
   type LLMModelConfig,
+  type LLMTask,
 } from '../../contexts/Normalization/services/LLMModelService';
 import { NPUDetectionService, type NPUInfo } from '../../contexts/Normalization/services/NPUDetectionService';
+import { type HuggingFaceUser } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { debugPromptManager } from '../../contexts/Normalization/services/postprocessing/IPostProcessingBackend';
 import { useSettingsStore } from '../../stores/settingsStore';
 
+/** Task labels for display */
+const TASK_LABELS: Record<LLMTask, { name: string; emoji: string; description: string }> = {
+  postProcessing: {
+    name: 'Post-traitement',
+    emoji: '✍️',
+    description: 'Correction et amélioration des transcriptions',
+  },
+  analysis: {
+    name: 'Analyse',
+    emoji: '🔍',
+    description: 'Résumés, points clés et actions',
+  },
+};
+
 export function LLMSettingsScreen() {
-  const [selectedModel, setSelectedModel] = useState<LLMModelId | null>(null);
+  // Task-specific model selections
+  const [selectedPostProcessingModel, setSelectedPostProcessingModel] = useState<LLMModelId | null>(null);
+  const [selectedAnalysisModel, setSelectedAnalysisModel] = useState<LLMModelId | null>(null);
   const [isEnabled, setIsEnabled] = useState(false);
   const [npuInfo, setNpuInfo] = useState<NPUInfo | null>(null);
   const [tpuModels, setTpuModels] = useState<LLMModelConfig[]>([]);
   const [standardModels, setStandardModels] = useState<LLMModelConfig[]>([]);
+
+  // HuggingFace auth state
+  const [isHfAuthenticated, setIsHfAuthenticated] = useState(false);
+  const [hfUser, setHfUser] = useState<HuggingFaceUser | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Debug mode state
   const debugMode = useSettingsStore((state) => state.debugMode);
   const [customPrompt, setCustomPrompt] = useState(debugPromptManager.getPrompt());
   const [isPromptModified, setIsPromptModified] = useState(debugPromptManager.hasCustomPrompt());
 
-  // Note: Using direct instantiation for UI - NPUDetectionService is injected in LLMModelService
-  const npuDetection = new NPUDetectionService();
-  // LLMModelService needs NPUDetectionService for device filtering
-  const modelService = new LLMModelService(npuDetection);
+  // Get services from DI container (singleton instances)
+  const modelService = useMemo(() => container.resolve(LLMModelService), []);
+  const npuDetection = useMemo(() => container.resolve(NPUDetectionService), []);
+  const authService = modelService.getAuthService();
 
   /**
    * Get NPU title for display
@@ -91,13 +116,20 @@ export function LLMSettingsScreen() {
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
+      // Initialize auth service
+      await authService.initialize();
+      setIsHfAuthenticated(authService.isAuthenticated());
+      setHfUser(authService.getUser());
+
       // Load enabled state
       const enabled = await modelService.isPostProcessingEnabled();
       setIsEnabled(enabled);
 
-      // Load selected model
-      const selected = await modelService.getSelectedModel();
-      setSelectedModel(selected);
+      // Load task-specific model selections
+      const postProcessingModel = await modelService.getModelForTask('postProcessing');
+      const analysisModel = await modelService.getModelForTask('analysis');
+      setSelectedPostProcessingModel(postProcessingModel);
+      setSelectedAnalysisModel(analysisModel);
 
       // Detect NPU capabilities
       const info = await npuDetection.detectNPU();
@@ -116,6 +148,53 @@ export function LLMSettingsScreen() {
 
     loadSettings();
   }, []);
+
+  /**
+   * Handle HuggingFace login
+   */
+  const handleHfLogin = useCallback(async () => {
+    setIsAuthLoading(true);
+    try {
+      const success = await authService.login();
+      if (success) {
+        setIsHfAuthenticated(true);
+        setHfUser(authService.getUser());
+        Alert.alert(
+          'Connecté à HuggingFace',
+          `Bienvenue ${authService.getUser()?.name || 'utilisateur'} ! Vous pouvez maintenant télécharger les modèles protégés.`
+        );
+      }
+    } catch (error) {
+      Alert.alert(
+        'Erreur de connexion',
+        `Impossible de se connecter à HuggingFace: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
+      );
+    } finally {
+      setIsAuthLoading(false);
+    }
+  }, [authService]);
+
+  /**
+   * Handle HuggingFace logout
+   */
+  const handleHfLogout = useCallback(async () => {
+    Alert.alert(
+      'Déconnexion',
+      'Voulez-vous vous déconnecter de HuggingFace ? Vous ne pourrez plus télécharger les modèles protégés.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            await authService.logout();
+            setIsHfAuthenticated(false);
+            setHfUser(null);
+          },
+        },
+      ]
+    );
+  }, [authService]);
 
   /**
    * Toggle post-processing enabled state
@@ -137,11 +216,16 @@ export function LLMSettingsScreen() {
   };
 
   /**
-   * Handle model selection
+   * Handle model selection for a specific task
    */
-  const handleUseModel = useCallback(async (modelId: LLMModelId) => {
-    await modelService.setSelectedModel(modelId);
-    setSelectedModel(modelId);
+  const handleUseModelForTask = useCallback(async (modelId: LLMModelId, task: LLMTask) => {
+    await modelService.setModelForTask(task, modelId);
+
+    if (task === 'postProcessing') {
+      setSelectedPostProcessingModel(modelId);
+    } else {
+      setSelectedAnalysisModel(modelId);
+    }
 
     // Enable post-processing if not already
     if (!isEnabled) {
@@ -149,49 +233,49 @@ export function LLMSettingsScreen() {
       await modelService.setPostProcessingEnabled(true);
     }
 
-    // Offer to delete other models
-    const allModels = modelService.getAllModels();
-    const otherModels = allModels.filter((m) => m.id !== modelId);
-    const downloadedOthers: LLMModelConfig[] = [];
+    const taskLabel = TASK_LABELS[task];
+    Alert.alert(
+      'Modèle sélectionné',
+      `${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.emoji} ${taskLabel.name.toLowerCase()}.`
+    );
+  }, [isEnabled, modelService]);
 
-    for (const model of otherModels) {
-      if (await modelService.isModelDownloaded(model.id)) {
-        downloadedOthers.push(model);
-      }
-    }
+  /**
+   * Show task selection menu for a model
+   */
+  const handleSelectTask = useCallback((modelId: LLMModelId) => {
+    const modelConfig = modelService.getModelConfig(modelId);
 
-    if (downloadedOthers.length > 0) {
-      const totalSize = downloadedOthers.reduce(
-        (acc, m) => acc + m.expectedSize,
-        0
-      );
-      const sizeInMB = totalSize / (1024 * 1024);
-      const sizeLabel = sizeInMB >= 1000
-        ? `${(sizeInMB / 1024).toFixed(1)} GB`
-        : `${Math.round(sizeInMB)} MB`;
-
-      Alert.alert(
-        'Supprimer les autres modèles ?',
-        `${downloadedOthers.length > 1 ? 'Les modèles suivants sont' : 'Le modèle suivant est'} toujours téléchargé${downloadedOthers.length > 1 ? 's' : ''} :\n${downloadedOthers.map((m) => m.name).join(', ')}\n\nVoulez-vous ${downloadedOthers.length > 1 ? 'les' : 'le'} supprimer pour libérer ~${sizeLabel} ?`,
-        [
-          { text: 'Garder', style: 'cancel' },
-          {
-            text: 'Supprimer',
-            style: 'destructive',
-            onPress: async () => {
-              for (const model of downloadedOthers) {
-                await modelService.deleteModel(model.id);
-              }
-              Alert.alert(
-                'Modèles supprimés',
-                `${downloadedOthers.length > 1 ? 'Les modèles ont été supprimés' : 'Le modèle a été supprimé'}.`
-              );
-            },
+    Alert.alert(
+      `Utiliser ${modelConfig.name}`,
+      'Pour quelle tâche voulez-vous utiliser ce modèle ?',
+      [
+        {
+          text: `${TASK_LABELS.postProcessing.emoji} Post-traitement`,
+          onPress: () => handleUseModelForTask(modelId, 'postProcessing'),
+        },
+        {
+          text: `${TASK_LABELS.analysis.emoji} Analyse`,
+          onPress: () => handleUseModelForTask(modelId, 'analysis'),
+        },
+        {
+          text: '✅ Les deux',
+          onPress: async () => {
+            await handleUseModelForTask(modelId, 'postProcessing');
+            await handleUseModelForTask(modelId, 'analysis');
           },
-        ]
-      );
-    }
-  }, [isEnabled]);
+        },
+        { text: 'Annuler', style: 'cancel' },
+      ]
+    );
+  }, [handleUseModelForTask, modelService]);
+
+  /**
+   * Legacy handler for LLMModelCard compatibility
+   */
+  const handleUseModel = useCallback(async (modelId: LLMModelId) => {
+    handleSelectTask(modelId);
+  }, [handleSelectTask]);
 
   /**
    * Apply custom prompt (debug mode only)
@@ -268,6 +352,98 @@ export function LLMSettingsScreen() {
         </View>
       )}
 
+      {/* HuggingFace Authentication (for gated models) */}
+      {tpuModels.length > 0 && (
+        <View style={styles.authSection}>
+          <Text style={styles.sectionTitle}>Compte HuggingFace</Text>
+          <Text style={styles.sectionDescription}>
+            Certains modèles optimisés (Gemma MediaPipe) nécessitent une connexion HuggingFace
+            pour accepter la licence d'utilisation.
+          </Text>
+          <View style={styles.authCard}>
+            {isHfAuthenticated ? (
+              <>
+                <View style={styles.authUserInfo}>
+                  <Text style={styles.authConnectedIcon}>✅</Text>
+                  <View style={styles.authUserDetails}>
+                    <Text style={styles.authUserName}>
+                      {hfUser?.fullname || hfUser?.name || 'Utilisateur'}
+                    </Text>
+                    <Text style={styles.authUserHandle}>@{hfUser?.name}</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.authLogoutButton}
+                  onPress={handleHfLogout}
+                >
+                  <Text style={styles.authLogoutText}>Déconnecter</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <View style={styles.authNotConnected}>
+                  <Text style={styles.authNotConnectedIcon}>🔒</Text>
+                  <Text style={styles.authNotConnectedText}>
+                    Non connecté - Connectez-vous pour télécharger les modèles Gemma optimisés TPU
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.authLoginButton, isAuthLoading && styles.authButtonDisabled]}
+                  onPress={handleHfLogin}
+                  disabled={isAuthLoading}
+                >
+                  {isAuthLoading ? (
+                    <ActivityIndicator color="#FFF" size="small" />
+                  ) : (
+                    <Text style={styles.authLoginText}>🤗 Se connecter à HuggingFace</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
+      )}
+
+      {/* Task Assignments Summary */}
+      {isEnabled && (selectedPostProcessingModel || selectedAnalysisModel) && (
+        <View style={styles.taskAssignmentsSection}>
+          <Text style={styles.sectionTitle}>Configuration par tâche</Text>
+          <View style={styles.taskAssignmentsCard}>
+            {/* Post-processing task */}
+            <View style={styles.taskAssignmentRow}>
+              <View style={styles.taskInfo}>
+                <Text style={styles.taskEmoji}>{TASK_LABELS.postProcessing.emoji}</Text>
+                <View style={styles.taskDetails}>
+                  <Text style={styles.taskName}>{TASK_LABELS.postProcessing.name}</Text>
+                  <Text style={styles.taskDescription}>{TASK_LABELS.postProcessing.description}</Text>
+                </View>
+              </View>
+              <Text style={styles.taskModel}>
+                {selectedPostProcessingModel
+                  ? modelService.getModelConfig(selectedPostProcessingModel).name
+                  : 'Non défini'}
+              </Text>
+            </View>
+            <View style={styles.taskDivider} />
+            {/* Analysis task */}
+            <View style={styles.taskAssignmentRow}>
+              <View style={styles.taskInfo}>
+                <Text style={styles.taskEmoji}>{TASK_LABELS.analysis.emoji}</Text>
+                <View style={styles.taskDetails}>
+                  <Text style={styles.taskName}>{TASK_LABELS.analysis.name}</Text>
+                  <Text style={styles.taskDescription}>{TASK_LABELS.analysis.description}</Text>
+                </View>
+              </View>
+              <Text style={styles.taskModel}>
+                {selectedAnalysisModel
+                  ? modelService.getModelConfig(selectedAnalysisModel).name
+                  : 'Non défini'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* TPU Models (only show on Google Pixel devices) */}
       {npuInfo?.type === 'tensor-tpu' && tpuModels.length > 0 && (
         <View style={styles.modelsSection}>
@@ -279,7 +455,7 @@ export function LLMSettingsScreen() {
             <LLMModelCard
               key={model.id}
               modelId={model.id}
-              isSelected={selectedModel === model.id}
+              isSelected={selectedPostProcessingModel === model.id || selectedAnalysisModel === model.id}
               showTpuBadge
               onUseModel={handleUseModel}
             />
@@ -299,7 +475,7 @@ export function LLMSettingsScreen() {
           <LLMModelCard
             key={model.id}
             modelId={model.id}
-            isSelected={selectedModel === model.id}
+            isSelected={selectedPostProcessingModel === model.id || selectedAnalysisModel === model.id}
             onUseModel={handleUseModel}
           />
         ))}
@@ -480,6 +656,59 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 8,
   },
+  // Task assignments styles
+  taskAssignmentsSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  taskAssignmentsCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  taskAssignmentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+  },
+  taskInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 12,
+  },
+  taskEmoji: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  taskDetails: {
+    flex: 1,
+  },
+  taskName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#000',
+  },
+  taskDescription: {
+    fontSize: 12,
+    color: '#8E8E93',
+    marginTop: 2,
+  },
+  taskModel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#007AFF',
+    textAlign: 'right',
+    maxWidth: 120,
+  },
+  taskDivider: {
+    height: 1,
+    backgroundColor: '#E5E5EA',
+    marginVertical: 8,
+  },
   // Debug styles
   debugSection: {
     marginHorizontal: 16,
@@ -558,5 +787,80 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#E65100',
+  },
+  // HuggingFace Auth styles
+  authSection: {
+    marginHorizontal: 16,
+    marginBottom: 16,
+  },
+  authCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E5E5EA',
+  },
+  authUserInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  authConnectedIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  authUserDetails: {
+    flex: 1,
+  },
+  authUserName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#000',
+  },
+  authUserHandle: {
+    fontSize: 13,
+    color: '#8E8E93',
+  },
+  authLogoutButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+    backgroundColor: '#F2F2F7',
+  },
+  authLogoutText: {
+    fontSize: 14,
+    color: '#FF3B30',
+    fontWeight: '500',
+  },
+  authNotConnected: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  authNotConnectedIcon: {
+    fontSize: 20,
+    marginRight: 12,
+  },
+  authNotConnectedText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+  },
+  authLoginButton: {
+    backgroundColor: '#FF9D00',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  authLoginText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFF',
+  },
+  authButtonDisabled: {
+    opacity: 0.6,
   },
 });

@@ -14,6 +14,8 @@ import { TOKENS } from './tokens';
 
 // Repositories
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
+import { CaptureMetadataRepository } from '../../contexts/capture/data/CaptureMetadataRepository';
+import { CaptureAnalysisRepository } from '../../contexts/capture/data/CaptureAnalysisRepository';
 
 // Services
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
@@ -38,6 +40,8 @@ import { WhisperModelService } from '../../contexts/Normalization/services/Whisp
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
+import { HuggingFaceAuthService } from '../../contexts/Normalization/services/HuggingFaceAuthService';
+import { CaptureAnalysisService } from '../../contexts/Normalization/services/CaptureAnalysisService';
 
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
@@ -70,6 +74,8 @@ export function registerServices() {
 
   // Domain Repositories
   container.registerSingleton(TOKENS.ICaptureRepository, CaptureRepository);
+  container.registerSingleton(TOKENS.ICaptureMetadataRepository, CaptureMetadataRepository);
+  container.registerSingleton(TOKENS.ICaptureAnalysisRepository, CaptureAnalysisRepository);
 
   // Platform Adapters (Hardware/SDK wrappers)
   container.registerSingleton(TOKENS.IAudioRecorder, ExpoAudioAdapter);
@@ -95,9 +101,11 @@ export function registerServices() {
   container.registerSingleton(TranscriptionQueueProcessor);
 
   // Post-processing Services (LLM enhancement)
+  container.registerSingleton(HuggingFaceAuthService);
   container.registerSingleton(NPUDetectionService);
   container.registerSingleton(LLMModelService);
   container.registerSingleton(PostProcessingService);
+  container.registerSingleton(CaptureAnalysisService);
   container.registerSingleton(TranscriptionWorker);
 
   servicesRegistered = true;

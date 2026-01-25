@@ -27,39 +27,373 @@ import * as Clipboard from 'expo-clipboard';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
+import type { ICaptureMetadataRepository } from '../../contexts/capture/domain/ICaptureMetadataRepository';
+import { METADATA_KEYS } from '../../contexts/capture/domain/CaptureMetadata.model';
 import type { Capture } from '../../contexts/capture/domain/Capture.model';
 import { CorrectionLearningService } from '../../contexts/Normalization/services/CorrectionLearningService';
+import { CaptureAnalysisService } from '../../contexts/Normalization/services/CaptureAnalysisService';
+import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
+import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
+import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
+import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
+import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+
+/** Action item structure from LLM JSON output */
+interface ActionItem {
+  title: string;
+  deadline_text: string | null;
+  deadline_date: string | null; // Format: "JJ-MM-AAAA, HH:mm"
+  target: string | null;
+}
+
+/** Format a deadline date for display */
+function formatDeadlineDate(dateStr: string): string {
+  // Parse "JJ-MM-AAAA, HH:mm" format
+  const match = dateStr.match(/^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/);
+  if (!match) {
+    return dateStr; // Return as-is if format doesn't match
+  }
+
+  const [, day, month, year, hours, minutes] = match;
+  const targetDate = new Date(
+    parseInt(year, 10),
+    parseInt(month, 10) - 1,
+    parseInt(day, 10),
+    parseInt(hours, 10),
+    parseInt(minutes, 10)
+  );
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+  const targetDay = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+  const days = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  const months = [
+    'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+    'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
+  ];
+
+  const timeStr = `${hours}h${minutes !== '00' ? minutes : ''}`;
+
+  // Check if it's today
+  if (targetDay.getTime() === today.getTime()) {
+    return `Aujourd'hui à ${timeStr}`;
+  }
+
+  // Check if it's tomorrow
+  if (targetDay.getTime() === tomorrow.getTime()) {
+    return `Demain à ${timeStr}`;
+  }
+
+  // Check if it's within the next 7 days
+  const diffDays = Math.floor((targetDay.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  if (diffDays > 0 && diffDays <= 7) {
+    const dayName = days[targetDate.getDay()];
+    return `${dayName.charAt(0).toUpperCase() + dayName.slice(1)} à ${timeStr}`;
+  }
+
+  // Otherwise show full date
+  const dayName = days[targetDate.getDay()];
+  const monthName = months[targetDate.getMonth()];
+  return `${dayName} ${parseInt(day, 10)} ${monthName} à ${timeStr}`;
+}
+
+/** Parse action items from LLM JSON output */
+function parseActionItems(content: string): ActionItem[] | null {
+  try {
+    // Try to extract JSON from the content (might have extra text around it)
+    const jsonMatch = content.match(/\{[\s\S]*"items"[\s\S]*\}/);
+    if (!jsonMatch) {
+      return null;
+    }
+    const parsed = JSON.parse(jsonMatch[0]);
+    if (parsed.items && Array.isArray(parsed.items)) {
+      return parsed.items;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 type CapturesStackParamList = {
   CapturesList: undefined;
-  CaptureDetail: { captureId: string };
+  CaptureDetail: { captureId: string; startAnalysis?: boolean };
 };
 
 type Props = NativeStackScreenProps<CapturesStackParamList, 'CaptureDetail'>;
 
 export function CaptureDetailScreen({ route, navigation }: Props) {
-  const { captureId } = route.params;
+  const { captureId, startAnalysis } = route.params;
   const [capture, setCapture] = useState<Capture | null>(null);
+  const [metadata, setMetadata] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [editedText, setEditedText] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showRawTranscript, setShowRawTranscript] = useState(false);
+  const [showMetadata, setShowMetadata] = useState(false);
   const textInputRef = useRef<TextInput>(null);
+
+  // Analysis state
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analyses, setAnalyses] = useState<Record<AnalysisType, CaptureAnalysis | null>>({
+    [ANALYSIS_TYPES.SUMMARY]: null,
+    [ANALYSIS_TYPES.HIGHLIGHTS]: null,
+    [ANALYSIS_TYPES.ACTION_ITEMS]: null,
+  });
+  const [analysisLoading, setAnalysisLoading] = useState<Record<AnalysisType, boolean>>({
+    [ANALYSIS_TYPES.SUMMARY]: false,
+    [ANALYSIS_TYPES.HIGHLIGHTS]: false,
+    [ANALYSIS_TYPES.ACTION_ITEMS]: false,
+  });
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Reprocessing state
+  const [showReprocess, setShowReprocess] = useState(false);
+  const [reprocessing, setReprocessing] = useState<{
+    transcribe: boolean;
+    postProcess: boolean;
+  }>({ transcribe: false, postProcess: false });
 
   useEffect(() => {
     loadCapture();
   }, [captureId]);
 
+  // Load existing analyses
+  useEffect(() => {
+    loadAnalyses();
+  }, [captureId]);
+
+  // Auto-expand analysis section if startAnalysis is true
+  // Wait for loading to complete (ensures editedText is set)
+  useEffect(() => {
+    if (startAnalysis && capture?.state === 'ready' && !loading) {
+      setShowAnalysis(true);
+    }
+  }, [startAnalysis, capture?.state, loading]);
+
+  // Debug: log capture state for analysis section
+  useEffect(() => {
+    if (capture) {
+      console.log('[CaptureDetailScreen] Capture loaded:', {
+        id: capture.id,
+        state: capture.state,
+        hasNormalizedText: !!capture.normalizedText,
+        normalizedTextLength: capture.normalizedText?.length || 0,
+        editedTextLength: editedText?.length || 0,
+        showAnalysis,
+      });
+    }
+  }, [capture, showAnalysis, editedText]);
+
+  const loadAnalyses = async () => {
+    try {
+      const analysisService = container.resolve(CaptureAnalysisService);
+      const existingAnalyses = await analysisService.getAnalyses(captureId);
+      setAnalyses(existingAnalyses);
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Failed to load analyses:', error);
+    }
+  };
+
+  const handleGenerateAnalysis = async (type: AnalysisType) => {
+    console.log('[CaptureDetailScreen] handleGenerateAnalysis called for:', type);
+    setAnalysisLoading(prev => ({ ...prev, [type]: true }));
+    setAnalysisError(null);
+
+    try {
+      const analysisService = container.resolve(CaptureAnalysisService);
+      console.log('[CaptureDetailScreen] Calling analysisService.analyze...');
+      const result = await analysisService.analyze(captureId, type);
+      console.log('[CaptureDetailScreen] Analysis result:', result);
+
+      if (result.success) {
+        setAnalyses(prev => ({ ...prev, [type]: result.analysis }));
+      } else {
+        setAnalysisError(result.error);
+        Alert.alert('Erreur', result.error);
+      }
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Analysis failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
+      setAnalysisError(errorMsg);
+      Alert.alert('Erreur', errorMsg);
+    } finally {
+      setAnalysisLoading(prev => ({ ...prev, [type]: false }));
+    }
+  };
+
+  const handleAnalyzeAll = async () => {
+    console.log('[CaptureDetailScreen] handleAnalyzeAll called');
+    // Set all loading states
+    setAnalysisLoading({
+      [ANALYSIS_TYPES.SUMMARY]: true,
+      [ANALYSIS_TYPES.HIGHLIGHTS]: true,
+      [ANALYSIS_TYPES.ACTION_ITEMS]: true,
+    });
+    setAnalysisError(null);
+
+    try {
+      const analysisService = container.resolve(CaptureAnalysisService);
+      const results = await analysisService.analyzeAll(captureId);
+
+      // Update analyses with successful results
+      const newAnalyses: Record<AnalysisType, CaptureAnalysis | null> = {
+        [ANALYSIS_TYPES.SUMMARY]: null,
+        [ANALYSIS_TYPES.HIGHLIGHTS]: null,
+        [ANALYSIS_TYPES.ACTION_ITEMS]: null,
+      };
+
+      let hasError = false;
+      for (const [type, result] of Object.entries(results)) {
+        if (result.success) {
+          newAnalyses[type as AnalysisType] = result.analysis;
+        } else {
+          hasError = true;
+          console.error(`[CaptureDetailScreen] Analysis ${type} failed:`, result.error);
+        }
+      }
+
+      setAnalyses(newAnalyses);
+
+      if (hasError) {
+        Alert.alert('Attention', 'Certaines analyses ont echoue. Verifiez les logs.');
+      }
+    } catch (error) {
+      console.error('[CaptureDetailScreen] AnalyzeAll failed:', error);
+      const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
+      setAnalysisError(errorMsg);
+      Alert.alert('Erreur', errorMsg);
+    } finally {
+      setAnalysisLoading({
+        [ANALYSIS_TYPES.SUMMARY]: false,
+        [ANALYSIS_TYPES.HIGHLIGHTS]: false,
+        [ANALYSIS_TYPES.ACTION_ITEMS]: false,
+      });
+    }
+  };
+
+  const isAnyAnalysisLoading = Object.values(analysisLoading).some(Boolean);
+
+  // Reprocessing handlers
+  const handleReTranscribe = async () => {
+    if (!capture || capture.type !== 'audio') return;
+
+    try {
+      setReprocessing(prev => ({ ...prev, transcribe: true }));
+      console.log('[CaptureDetailScreen] Re-transcribing capture:', captureId);
+
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      const queueService = container.resolve(TranscriptionQueueService);
+
+      // Reset capture state to trigger re-transcription
+      await repository.update(captureId, {
+        state: 'captured',
+        normalizedText: '',
+      });
+
+      // Clear metadata
+      const metadataRepository = container.resolve<ICaptureMetadataRepository>(TOKENS.ICaptureMetadataRepository);
+      await metadataRepository.delete(captureId, METADATA_KEYS.RAW_TRANSCRIPT);
+      await metadataRepository.delete(captureId, METADATA_KEYS.LLM_MODEL);
+
+      // Enqueue for transcription
+      await queueService.enqueue({
+        captureId,
+        audioPath: capture.rawContent,
+        audioDuration: capture.duration || undefined,
+      });
+
+      Alert.alert('Succès', 'La capture a été remise en queue pour transcription.');
+
+      // Reload capture to see new state
+      await loadCapture();
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Re-transcribe failed:', error);
+      Alert.alert('Erreur', 'Impossible de relancer la transcription.');
+    } finally {
+      setReprocessing(prev => ({ ...prev, transcribe: false }));
+    }
+  };
+
+  const handleRePostProcess = async () => {
+    if (!capture) return;
+
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
+    if (!rawTranscript) {
+      Alert.alert('Erreur', 'Pas de transcription brute disponible.');
+      return;
+    }
+
+    try {
+      setReprocessing(prev => ({ ...prev, postProcess: true }));
+      console.log('[CaptureDetailScreen] Re-post-processing capture:', captureId);
+      console.log('[CaptureDetailScreen] Raw transcript length:', rawTranscript.length);
+
+      const postProcessingService = container.resolve(PostProcessingService);
+
+      // Check if post-processing is enabled
+      const isEnabled = await postProcessingService.isEnabled();
+      if (!isEnabled) {
+        Alert.alert('Erreur', 'Le post-traitement LLM n\'est pas activé dans les paramètres.');
+        return;
+      }
+
+      // Process the raw transcript
+      const processedText = await postProcessingService.process(rawTranscript);
+
+      console.log('[CaptureDetailScreen] Post-processing result:', {
+        inputLength: rawTranscript.length,
+        outputLength: processedText.length,
+        changed: processedText !== rawTranscript,
+      });
+
+      // Save to normalizedText
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      await repository.update(captureId, {
+        normalizedText: processedText,
+      });
+
+      // Update LLM model metadata
+      const metadataRepository = container.resolve<ICaptureMetadataRepository>(TOKENS.ICaptureMetadataRepository);
+      const llmModelId = postProcessingService.getCurrentModelId();
+      if (llmModelId) {
+        await metadataRepository.set(captureId, METADATA_KEYS.LLM_MODEL, llmModelId);
+      }
+
+      Alert.alert('Succès', `Post-traitement terminé. ${processedText !== rawTranscript ? 'Texte modifié.' : 'Aucune modification.'}`);
+
+      // Reload capture
+      await loadCapture();
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Re-post-process failed:', error);
+      Alert.alert('Erreur', `Post-traitement échoué: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+    } finally {
+      setReprocessing(prev => ({ ...prev, postProcess: false }));
+    }
+  };
+
   const loadCapture = async () => {
     try {
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      const metadataRepository = container.resolve<ICaptureMetadataRepository>(TOKENS.ICaptureMetadataRepository);
+
       const result = await repository.findById(captureId);
       setCapture(result);
+
+      // Load metadata
+      const captureMetadata = await metadataRepository.getAllAsMap(captureId);
+      setMetadata(captureMetadata);
+
       // Initialize edited text with current transcription
-      const initialText = result?.normalizedText || result?.rawContent || '';
+      // For audio captures, rawContent is the file path - don't use it as fallback text
+      const isAudioCapture = result?.type === 'audio';
+      const rawTranscript = captureMetadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+      const initialText = result?.normalizedText || rawTranscript || (isAudioCapture ? '' : result?.rawContent) || '';
       setEditedText(initialText);
       setHasChanges(false);
     } catch (error) {
@@ -71,7 +405,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   const handleTextChange = (text: string) => {
     setEditedText(text);
-    const originalText = capture?.normalizedText || capture?.rawContent || '';
+    const isAudioCapture = capture?.type === 'audio';
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+    const originalText = capture?.normalizedText || rawTranscript || (isAudioCapture ? '' : capture?.rawContent) || '';
     setHasChanges(text !== originalText);
   };
 
@@ -85,7 +421,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
 
       // Learn from corrections before saving (passive vocabulary learning)
-      const originalText = capture.normalizedText || capture.rawContent || '';
+      const isAudioCapture = capture.type === 'audio';
+      const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+      const originalText = capture.normalizedText || rawTranscript || (isAudioCapture ? '' : capture.rawContent) || '';
       if (originalText !== editedText) {
         await CorrectionLearningService.learn(originalText, editedText, captureId);
       }
@@ -108,7 +446,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   };
 
   const handleDiscardChanges = () => {
-    const originalText = capture?.normalizedText || capture?.rawContent || '';
+    const isAudioCapture = capture?.type === 'audio';
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+    const originalText = capture?.normalizedText || rawTranscript || (isAudioCapture ? '' : capture?.rawContent) || '';
     setEditedText(originalText);
     setHasChanges(false);
     Keyboard.dismiss();
@@ -291,7 +631,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         </View>
 
         {/* Raw Transcript (before LLM) - Show when different from final text */}
-        {capture.rawTranscript && capture.rawTranscript !== capture.normalizedText && (
+        {metadata[METADATA_KEYS.RAW_TRANSCRIPT] && metadata[METADATA_KEYS.RAW_TRANSCRIPT] !== capture.normalizedText && (
           <View style={styles.rawTranscriptCard}>
             <Pressable
               style={styles.rawTranscriptHeader}
@@ -308,7 +648,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             {showRawTranscript && (
               <View style={styles.rawTranscriptContent}>
                 <Text style={styles.rawTranscriptText} selectable>
-                  {capture.rawTranscript}
+                  {metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
                 </Text>
                 <View style={styles.rawTranscriptBadge}>
                   <Text style={styles.rawTranscriptBadgeText}>
@@ -320,13 +660,317 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           </View>
         )}
 
-        {/* Transcription Prompt (if used) */}
-        {capture.transcriptPrompt && (
-          <View style={styles.promptCard}>
-            <Text style={styles.promptTitle}>Vocabulaire utilisé</Text>
-            <Text style={styles.promptText} selectable>
-              {capture.transcriptPrompt}
-            </Text>
+        {/* Metadata Section */}
+        {Object.keys(metadata).length > 0 && (
+          <View style={styles.metadataCard}>
+            <Pressable
+              style={styles.metadataHeader}
+              onPress={() => setShowMetadata(!showMetadata)}
+            >
+              <View style={styles.metadataTitleRow}>
+                <Text style={styles.metadataIcon}>📊</Text>
+                <Text style={styles.metadataTitle}>Métadonnées de transcription</Text>
+              </View>
+              <Text style={styles.metadataToggle}>
+                {showMetadata ? '▼' : '▶'}
+              </Text>
+            </Pressable>
+            {showMetadata && (
+              <View style={styles.metadataContent}>
+                {metadata[METADATA_KEYS.WHISPER_MODEL] && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Modèle Whisper</Text>
+                    <Text style={styles.metadataValue}>{metadata[METADATA_KEYS.WHISPER_MODEL]}</Text>
+                  </View>
+                )}
+                {metadata[METADATA_KEYS.WHISPER_DURATION_MS] && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Durée traitement Whisper</Text>
+                    <Text style={styles.metadataValue}>
+                      {Math.round(parseInt(metadata[METADATA_KEYS.WHISPER_DURATION_MS]!) / 1000 * 10) / 10}s
+                    </Text>
+                  </View>
+                )}
+                {metadata[METADATA_KEYS.LLM_MODEL] && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Modèle LLM</Text>
+                    <Text style={styles.metadataValue}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                  </View>
+                )}
+                {metadata[METADATA_KEYS.LLM_DURATION_MS] && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Durée traitement LLM</Text>
+                    <Text style={styles.metadataValue}>
+                      {Math.round(parseInt(metadata[METADATA_KEYS.LLM_DURATION_MS]!) / 1000 * 10) / 10}s
+                    </Text>
+                  </View>
+                )}
+                {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT] && (
+                  <View style={styles.metadataRow}>
+                    <Text style={styles.metadataLabel}>Vocabulaire utilisé</Text>
+                    <Text style={styles.metadataValue} numberOfLines={2}>
+                      {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT]}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Analysis Section - Show for ready captures */}
+        {capture.state === 'ready' && (
+          <View style={styles.analysisCard}>
+            <Pressable
+              style={styles.analysisHeader}
+              onPress={() => {
+                console.log('[CaptureDetailScreen] Analysis header pressed, showAnalysis:', !showAnalysis);
+                setShowAnalysis(!showAnalysis);
+              }}
+            >
+              <View style={styles.analysisTitleRow}>
+                <Text style={styles.analysisIcon}>🤖</Text>
+                <Text style={styles.analysisTitle}>Analyse IA</Text>
+              </View>
+              <Text style={styles.analysisToggle}>
+                {showAnalysis ? '▼' : '▶'}
+              </Text>
+            </Pressable>
+            {showAnalysis && (
+              <View style={styles.analysisContent}>
+                {/* Show message if no text to analyze */}
+                {!editedText ? (
+                  <View style={styles.noTextMessage}>
+                    <Text style={styles.noTextIcon}>📝</Text>
+                    <Text style={styles.noTextTitle}>Pas de texte à analyser</Text>
+                    <Text style={styles.noTextSubtitle}>
+                      La transcription n'a pas produit de texte. Essayez avec un enregistrement plus long ou plus clair.
+                    </Text>
+                  </View>
+                ) : (
+                  <>
+                    {/* Analyze All Button */}
+                    <TouchableOpacity
+                      style={styles.analyzeAllButton}
+                      onPress={handleAnalyzeAll}
+                      disabled={isAnyAnalysisLoading}
+                    >
+                      {isAnyAnalysisLoading ? (
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                      ) : (
+                        <Text style={styles.analyzeAllButtonText}>🚀 Analyser tout</Text>
+                      )}
+                    </TouchableOpacity>
+                {/* Summary Section */}
+                <View style={styles.analysisSection}>
+                  <View style={styles.analysisSectionHeader}>
+                    <Text style={styles.analysisSectionTitle}>
+                      {ANALYSIS_ICONS[ANALYSIS_TYPES.SUMMARY]} {ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.generateButton}
+                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)}
+                      disabled={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
+                    >
+                      {analysisLoading[ANALYSIS_TYPES.SUMMARY] ? (
+                        <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : (
+                        <Text style={styles.generateButtonText}>
+                          {analyses[ANALYSIS_TYPES.SUMMARY] ? '🔄' : 'Generer'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {analyses[ANALYSIS_TYPES.SUMMARY] && (
+                    <Text style={styles.analysisResult} selectable>
+                      {analyses[ANALYSIS_TYPES.SUMMARY].content}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Highlights Section */}
+                <View style={styles.analysisSection}>
+                  <View style={styles.analysisSectionHeader}>
+                    <Text style={styles.analysisSectionTitle}>
+                      {ANALYSIS_ICONS[ANALYSIS_TYPES.HIGHLIGHTS]} {ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.generateButton}
+                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)}
+                      disabled={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
+                    >
+                      {analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] ? (
+                        <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : (
+                        <Text style={styles.generateButtonText}>
+                          {analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? '🔄' : 'Generer'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {analyses[ANALYSIS_TYPES.HIGHLIGHTS] && (
+                    <Text style={styles.analysisResult} selectable>
+                      {analyses[ANALYSIS_TYPES.HIGHLIGHTS].content}
+                    </Text>
+                  )}
+                </View>
+
+                {/* Action Items Section */}
+                <View style={styles.analysisSection}>
+                  <View style={styles.analysisSectionHeader}>
+                    <Text style={styles.analysisSectionTitle}>
+                      {ANALYSIS_ICONS[ANALYSIS_TYPES.ACTION_ITEMS]} {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.generateButton}
+                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
+                      disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
+                    >
+                      {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                        <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : (
+                        <Text style={styles.generateButtonText}>
+                          {analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? '🔄' : 'Generer'}
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                  {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (() => {
+                    const actionItems = parseActionItems(analyses[ANALYSIS_TYPES.ACTION_ITEMS].content);
+                    if (actionItems && actionItems.length > 0) {
+                      return (
+                        <View style={styles.actionItemsList}>
+                          {actionItems.map((item, index) => (
+                            <View key={index} style={styles.actionItem}>
+                              <View style={styles.actionItemHeader}>
+                                <View style={styles.actionItemCheckbox} />
+                                <Text style={styles.actionItemTitle} selectable>
+                                  {item.title}
+                                </Text>
+                              </View>
+                              {(item.deadline_text || item.deadline_date || item.target) && (
+                                <View style={styles.actionItemMeta}>
+                                  {(item.deadline_date || item.deadline_text) && (
+                                    <View style={styles.actionItemTag}>
+                                      <Text style={styles.actionItemTagIcon}>📅</Text>
+                                      <Text style={styles.actionItemTagText}>
+                                        {item.deadline_date
+                                          ? formatDeadlineDate(item.deadline_date)
+                                          : item.deadline_text}
+                                      </Text>
+                                    </View>
+                                  )}
+                                  {item.target && (
+                                    <View style={styles.actionItemTag}>
+                                      <Text style={styles.actionItemTagIcon}>👤</Text>
+                                      <Text style={styles.actionItemTagText}>{item.target}</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              )}
+                            </View>
+                          ))}
+                        </View>
+                      );
+                    }
+                    // Fallback to raw text if JSON parsing fails
+                    return (
+                      <Text style={styles.analysisResult} selectable>
+                        {analyses[ANALYSIS_TYPES.ACTION_ITEMS].content}
+                      </Text>
+                    );
+                  })()}
+                </View>
+                  </>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* Reprocess Section - Debug tools for audio captures */}
+        {isAudio && capture.state === 'ready' && (
+          <View style={styles.reprocessCard}>
+            <Pressable
+              style={styles.reprocessHeader}
+              onPress={() => setShowReprocess(!showReprocess)}
+            >
+              <View style={styles.reprocessTitleRow}>
+                <Text style={styles.reprocessIcon}>🔧</Text>
+                <Text style={styles.reprocessTitle}>Retraitement</Text>
+              </View>
+              <Text style={styles.reprocessToggle}>
+                {showReprocess ? '▼' : '▶'}
+              </Text>
+            </Pressable>
+            {showReprocess && (
+              <View style={styles.reprocessContent}>
+                <Text style={styles.reprocessInfo}>
+                  Outils de debug pour relancer le pipeline de traitement.
+                </Text>
+
+                {/* Status info */}
+                <View style={styles.reprocessStatus}>
+                  <Text style={styles.reprocessStatusLabel}>État actuel:</Text>
+                  <Text style={styles.reprocessStatusValue}>
+                    • raw_transcript: {metadata[METADATA_KEYS.RAW_TRANSCRIPT] ? `${metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars` : '❌ absent'}
+                  </Text>
+                  <Text style={styles.reprocessStatusValue}>
+                    • normalizedText: {capture.normalizedText ? `${capture.normalizedText.length} chars` : '❌ absent'}
+                  </Text>
+                  <Text style={styles.reprocessStatusValue}>
+                    • LLM model: {metadata[METADATA_KEYS.LLM_MODEL] || '❌ non appliqué'}
+                  </Text>
+                </View>
+
+                {/* Re-transcribe button */}
+                <TouchableOpacity
+                  style={[styles.reprocessButton, styles.reprocessButtonTranscribe]}
+                  onPress={handleReTranscribe}
+                  disabled={reprocessing.transcribe}
+                >
+                  {reprocessing.transcribe ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.reprocessButtonIcon}>🎙️</Text>
+                      <View style={styles.reprocessButtonTextContainer}>
+                        <Text style={styles.reprocessButtonTitle}>Re-transcrire</Text>
+                        <Text style={styles.reprocessButtonDesc}>Relance Whisper sur l'audio</Text>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Re-post-process button */}
+                <TouchableOpacity
+                  style={[styles.reprocessButton, styles.reprocessButtonPostProcess]}
+                  onPress={handleRePostProcess}
+                  disabled={reprocessing.postProcess || !metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
+                >
+                  {reprocessing.postProcess ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.reprocessButtonIcon}>🤖</Text>
+                      <View style={styles.reprocessButtonTextContainer}>
+                        <Text style={styles.reprocessButtonTitle}>Re-post-traiter</Text>
+                        <Text style={styles.reprocessButtonDesc}>
+                          {metadata[METADATA_KEYS.RAW_TRANSCRIPT]
+                            ? 'Repasse raw_transcript dans le LLM'
+                            : 'Nécessite raw_transcript'}
+                        </Text>
+                      </View>
+                    </>
+                  )}
+                </TouchableOpacity>
+
+                {/* Info about analysis */}
+                <Text style={styles.reprocessNote}>
+                  💡 Pour relancer l'analyse IA, utilisez la section "Analyse IA" ci-dessus.
+                </Text>
+              </View>
+            )}
           </View>
         )}
       </ScrollView>
@@ -599,25 +1243,227 @@ const styles = StyleSheet.create({
     color: '#4CAF50',
     fontWeight: '500',
   },
-  promptCard: {
-    backgroundColor: '#FFF8E1',
+  metadataCard: {
+    backgroundColor: '#F5F5F5',
     borderRadius: 12,
-    padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#FFE082',
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
   },
-  promptTitle: {
-    fontSize: 12,
+  metadataHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  metadataTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  metadataIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  metadataTitle: {
+    fontSize: 13,
     fontWeight: '600',
-    color: '#F57C00',
-    textTransform: 'uppercase',
+    color: '#666',
+  },
+  metadataToggle: {
+    fontSize: 12,
+    color: '#999',
+  },
+  metadataContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FAFAFA',
+  },
+  metadataRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+  metadataLabel: {
+    fontSize: 13,
+    color: '#666',
+    flex: 1,
+  },
+  metadataValue: {
+    fontSize: 13,
+    color: '#333',
+    fontWeight: '500',
+    flex: 1,
+    textAlign: 'right',
+  },
+  // Analysis section styles
+  analysisCard: {
+    backgroundColor: '#F3E5F5',
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+    overflow: 'hidden',
+  },
+  analysisHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  analysisTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  analysisIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  analysisTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#7B1FA2',
+  },
+  analysisToggle: {
+    fontSize: 12,
+    color: '#9C27B0',
+  },
+  analysisContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#CE93D8',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: '#FAFAFA',
+  },
+  analysisSection: {
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  analysisSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 8,
   },
-  promptText: {
+  analysisSectionTitle: {
     fontSize: 14,
-    color: '#5D4037',
+    fontWeight: '600',
+    color: '#333',
+  },
+  generateButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F3E5F5',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#CE93D8',
+    minWidth: 70,
+    alignItems: 'center',
+  },
+  generateButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: '#9C27B0',
+  },
+  analysisResult: {
+    fontSize: 14,
+    color: '#333',
     lineHeight: 20,
+    marginTop: 4,
+  },
+  // Action items styles
+  actionItemsList: {
+    marginTop: 8,
+    gap: 10,
+  },
+  actionItem: {
+    backgroundColor: '#FAFAFA',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  actionItemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionItemCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: '#9C27B0',
+    marginRight: 12,
+  },
+  actionItemTitle: {
+    flex: 1,
+    fontSize: 15,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    fontWeight: '500',
+  },
+  actionItemMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginTop: 10,
+    paddingLeft: 32,
+    gap: 8,
+  },
+  actionItemTag: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F3E5F5',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  actionItemTagIcon: {
+    fontSize: 13,
+    marginRight: 5,
+  },
+  actionItemTagText: {
+    fontSize: 13,
+    color: '#7B1FA2',
+    fontWeight: '500',
+  },
+  analyzeAllButton: {
+    backgroundColor: '#9C27B0',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  analyzeAllButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  noTextMessage: {
+    alignItems: 'center',
+    paddingVertical: 20,
+  },
+  noTextIcon: {
+    fontSize: 32,
+    marginBottom: 8,
+  },
+  noTextTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#666',
+    marginBottom: 4,
+  },
+  noTextSubtitle: {
+    fontSize: 14,
+    color: '#999',
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
   actionBar: {
     flexDirection: 'row',
@@ -662,5 +1508,106 @@ const styles = StyleSheet.create({
   saveLabel: {
     color: '#FFFFFF',
     fontWeight: '600',
+  },
+  // Reprocess section styles
+  reprocessCard: {
+    backgroundColor: '#FFF3E0',
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#FFE0B2',
+    overflow: 'hidden',
+  },
+  reprocessHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+  },
+  reprocessTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  reprocessIcon: {
+    fontSize: 20,
+    marginRight: 8,
+  },
+  reprocessTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#E65100',
+  },
+  reprocessToggle: {
+    fontSize: 14,
+    color: '#FF9800',
+  },
+  reprocessContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#FFE0B2',
+    padding: 16,
+    backgroundColor: '#FFF8E1',
+  },
+  reprocessInfo: {
+    fontSize: 13,
+    color: '#666',
+    marginBottom: 16,
+    fontStyle: 'italic',
+  },
+  reprocessStatus: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+  reprocessStatusLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
+  },
+  reprocessStatusValue: {
+    fontSize: 12,
+    color: '#666',
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  reprocessButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 10,
+    marginBottom: 10,
+  },
+  reprocessButtonTranscribe: {
+    backgroundColor: '#2196F3',
+  },
+  reprocessButtonPostProcess: {
+    backgroundColor: '#9C27B0',
+  },
+  reprocessButtonIcon: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  reprocessButtonTextContainer: {
+    flex: 1,
+  },
+  reprocessButtonTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  reprocessButtonDesc: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.8)',
+    marginTop: 2,
+  },
+  reprocessNote: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 8,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
 });

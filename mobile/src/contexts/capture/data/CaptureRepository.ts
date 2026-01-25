@@ -41,14 +41,13 @@ export interface UpdateCaptureData {
   state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
   projectId?: string;
   rawContent?: string;
-  rawTranscript?: string | null; // Raw Whisper transcript (before LLM post-processing)
   normalizedText?: string;
   location?: string;
   tags?: string;
   duration?: number; // Audio duration in milliseconds
   fileSize?: number; // File size in bytes
   wavPath?: string | null; // Path to debug WAV file (debug mode only)
-  transcriptPrompt?: string | null; // Prompt used during transcription (custom vocabulary)
+  // Note: rawTranscript and transcriptPrompt are now in capture_metadata table
 }
 
 @injectable()
@@ -181,10 +180,6 @@ export class CaptureRepository implements ICaptureRepository {
         fields.push('file_size = ?');
         values.push(updates.fileSize);
       }
-      if (updates.rawTranscript !== undefined) {
-        fields.push('raw_transcript = ?');
-        values.push(updates.rawTranscript);
-      }
       if (updates.normalizedText !== undefined) {
         fields.push('normalized_text = ?');
         values.push(updates.normalizedText);
@@ -192,10 +187,6 @@ export class CaptureRepository implements ICaptureRepository {
       if (updates.wavPath !== undefined) {
         fields.push('wav_path = ?');
         values.push(updates.wavPath);
-      }
-      if (updates.transcriptPrompt !== undefined) {
-        fields.push('transcript_prompt = ?');
-        values.push(updates.transcriptPrompt);
       }
 
       fields.push('updated_at = ?');

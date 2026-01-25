@@ -40,6 +40,11 @@
               "scheme": "pensine",
               "host": "auth",
               "pathPrefix": "/callback"
+            },
+            {
+              "scheme": "pensine",
+              "host": "auth",
+              "pathPrefix": "/huggingface"
             }
           ],
           "category": [

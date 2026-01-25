@@ -31,6 +31,9 @@ module.exports = {
     // Mock WatermelonDB decorators as no-ops for unit tests
     '^@nozbe/watermelondb/decorators$':
       '<rootDir>/__mocks__/@nozbe/watermelondb/decorators.js',
+    // Mock react-native-file-hash native module
+    '^@preeternal/react-native-file-hash$':
+      '<rootDir>/__mocks__/@preeternal/react-native-file-hash/index.js',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   testMatch: ['**/__tests__/**/*.(test|spec).(ts|tsx|js)'],

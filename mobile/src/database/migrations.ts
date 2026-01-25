@@ -923,6 +923,266 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v9 completed');
     },
   },
+  {
+    version: 10,
+    name: 'Add capture_metadata table and migrate raw_transcript/transcript_prompt',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v10: Creating capture_metadata table');
+
+      // Step 1: Create capture_metadata table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS capture_metadata (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          key TEXT NOT NULL,
+          value TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Step 2: Create indexes
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_capture_metadata_capture_id
+        ON capture_metadata(capture_id)
+      `);
+
+      db.executeSync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_metadata_capture_key
+        ON capture_metadata(capture_id, key)
+      `);
+
+      console.log('[DB] 🔄 Migration v10: Migrating existing data to capture_metadata');
+
+      // Step 3: Migrate raw_transcript data
+      const rawTranscriptResult = db.executeSync(`
+        INSERT INTO capture_metadata (id, capture_id, key, value, created_at, updated_at)
+        SELECT
+          lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
+          substr(lower(hex(randomblob(2))),2) || '-' ||
+          substr('89ab', abs(random()) % 4 + 1, 1) ||
+          substr(lower(hex(randomblob(2))),2) || '-' ||
+          lower(hex(randomblob(6))),
+          id,
+          'raw_transcript',
+          raw_transcript,
+          updated_at,
+          updated_at
+        FROM captures
+        WHERE raw_transcript IS NOT NULL
+      `);
+      console.log(`[DB] ℹ️  Migrated ${rawTranscriptResult.rowsAffected ?? 0} raw_transcript entries`);
+
+      // Step 4: Migrate transcript_prompt data
+      const transcriptPromptResult = db.executeSync(`
+        INSERT INTO capture_metadata (id, capture_id, key, value, created_at, updated_at)
+        SELECT
+          lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' ||
+          substr(lower(hex(randomblob(2))),2) || '-' ||
+          substr('89ab', abs(random()) % 4 + 1, 1) ||
+          substr(lower(hex(randomblob(2))),2) || '-' ||
+          lower(hex(randomblob(6))),
+          id,
+          'transcript_prompt',
+          transcript_prompt,
+          updated_at,
+          updated_at
+        FROM captures
+        WHERE transcript_prompt IS NOT NULL
+      `);
+      console.log(`[DB] ℹ️  Migrated ${transcriptPromptResult.rowsAffected ?? 0} transcript_prompt entries`);
+
+      console.log('[DB] 🔄 Migration v10: Rebuilding captures table without raw_transcript/transcript_prompt');
+
+      // Step 5: Create new captures table without raw_transcript and transcript_prompt
+      db.executeSync(`
+        CREATE TABLE captures_v10 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          wav_path TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT
+        )
+      `);
+
+      // Step 6: Copy data to new table
+      db.executeSync(`
+        INSERT INTO captures_v10 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        FROM captures
+      `);
+
+      // Step 7: Drop old table
+      db.executeSync('DROP TABLE captures');
+
+      // Step 8: Rename new table
+      db.executeSync('ALTER TABLE captures_v10 RENAME TO captures');
+
+      // Step 9: Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Step 10: Recreate sync_queue FK constraint
+      db.executeSync(`
+        CREATE TABLE sync_queue_v10 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v10 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v10 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      console.log('[DB] ✅ Migration v10: capture_metadata table created and data migrated');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v10');
+
+      // Step 1: Recreate captures table with raw_transcript and transcript_prompt
+      db.executeSync(`
+        CREATE TABLE captures_v9 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          wav_path TEXT,
+          transcript_prompt TEXT,
+          raw_transcript TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT
+        )
+      `);
+
+      // Step 2: Copy data back with metadata values
+      db.executeSync(`
+        INSERT INTO captures_v9 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, transcript_prompt, raw_transcript,
+          created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        )
+        SELECT
+          c.id, c.type, c.state, c.raw_content, c.normalized_text, c.duration, c.file_size,
+          c.wav_path,
+          (SELECT value FROM capture_metadata WHERE capture_id = c.id AND key = 'transcript_prompt'),
+          (SELECT value FROM capture_metadata WHERE capture_id = c.id AND key = 'raw_transcript'),
+          c.created_at, c.updated_at, c.sync_version, c.last_sync_at, c.server_id, c.conflict_data
+        FROM captures c
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v9 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Recreate sync_queue FK constraint
+      db.executeSync(`
+        CREATE TABLE sync_queue_v9 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v9 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v9 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      // Drop capture_metadata table
+      db.executeSync('DROP TABLE IF EXISTS capture_metadata');
+
+      console.log('[DB] ✅ Rollback v10 completed');
+    },
+  },
+  {
+    version: 11,
+    name: 'Add capture_analysis table for LLM-based analysis results',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v11: Creating capture_analysis table');
+
+      // Create capture_analysis table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS capture_analysis (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          analysis_type TEXT NOT NULL CHECK(analysis_type IN ('summary', 'highlights', 'action_items')),
+          content TEXT NOT NULL,
+          model_id TEXT,
+          processing_duration_ms INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_capture_analysis_capture_id
+        ON capture_analysis(capture_id)
+      `);
+
+      db.executeSync(`
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_analysis_capture_type
+        ON capture_analysis(capture_id, analysis_type)
+      `);
+
+      console.log('[DB] ✅ Migration v11: capture_analysis table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v11');
+      db.executeSync('DROP TABLE IF EXISTS capture_analysis');
+      console.log('[DB] ✅ Rollback v11 completed');
+    },
+  },
 ];
 
 /**

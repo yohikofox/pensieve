@@ -21,27 +21,39 @@
  */
 
 import "reflect-metadata";
-import { inject, injectable } from "tsyringe";
+import { container, inject, injectable } from "tsyringe";
 import { fetch } from "expo/fetch";
 import { File, Paths } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NPUDetectionService } from "./NPUDetectionService";
+import { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 
 export type LLMModelId =
   | "qwen2.5-0.5b"
+  | "qwen2.5-1.5b"
   | "gemma3-1b"
   | "gemma3-1b-q4"
   | "gemma3-1b-q3"
   | "gemma3-1b-q2"
   | "llama3.2-1b"
   | "llama3.2-3b"
-  | "phi3-mini";
-  // | "gemma3n-2b"; // Disabled: requires HuggingFace auth
+  | "phi3-mini"
+  | "gemma3-1b-mediapipe"
+  | "gemma3n-2b";
+
+/** LLM task types for task-specific model selection */
+export type LLMTask = "postProcessing" | "analysis";
 
 export type LLMBackendType = "llamarn" | "mediapipe";
 
-const SELECTED_MODEL_KEY = "@pensieve/selected_llm_model";
+const SELECTED_MODEL_KEY = "@pensieve/selected_llm_model"; // Legacy, kept for migration
 const POSTPROCESSING_ENABLED_KEY = "@pensieve/postprocessing_enabled";
+
+/** Storage keys for task-specific model selection */
+const TASK_MODEL_KEYS: Record<LLMTask, string> = {
+  postProcessing: "@pensieve/llm_model_postprocessing",
+  analysis: "@pensieve/llm_model_analysis",
+};
 
 export interface DownloadProgress {
   totalBytesWritten: number;
@@ -67,6 +79,8 @@ export interface LLMModelConfig {
   promptTemplate: PromptTemplate;
   /** Device compatibility - which devices this model is optimized for */
   deviceCompatibility: DeviceCompatibility;
+  /** Whether this model requires HuggingFace authentication (gated model) */
+  requiresAuth?: boolean;
 }
 
 /**
@@ -74,6 +88,8 @@ export interface LLMModelConfig {
  *
  * Note: All URLs point to publicly accessible models (no authentication required)
  * Using community quantizations from bartowski and official public releases
+ *
+ * MediaPipe models use expo-llm-mediapipe (SDK 0.10.22) with GPU acceleration.
  */
 const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
   // === MODÈLES GÉNÉRAUX (tous appareils) ===
@@ -88,6 +104,19 @@ const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     backend: "llamarn",
     description: "Modèle léger et rapide, idéal pour les corrections basiques",
     recommended: true,
+    promptTemplate: "chatml",
+    deviceCompatibility: "all",
+  },
+  "qwen2.5-1.5b": {
+    id: "qwen2.5-1.5b",
+    name: "Qwen 2.5 1.5B",
+    filename: "qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    // Official Qwen GGUF - public, no auth required
+    downloadUrl:
+      "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    expectedSize: 1100 * 1024 * 1024, // ~1.1GB
+    backend: "llamarn",
+    description: "Meilleure qualité pour l'analyse et les résumés",
     promptTemplate: "chatml",
     deviceCompatibility: "all",
   },
@@ -159,19 +188,36 @@ const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     promptTemplate: "gemma",
     deviceCompatibility: "google",
   },
-  // NOTE: MediaPipe/TPU models temporarily disabled - require HuggingFace authentication
-  // TODO: Re-enable when public download is available
-  // "gemma3n-2b": {
-  //   id: "gemma3n-2b",
-  //   name: "Gemma 3n 2B (TPU)",
-  //   filename: "gemma3n-2b-tpu.task",
-  //   downloadUrl: "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm",
-  //   expectedSize: 1500 * 1024 * 1024,
-  //   backend: "mediapipe",
-  //   description: "Optimisé TPU Tensor (Pixel 6+)",
-  //   promptTemplate: "gemma",
-  //   deviceCompatibility: "google",
-  // },
+  // === MODÈLES MEDIAPIPE (nécessitent authentification HuggingFace) ===
+  "gemma3-1b-mediapipe": {
+    id: "gemma3-1b-mediapipe",
+    name: "Gemma 3 1B (MediaPipe)",
+    filename: "gemma3-1b-mediapipe.task",
+    // LiteRT Community - requires HuggingFace auth (gated)
+    downloadUrl:
+      "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task",
+    expectedSize: 555 * 1024 * 1024, // ~555MB
+    backend: "mediapipe",
+    description: "Gemma 3 1B MediaPipe - Optimisé TPU Tensor",
+    promptTemplate: "gemma",
+    deviceCompatibility: "google",
+    requiresAuth: true,
+  },
+  "gemma3n-2b": {
+    id: "gemma3n-2b",
+    name: "Gemma 3n 2B (TPU)",
+    filename: "gemma3n-2b-tpu.litertlm",
+    // Google official - requires HuggingFace auth (gated)
+    downloadUrl:
+      "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm",
+    expectedSize: 3660 * 1024 * 1024, // ~3.66GB
+    backend: "mediapipe",
+    description: "Gemma 3n 2B - Optimisé TPU Tensor (Pixel 6+)",
+    promptTemplate: "gemma",
+    deviceCompatibility: "google",
+    requiresAuth: true,
+    recommended: true,
+  },
 
   // === MODÈLES OPTIMISÉS APPLE (Llama) ===
   "llama3.2-1b": {
@@ -206,10 +252,47 @@ const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
 @injectable()
 export class LLMModelService {
   private cachedDeviceType: DeviceCompatibility | null = null;
+  private authService: HuggingFaceAuthService;
 
   constructor(
     @inject(NPUDetectionService) private npuDetectionService: NPUDetectionService,
-  ) {}
+  ) {
+    // Resolve HuggingFaceAuthService from container to ensure singleton is used
+    this.authService = container.resolve(HuggingFaceAuthService);
+  }
+
+  /**
+   * Initialize the service (including auth)
+   */
+  async initialize(): Promise<void> {
+    await this.authService.initialize();
+  }
+
+  /**
+   * Get the auth service for UI components
+   */
+  getAuthService(): HuggingFaceAuthService {
+    return this.authService;
+  }
+
+  /**
+   * Check if a model requires authentication
+   */
+  modelRequiresAuth(modelId: LLMModelId): boolean {
+    const config = this.getModelConfig(modelId);
+    return config.requiresAuth === true;
+  }
+
+  /**
+   * Check if user can download a model (auth if needed)
+   */
+  canDownloadModel(modelId: LLMModelId): boolean {
+    const config = this.getModelConfig(modelId);
+    if (!config.requiresAuth) {
+      return true;
+    }
+    return this.authService.isAuthenticated();
+  }
 
   /**
    * Get all available model configurations
@@ -321,20 +404,50 @@ export class LLMModelService {
     const config = this.getModelConfig(modelId);
     const modelFile = this.getModelFile(modelId);
 
+    // Check if authentication is required
+    if (config.requiresAuth && !this.authService.isAuthenticated()) {
+      throw new Error(
+        `Model "${config.name}" requires HuggingFace authentication. Please log in first.`
+      );
+    }
+
     console.log("[LLMModelService] Starting download:", {
       model: modelId,
       url: config.downloadUrl,
       path: modelFile.uri,
+      requiresAuth: config.requiresAuth,
     });
 
     try {
+      // Build headers with auth if needed
+      const headers: Record<string, string> = {
+        "User-Agent": "Pensieve-App/1.0",
+      };
+
+      if (config.requiresAuth) {
+        const authHeaders = this.authService.getAuthHeader();
+        const token = this.authService.getAccessToken();
+        console.log("[LLMModelService] Using authenticated download, token:", token ? `${token.substring(0, 10)}...${token.substring(token.length - 5)}` : '(none)');
+        Object.assign(headers, authHeaders);
+      }
+
+      console.log("[LLMModelService] Fetching with headers:", Object.keys(headers));
+
       const response = await fetch(config.downloadUrl, {
-        headers: {
-          "User-Agent": "Pensieve-App/1.0",
-        },
+        headers,
       });
 
+      console.log("[LLMModelService] Response status:", response.status, response.statusText);
+
       if (!response.ok) {
+        // Try to get error body
+        let errorBody = '';
+        try {
+          errorBody = await response.text();
+          console.error("[LLMModelService] Error response body:", errorBody.substring(0, 500));
+        } catch (e) {
+          // ignore
+        }
         throw new Error(
           `HTTP error: ${response.status} ${response.statusText}`,
         );
@@ -433,19 +546,21 @@ export class LLMModelService {
       return await this.downloadModel(modelId, onProgress);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Unknown error");
+      console.error("[LLMModelService] Initial download failed:", lastError.message);
     }
 
     // Retry attempts
     for (let attempt = 0; attempt < retryDelays.length; attempt++) {
       const delay = retryDelays[attempt];
 
-      console.log(`[LLMModelService] Retrying in ${delay / 1000}s...`);
+      console.log(`[LLMModelService] Retry attempt ${attempt + 1}/${retryDelays.length} in ${delay / 1000}s...`);
       await new Promise((resolve) => setTimeout(resolve, delay));
 
       try {
         return await this.downloadModel(modelId, onProgress);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error("Unknown error");
+        console.error(`[LLMModelService] Retry ${attempt + 1} failed:`, lastError.message);
       }
     }
 
@@ -501,31 +616,79 @@ export class LLMModelService {
 
   /**
    * Get the currently selected model for post-processing
+   * @deprecated Use getModelForTask('postProcessing') instead
    */
   async getSelectedModel(): Promise<LLMModelId | null> {
+    return this.getModelForTask('postProcessing');
+  }
+
+  /**
+   * Set the selected model for post-processing
+   * @deprecated Use setModelForTask('postProcessing', modelId) instead
+   */
+  async setSelectedModel(modelId: LLMModelId): Promise<void> {
+    await this.setModelForTask('postProcessing', modelId);
+  }
+
+  /**
+   * Get the selected model for a specific task
+   *
+   * @param task - The task type ('postProcessing' or 'analysis')
+   * @returns The selected model ID, or null if none selected
+   */
+  async getModelForTask(task: LLMTask): Promise<LLMModelId | null> {
     try {
-      const selected = await AsyncStorage.getItem(SELECTED_MODEL_KEY);
+      const storageKey = TASK_MODEL_KEYS[task];
+      const selected = await AsyncStorage.getItem(storageKey);
+
       if (selected && MODEL_CONFIGS[selected as LLMModelId]) {
         return selected as LLMModelId;
       }
+
+      // Migration: if no task-specific model, check legacy key for postProcessing
+      if (task === 'postProcessing') {
+        const legacySelected = await AsyncStorage.getItem(SELECTED_MODEL_KEY);
+        if (legacySelected && MODEL_CONFIGS[legacySelected as LLMModelId]) {
+          // Migrate to new key
+          await AsyncStorage.setItem(storageKey, legacySelected);
+          console.log(`[LLMModelService] Migrated legacy selection to ${task}:`, legacySelected);
+          return legacySelected as LLMModelId;
+        }
+      }
+
       return null;
     } catch (error) {
-      console.error("[LLMModelService] Failed to get selected model:", error);
+      console.error(`[LLMModelService] Failed to get model for ${task}:`, error);
       return null;
     }
   }
 
   /**
-   * Set the selected model for post-processing
+   * Set the selected model for a specific task
+   *
+   * @param task - The task type ('postProcessing' or 'analysis')
+   * @param modelId - The model ID to select
    */
-  async setSelectedModel(modelId: LLMModelId): Promise<void> {
+  async setModelForTask(task: LLMTask, modelId: LLMModelId): Promise<void> {
     try {
-      await AsyncStorage.setItem(SELECTED_MODEL_KEY, modelId);
-      console.log("[LLMModelService] Selected model set to:", modelId);
+      const storageKey = TASK_MODEL_KEYS[task];
+      await AsyncStorage.setItem(storageKey, modelId);
+      console.log(`[LLMModelService] Model for ${task} set to:`, modelId);
     } catch (error) {
-      console.error("[LLMModelService] Failed to set selected model:", error);
+      console.error(`[LLMModelService] Failed to set model for ${task}:`, error);
       throw error;
     }
+  }
+
+  /**
+   * Get all task-specific model selections
+   *
+   * @returns Map of task to selected model ID (or null)
+   */
+  async getAllTaskModelSelections(): Promise<Record<LLMTask, LLMModelId | null>> {
+    const postProcessing = await this.getModelForTask('postProcessing');
+    const analysis = await this.getModelForTask('analysis');
+    return { postProcessing, analysis };
   }
 
   /**
@@ -557,14 +720,33 @@ export class LLMModelService {
    * 3. null (no model available)
    *
    * @param preferredBackend - Preferred backend (for TPU detection)
+   * @deprecated Use getBestAvailableModelForTask('postProcessing', preferredBackend) instead
    */
   async getBestAvailableModel(
     preferredBackend?: LLMBackendType,
   ): Promise<LLMModelId | null> {
+    return this.getBestAvailableModelForTask('postProcessing', preferredBackend);
+  }
+
+  /**
+   * Get the best available model for a specific task
+   *
+   * Priority:
+   * 1. User-selected model for this task (if downloaded and compatible)
+   * 2. Best downloaded model for current device and backend
+   * 3. null (no model available)
+   *
+   * @param task - The task type ('postProcessing' or 'analysis')
+   * @param preferredBackend - Preferred backend (for TPU detection)
+   */
+  async getBestAvailableModelForTask(
+    task: LLMTask,
+    preferredBackend?: LLMBackendType,
+  ): Promise<LLMModelId | null> {
     const deviceType = await this.getDeviceType();
 
-    // First check user preference
-    const selected = await this.getSelectedModel();
+    // First check user preference for this task
+    const selected = await this.getModelForTask(task);
     if (selected && (await this.isModelDownloaded(selected))) {
       const config = this.getModelConfig(selected);
       // Only return if backend matches preference (if specified)

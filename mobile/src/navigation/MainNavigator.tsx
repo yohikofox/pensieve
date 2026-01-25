@@ -1,5 +1,6 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { Ionicons } from '@expo/vector-icons';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
 import { CapturesStackNavigator } from './CapturesStackNavigator';
 import { SettingsStackNavigator } from './SettingsStackNavigator';
@@ -23,6 +24,9 @@ export const MainNavigator = () => {
           options={{
             title: 'Mes Captures',
             tabBarLabel: 'Captures',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="list" size={size} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -31,6 +35,9 @@ export const MainNavigator = () => {
           options={{
             title: 'Capturer',
             tabBarLabel: 'Capturer',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="mic" size={size} color={color} />
+            ),
           }}
         />
         <Tab.Screen
@@ -39,6 +46,9 @@ export const MainNavigator = () => {
           options={{
             title: 'Paramètres',
             tabBarLabel: 'Paramètres',
+            tabBarIcon: ({ color, size }) => (
+              <Ionicons name="settings" size={size} color={color} />
+            ),
           }}
         />
       </Tab.Navigator>

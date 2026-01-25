@@ -11,6 +11,8 @@
 export const TOKENS = {
   // Domain Repositories
   ICaptureRepository: Symbol.for('ICaptureRepository'),
+  ICaptureMetadataRepository: Symbol.for('ICaptureMetadataRepository'),
+  ICaptureAnalysisRepository: Symbol.for('ICaptureAnalysisRepository'),
 
   // Hardware/Platform Adapters
   IAudioRecorder: Symbol.for('IAudioRecorder'),

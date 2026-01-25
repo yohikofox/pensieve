@@ -35,10 +35,12 @@ import { InteractionManager } from 'react-native';
 import type { Subscription } from 'rxjs';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
 import { TranscriptionService } from '../services/TranscriptionService';
-import { WhisperModelService } from '../services/WhisperModelService';
+import { WhisperModelService, type WhisperModelSize } from '../services/WhisperModelService';
 import { PostProcessingService } from '../services/PostProcessingService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
+import type { ICaptureMetadataRepository } from '../../capture/domain/ICaptureMetadataRepository';
+import { METADATA_KEYS } from '../../capture/domain/CaptureMetadata.model';
 import type { EventBus } from '../../shared/events/EventBus';
 import type { QueueItemAddedEvent } from '../events/QueueEvents';
 import {
@@ -59,11 +61,13 @@ export class TranscriptionWorker {
   private whisperModelService: WhisperModelService;
   private postProcessingService: PostProcessingService;
   private eventSubscription: Subscription | null = null;
+  private currentWhisperModel: WhisperModelSize | null = null;
 
   constructor(
     private queueService: TranscriptionQueueService,
     private transcriptionService: TranscriptionService,
     @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
+    @inject(TOKENS.ICaptureMetadataRepository) private metadataRepository: ICaptureMetadataRepository,
     @inject('EventBus') private eventBus: EventBus,
     postProcessingService: PostProcessingService
   ) {
@@ -82,7 +86,7 @@ export class TranscriptionWorker {
    */
   private async ensureModelLoaded(): Promise<boolean> {
     // Check if already loaded
-    if (this.transcriptionService.isModelLoaded()) {
+    if (this.transcriptionService.isModelLoaded() && this.currentWhisperModel) {
       return true;
     }
 
@@ -100,9 +104,11 @@ export class TranscriptionWorker {
     try {
       const modelPath = this.whisperModelService.getModelPath(selectedModel);
       await this.transcriptionService.loadModel(modelPath);
+      this.currentWhisperModel = selectedModel;
       return true;
     } catch (error) {
       console.error('[TranscriptionWorker] ❌ Failed to load Whisper model:', error);
+      this.currentWhisperModel = null;
       return false;
     }
   }
@@ -377,16 +383,31 @@ export class TranscriptionWorker {
           }
         }
 
-        // Update capture with both raw transcript and final text
-        // rawTranscript: Whisper output (always saved)
-        // normalizedText: LLM post-processed text (or same as raw if no LLM)
+        // Update capture with normalized text and state
+        console.log('[TranscriptionWorker] 💾 Saving normalizedText:', {
+          captureId: queuedCapture.captureId,
+          finalTextLength: finalText?.length || 0,
+          finalTextPreview: finalText?.substring(0, 50) || '(empty)',
+          rawTranscriptLength: rawTranscript?.length || 0,
+        });
         await this.captureRepository.update(queuedCapture.captureId, {
-          rawTranscript: rawTranscript,
           normalizedText: finalText,
           state: 'ready',
           wavPath: transcriptionResult.wavPath,
-          transcriptPrompt: transcriptionResult.transcriptPrompt,
         });
+
+        // Save metadata to capture_metadata table
+        const metrics = this.transcriptionService.getLastPerformanceMetrics();
+        const llmModelId = llmApplied ? this.postProcessingService.getCurrentModelId() : null;
+        await this.metadataRepository.setMany(queuedCapture.captureId, [
+          { key: METADATA_KEYS.RAW_TRANSCRIPT, value: rawTranscript },
+          { key: METADATA_KEYS.WHISPER_MODEL, value: this.currentWhisperModel },
+          { key: METADATA_KEYS.TRANSCRIPT_PROMPT, value: transcriptionResult.transcriptPrompt || null },
+          { key: METADATA_KEYS.WHISPER_DURATION_MS, value: metrics?.transcriptionDuration?.toString() || null },
+          ...(llmApplied && llmModelId ? [
+            { key: METADATA_KEYS.LLM_MODEL, value: llmModelId },
+          ] : []),
+        ]);
 
         console.log(
           `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${finalText.substring(0, 50)}${finalText.length > 50 ? '...' : ''}"` +
@@ -395,7 +416,6 @@ export class TranscriptionWorker {
         );
 
         // Log performance metrics
-        const metrics = this.transcriptionService.getLastPerformanceMetrics();
         if (metrics) {
           console.log(
             `[TranscriptionWorker] 📊 Performance: ${metrics.transcriptionDuration}ms for ${metrics.audioDuration}ms audio (${metrics.ratio}x) - NFR2: ${metrics.meetsNFR2 ? '✅' : '❌'}`
@@ -508,14 +528,32 @@ export class TranscriptionWorker {
           }
         }
 
-        // Update capture with both raw transcript and final text
+        // Update capture with normalized text and state
+        console.log('[TranscriptionWorker] 💾 Background saving normalizedText:', {
+          captureId: queuedCapture.captureId,
+          finalTextLength: finalText?.length || 0,
+          finalTextPreview: finalText?.substring(0, 50) || '(empty)',
+          rawTranscriptLength: rawTranscript?.length || 0,
+        });
         await this.captureRepository.update(queuedCapture.captureId, {
-          rawTranscript: rawTranscript,
           normalizedText: finalText,
           state: 'ready',
           wavPath: transcriptionResult.wavPath,
-          transcriptPrompt: transcriptionResult.transcriptPrompt,
         });
+
+        // Save metadata to capture_metadata table
+        const metrics = this.transcriptionService.getLastPerformanceMetrics();
+        const llmModelIdBg = this.postProcessingService.getCurrentModelId();
+        const llmAppliedBg = finalText !== rawTranscript && llmModelIdBg;
+        await this.metadataRepository.setMany(queuedCapture.captureId, [
+          { key: METADATA_KEYS.RAW_TRANSCRIPT, value: rawTranscript },
+          { key: METADATA_KEYS.WHISPER_MODEL, value: this.currentWhisperModel },
+          { key: METADATA_KEYS.TRANSCRIPT_PROMPT, value: transcriptionResult.transcriptPrompt || null },
+          { key: METADATA_KEYS.WHISPER_DURATION_MS, value: metrics?.transcriptionDuration?.toString() || null },
+          ...(llmAppliedBg ? [
+            { key: METADATA_KEYS.LLM_MODEL, value: llmModelIdBg },
+          ] : []),
+        ]);
 
         // Mark as completed in queue
         await this.queueService.markCompleted(queuedCapture.captureId);
