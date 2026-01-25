@@ -31,10 +31,12 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+import { InteractionManager } from 'react-native';
 import type { Subscription } from 'rxjs';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
 import { TranscriptionService } from '../services/TranscriptionService';
 import { WhisperModelService } from '../services/WhisperModelService';
+import { PostProcessingService } from '../services/PostProcessingService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { EventBus } from '../../shared/events/EventBus';
@@ -55,15 +57,18 @@ export class TranscriptionWorker {
   private state: WorkerState = 'stopped';
   private isProcessing: boolean = false; // True when actively processing queue
   private whisperModelService: WhisperModelService;
+  private postProcessingService: PostProcessingService;
   private eventSubscription: Subscription | null = null;
 
   constructor(
     private queueService: TranscriptionQueueService,
     private transcriptionService: TranscriptionService,
     @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
-    @inject('EventBus') private eventBus: EventBus
+    @inject('EventBus') private eventBus: EventBus,
+    postProcessingService: PostProcessingService
   ) {
     this.whisperModelService = new WhisperModelService();
+    this.postProcessingService = postProcessingService;
   }
 
   /**
@@ -343,16 +348,48 @@ export class TranscriptionWorker {
           queuedCapture.audioDuration
         );
 
-        // Update capture with transcription result (wavPath and transcriptPrompt if applicable)
+        // Store raw Whisper transcript
+        const rawTranscript = transcriptionResult.text;
+
+        // Post-process transcription with LLM if enabled
+        // Use InteractionManager to avoid blocking UI during LLM inference
+        let finalText = rawTranscript;
+        let llmApplied = false;
+        if (await this.postProcessingService.isEnabled()) {
+          try {
+            // Wait for UI interactions to complete before heavy LLM work
+            await new Promise<void>((resolve) => {
+              InteractionManager.runAfterInteractions(() => resolve());
+            });
+
+            const processedText = await this.postProcessingService.process(rawTranscript);
+            // Only log success if text was actually modified
+            if (processedText !== rawTranscript) {
+              finalText = processedText;
+              llmApplied = true;
+              console.log('[TranscriptionWorker] ✅ Post-processing applied');
+            } else {
+              console.log('[TranscriptionWorker] ⏭️ Post-processing skipped (no changes or not ready)');
+            }
+          } catch (postProcessError) {
+            console.warn('[TranscriptionWorker] ⚠️ Post-processing failed, using original:', postProcessError);
+            // Fallback: use original text if LLM fails
+          }
+        }
+
+        // Update capture with both raw transcript and final text
+        // rawTranscript: Whisper output (always saved)
+        // normalizedText: LLM post-processed text (or same as raw if no LLM)
         await this.captureRepository.update(queuedCapture.captureId, {
-          normalizedText: transcriptionResult.text,
+          rawTranscript: rawTranscript,
+          normalizedText: finalText,
           state: 'ready',
           wavPath: transcriptionResult.wavPath,
           transcriptPrompt: transcriptionResult.transcriptPrompt,
         });
 
         console.log(
-          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${transcriptionResult.text.substring(0, 50)}${transcriptionResult.text.length > 50 ? '...' : ''}"` +
+          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${finalText.substring(0, 50)}${finalText.length > 50 ? '...' : ''}"` +
           (transcriptionResult.wavPath ? ` (WAV kept: ${transcriptionResult.wavPath})` : '') +
           (transcriptionResult.transcriptPrompt ? ` (prompt: ${transcriptionResult.transcriptPrompt.substring(0, 30)}...)` : '')
         );
@@ -445,9 +482,36 @@ export class TranscriptionWorker {
           queuedCapture.audioDuration
         );
 
-        // Update capture with result (wavPath and transcriptPrompt if applicable)
+        // Store raw Whisper transcript
+        const rawTranscript = transcriptionResult.text;
+
+        // Post-process transcription with LLM if enabled
+        // Use InteractionManager to avoid blocking UI during LLM inference
+        let finalText = rawTranscript;
+        if (await this.postProcessingService.isEnabled()) {
+          try {
+            // Wait for UI interactions to complete before heavy LLM work
+            await new Promise<void>((resolve) => {
+              InteractionManager.runAfterInteractions(() => resolve());
+            });
+
+            const processedText = await this.postProcessingService.process(rawTranscript);
+            if (processedText !== rawTranscript) {
+              finalText = processedText;
+              console.log('[TranscriptionWorker] ✅ Background post-processing applied');
+            } else {
+              console.log('[TranscriptionWorker] ⏭️ Background post-processing skipped (no changes or not ready)');
+            }
+          } catch (postProcessError) {
+            console.warn('[TranscriptionWorker] ⚠️ Background post-processing failed, using original:', postProcessError);
+            // Fallback: use original text if LLM fails
+          }
+        }
+
+        // Update capture with both raw transcript and final text
         await this.captureRepository.update(queuedCapture.captureId, {
-          normalizedText: transcriptionResult.text,
+          rawTranscript: rawTranscript,
+          normalizedText: finalText,
           state: 'ready',
           wavPath: transcriptionResult.wavPath,
           transcriptPrompt: transcriptionResult.transcriptPrompt,
@@ -457,13 +521,13 @@ export class TranscriptionWorker {
         await this.queueService.markCompleted(queuedCapture.captureId);
 
         console.log(
-          `[TranscriptionWorker] ✅ Background transcribed ${queuedCapture.captureId}: "${transcriptionResult.text.substring(0, 30)}${transcriptionResult.text.length > 30 ? '...' : ''}"` +
+          `[TranscriptionWorker] ✅ Background transcribed ${queuedCapture.captureId}: "${finalText.substring(0, 30)}${finalText.length > 30 ? '...' : ''}"` +
           (transcriptionResult.wavPath ? ` (WAV kept)` : '') +
           (transcriptionResult.transcriptPrompt ? ` (prompt used)` : '')
         );
 
         // Send notification (background task = app is backgrounded)
-        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcriptionResult.text);
+        await showTranscriptionCompleteNotification(queuedCapture.captureId, finalText);
 
         return true;
       } catch (transcriptionError) {

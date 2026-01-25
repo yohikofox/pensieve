@@ -34,6 +34,11 @@ import { TranscriptionQueueProcessor } from '../../contexts/Normalization/proces
 import { TranscriptionWorker } from '../../contexts/Normalization/workers/TranscriptionWorker';
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 
+// Post-processing Services (LLM enhancement)
+import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
+import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
+import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
+
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
 import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
@@ -88,6 +93,11 @@ export function registerServices() {
   container.registerSingleton(TranscriptionService);
   container.registerSingleton(TranscriptionQueueService);
   container.registerSingleton(TranscriptionQueueProcessor);
+
+  // Post-processing Services (LLM enhancement)
+  container.registerSingleton(NPUDetectionService);
+  container.registerSingleton(LLMModelService);
+  container.registerSingleton(PostProcessingService);
   container.registerSingleton(TranscriptionWorker);
 
   servicesRegistered = true;

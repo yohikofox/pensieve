@@ -21,6 +21,7 @@ import {
   ActivityIndicator,
   TextInput,
   Keyboard,
+  Pressable,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { container } from 'tsyringe';
@@ -45,6 +46,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [editedText, setEditedText] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showRawTranscript, setShowRawTranscript] = useState(false);
   const textInputRef = useRef<TextInput>(null);
 
   useEffect(() => {
@@ -288,6 +290,36 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           )}
         </View>
 
+        {/* Raw Transcript (before LLM) - Show when different from final text */}
+        {capture.rawTranscript && capture.rawTranscript !== capture.normalizedText && (
+          <View style={styles.rawTranscriptCard}>
+            <Pressable
+              style={styles.rawTranscriptHeader}
+              onPress={() => setShowRawTranscript(!showRawTranscript)}
+            >
+              <View style={styles.rawTranscriptTitleRow}>
+                <Text style={styles.rawTranscriptIcon}>🎙️</Text>
+                <Text style={styles.rawTranscriptTitle}>Transcription brute (Whisper)</Text>
+              </View>
+              <Text style={styles.rawTranscriptToggle}>
+                {showRawTranscript ? '▼' : '▶'}
+              </Text>
+            </Pressable>
+            {showRawTranscript && (
+              <View style={styles.rawTranscriptContent}>
+                <Text style={styles.rawTranscriptText} selectable>
+                  {capture.rawTranscript}
+                </Text>
+                <View style={styles.rawTranscriptBadge}>
+                  <Text style={styles.rawTranscriptBadgeText}>
+                    ✨ Amélioré par IA
+                  </Text>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Transcription Prompt (if used) */}
         {capture.transcriptPrompt && (
           <View style={styles.promptCard}>
@@ -510,6 +542,62 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8E8E93',
     fontStyle: 'italic',
+  },
+  rawTranscriptCard: {
+    backgroundColor: '#F5F5F5',
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+  },
+  rawTranscriptHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  rawTranscriptTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rawTranscriptIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  rawTranscriptTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#666',
+  },
+  rawTranscriptToggle: {
+    fontSize: 12,
+    color: '#999',
+  },
+  rawTranscriptContent: {
+    borderTopWidth: 1,
+    borderTopColor: '#E0E0E0',
+    padding: 12,
+    backgroundColor: '#FAFAFA',
+  },
+  rawTranscriptText: {
+    fontSize: 15,
+    color: '#666',
+    lineHeight: 22,
+    fontStyle: 'italic',
+  },
+  rawTranscriptBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 12,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    backgroundColor: '#E8F5E9',
+    borderRadius: 12,
+  },
+  rawTranscriptBadgeText: {
+    fontSize: 12,
+    color: '#4CAF50',
+    fontWeight: '500',
   },
   promptCard: {
     backgroundColor: '#FFF8E1',

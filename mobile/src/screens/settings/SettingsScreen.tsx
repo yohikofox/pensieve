@@ -18,6 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
 
@@ -30,12 +31,14 @@ export const SettingsScreen = () => {
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [password, setPassword] = useState('');
   const [selectedModelLabel, setSelectedModelLabel] = useState<string>('Non configuré');
+  const [llmStatusLabel, setLlmStatusLabel] = useState<string>('Désactivé');
 
   // Debug mode from global settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
 
   const modelService = new WhisperModelService();
+  const llmModelService = new LLMModelService();
 
   // Load selected model label on mount and when returning to screen
   useEffect(() => {
@@ -58,6 +61,30 @@ export const SettingsScreen = () => {
 
     // Refresh when screen comes into focus
     const unsubscribe = navigation.addListener('focus', loadSelectedModel);
+    return unsubscribe;
+  }, [navigation]);
+
+  // Load LLM status on mount and when returning to screen
+  useEffect(() => {
+    const loadLlmStatus = async () => {
+      const enabled = await llmModelService.isPostProcessingEnabled();
+      if (!enabled) {
+        setLlmStatusLabel('Désactivé');
+        return;
+      }
+
+      const selected = await llmModelService.getSelectedModel();
+      if (selected) {
+        const config = llmModelService.getModelConfig(selected);
+        setLlmStatusLabel(config.name);
+      } else {
+        setLlmStatusLabel('Activé');
+      }
+    };
+
+    loadLlmStatus();
+
+    const unsubscribe = navigation.addListener('focus', loadLlmStatus);
     return unsubscribe;
   }, [navigation]);
 
@@ -280,6 +307,22 @@ export const SettingsScreen = () => {
             </View>
             <View style={styles.menuItemRight}>
               <Text style={styles.menuItemValue}>{selectedModelLabel}</Text>
+              <Text style={styles.menuItemChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('LLMSettings')}
+          >
+            <View style={styles.menuItemContent}>
+              <Text style={styles.menuItemLabel}>Amélioration IA</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Améliorer automatiquement les transcriptions
+              </Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              <Text style={styles.menuItemValue}>{llmStatusLabel}</Text>
               <Text style={styles.menuItemChevron}>›</Text>
             </View>
           </TouchableOpacity>

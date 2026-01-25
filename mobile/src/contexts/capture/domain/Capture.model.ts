@@ -43,7 +43,14 @@ export interface Capture {
   rawContent: string;
 
   /**
-   * Normalized text after transcription
+   * Raw transcript from Whisper (before LLM post-processing)
+   * Null until transcription completes
+   */
+  rawTranscript?: string | null;
+
+  /**
+   * Normalized text after LLM post-processing
+   * Falls back to rawTranscript if no post-processing applied
    * Null until transcription completes
    */
   normalizedText?: string | null;
@@ -113,6 +120,7 @@ export interface CaptureRow {
   type: string;
   state: string;
   raw_content: string;
+  raw_transcript: string | null;
   normalized_text: string | null;
   duration: number | null;
   file_size: number | null;
@@ -136,6 +144,7 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     type: row.type,
     state: row.state,
     rawContent: row.raw_content,
+    rawTranscript: row.raw_transcript,
     normalizedText: row.normalized_text,
     duration: row.duration,
     fileSize: row.file_size,

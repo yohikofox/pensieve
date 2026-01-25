@@ -8,7 +8,7 @@
  */
 
 import { type RepositoryResult } from './Result';
-import { type Capture } from './Capture';
+import { type Capture } from './Capture.model';
 
 export interface ICaptureRepository {
   /**
@@ -31,6 +31,7 @@ export interface ICaptureRepository {
       state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
       rawContent?: string;
       duration?: number;
+      rawTranscript?: string | null;
       normalizedText?: string;
       wavPath?: string | null;
       transcriptPrompt?: string | null;

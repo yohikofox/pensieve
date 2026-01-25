@@ -41,6 +41,7 @@ export interface UpdateCaptureData {
   state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
   projectId?: string;
   rawContent?: string;
+  rawTranscript?: string | null; // Raw Whisper transcript (before LLM post-processing)
   normalizedText?: string;
   location?: string;
   tags?: string;
@@ -179,6 +180,10 @@ export class CaptureRepository implements ICaptureRepository {
       if (updates.fileSize !== undefined) {
         fields.push('file_size = ?');
         values.push(updates.fileSize);
+      }
+      if (updates.rawTranscript !== undefined) {
+        fields.push('raw_transcript = ?');
+        values.push(updates.rawTranscript);
       }
       if (updates.normalizedText !== undefined) {
         fields.push('normalized_text = ?');
