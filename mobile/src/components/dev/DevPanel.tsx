@@ -13,7 +13,7 @@
  * - Logs are always present as fallback
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -21,15 +21,119 @@ import {
   Modal,
   StyleSheet,
   ScrollView,
+  PanResponder,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDevPanel } from './DevPanelContext';
 import { LogsViewer } from './InAppLogger';
+import { CaptureDevTools } from './CaptureDevTools';
+import { TranscriptionQueueDebug } from './TranscriptionQueueDebug';
+import { WavDebugPlayer } from './WavDebugPlayer';
+import { CorrectionLearningDebug } from './CorrectionLearningDebug';
+import { useSettingsStore } from '../../stores/settingsStore';
+
+const BUTTON_SIZE = 56;
+const EDGE_MARGIN = 20;
 
 export function DevPanel() {
   const { tabs, isOpen, openPanel, closePanel } = useDevPanel();
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
+
+  // Get debug mode and button position from global settings store
+  const debugMode = useSettingsStore((state) => state.debugMode);
+  const buttonPosition = useSettingsStore((state) => state.debugButtonPosition);
+  const setButtonPosition = useSettingsStore((state) => state.setDebugButtonPosition);
+
+  // Screen dimensions
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+  // Calculate initial position from stored settings
+  const getPositionFromSettings = useCallback(() => {
+    const x = buttonPosition.edge === 'right'
+      ? screenWidth - BUTTON_SIZE - EDGE_MARGIN
+      : EDGE_MARGIN;
+    const y = buttonPosition.verticalPercent * (screenHeight - BUTTON_SIZE - insets.top - insets.bottom) + insets.top;
+    return { x, y };
+  }, [buttonPosition, screenWidth, screenHeight, insets]);
+
+  // Animated position
+  const pan = useRef(new Animated.ValueXY(getPositionFromSettings())).current;
+  const isDragging = useRef(false);
+
+  // Update position when settings change (e.g., on mount)
+  useEffect(() => {
+    const pos = getPositionFromSettings();
+    pan.setValue(pos);
+  }, [buttonPosition.edge, buttonPosition.verticalPercent]);
+
+  // Pan responder for drag gesture
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Only capture if moved more than 5 pixels (to allow taps)
+        return Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderGrant: () => {
+        isDragging.current = false;
+        // Store current position as offset
+        pan.setOffset({
+          x: (pan.x as any)._value,
+          y: (pan.y as any)._value,
+        });
+        pan.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > 5 || Math.abs(gestureState.dy) > 5) {
+          isDragging.current = true;
+        }
+        Animated.event([null, { dx: pan.x, dy: pan.y }], {
+          useNativeDriver: false,
+        })(_, gestureState);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        pan.flattenOffset();
+
+        // If it was just a tap (not a drag), open the panel
+        if (!isDragging.current) {
+          openPanel();
+          return;
+        }
+
+        // Calculate final position
+        const currentX = (pan.x as any)._value;
+        const currentY = (pan.y as any)._value;
+
+        // Determine which edge to snap to
+        const snapToRight = currentX > screenWidth / 2;
+        const targetX = snapToRight
+          ? screenWidth - BUTTON_SIZE - EDGE_MARGIN
+          : EDGE_MARGIN;
+
+        // Clamp Y position within screen bounds
+        const minY = insets.top + EDGE_MARGIN;
+        const maxY = screenHeight - BUTTON_SIZE - insets.bottom - EDGE_MARGIN;
+        const targetY = Math.max(minY, Math.min(maxY, currentY));
+
+        // Animate to edge
+        Animated.spring(pan, {
+          toValue: { x: targetX, y: targetY },
+          useNativeDriver: false,
+          friction: 7,
+        }).start();
+
+        // Save position to store
+        const verticalPercent = (targetY - insets.top) / (screenHeight - BUTTON_SIZE - insets.top - insets.bottom);
+        setButtonPosition({
+          edge: snapToRight ? 'right' : 'left',
+          verticalPercent: Math.max(0, Math.min(1, verticalPercent)),
+        });
+      },
+    })
+  ).current;
 
   // Auto-select first tab when panel opens (only if no tab selected)
   useEffect(() => {
@@ -50,31 +154,65 @@ export function DevPanel() {
     }
   }, [isOpen]);
 
-  if (!__DEV__) return null;
+  // Only show DevPanel when debug mode is enabled
+  if (!debugMode) return null;
 
-  // Always include Logs tab (global, always available)
-  const allTabs = [
-    ...tabs,
+  // Global dev tools tabs (always available)
+  const globalTabs = [
+    {
+      id: 'captures',
+      label: '📦 Captures',
+      component: <CaptureDevTools />,
+      priority: 100,
+    },
+    {
+      id: 'queue',
+      label: '🎙️ Queue',
+      component: <TranscriptionQueueDebug />,
+      priority: 200,
+    },
+    {
+      id: 'wav-player',
+      label: '🔊 WAV Debug',
+      component: <WavDebugPlayer />,
+      priority: 300,
+    },
+    {
+      id: 'corrections',
+      label: '📝 Corrections',
+      component: <CorrectionLearningDebug />,
+      priority: 400,
+    },
     {
       id: 'logs',
       label: '📋 Logs',
       component: <LogsViewer />,
-      priority: 1000, // Last position
+      priority: 1000,
     },
+  ];
+
+  // Combine contextual tabs with global tabs
+  const allTabs = [
+    ...tabs,
+    ...globalTabs,
   ].sort((a, b) => (a.priority || 500) - (b.priority || 500));
 
   const activeTab = allTabs.find((t) => t.id === activeTabId) || allTabs[0];
 
   return (
     <>
-      {/* Floating Button - Always visible */}
-      <TouchableOpacity
-        style={styles.floatingButton}
-        onPress={openPanel}
-        activeOpacity={0.8}
+      {/* Floating Button - Draggable, anchored to edges */}
+      <Animated.View
+        style={[
+          styles.floatingButton,
+          {
+            transform: pan.getTranslateTransform(),
+          },
+        ]}
+        {...panResponder.panHandlers}
       >
         <Text style={styles.floatingButtonText}>🔍</Text>
-      </TouchableOpacity>
+      </Animated.View>
 
       {/* Modal Panel */}
       <Modal
@@ -142,11 +280,11 @@ export function DevPanel() {
 const styles = StyleSheet.create({
   floatingButton: {
     position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    top: 0,
+    left: 0,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_SIZE / 2,
     backgroundColor: '#1E1E1E',
     justifyContent: 'center',
     alignItems: 'center',
