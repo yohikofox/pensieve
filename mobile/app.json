@@ -56,7 +56,16 @@
       "expo-dev-client",
       "expo-web-browser",
       "expo-audio",
-      "expo-asset"
+      "expo-asset",
+      "expo-task-manager",
+      "expo-background-fetch",
+      [
+        "expo-notifications",
+        {
+          "sounds": []
+        }
+      ],
+      "react-native-audio-api"
     ]
   }
 }
