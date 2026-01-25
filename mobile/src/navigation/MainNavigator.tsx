@@ -1,8 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
 import { CapturesStackNavigator } from './CapturesStackNavigator';
+import { SettingsStackNavigator } from './SettingsStackNavigator';
 import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
 
 const Tab = createBottomTabNavigator();
@@ -35,7 +35,7 @@ export const MainNavigator = () => {
         />
         <Tab.Screen
           name="Settings"
-          component={SettingsScreen}
+          component={SettingsStackNavigator}
           options={{
             title: 'Paramètres',
             tabBarLabel: 'Paramètres',

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   ScrollView,
@@ -9,18 +9,57 @@ import {
   ActivityIndicator,
   Modal,
   TextInput,
+  Switch,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
-import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
+import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { useSettingsStore } from '../../stores/settingsStore';
+import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+
+type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsMain'>;
 
 export const SettingsScreen = () => {
+  const navigation = useNavigation<NavigationProp>();
   const [exportLoading, setExportLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [password, setPassword] = useState('');
+  const [selectedModelLabel, setSelectedModelLabel] = useState<string>('Non configuré');
+
+  // Debug mode from global settings store
+  const debugMode = useSettingsStore((state) => state.debugMode);
+  const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
+
+  const modelService = new WhisperModelService();
+
+  // Load selected model label on mount and when returning to screen
+  useEffect(() => {
+    const loadSelectedModel = async () => {
+      const selected = await modelService.getBestAvailableModel();
+      if (selected) {
+        const labels: Record<string, string> = {
+          tiny: 'Tiny',
+          base: 'Base',
+          small: 'Small',
+          medium: 'Medium',
+        };
+        setSelectedModelLabel(labels[selected] || selected);
+      } else {
+        setSelectedModelLabel('Non configuré');
+      }
+    };
+
+    loadSelectedModel();
+
+    // Refresh when screen comes into focus
+    const unsubscribe = navigation.addListener('focus', loadSelectedModel);
+    return unsubscribe;
+  }, [navigation]);
 
   /**
    * Handle Data Export
@@ -226,10 +265,25 @@ export const SettingsScreen = () => {
     <>
       <ScrollView style={styles.container}>
         {/* Transcription Section */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionHeaderTitle}>Transcription</Text>
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Transcription</Text>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('WhisperSettings')}
+          >
+            <View style={styles.menuItemContent}>
+              <Text style={styles.menuItemLabel}>Modèle Whisper</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Configurer le modèle de transcription
+              </Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              <Text style={styles.menuItemValue}>{selectedModelLabel}</Text>
+              <Text style={styles.menuItemChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
         </View>
-        <WhisperModelCard modelSize="tiny" />
 
         {/* RGPD Section */}
         <View style={styles.section}>
@@ -266,6 +320,26 @@ export const SettingsScreen = () => {
             </View>
             {deleteLoading && <ActivityIndicator />}
           </TouchableOpacity>
+        </View>
+
+        {/* Development Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Développement</Text>
+
+          <View style={styles.menuItem}>
+            <View style={styles.menuItemContent}>
+              <Text style={styles.menuItemLabel}>Mode debug</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Active les outils de diagnostic (logs, lecture WAV...)
+              </Text>
+            </View>
+            <Switch
+              value={debugMode}
+              onValueChange={toggleDebugMode}
+              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
         </View>
       </ScrollView>
 
@@ -321,17 +395,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F2F2F7',
   },
-  sectionHeader: {
-    marginTop: 20,
-    marginHorizontal: 16,
-    marginBottom: 8,
-  },
-  sectionHeaderTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8E8E93',
-    textTransform: 'uppercase',
-  },
   section: {
     marginTop: 20,
     backgroundColor: '#FFFFFF',
@@ -368,6 +431,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#8E8E93',
     marginTop: 2,
+  },
+  menuItemRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuItemValue: {
+    fontSize: 15,
+    color: '#8E8E93',
+    marginRight: 4,
+  },
+  menuItemChevron: {
+    fontSize: 20,
+    color: '#C7C7CC',
+    fontWeight: '600',
   },
   modalOverlay: {
     flex: 1,

@@ -29,13 +29,20 @@ type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready';
 
 interface WhisperModelCardProps {
   modelSize?: WhisperModelSize;
+  isSelected?: boolean;
+  onUseModel?: (modelSize: WhisperModelSize) => Promise<void>;
 }
 
-export function WhisperModelCard({ modelSize = 'tiny' }: WhisperModelCardProps) {
+export function WhisperModelCard({
+  modelSize = 'tiny',
+  isSelected = false,
+  onUseModel,
+}: WhisperModelCardProps) {
   const [status, setStatus] = useState<ModelStatus>('checking');
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [downloadSpeed, setDownloadSpeed] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const [isSelecting, setIsSelecting] = useState(false);
 
   const modelService = new WhisperModelService();
   const expectedSize = modelService.getExpectedSize(modelSize);
@@ -117,6 +124,37 @@ export function WhisperModelCard({ modelSize = 'tiny' }: WhisperModelCardProps) 
     );
   };
 
+  const handleUseModel = async () => {
+    if (!onUseModel) return;
+
+    setIsSelecting(true);
+    try {
+      // If not downloaded, download first
+      if (status === 'not_downloaded') {
+        setStatus('downloading');
+        setProgress(null);
+        setError(null);
+        setDownloadSpeed(0);
+
+        await modelService.downloadModelWithRetry(modelSize, (prog) => {
+          setProgress(prog);
+        });
+        setStatus('ready');
+        setProgress(null);
+      }
+
+      // Then call the onUseModel callback
+      await onUseModel(modelSize);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur');
+      if (status === 'downloading') {
+        setStatus('not_downloaded');
+      }
+    } finally {
+      setIsSelecting(false);
+    }
+  };
+
   const formatBytes = (bytes: number): string => {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -132,19 +170,82 @@ export function WhisperModelCard({ modelSize = 'tiny' }: WhisperModelCardProps) 
   const getModelLabel = (): string => {
     switch (modelSize) {
       case 'tiny':
-        return 'Whisper Tiny (~75 MB)';
+        return 'Tiny (~75 MB)';
       case 'base':
-        return 'Whisper Base (~142 MB)';
+        return 'Base (~142 MB)';
+      case 'small':
+        return 'Small (~466 MB)';
+      case 'medium':
+        return 'Medium (~1.5 GB)';
+      case 'large-v3':
+        return 'Large V3 (~3.1 GB)';
       default:
         return 'Whisper Model';
     }
   };
 
+  const getModelAdvice = (): { emoji: string; text: string; badge?: string } => {
+    switch (modelSize) {
+      case 'tiny':
+        return {
+          emoji: '⚡',
+          text: 'Le plus rapide. Idéal pour des notes courtes ou un téléphone avec peu d\'espace.',
+          badge: 'Rapide',
+        };
+      case 'base':
+        return {
+          emoji: '⭐',
+          text: 'Bon équilibre entre qualité et taille. Recommandé pour la plupart des utilisateurs.',
+          badge: 'Recommandé',
+        };
+      case 'small':
+        return {
+          emoji: '🎯',
+          text: 'Meilleure précision, notamment pour les accents et termes techniques. Nécessite plus d\'espace.',
+        };
+      case 'medium':
+        return {
+          emoji: '🏆',
+          text: 'Qualité professionnelle. Réservé aux appareils récents avec beaucoup d\'espace libre.',
+          badge: 'Pro',
+        };
+      case 'large-v3':
+        return {
+          emoji: '🚀',
+          text: 'Le meilleur modèle Whisper. Qualité maximale pour les transcriptions complexes. Nécessite beaucoup d\'espace et un appareil puissant.',
+          badge: 'Ultimate',
+        };
+      default:
+        return { emoji: '', text: '' };
+    }
+  };
+
+  const advice = getModelAdvice();
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, isSelected && styles.cardSelected]}>
       <View style={styles.header}>
-        <Text style={styles.title}>🎙️ Modèle de transcription</Text>
-        <Text style={styles.modelName}>{getModelLabel()}</Text>
+        <View style={styles.headerRow}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{advice.emoji} {getModelLabel()}</Text>
+            {advice.badge && !isSelected && (
+              <View style={[
+                styles.adviceBadge,
+                modelSize === 'base' && styles.adviceBadgeRecommended,
+                modelSize === 'medium' && styles.adviceBadgePro,
+                modelSize === 'large-v3' && styles.adviceBadgeUltimate,
+              ]}>
+                <Text style={styles.adviceBadgeText}>{advice.badge}</Text>
+              </View>
+            )}
+          </View>
+          {isSelected && (
+            <View style={styles.activeBadge}>
+              <Text style={styles.activeBadgeText}>✓ Actif</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.adviceText}>{advice.text}</Text>
       </View>
 
       {/* Status: Checking */}
@@ -165,15 +266,30 @@ export function WhisperModelCard({ modelSize = 'tiny' }: WhisperModelCardProps) 
           </View>
 
           <Text style={styles.description}>
-            Le modèle de transcription doit être téléchargé pour convertir vos
-            enregistrements audio en texte. Taille: ~{formatBytes(expectedSize)}
+            Taille: ~{formatBytes(expectedSize)}
           </Text>
 
           {error && <Text style={styles.errorText}>{error}</Text>}
 
-          <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
-            <Text style={styles.downloadButtonText}>Télécharger le modèle</Text>
-          </TouchableOpacity>
+          <View style={styles.buttonRow}>
+            <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
+              <Text style={styles.downloadButtonText}>Télécharger</Text>
+            </TouchableOpacity>
+
+            {onUseModel && (
+              <TouchableOpacity
+                style={[styles.useButton, isSelecting && styles.useButtonDisabled]}
+                onPress={handleUseModel}
+                disabled={isSelecting}
+              >
+                {isSelecting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.useButtonText}>Utiliser ce modèle</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       )}
 
@@ -230,18 +346,29 @@ export function WhisperModelCard({ modelSize = 'tiny' }: WhisperModelCardProps) 
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusReady]}>
-              <Text style={styles.statusBadgeText}>✅ Prêt</Text>
+              <Text style={styles.statusBadgeText}>✅ Téléchargé</Text>
             </View>
           </View>
 
-          <Text style={styles.description}>
-            Le modèle est téléchargé et prêt à l'emploi. Vos enregistrements
-            audio seront automatiquement transcrits en texte.
-          </Text>
+          <View style={styles.buttonRow}>
+            {onUseModel && !isSelected && (
+              <TouchableOpacity
+                style={[styles.useButton, isSelecting && styles.useButtonDisabled]}
+                onPress={handleUseModel}
+                disabled={isSelecting}
+              >
+                {isSelecting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.useButtonText}>Utiliser ce modèle</Text>
+                )}
+              </TouchableOpacity>
+            )}
 
-          <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-            <Text style={styles.deleteButtonText}>Supprimer le modèle</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
+              <Text style={styles.deleteButtonText}>Supprimer</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
     </View>
@@ -260,19 +387,70 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  cardSelected: {
+    borderColor: '#007AFF',
+    backgroundColor: '#F0F7FF',
   },
   header: {
     marginBottom: 12,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    flex: 1,
+    gap: 8,
+  },
   title: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '600',
     color: '#000',
-    marginBottom: 4,
   },
-  modelName: {
+  adviceBadge: {
+    backgroundColor: '#E5E5EA',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  adviceBadgeRecommended: {
+    backgroundColor: '#34C759',
+  },
+  adviceBadgePro: {
+    backgroundColor: '#AF52DE',
+  },
+  adviceBadgeUltimate: {
+    backgroundColor: '#FF9500',
+  },
+  adviceBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  adviceText: {
     fontSize: 13,
-    color: '#8E8E93',
+    color: '#666',
+    marginTop: 6,
+    lineHeight: 18,
+  },
+  activeBadge: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  activeBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   content: {
     marginTop: 8,
@@ -358,22 +536,43 @@ const styles = StyleSheet.create({
     color: '#FF9800',
     textAlign: 'center',
   },
+  buttonRow: {
+    flexDirection: 'row',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
   downloadButton: {
-    backgroundColor: '#007AFF',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
+    backgroundColor: '#F2F2F7',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },
   downloadButtonText: {
-    fontSize: 16,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#007AFF',
+  },
+  useButton: {
+    backgroundColor: '#34C759',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    flex: 1,
+  },
+  useButtonDisabled: {
+    opacity: 0.6,
+  },
+  useButtonText: {
+    fontSize: 14,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   deleteButton: {
     backgroundColor: '#F2F2F7',
     paddingVertical: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 8,
     alignItems: 'center',
   },

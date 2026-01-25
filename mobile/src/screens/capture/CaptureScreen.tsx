@@ -23,9 +23,6 @@ import { FileStorageService } from '../../contexts/capture/services/FileStorageS
 import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
-import { useDevPanel } from '../../components/dev/DevPanelContext';
-import { CaptureDevTools } from '../../components/dev/CaptureDevTools';
-import { TranscriptionQueueDebug } from '../../components/dev/TranscriptionQueueDebug';
 import { TextCaptureInput } from '../../components/capture/TextCaptureInput';
 import { RecordButtonUI } from '../../contexts/capture/ui/RecordButtonUI';
 
@@ -112,7 +109,6 @@ const CaptureScreenWithAudioMode = () => {
  */
 const CaptureScreenContent = () => {
   const { user } = useAuthListener();
-  const { registerTab, unregisterTab } = useDevPanel();
   const [state, setState] = useState<RecordingState>('idle');
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0); // Story 2.3: Timer for RecordButtonUI
@@ -189,31 +185,6 @@ const CaptureScreenContent = () => {
       }
     };
   }, [state]);
-
-  // Story 2.5: Register contextual debug tabs for CaptureScreen
-  useEffect(() => {
-    // Register Captures DB tab
-    registerTab({
-      id: 'captures-db',
-      label: '📦 DB',
-      component: <CaptureDevTools />,
-      priority: 100, // First tab (before Queue)
-    });
-
-    // Register Transcription Queue tab
-    registerTab({
-      id: 'transcription-queue',
-      label: '🎙️ Queue',
-      component: <TranscriptionQueueDebug alwaysExpanded />,
-      priority: 200, // Second tab
-    });
-
-    // Cleanup on unmount (unregister tabs when leaving screen)
-    return () => {
-      unregisterTab('captures-db');
-      unregisterTab('transcription-queue');
-    };
-  }, [registerTab, unregisterTab]);
 
   const startRecording = async () => {
     const recordingService = recordingServiceRef.current;

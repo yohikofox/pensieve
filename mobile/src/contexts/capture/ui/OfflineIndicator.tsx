@@ -65,7 +65,7 @@ export const OfflineIndicator: React.FC<OfflineIndicatorProps> = ({
         const count = await syncQueueService.getQueueSize();
         setPendingCount(count);
 
-        console.log("[OfflineIndicator] Poll:", { online, count });
+        // console.log("[OfflineIndicator] Poll:", { online, count });
       } catch (error) {
         console.error("[OfflineIndicator] Poll error:", error);
       }
