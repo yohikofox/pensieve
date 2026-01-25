@@ -32,6 +32,7 @@ import { TranscriptionService } from '../../contexts/Normalization/services/Tran
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
 import { TranscriptionQueueProcessor } from '../../contexts/Normalization/processors/TranscriptionQueueProcessor';
 import { TranscriptionWorker } from '../../contexts/Normalization/workers/TranscriptionWorker';
+import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
@@ -40,15 +41,24 @@ import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
 // Event Infrastructure (ADR-019)
 import { eventBus } from '../../contexts/shared/events/EventBus';
 
+// Guard against multiple registrations (Fast Refresh can re-evaluate module)
+let servicesRegistered = false;
+
 /**
  * Register all production services and repositories
  *
  * Call this function once at app startup (in App.tsx)
+ * Idempotent: Multiple calls have no effect.
  *
  * Story: 2.1 - Capture Audio 1-Tap
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 export function registerServices() {
+  if (servicesRegistered) {
+    console.log('[DI Container] Services already registered, skipping');
+    return;
+  }
+
   // Event Infrastructure (ADR-019)
   // Register EventBus singleton instance (shared message bus)
   container.registerInstance('EventBus', eventBus);
@@ -74,8 +84,12 @@ export function registerServices() {
 
   // Normalization Services (Story 2.5 - Transcription)
   container.registerSingleton(AudioConversionService);
+  container.registerSingleton(WhisperModelService);
   container.registerSingleton(TranscriptionService);
   container.registerSingleton(TranscriptionQueueService);
   container.registerSingleton(TranscriptionQueueProcessor);
   container.registerSingleton(TranscriptionWorker);
+
+  servicesRegistered = true;
+  console.log('[DI Container] ✅ Services registered');
 }

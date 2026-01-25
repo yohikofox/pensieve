@@ -2,6 +2,7 @@ import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { database, type DB } from "../../../database";
 import type { EventBus } from "../../shared/events/EventBus";
+import { useSettingsStore } from "../../../stores/settingsStore";
 import type {
   QueueItemAddedEvent,
   QueueItemStartedEvent,
@@ -117,6 +118,8 @@ export class TranscriptionQueueService {
       ],
     );
 
+    console.log(`[TranscriptionQueueService] ✅ Enqueued capture ${capture.captureId} (queueId: ${queueId})`);
+
     // Publish event (event-driven architecture)
     const event: QueueItemAddedEvent = {
       type: "QueueItemAdded",
@@ -139,6 +142,17 @@ export class TranscriptionQueueService {
    * @returns Next capture or null if queue empty
    */
   async getNextCapture(): Promise<QueuedCapture | null> {
+    // Debug: Check queue state (only in debug mode)
+    if (useSettingsStore.getState().debugMode) {
+      const countResult = this.db.executeSync(
+        `SELECT status, COUNT(*) as count FROM transcription_queue GROUP BY status`
+      );
+      if (countResult.rows && countResult.rows.length > 0) {
+        const statuses = countResult.rows.map((r: any) => `${r.status}: ${r.count}`).join(', ');
+        console.log(`[TranscriptionQueueService] Queue state: ${statuses}`);
+      }
+    }
+
     // Get first pending capture (FIFO order)
     const result = this.db.executeSync(
       `SELECT * FROM transcription_queue
@@ -339,6 +353,75 @@ export class TranscriptionQueueService {
   }
 
   /**
+   * Reset stuck items on startup (crash recovery)
+   *
+   * Resets:
+   * - 'processing' items back to 'pending' (orphaned from crash/restart)
+   * - 'failed' items back to 'pending' if retry count < MAX_RETRIES
+   *
+   * Also resets corresponding capture states.
+   *
+   * @returns Number of items reset
+   */
+  async resetStuckItems(): Promise<number> {
+    const MAX_RETRIES = 3;
+    let resetCount = 0;
+
+    // 1. Reset orphaned 'processing' items (from crash/restart)
+    const processingResult = this.db.executeSync(
+      `UPDATE transcription_queue
+       SET status = 'pending', started_at = NULL
+       WHERE status = 'processing'`,
+    );
+    const processingReset = processingResult.rowsAffected ?? 0;
+    resetCount += processingReset;
+
+    if (processingReset > 0) {
+      console.log(`[TranscriptionQueueService] 🔄 Reset ${processingReset} orphaned 'processing' items`);
+
+      // Reset corresponding capture states
+      this.db.executeSync(
+        `UPDATE captures SET state = 'captured'
+         WHERE id IN (SELECT capture_id FROM transcription_queue WHERE status = 'pending')
+         AND state = 'processing'`,
+      );
+    }
+
+    // 2. Reset 'failed' items with low retry count
+    const failedResult = this.db.executeSync(
+      `UPDATE transcription_queue
+       SET status = 'pending', started_at = NULL
+       WHERE status = 'failed' AND retry_count < ?`,
+      [MAX_RETRIES],
+    );
+    const failedReset = failedResult.rowsAffected ?? 0;
+    resetCount += failedReset;
+
+    if (failedReset > 0) {
+      console.log(`[TranscriptionQueueService] 🔄 Reset ${failedReset} 'failed' items for retry`);
+
+      // Reset corresponding capture states
+      this.db.executeSync(
+        `UPDATE captures SET state = 'captured'
+         WHERE id IN (SELECT capture_id FROM transcription_queue WHERE status = 'pending')
+         AND state = 'failed'`,
+      );
+    }
+
+    // 3. Remove completed items (cleanup)
+    const completedResult = this.db.executeSync(
+      `DELETE FROM transcription_queue WHERE status = 'completed'`,
+    );
+    const completedRemoved = completedResult.rowsAffected ?? 0;
+
+    if (completedRemoved > 0) {
+      console.log(`[TranscriptionQueueService] 🧹 Cleaned up ${completedRemoved} completed items`);
+    }
+
+    return resetCount;
+  }
+
+  /**
    * Pause queue processing (DB flag)
    *
    * Call when app is backgrounding to suspend transcription.
@@ -396,7 +479,7 @@ export class TranscriptionQueueService {
       return 0;
     }
 
-    return result.rows[0].count || 0;
+    return Number(result.rows[0].count) || 0;
   }
 
   /**

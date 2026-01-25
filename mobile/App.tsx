@@ -85,13 +85,14 @@ export default function App() {
 
   // Story 2.5 - Initialize Transcription Services
   useEffect(() => {
+    // Resolve services from DI container (singletons)
+    const queueProcessor = container.resolve(TranscriptionQueueProcessor);
+    const worker = container.resolve(TranscriptionWorker);
+    let appStateListener: ReturnType<typeof AppState.addEventListener> | null = null;
+
     const initializeTranscription = async () => {
       try {
         console.log('[App] Initializing transcription services...');
-
-        // Resolve services from DI container
-        const queueProcessor = container.resolve(TranscriptionQueueProcessor);
-        const worker = container.resolve(TranscriptionWorker);
 
         // Start event listener (auto-enqueue captures)
         queueProcessor.start();
@@ -106,7 +107,7 @@ export default function App() {
         console.log('[App] ✅ Background transcription task registered');
 
         // Handle app lifecycle (foreground/background)
-        const appStateListener = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
+        appStateListener = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
           if (nextAppState === 'background') {
             console.log('[App] App backgrounding - pausing transcription worker');
             await worker.pause();
@@ -115,14 +116,6 @@ export default function App() {
             await worker.resume();
           }
         });
-
-        // Cleanup on unmount
-        return () => {
-          console.log('[App] Cleaning up transcription services...');
-          queueProcessor.stop();
-          worker.stop();
-          appStateListener.remove();
-        };
       } catch (error) {
         // Silent fail - don't block app startup
         console.error('[App] Transcription services initialization failed:', error);
@@ -130,6 +123,14 @@ export default function App() {
     };
 
     initializeTranscription();
+
+    // Cleanup on unmount (called correctly by useEffect)
+    return () => {
+      console.log('[App] Cleaning up transcription services...');
+      queueProcessor.stop();
+      worker.stop();
+      appStateListener?.remove();
+    };
   }, []); // Run once on mount
 
   if (loading) {

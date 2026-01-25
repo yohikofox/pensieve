@@ -31,15 +31,19 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+import type { Subscription } from 'rxjs';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
 import { TranscriptionService } from '../services/TranscriptionService';
 import { WhisperModelService } from '../services/WhisperModelService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
+import type { EventBus } from '../../shared/events/EventBus';
+import type { QueueItemAddedEvent } from '../events/QueueEvents';
 import {
   showTranscriptionCompleteNotification,
   showTranscriptionFailedNotification,
 } from '../../../shared/utils/notificationUtils';
+import { useSettingsStore } from '../../../stores/settingsStore';
 
 /**
  * Worker state
@@ -49,20 +53,25 @@ type WorkerState = 'stopped' | 'running' | 'paused';
 @injectable()
 export class TranscriptionWorker {
   private state: WorkerState = 'stopped';
-  private processingLoop: NodeJS.Timeout | null = null;
-  private readonly POLL_INTERVAL_MS = 2000; // Poll every 2 seconds
+  private isProcessing: boolean = false; // True when actively processing queue
   private whisperModelService: WhisperModelService;
+  private eventSubscription: Subscription | null = null;
 
   constructor(
     private queueService: TranscriptionQueueService,
     private transcriptionService: TranscriptionService,
-    @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository
+    @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
+    @inject('EventBus') private eventBus: EventBus
   ) {
     this.whisperModelService = new WhisperModelService();
   }
 
   /**
    * Ensure the Whisper model is loaded before transcription
+   *
+   * Uses the user's selected model preference, or falls back to:
+   * 1. 'base' model (better quality) if downloaded
+   * 2. 'tiny' model (faster, smaller) as fallback
    *
    * @returns true if model is ready, false if not available
    */
@@ -72,16 +81,19 @@ export class TranscriptionWorker {
       return true;
     }
 
-    // Check if model is downloaded
-    const isDownloaded = await this.whisperModelService.isModelDownloaded('tiny');
-    if (!isDownloaded) {
-      console.warn('[TranscriptionWorker] ⚠️ Whisper model not downloaded. Please download from Settings.');
+    // Get best available model (respects user preference)
+    const selectedModel = await this.whisperModelService.getBestAvailableModel();
+
+    if (!selectedModel) {
+      console.warn('[TranscriptionWorker] ⚠️ No Whisper model downloaded. Please download from Settings.');
       return false;
     }
 
+    console.log(`[TranscriptionWorker] 📦 Using Whisper model: ${selectedModel}`);
+
     // Load the model
     try {
-      const modelPath = this.whisperModelService.getModelPath('tiny');
+      const modelPath = this.whisperModelService.getModelPath(selectedModel);
       await this.transcriptionService.loadModel(modelPath);
       return true;
     } catch (error) {
@@ -91,9 +103,10 @@ export class TranscriptionWorker {
   }
 
   /**
-   * Start foreground processing loop
+   * Start worker (event-driven)
    *
    * Call when app starts or returns to foreground.
+   * Subscribes to queue events and processes items when added.
    * Idempotent: Multiple calls have no effect.
    */
   async start(): Promise<void> {
@@ -102,11 +115,30 @@ export class TranscriptionWorker {
       return;
     }
 
-    this.state = 'running';
-    console.log('[TranscriptionWorker] ✅ Started foreground processing loop');
+    // Ensure queue is not paused (may have been left paused from previous session)
+    await this.queueService.resume();
 
-    // Start continuous processing loop
-    this.startProcessingLoop();
+    // Reset stuck items (crash recovery: processing → pending, failed with low retries → pending)
+    const resetCount = await this.queueService.resetStuckItems();
+    if (resetCount > 0) {
+      console.log(`[TranscriptionWorker] 🔄 Reset ${resetCount} stuck items on startup`);
+    }
+
+    this.state = 'running';
+
+    // Subscribe to queue events (event-driven processing)
+    // Use arrow function to preserve `this` binding
+    this.eventSubscription = this.eventBus.subscribe<QueueItemAddedEvent>(
+      'QueueItemAdded',
+      (_event) => {
+        this.triggerProcessing();
+      }
+    );
+
+    console.log('[TranscriptionWorker] ✅ Started (event-driven)');
+
+    // Process any existing items in queue (from previous session or crash recovery)
+    this.triggerProcessing();
   }
 
   /**
@@ -122,10 +154,10 @@ export class TranscriptionWorker {
 
     this.state = 'stopped';
 
-    // Stop processing loop
-    if (this.processingLoop) {
-      clearInterval(this.processingLoop);
-      this.processingLoop = null;
+    // Unsubscribe from events
+    if (this.eventSubscription) {
+      this.eventSubscription.unsubscribe();
+      this.eventSubscription = null;
     }
 
     console.log('[TranscriptionWorker] 🛑 Stopped');
@@ -148,10 +180,10 @@ export class TranscriptionWorker {
     // Update pause flag in DB (checked by background task)
     await this.queueService.pause();
 
-    // Stop foreground loop
-    if (this.processingLoop) {
-      clearInterval(this.processingLoop);
-      this.processingLoop = null;
+    // Unsubscribe from events (stop reacting to new items)
+    if (this.eventSubscription) {
+      this.eventSubscription.unsubscribe();
+      this.eventSubscription = null;
     }
 
     console.log('[TranscriptionWorker] ⏸️  Paused (app backgrounding)');
@@ -174,8 +206,18 @@ export class TranscriptionWorker {
     // Update pause flag in DB
     await this.queueService.resume();
 
-    // Restart foreground loop
-    this.startProcessingLoop();
+    // Resubscribe to queue events
+    if (!this.eventSubscription) {
+      this.eventSubscription = this.eventBus.subscribe<QueueItemAddedEvent>(
+        'QueueItemAdded',
+        (_event) => {
+          this.triggerProcessing();
+        }
+      );
+    }
+
+    // Process any items that were added while paused
+    this.triggerProcessing();
 
     console.log('[TranscriptionWorker] ▶️  Resumed');
   }
@@ -188,25 +230,56 @@ export class TranscriptionWorker {
   }
 
   /**
-   * Start continuous processing loop (foreground)
+   * Trigger processing loop (event-driven)
    *
-   * Polls queue every 2 seconds, processes one item at a time.
-   * Stops when worker is paused or stopped.
+   * Processes all items in queue sequentially until empty.
+   * Called when:
+   * - Worker starts (process existing items)
+   * - Worker resumes (process items added while paused)
+   * - New item added to queue (QueueItemAdded event)
+   *
+   * Safe to call multiple times - only one processing loop runs at a time.
    */
-  private startProcessingLoop(): void {
-    // Clear any existing loop
-    if (this.processingLoop) {
-      clearInterval(this.processingLoop);
+  private triggerProcessing(): void {
+    // Already processing - new items will be picked up by the loop
+    if (this.isProcessing) {
+      if (useSettingsStore.getState().debugMode) {
+        console.log('[TranscriptionWorker] Already processing, skipping trigger');
+      }
+      return;
     }
 
-    // Process immediately, then poll at interval
-    this.processNextItem();
+    // Start processing loop
+    this.processUntilEmpty();
+  }
 
-    this.processingLoop = setInterval(() => {
-      if (this.state === 'running') {
-        this.processNextItem();
+  /**
+   * Process items until queue is empty
+   *
+   * Runs sequentially: process one item, then check for more.
+   * Stops when queue is empty or worker is paused/stopped.
+   */
+  private async processUntilEmpty(): Promise<void> {
+    this.isProcessing = true;
+
+    try {
+      while (this.state === 'running') {
+        const processed = await this.processNextItem();
+
+        // Queue empty - stop processing
+        if (!processed) {
+          if (useSettingsStore.getState().debugMode) {
+            console.log('[TranscriptionWorker] Queue empty, going idle');
+          }
+          break;
+        }
+
+        // Small delay between items to allow UI updates
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
-    }, this.POLL_INTERVAL_MS);
+    } finally {
+      this.isProcessing = false;
+    }
   }
 
   /**
@@ -218,13 +291,20 @@ export class TranscriptionWorker {
    * 3. Transcribe audio with Whisper
    * 4. Update capture with result
    * 5. Remove from queue (or mark failed for retry)
+   *
+   * @returns true if an item was processed, false if queue empty or worker not ready
    */
-  private async processNextItem(): Promise<void> {
+  private async processNextItem(): Promise<boolean> {
     try {
       // Check if paused (DB flag checked for background task coordination)
       const isPaused = await this.queueService.isPaused();
-      if (isPaused || this.state !== 'running') {
-        return;
+      if (isPaused) {
+        console.log('[TranscriptionWorker] ⏸️ Queue is paused, skipping');
+        return false;
+      }
+      if (this.state !== 'running') {
+        console.log('[TranscriptionWorker] ⏸️ Worker not running, skipping');
+        return false;
       }
 
       // Get next capture from queue (FIFO)
@@ -232,14 +312,16 @@ export class TranscriptionWorker {
 
       if (!queuedCapture) {
         // Queue empty, nothing to process
-        return;
+        return false;
       }
+
+      console.log('[TranscriptionWorker] 📋 Found capture in queue:', queuedCapture.captureId);
 
       // Ensure model is loaded before transcription
       const modelReady = await this.ensureModelLoaded();
       if (!modelReady) {
         console.warn('[TranscriptionWorker] ⏸️ Skipping transcription - model not ready');
-        return;
+        return false;
       }
 
       console.log(
@@ -256,19 +338,23 @@ export class TranscriptionWorker {
         });
 
         // Transcribe audio using Whisper.rn via TranscriptionService
-        const transcribedText = await this.transcriptionService.transcribe(
+        const transcriptionResult = await this.transcriptionService.transcribe(
           queuedCapture.audioPath,
           queuedCapture.audioDuration
         );
 
-        // Update capture with transcription result
+        // Update capture with transcription result (wavPath and transcriptPrompt if applicable)
         await this.captureRepository.update(queuedCapture.captureId, {
-          normalizedText: transcribedText,
+          normalizedText: transcriptionResult.text,
           state: 'ready',
+          wavPath: transcriptionResult.wavPath,
+          transcriptPrompt: transcriptionResult.transcriptPrompt,
         });
 
         console.log(
-          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${transcribedText.substring(0, 50)}${transcribedText.length > 50 ? '...' : ''}"`
+          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${transcriptionResult.text.substring(0, 50)}${transcriptionResult.text.length > 50 ? '...' : ''}"` +
+          (transcriptionResult.wavPath ? ` (WAV kept: ${transcriptionResult.wavPath})` : '') +
+          (transcriptionResult.transcriptPrompt ? ` (prompt: ${transcriptionResult.transcriptPrompt.substring(0, 30)}...)` : '')
         );
 
         // Log performance metrics
@@ -283,7 +369,7 @@ export class TranscriptionWorker {
         await this.queueService.markCompleted(queuedCapture.captureId);
 
         // Send notification (if app backgrounded)
-        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcribedText);
+        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcriptionResult.text);
       } catch (transcriptionError) {
         // Update capture state to 'failed'
         await this.captureRepository.update(queuedCapture.captureId, {
@@ -303,9 +389,13 @@ export class TranscriptionWorker {
         // Send failure notification (if app backgrounded)
         await showTranscriptionFailedNotification(queuedCapture.captureId, errorMessage);
       }
+
+      // Item was processed (success or failure)
+      return true;
     } catch (error) {
       console.error('[TranscriptionWorker] ❌ Error processing item:', error);
-      // Error already logged, continue processing queue
+      // Error already logged, return false to stop processing
+      return false;
     }
   }
 
@@ -350,26 +440,30 @@ export class TranscriptionWorker {
         });
 
         // Transcribe using Whisper.rn
-        const transcribedText = await this.transcriptionService.transcribe(
+        const transcriptionResult = await this.transcriptionService.transcribe(
           queuedCapture.audioPath,
           queuedCapture.audioDuration
         );
 
-        // Update capture with result
+        // Update capture with result (wavPath and transcriptPrompt if applicable)
         await this.captureRepository.update(queuedCapture.captureId, {
-          normalizedText: transcribedText,
+          normalizedText: transcriptionResult.text,
           state: 'ready',
+          wavPath: transcriptionResult.wavPath,
+          transcriptPrompt: transcriptionResult.transcriptPrompt,
         });
 
         // Mark as completed in queue
         await this.queueService.markCompleted(queuedCapture.captureId);
 
         console.log(
-          `[TranscriptionWorker] ✅ Background transcribed ${queuedCapture.captureId}: "${transcribedText.substring(0, 30)}${transcribedText.length > 30 ? '...' : ''}"`
+          `[TranscriptionWorker] ✅ Background transcribed ${queuedCapture.captureId}: "${transcriptionResult.text.substring(0, 30)}${transcriptionResult.text.length > 30 ? '...' : ''}"` +
+          (transcriptionResult.wavPath ? ` (WAV kept)` : '') +
+          (transcriptionResult.transcriptPrompt ? ` (prompt used)` : '')
         );
 
         // Send notification (background task = app is backgrounded)
-        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcribedText);
+        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcriptionResult.text);
 
         return true;
       } catch (transcriptionError) {

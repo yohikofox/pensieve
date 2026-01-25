@@ -52,9 +52,13 @@ export const useCaptureDebugStore = create<CaptureDebugState>()(
       setCaptures: (captures) => set({ captures }),
 
       addCapture: (capture) =>
-        set((state) => ({
-          captures: [capture, ...state.captures], // New captures at top
-        })),
+        set((state) => {
+          // Remove existing capture with same ID to avoid duplicates
+          const filteredCaptures = state.captures.filter((c) => c.id !== capture.id);
+          return {
+            captures: [capture, ...filteredCaptures], // New captures at top
+          };
+        }),
 
       updateCapture: (captureId, updates) =>
         set((state) => ({
