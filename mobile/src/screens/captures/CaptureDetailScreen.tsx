@@ -32,6 +32,7 @@ import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { ICaptureMetadataRepository } from '../../contexts/capture/domain/ICaptureMetadataRepository';
+import type { ICaptureAnalysisRepository } from '../../contexts/capture/domain/ICaptureAnalysisRepository';
 import { METADATA_KEYS } from '../../contexts/capture/domain/CaptureMetadata.model';
 import type { Capture } from '../../contexts/capture/domain/Capture.model';
 import { CorrectionLearningService } from '../../contexts/Normalization/services/CorrectionLearningService';
@@ -172,6 +173,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [contactSearchQuery, setContactSearchQuery] = useState('');
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [localActionItems, setLocalActionItems] = useState<ActionItem[] | null>(null);
+  const [savingActionIndex, setSavingActionIndex] = useState<number | null>(null);
+  const [savedActionIndex, setSavedActionIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadCapture();
@@ -325,6 +328,54 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     setShowDatePicker(true);
   };
 
+  // Save action items to database
+  const saveActionItems = async (items: ActionItem[], itemIndex: number) => {
+    setSavingActionIndex(itemIndex);
+    setSavedActionIndex(null);
+
+    try {
+      const analysisRepository = container.resolve<ICaptureAnalysisRepository>(TOKENS.ICaptureAnalysisRepository);
+      const content = JSON.stringify({ items });
+
+      // Get existing analysis to preserve modelId and processingDurationMs
+      const existingAnalysis = analyses[ANALYSIS_TYPES.ACTION_ITEMS];
+
+      await analysisRepository.save({
+        captureId,
+        analysisType: ANALYSIS_TYPES.ACTION_ITEMS,
+        content,
+        modelId: existingAnalysis?.modelId || undefined,
+        processingDurationMs: existingAnalysis?.processingDurationMs || undefined,
+      });
+
+      // Update local analyses state
+      if (existingAnalysis) {
+        setAnalyses(prev => ({
+          ...prev,
+          [ANALYSIS_TYPES.ACTION_ITEMS]: {
+            ...existingAnalysis,
+            content,
+            updatedAt: new Date(),
+          },
+        }));
+      }
+
+      console.log('[CaptureDetailScreen] Action items saved');
+
+      // Show saved indicator
+      setSavingActionIndex(null);
+      setSavedActionIndex(itemIndex);
+
+      // Hide saved indicator after 2 seconds
+      setTimeout(() => {
+        setSavedActionIndex(prev => prev === itemIndex ? null : prev);
+      }, 2000);
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Failed to save action items:', error);
+      setSavingActionIndex(null);
+    }
+  };
+
   // Handler for date confirmation
   const handleDateConfirm = (date: Date) => {
     if (editingActionIndex !== null && localActionItems) {
@@ -343,6 +394,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       };
       setLocalActionItems(updatedItems);
       setSelectedDate(date);
+
+      // Auto-save
+      saveActionItems(updatedItems);
     }
     setShowDatePicker(false);
     setEditingActionIndex(null);
@@ -394,6 +448,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         target: contact.name || 'Contact sans nom',
       };
       setLocalActionItems(updatedItems);
+
+      // Auto-save
+      saveActionItems(updatedItems);
     }
     setShowContactPicker(false);
     setEditingActionIndex(null);
