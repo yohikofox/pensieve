@@ -1,5 +1,6 @@
 import { TranscriptionService } from '../TranscriptionService';
 import { AudioConversionService } from '../AudioConversionService';
+import { WhisperModelService } from '../WhisperModelService';
 import { initWhisper, WhisperContext } from 'whisper.rn';
 
 // Mock whisper.rn
@@ -11,6 +12,12 @@ const mockInitWhisper = initWhisper as jest.MockedFunction<typeof initWhisper>;
 const mockAudioConversionService = {
   convertToWhisperFormat: jest.fn(),
   cleanupTempFile: jest.fn(),
+  isDebugModeEnabled: jest.fn(),
+};
+
+// Mock WhisperModelService
+const mockWhisperModelService = {
+  getPromptString: jest.fn(),
 };
 
 describe('TranscriptionService', () => {
@@ -26,14 +33,23 @@ describe('TranscriptionService', () => {
     // Reset mocks
     mockAudioConversionService.convertToWhisperFormat.mockReset();
     mockAudioConversionService.cleanupTempFile.mockReset();
+    mockAudioConversionService.isDebugModeEnabled.mockReset();
+    mockWhisperModelService.getPromptString.mockReset();
 
     // By default, conversion returns a .wav path
     mockAudioConversionService.convertToWhisperFormat.mockImplementation((inputPath: string) =>
       Promise.resolve(inputPath.replace(/\.[^.]+$/, '_whisper.wav'))
     );
     mockAudioConversionService.cleanupTempFile.mockResolvedValue(undefined);
+    // By default, debug mode is off
+    mockAudioConversionService.isDebugModeEnabled.mockReturnValue(false);
+    // By default, no custom vocabulary
+    mockWhisperModelService.getPromptString.mockResolvedValue('');
 
-    service = new TranscriptionService(mockAudioConversionService as unknown as AudioConversionService);
+    service = new TranscriptionService(
+      mockAudioConversionService as unknown as AudioConversionService,
+      mockWhisperModelService as unknown as WhisperModelService
+    );
     jest.clearAllMocks();
 
     // Create a mock WhisperContext
@@ -84,7 +100,9 @@ describe('TranscriptionService', () => {
       const result = await service.transcribe(audioFilePath);
 
       // Assert
-      expect(result).toBe(expectedText);
+      expect(result.text).toBe(expectedText);
+      expect(result.wavPath).toBeNull(); // Debug mode is off
+      expect(result.transcriptPrompt).toBeNull(); // No custom vocabulary
       // Should convert m4a to wav before transcription
       expect(mockAudioConversionService.convertToWhisperFormat).toHaveBeenCalledWith(audioFilePath);
       // Whisper should receive the converted WAV path
@@ -139,6 +157,91 @@ describe('TranscriptionService', () => {
       await expect(service.transcribe(audioFilePath)).rejects.toThrow(
         'Transcription failed: Timeout exceeded'
       );
+    });
+
+    it('should pass custom vocabulary prompt to Whisper and return it in result', async () => {
+      // Arrange
+      const audioFilePath = '/path/to/audio.m4a';
+      const customPrompt = 'workflow, sprint, feedback';
+      mockWhisperModelService.getPromptString.mockResolvedValue(customPrompt);
+
+      mockContext.transcribe.mockReturnValue({
+        stop: jest.fn(),
+        promise: Promise.resolve({
+          result: 'Test with workflow',
+          segments: [],
+          isAborted: false,
+        }),
+      });
+
+      // Act
+      await service.loadModel('/path/to/model.bin');
+      const result = await service.transcribe(audioFilePath);
+
+      // Assert - prompt passed to Whisper
+      expect(mockContext.transcribe).toHaveBeenCalledWith(
+        '/path/to/audio_whisper.wav',
+        expect.objectContaining({
+          language: 'fr',
+          prompt: customPrompt,
+        })
+      );
+      // Assert - prompt returned in result
+      expect(result.transcriptPrompt).toBe(customPrompt);
+    });
+
+    it('should not pass prompt when vocabulary is empty and return null transcriptPrompt', async () => {
+      // Arrange
+      const audioFilePath = '/path/to/audio.m4a';
+      mockWhisperModelService.getPromptString.mockResolvedValue('');
+
+      mockContext.transcribe.mockReturnValue({
+        stop: jest.fn(),
+        promise: Promise.resolve({
+          result: 'Test',
+          segments: [],
+          isAborted: false,
+        }),
+      });
+
+      // Act
+      await service.loadModel('/path/to/model.bin');
+      const result = await service.transcribe(audioFilePath);
+
+      // Assert
+      expect(mockContext.transcribe).toHaveBeenCalledWith(
+        '/path/to/audio_whisper.wav',
+        expect.objectContaining({
+          language: 'fr',
+          prompt: undefined,
+        })
+      );
+      expect(result.transcriptPrompt).toBeNull();
+    });
+
+    it('should return wavPath when debug mode is enabled and NOT cleanup WAV file', async () => {
+      // Arrange
+      const audioFilePath = '/path/to/audio.m4a';
+      mockAudioConversionService.isDebugModeEnabled.mockReturnValue(true);
+
+      mockContext.transcribe.mockReturnValue({
+        stop: jest.fn(),
+        promise: Promise.resolve({
+          result: 'Test transcription',
+          segments: [],
+          isAborted: false,
+        }),
+      });
+
+      // Act
+      await service.loadModel('/path/to/model.bin');
+      const result = await service.transcribe(audioFilePath);
+
+      // Assert
+      expect(result.text).toBe('Test transcription');
+      expect(result.wavPath).toBe('/path/to/audio_whisper.wav');
+      // In debug mode, WAV file should NOT be cleaned up (kept for playback)
+      expect(mockAudioConversionService.cleanupTempFile).not.toHaveBeenCalled();
     });
   });
 

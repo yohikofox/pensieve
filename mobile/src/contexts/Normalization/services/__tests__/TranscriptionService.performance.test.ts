@@ -1,5 +1,6 @@
 import { TranscriptionService } from '../TranscriptionService';
 import { AudioConversionService } from '../AudioConversionService';
+import { WhisperModelService } from '../WhisperModelService';
 import { initWhisper, WhisperContext } from 'whisper.rn';
 
 jest.mock('whisper.rn');
@@ -10,6 +11,12 @@ const mockInitWhisper = initWhisper as jest.MockedFunction<typeof initWhisper>;
 const mockAudioConversionService = {
   convertToWhisperFormat: jest.fn(),
   cleanupTempFile: jest.fn(),
+  isDebugModeEnabled: jest.fn(),
+};
+
+// Mock WhisperModelService
+const mockWhisperModelService = {
+  getPromptString: jest.fn(),
 };
 
 describe('TranscriptionService - Performance Monitoring', () => {
@@ -26,14 +33,23 @@ describe('TranscriptionService - Performance Monitoring', () => {
     // Reset mocks
     mockAudioConversionService.convertToWhisperFormat.mockReset();
     mockAudioConversionService.cleanupTempFile.mockReset();
+    mockAudioConversionService.isDebugModeEnabled.mockReset();
+    mockWhisperModelService.getPromptString.mockReset();
 
     // By default, conversion returns a .wav path
     mockAudioConversionService.convertToWhisperFormat.mockImplementation((inputPath: string) =>
       Promise.resolve(inputPath.replace(/\.[^.]+$/, '_whisper.wav'))
     );
     mockAudioConversionService.cleanupTempFile.mockResolvedValue(undefined);
+    // By default, debug mode is off
+    mockAudioConversionService.isDebugModeEnabled.mockReturnValue(false);
+    // By default, no custom vocabulary
+    mockWhisperModelService.getPromptString.mockResolvedValue('');
 
-    service = new TranscriptionService(mockAudioConversionService as unknown as AudioConversionService);
+    service = new TranscriptionService(
+      mockAudioConversionService as unknown as AudioConversionService,
+      mockWhisperModelService as unknown as WhisperModelService
+    );
     jest.clearAllMocks();
     consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation();
 
