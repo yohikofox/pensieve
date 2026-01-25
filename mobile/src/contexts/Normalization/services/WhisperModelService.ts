@@ -1,7 +1,13 @@
+import 'reflect-metadata';
+import { injectable } from 'tsyringe';
 import { fetch } from 'expo/fetch';
 import { File, Paths } from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type WhisperModelSize = 'tiny' | 'base';
+export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
+
+const SELECTED_MODEL_KEY = '@pensieve/selected_whisper_model';
+const CUSTOM_VOCABULARY_KEY = '@pensieve/custom_vocabulary';
 
 export interface DownloadProgress {
   totalBytesWritten: number;
@@ -22,7 +28,9 @@ export interface DownloadProgress {
  * - Track download progress
  * - Validate model existence
  * - Handle download failures
+ * - Manage custom vocabulary for improved transcription
  */
+@injectable()
 export class WhisperModelService {
   private readonly MODEL_BASE_URL =
     'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
@@ -35,6 +43,18 @@ export class WhisperModelService {
     base: {
       filename: 'ggml-base.bin',
       expectedSize: 142 * 1024 * 1024, // ~142MB
+    },
+    small: {
+      filename: 'ggml-small.bin',
+      expectedSize: 466 * 1024 * 1024, // ~466MB
+    },
+    medium: {
+      filename: 'ggml-medium.bin',
+      expectedSize: 1500 * 1024 * 1024, // ~1.5GB
+    },
+    'large-v3': {
+      filename: 'ggml-large-v3.bin',
+      expectedSize: 3100 * 1024 * 1024, // ~3.1GB
     },
   };
 
@@ -262,5 +282,107 @@ export class WhisperModelService {
 
     // All retries failed
     throw lastError!;
+  }
+
+  /**
+   * Get the currently selected model for transcription
+   *
+   * @returns The selected model size, or null if none selected
+   */
+  async getSelectedModel(): Promise<WhisperModelSize | null> {
+    try {
+      const selected = await AsyncStorage.getItem(SELECTED_MODEL_KEY);
+      if (selected === 'tiny' || selected === 'base' || selected === 'small' || selected === 'medium' || selected === 'large-v3') {
+        return selected;
+      }
+      return null;
+    } catch (error) {
+      console.error('[WhisperModelService] Failed to get selected model:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Set the selected model for transcription
+   *
+   * @param modelSize - The model to use for transcription
+   */
+  async setSelectedModel(modelSize: WhisperModelSize): Promise<void> {
+    try {
+      await AsyncStorage.setItem(SELECTED_MODEL_KEY, modelSize);
+      console.log('[WhisperModelService] ✅ Selected model set to:', modelSize);
+    } catch (error) {
+      console.error('[WhisperModelService] Failed to set selected model:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the best available model for transcription
+   *
+   * Priority:
+   * 1. User-selected model (if downloaded)
+   * 2. Best quality downloaded model (medium > small > base > tiny)
+   * 3. null (no model available)
+   *
+   * @returns The best available model, or null if none downloaded
+   */
+  async getBestAvailableModel(): Promise<WhisperModelSize | null> {
+    // First check user preference
+    const selected = await this.getSelectedModel();
+    if (selected && await this.isModelDownloaded(selected)) {
+      return selected;
+    }
+
+    // Fallback to best available (quality order)
+    const priorityOrder: WhisperModelSize[] = ['large-v3', 'medium', 'small', 'base', 'tiny'];
+    for (const model of priorityOrder) {
+      if (await this.isModelDownloaded(model)) {
+        return model;
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the custom vocabulary words for Whisper transcription
+   *
+   * @returns Array of custom vocabulary words
+   */
+  async getCustomVocabulary(): Promise<string[]> {
+    try {
+      const stored = await AsyncStorage.getItem(CUSTOM_VOCABULARY_KEY);
+      if (stored) {
+        const data = JSON.parse(stored);
+        return data.words || [];
+      }
+      return [];
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Set the custom vocabulary words for Whisper transcription
+   *
+   * @param words - Array of custom vocabulary words
+   */
+  async setCustomVocabulary(words: string[]): Promise<void> {
+    await AsyncStorage.setItem(
+      CUSTOM_VOCABULARY_KEY,
+      JSON.stringify({ words })
+    );
+    console.log('[WhisperModelService] ✅ Custom vocabulary saved:', words.length, 'words');
+  }
+
+  /**
+   * Get the vocabulary as a prompt string for Whisper
+   *
+   * @returns Comma-separated vocabulary string, or empty string if no vocabulary
+   */
+  async getPromptString(): Promise<string> {
+    const words = await this.getCustomVocabulary();
+    return words.length > 0 ? words.join(', ') : '';
   }
 }

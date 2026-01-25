@@ -22,6 +22,7 @@ import {
   type AudioBuffer as RNAudioBuffer,
 } from "react-native-audio-api";
 import * as FileSystemLegacy from "expo-file-system/legacy";
+import { useSettingsStore } from "../../../stores/settingsStore";
 
 // Whisper.rn requirements
 const WHISPER_SAMPLE_RATE = 16000;
@@ -30,6 +31,42 @@ const WHISPER_BIT_DEPTH = 16;
 
 @injectable()
 export class AudioConversionService {
+  // Debug: Track last converted WAV file for playback testing
+  private lastConvertedWavPath: string | null = null;
+
+  /**
+   * Get the path of the last converted WAV file (for debug purposes)
+   */
+  getLastConvertedWavPath(): string | null {
+    return this.lastConvertedWavPath;
+  }
+
+  /**
+   * Check if debug mode is enabled (from settings store)
+   * When enabled, WAV files are kept for playback testing
+   */
+  isDebugModeEnabled(): boolean {
+    return useSettingsStore.getState().debugMode;
+  }
+
+  /**
+   * Manually delete the last converted WAV file (debug cleanup)
+   */
+  async deleteLastConvertedWav(): Promise<void> {
+    if (!this.lastConvertedWavPath) {
+      console.log('[AudioConversionService] 🔧 No WAV file to delete');
+      return;
+    }
+
+    try {
+      await FileSystemLegacy.deleteAsync(this.lastConvertedWavPath, { idempotent: true });
+      console.log('[AudioConversionService] 🗑️ Deleted debug WAV file:', this.lastConvertedWavPath);
+      this.lastConvertedWavPath = null;
+    } catch (error) {
+      console.warn('[AudioConversionService] ⚠️ Failed to delete debug WAV:', error);
+    }
+  }
+
   /**
    * Convert audio file to Whisper-compatible WAV format
    *
@@ -80,6 +117,9 @@ export class AudioConversionService {
       // Step 4: Write to file
       await this.writeWavFile(outputPath, wavData);
 
+      // Track for debug playback
+      this.lastConvertedWavPath = outputPath;
+
       console.log("[AudioConversionService] ✅ Conversion successful:", outputPath);
       return outputPath;
     } catch (error) {
@@ -92,10 +132,17 @@ export class AudioConversionService {
 
   /**
    * Delete temporary WAV file after transcription
+   * In debug mode, files are kept for playback testing
    *
    * @param wavPath - Path to WAV file to delete
    */
   async cleanupTempFile(wavPath: string): Promise<void> {
+    // Skip cleanup in debug mode to allow WAV playback
+    if (this.isDebugModeEnabled()) {
+      console.log("[AudioConversionService] 🔧 Debug mode - keeping WAV file:", wavPath);
+      return;
+    }
+
     try {
       await FileSystemLegacy.deleteAsync(wavPath, { idempotent: true });
       console.log("[AudioConversionService] 🗑️ Cleaned up temp file:", wavPath);
