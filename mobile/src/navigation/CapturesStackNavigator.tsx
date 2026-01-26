@@ -34,7 +34,7 @@ export function CapturesStackNavigator() {
         name="CapturesList"
         component={CapturesListScreen}
         options={{
-          headerShown: false, // Tab navigator shows header
+          title: t('navigation.headers.captures'),
         }}
       />
       <Stack.Screen

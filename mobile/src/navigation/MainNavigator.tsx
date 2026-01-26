@@ -37,7 +37,7 @@ export const MainNavigator = () => {
           name="Captures"
           component={CapturesStackNavigator}
           options={{
-            title: t('navigation.headers.captures'),
+            headerShown: false, // Stack navigator handles its own headers
             tabBarLabel: t('navigation.tabs.captures'),
             tabBarIcon: ({ color, size, focused }) => (
               <TabBarIcon
@@ -69,7 +69,7 @@ export const MainNavigator = () => {
           name="Settings"
           component={SettingsStackNavigator}
           options={{
-            title: t('navigation.headers.settings'),
+            headerShown: false, // Stack navigator handles its own headers
             tabBarLabel: t('navigation.tabs.settings'),
             tabBarIcon: ({ color, size, focused }) => (
               <TabBarIcon

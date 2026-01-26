@@ -53,6 +53,7 @@ import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domai
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_LABELS } from '../../contexts/Normalization/services/analysisPrompts';
 import { GoogleCalendarService } from '../../services/GoogleCalendarService';
+import { useSettingsStore } from '../../stores/settingsStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 /** Action item structure from LLM JSON output */
@@ -197,6 +198,7 @@ function SavedIndicator({ visible, onHidden }: { visible: boolean; onHidden: () 
 
 export function CaptureDetailScreen({ route, navigation }: Props) {
   const { captureId, startAnalysis } = route.params;
+  const debugMode = useSettingsStore((state) => state.debugMode);
   const [capture, setCapture] = useState<Capture | null>(null);
   const [metadata, setMetadata] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
@@ -1024,13 +1026,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               <View style={styles.metadataContent}>
                 {metadata[METADATA_KEYS.WHISPER_MODEL] && (
                   <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Modèle Whisper</Text>
+                    <Text style={styles.metadataLabel}>Moteur de transcription</Text>
                     <Text style={styles.metadataValue}>{metadata[METADATA_KEYS.WHISPER_MODEL]}</Text>
                   </View>
                 )}
                 {metadata[METADATA_KEYS.WHISPER_DURATION_MS] && (
                   <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Durée traitement Whisper</Text>
+                    <Text style={styles.metadataLabel}>Durée de transcription</Text>
                     <Text style={styles.metadataValue}>
                       {Math.round(parseInt(metadata[METADATA_KEYS.WHISPER_DURATION_MS]!) / 1000 * 10) / 10}s
                     </Text>
@@ -1096,21 +1098,33 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                   </View>
                 ) : (
                   <>
-                    {/* Analyze All Button */}
-                    <TouchableOpacity
-                      style={styles.analyzeAllButton}
-                      onPress={handleAnalyzeAll}
-                      disabled={isAnyAnalysisLoading}
-                    >
-                      {isAnyAnalysisLoading ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <View style={styles.analyzeAllContent}>
-                          <Feather name="zap" size={16} color={colors.neutral[0]} />
-                          <Text style={styles.analyzeAllButtonText}>Analyser tout</Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
+                    {/* Analyze All Button - Show if not all generated, or in debug mode for regeneration */}
+                    {(() => {
+                      const allGenerated = analyses[ANALYSIS_TYPES.SUMMARY] &&
+                        analyses[ANALYSIS_TYPES.HIGHLIGHTS] &&
+                        analyses[ANALYSIS_TYPES.ACTION_ITEMS];
+                      if (!allGenerated || debugMode) {
+                        return (
+                          <TouchableOpacity
+                            style={styles.analyzeAllButton}
+                            onPress={handleAnalyzeAll}
+                            disabled={isAnyAnalysisLoading}
+                          >
+                            {isAnyAnalysisLoading ? (
+                              <ActivityIndicator size="small" color="#FFFFFF" />
+                            ) : (
+                              <View style={styles.analyzeAllContent}>
+                                <Feather name="zap" size={16} color={colors.neutral[0]} />
+                                <Text style={styles.analyzeAllButtonText}>
+                                  {allGenerated ? 'Tout réanalyser' : 'Analyser'}
+                                </Text>
+                              </View>
+                            )}
+                          </TouchableOpacity>
+                        );
+                      }
+                      return null;
+                    })()}
                 {/* Summary Section */}
                 <View style={styles.analysisSection}>
                   <View style={styles.analysisSectionHeader}>
@@ -1118,19 +1132,22 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       <Feather name="file-text" size={16} color={colors.primary[600]} />
                       <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.generateButton}
-                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)}
-                      disabled={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
-                    >
-                      {analysisLoading[ANALYSIS_TYPES.SUMMARY] ? (
-                        <ActivityIndicator size="small" color="#9C27B0" />
-                      ) : analyses[ANALYSIS_TYPES.SUMMARY] ? (
-                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
-                      ) : (
-                        <Text style={styles.generateButtonText}>Générer</Text>
-                      )}
-                    </TouchableOpacity>
+                    {/* Show button: loading, or no data, or debug mode for regeneration */}
+                    {(analysisLoading[ANALYSIS_TYPES.SUMMARY] || !analyses[ANALYSIS_TYPES.SUMMARY] || debugMode) && (
+                      <TouchableOpacity
+                        style={styles.generateButton}
+                        onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)}
+                        disabled={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
+                      >
+                        {analysisLoading[ANALYSIS_TYPES.SUMMARY] ? (
+                          <ActivityIndicator size="small" color="#9C27B0" />
+                        ) : analyses[ANALYSIS_TYPES.SUMMARY] ? (
+                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                        ) : (
+                          <Text style={styles.generateButtonText}>Générer</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                   {analyses[ANALYSIS_TYPES.SUMMARY] && (
                     <Text style={styles.analysisResult} selectable>
@@ -1146,19 +1163,22 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       <Feather name="star" size={16} color={colors.warning[500]} />
                       <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.generateButton}
-                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)}
-                      disabled={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
-                    >
-                      {analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] ? (
-                        <ActivityIndicator size="small" color="#9C27B0" />
-                      ) : analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? (
-                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
-                      ) : (
-                        <Text style={styles.generateButtonText}>Générer</Text>
-                      )}
-                    </TouchableOpacity>
+                    {/* Show button: loading, or no data, or debug mode for regeneration */}
+                    {(analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] || !analyses[ANALYSIS_TYPES.HIGHLIGHTS] || debugMode) && (
+                      <TouchableOpacity
+                        style={styles.generateButton}
+                        onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)}
+                        disabled={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
+                      >
+                        {analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] ? (
+                          <ActivityIndicator size="small" color="#9C27B0" />
+                        ) : analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? (
+                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                        ) : (
+                          <Text style={styles.generateButtonText}>Générer</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                   {analyses[ANALYSIS_TYPES.HIGHLIGHTS] && (
                     <Text style={styles.analysisResult} selectable>
@@ -1174,19 +1194,22 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       <Feather name="check-square" size={16} color={colors.success[500]} />
                       <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}</Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.generateButton}
-                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
-                      disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
-                    >
-                      {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                        <ActivityIndicator size="small" color="#9C27B0" />
-                      ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
-                      ) : (
-                        <Text style={styles.generateButtonText}>Générer</Text>
-                      )}
-                    </TouchableOpacity>
+                    {/* Show button: loading, or no data, or debug mode for regeneration */}
+                    {(analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] || !analyses[ANALYSIS_TYPES.ACTION_ITEMS] || debugMode) && (
+                      <TouchableOpacity
+                        style={styles.generateButton}
+                        onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
+                        disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
+                      >
+                        {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                          <ActivityIndicator size="small" color="#9C27B0" />
+                        ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                        ) : (
+                          <Text style={styles.generateButtonText}>Générer</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
                   </View>
                   {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (() => {
                     const actionItems = localActionItems;
@@ -1295,8 +1318,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           </View>
         )}
 
-        {/* Reprocess Section - Debug tools for audio captures */}
-        {isAudio && capture.state === 'ready' && (
+        {/* Reprocess Section - Debug tools for audio captures (debug mode only) */}
+        {debugMode && isAudio && capture.state === 'ready' && (
           <View style={styles.reprocessCard}>
             <Pressable
               style={styles.reprocessHeader}
@@ -2028,17 +2051,16 @@ const styles = StyleSheet.create({
   },
   actionBar: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
     paddingVertical: 12,
-    paddingHorizontal: 16,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: '#E5E5EA',
   },
   actionButton: {
+    flex: 1,
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: 8,
-    paddingHorizontal: 16,
   },
   actionLabel: {
     marginTop: 4,
@@ -2053,7 +2075,7 @@ const styles = StyleSheet.create({
   discardButton: {
     backgroundColor: '#F2F2F7',
     borderRadius: 8,
-    paddingHorizontal: 20,
+    marginHorizontal: 8,
   },
   discardLabel: {
     color: '#8E8E93',
@@ -2061,7 +2083,7 @@ const styles = StyleSheet.create({
   saveButton: {
     backgroundColor: '#34C759',
     borderRadius: 8,
-    paddingHorizontal: 20,
+    marginHorizontal: 8,
   },
   saveLabel: {
     color: '#FFFFFF',

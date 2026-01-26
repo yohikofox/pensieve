@@ -3,6 +3,7 @@ import './global.css';
 import './src/i18n';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
+import { StatusBar } from 'expo-status-bar';
 import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
@@ -159,6 +160,7 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
+      <StatusBar style="dark" />
       <ToastProvider>
         <AppContent />
       </ToastProvider>

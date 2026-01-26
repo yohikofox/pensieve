@@ -40,7 +40,7 @@ export function SettingsStackNavigator() {
         name="SettingsMain"
         component={SettingsScreen}
         options={{
-          headerShown: false, // Tab navigator shows header
+          title: t('navigation.headers.settings'),
         }}
       />
       <Stack.Screen

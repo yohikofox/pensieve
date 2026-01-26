@@ -11,16 +11,19 @@
  * Story: 2.2 - Capture Texte Rapide
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
   View,
   TextInput,
   Text,
   Keyboard,
   Animated,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { useTranslation } from 'react-i18next';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, shadows } from '../../design-system/tokens';
 import { Button, AlertDialog } from '../../design-system/components';
 
@@ -36,12 +39,18 @@ interface TextCaptureInputProps {
   placeholder?: string;
 }
 
-export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
+export interface TextCaptureInputRef {
+  focus: () => void;
+  blur: () => void;
+}
+
+export const TextCaptureInput = forwardRef<TextCaptureInputRef, TextCaptureInputProps>(({
   onSave,
   onCancel,
   placeholder,
-}) => {
+}, ref) => {
   const { t } = useTranslation();
+  const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -52,15 +61,20 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
   const saveAnimOpacity = useRef(new Animated.Value(0)).current;
   const saveAnimScale = useRef(new Animated.Value(0.8)).current;
 
-  // AC1: Auto-focus on mount
-  useEffect(() => {
-    // Small delay to ensure smooth animation
-    const timer = setTimeout(() => {
+  // Expose focus and blur methods to parent via ref
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      console.log('[TextCaptureInput] focus() called via ref');
       inputRef.current?.focus();
-    }, FOCUS_DELAY_MS);
+    },
+    blur: () => {
+      console.log('[TextCaptureInput] blur() called via ref');
+      inputRef.current?.blur();
+    },
+  }));
 
-    return () => clearTimeout(timer);
-  }, []);
+  // Note: Auto-focus is handled by Modal onShow callback in parent component
+  // This ensures focus happens after modal animation completes
 
   const handleTextChange = (newText: string) => {
     setText(newText);
@@ -169,55 +183,61 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
   const isSaveDisabled = !text.trim();
 
   return (
-    <View className="flex-1 p-4 bg-neutral-100">
-      <View className="flex-1 mb-4">
-        <TextInput
-          ref={inputRef}
-          className={`flex-1 bg-white rounded-lg p-4 text-lg text-neutral-900 border-2 ${
-            error ? 'border-error-500' : 'border-neutral-200'
-          }`}
-          style={shadows.sm}
-          value={text}
-          onChangeText={handleTextChange}
-          onSubmitEditing={handleSubmitEditing}
-          placeholder={placeholder ?? t('capture.textCapture.placeholder')}
-          placeholderTextColor={colors.neutral[400]}
-          multiline
-          autoFocus
-          blurOnSubmit={false}
-          returnKeyType="done"
-          textAlignVertical="top"
-        />
+    <KeyboardAvoidingView
+      className="flex-1 bg-neutral-100"
+      behavior="padding"
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
+    >
+      <View className="flex-1 p-4" style={{ paddingTop: insets.top + 16 }}>
+        <View className="flex-1 mb-4">
+          <TextInput
+            ref={inputRef}
+            className={`flex-1 bg-white rounded-lg p-4 text-lg text-neutral-900 border-2 ${
+              error ? 'border-error-500' : 'border-neutral-200'
+            }`}
+            style={shadows.sm}
+            value={text}
+            onChangeText={handleTextChange}
+            onSubmitEditing={handleSubmitEditing}
+            placeholder={placeholder ?? t('capture.textCapture.placeholder')}
+            placeholderTextColor={colors.neutral[400]}
+            multiline
+            autoFocus
+            blurOnSubmit={false}
+            returnKeyType="done"
+            textAlignVertical="top"
+          />
 
-        {error && (
-          <View className="mt-2 px-1">
-            <Text className="text-sm text-error-500 font-medium">{error}</Text>
-          </View>
-        )}
-      </View>
+          {error && (
+            <View className="mt-2 px-1">
+              <Text className="text-sm text-error-500 font-medium">{error}</Text>
+            </View>
+          )}
+        </View>
 
-      <View className="flex-row gap-3">
-        <Button
-          variant="secondary"
-          size="lg"
-          className="flex-1"
-          onPress={handleCancel}
-          testID="cancel-button"
-        >
-          {t('common.cancel')}
-        </Button>
+        <View className="flex-row gap-3">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="flex-1"
+            onPress={handleCancel}
+            testID="cancel-button"
+          >
+            {t('common.cancel')}
+          </Button>
 
-        <Button
-          variant="primary"
-          size="lg"
-          className="flex-1"
-          onPress={handleSave}
-          disabled={isSaveDisabled}
-          accessibilityState={{ disabled: isSaveDisabled }}
-          testID="save-button"
-        >
-          {t('common.save')}
-        </Button>
+          <Button
+            variant="primary"
+            size="lg"
+            className="flex-1"
+            onPress={handleSave}
+            disabled={isSaveDisabled}
+            accessibilityState={{ disabled: isSaveDisabled }}
+            testID="save-button"
+          >
+            {t('common.save')}
+          </Button>
+        </View>
       </View>
 
       {/* AC6: Save confirmation animation (Subtask 1.4) */}
@@ -254,6 +274,6 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
           onPress: () => setShowDiscardDialog(false),
         }}
       />
-    </View>
+    </KeyboardAvoidingView>
   );
-};
+});

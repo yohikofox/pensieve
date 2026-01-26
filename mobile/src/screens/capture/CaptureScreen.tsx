@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, Modal, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Modal, Dimensions, Platform } from 'react-native';
 import { useAudioRecorder, RecordingPresets, setAudioModeAsync } from 'expo-audio';
 import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
@@ -13,7 +13,7 @@ import { FileStorageService } from '../../contexts/capture/services/FileStorageS
 import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
-import { TextCaptureInput } from '../../components/capture/TextCaptureInput';
+import { TextCaptureInput, type TextCaptureInputRef } from '../../components/capture/TextCaptureInput';
 import { RecordingOverlay } from '../../components/capture/RecordingOverlay';
 import { colors, shadows } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
@@ -251,6 +251,7 @@ const CaptureScreenContent = () => {
   const permissionServiceRef = useRef<IPermissionService | null>(null);
   const fileStorageServiceRef = useRef<FileStorageService | null>(null);
   const storageMonitorServiceRef = useRef<StorageMonitorService | null>(null);
+  const textCaptureInputRef = useRef<TextCaptureInputRef>(null);
 
   // Initialize services on mount via TSyringe container
   useEffect(() => {
@@ -535,8 +536,28 @@ const CaptureScreenContent = () => {
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={handleTextCaptureCancel}
+        onShow={() => {
+          console.log('[CaptureScreen] Modal onShow triggered');
+          // Focus the input after modal animation completes
+          // On Android, need blur then focus to trigger keyboard
+          setTimeout(() => {
+            console.log('[CaptureScreen] Triggering focus');
+            if (Platform.OS === 'android') {
+              textCaptureInputRef.current?.blur();
+              setTimeout(() => {
+                textCaptureInputRef.current?.focus();
+              }, 100);
+            } else {
+              textCaptureInputRef.current?.focus();
+            }
+          }, 300);
+        }}
       >
-        <TextCaptureInput onSave={handleTextCaptureSave} onCancel={handleTextCaptureCancel} />
+        <TextCaptureInput
+          ref={textCaptureInputRef}
+          onSave={handleTextCaptureSave}
+          onCancel={handleTextCaptureCancel}
+        />
       </Modal>
 
       {/* Recording Overlay */}

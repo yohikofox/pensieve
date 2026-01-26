@@ -410,7 +410,7 @@ export function CapturesListScreen() {
                       handleStop(item);
                     }}
                   >
-                    <Feather name="square" size={18} color={colors.neutral[0]} />
+                    <Feather name="square" size={22} color={colors.neutral[0]} />
                   </TouchableOpacity>
                 )}
 
@@ -425,8 +425,9 @@ export function CapturesListScreen() {
                 >
                   <Feather
                     name={isPlaying ? MediaIcons.pause : MediaIcons.play}
-                    size={20}
+                    size={24}
                     color={colors.neutral[0]}
+                    style={!isPlaying ? { marginLeft: 24 * 0.15 } : undefined}
                   />
                 </TouchableOpacity>
 
@@ -440,7 +441,7 @@ export function CapturesListScreen() {
                       handleTranscribe(item);
                     }}
                   >
-                    <Feather name={ActionIcons.edit} size={20} color={colors.neutral[0]} />
+                    <Feather name={ActionIcons.edit} size={22} color={colors.neutral[0]} />
                   </TouchableOpacity>
                 )}
 
@@ -454,7 +455,7 @@ export function CapturesListScreen() {
                       handleRetry(item.id);
                     }}
                   >
-                    <Feather name="refresh-cw" size={20} color={colors.neutral[0]} />
+                    <Feather name="refresh-cw" size={22} color={colors.neutral[0]} />
                   </TouchableOpacity>
                 )}
               </View>

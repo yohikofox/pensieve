@@ -30,9 +30,9 @@ const variantTextStyles: Record<ButtonVariant, string> = {
 };
 
 const sizeStyles: Record<ButtonSize, string> = {
-  sm: 'h-8 px-3',
-  md: 'h-11 px-4',
-  lg: 'h-13 px-5',
+  sm: 'h-10 px-3',
+  md: 'h-12 px-4',
+  lg: 'h-14 px-5',
 };
 
 const sizeTextStyles: Record<ButtonSize, string> = {
