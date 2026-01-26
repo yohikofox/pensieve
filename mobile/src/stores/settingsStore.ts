@@ -13,6 +13,9 @@ import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Theme preference type
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 // Debug button position (anchored to edge)
 export interface DebugButtonPosition {
   edge: 'left' | 'right';
@@ -20,6 +23,9 @@ export interface DebugButtonPosition {
 }
 
 interface SettingsState {
+  // Theme preference - 'light', 'dark', or 'system' (follows OS)
+  themePreference: ThemePreference;
+
   // Debug mode - enables all debug features (WAV player, etc.)
   // Can be enabled by user permissions in production
   debugMode: boolean;
@@ -28,6 +34,7 @@ interface SettingsState {
   debugButtonPosition: DebugButtonPosition;
 
   // Actions
+  setThemePreference: (preference: ThemePreference) => void;
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
   setDebugButtonPosition: (position: DebugButtonPosition) => void;
@@ -37,6 +44,9 @@ export const useSettingsStore = create<SettingsState>()(
   devtools(
     persist(
       (set, get) => ({
+        // Initial state - system theme by default
+        themePreference: 'system' as ThemePreference,
+
         // Initial state - debug mode off by default
         debugMode: false,
 
@@ -47,6 +57,11 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         // Actions
+        setThemePreference: (preference: ThemePreference) => {
+          set({ themePreference: preference });
+          console.log('[SettingsStore] Theme preference:', preference);
+        },
+
         setDebugMode: (enabled: boolean) => {
           set({ debugMode: enabled });
           console.log('[SettingsStore] Debug mode:', enabled ? 'ON' : 'OFF');

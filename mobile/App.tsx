@@ -4,11 +4,15 @@ import './src/i18n';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { Appearance } from 'react-native';
+import { colorScheme as nwColorScheme } from 'nativewind';
 import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { MainNavigator } from './src/navigation/MainNavigator';
-import { navigationTheme } from './src/navigation/theme';
+import { lightNavigationTheme, darkNavigationTheme } from './src/navigation/theme';
+import { ThemeProvider, useThemeContext } from './src/contexts/theme/ThemeProvider';
+import { useSettingsStore } from './src/stores/settingsStore';
 import { AppState, type AppStateStatus } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { LoadingView, ToastProvider } from './src/design-system/components';
@@ -31,6 +35,16 @@ import { DevPanel } from './src/components/dev/DevPanel';
 // Initialize IoC container with production services
 registerServices();
 
+// Synchronously initialize theme BEFORE first render
+// This ensures NativeWind's dark: classes are set correctly from the start
+(() => {
+  const storedPreference = useSettingsStore.getState().themePreference;
+  const systemScheme = Appearance.getColorScheme() ?? 'light';
+  const targetScheme = storedPreference === 'system' ? systemScheme : storedPreference;
+  console.log('[App] Sync theme init:', targetScheme, '(preference:', storedPreference, ', system:', systemScheme, ')');
+  nwColorScheme.set(targetScheme);
+})();
+
 // Configure NetInfo for real internet reachability detection
 NetInfo.configure({
   reachabilityUrl: 'https://clients3.google.com/generate_204',
@@ -41,12 +55,16 @@ NetInfo.configure({
 });
 
 /**
- * AppContent - Inner component wrapped by ToastProvider
+ * AppContent - Inner component wrapped by ToastProvider and ThemeProvider
  * This allows hooks like useDeepLinkAuth to access the toast context
  */
 function AppContent() {
   const { user, loading } = useAuthListener();
+  const { colorScheme, isDark } = useThemeContext();
   useDeepLinkAuth(); // Handle deep link authentication (requires ToastProvider)
+
+  // Select navigation theme based on current color scheme
+  const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;
 
   // AC4: Check for crash-recovered recordings on app launch
   // Story 2.1 - Crash Recovery Notification
@@ -157,13 +175,36 @@ function AppContent() {
   );
 }
 
+/**
+ * AppWithStatusBar - Handles StatusBar styling based on theme
+ */
+function AppWithStatusBar() {
+  const { isDark } = useThemeContext();
+
+  return (
+    <>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <AppContent />
+    </>
+  );
+}
+
+/**
+ * Main App component
+ *
+ * Provider hierarchy:
+ * 1. SafeAreaProvider - Safe area insets
+ * 2. ThemeProvider - Theme context and CSS variables
+ * 3. ToastProvider - Toast notifications
+ */
 export default function App() {
   return (
     <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <ToastProvider>
-        <AppContent />
-      </ToastProvider>
+      <ThemeProvider>
+        <ToastProvider>
+          <AppWithStatusBar />
+        </ToastProvider>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

@@ -329,16 +329,16 @@ export function CapturesListScreen() {
                   color={isAudio ? colors.primary[600] : colors.secondary[600]}
                 />
               </View>
-              <Text className="text-sm font-semibold text-neutral-900">
+              <Text className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
                 {isAudio ? t('captures.types.audio') : t('captures.types.text')}
               </Text>
               {isAudio && item.duration && (
-                <Text className="text-sm text-neutral-400 ml-1">
+                <Text className="text-sm text-neutral-400 dark:text-neutral-500 ml-1">
                   · {Math.floor(item.duration / 1000)}s
                 </Text>
               )}
             </View>
-            <Text className="text-xs text-neutral-400">
+            <Text className="text-xs text-neutral-400 dark:text-neutral-500">
               {item.createdAt.toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
@@ -499,24 +499,24 @@ export function CapturesListScreen() {
 
                 {/* Transcription result */}
                 {item.normalizedText ? (
-                  <Text className="text-base text-neutral-900 leading-relaxed" numberOfLines={4}>
+                  <Text className="text-base text-neutral-900 dark:text-neutral-50 leading-relaxed" numberOfLines={4}>
                     {item.normalizedText}
                   </Text>
                 ) : isProcessing ? (
-                  <Text className="text-sm text-neutral-400 italic">
+                  <Text className="text-sm text-neutral-400 dark:text-neutral-500 italic">
                     {t('capture.status.processing')}...
                   </Text>
                 ) : isCaptured ? (
-                  <Text className="text-sm text-neutral-400 italic">
+                  <Text className="text-sm text-neutral-400 dark:text-neutral-500 italic">
                     {t('capture.status.pending')}
                   </Text>
                 ) : isFailed ? (
-                  <Text className="text-sm text-error-500 italic">{t('capture.status.failed')}</Text>
+                  <Text className="text-sm text-error-500 dark:text-error-400 italic">{t('capture.status.failed')}</Text>
                 ) : null}
               </>
             ) : (
               /* Text capture - show content directly */
-              <Text className="text-base text-neutral-900 leading-relaxed" numberOfLines={4}>
+              <Text className="text-base text-neutral-900 dark:text-neutral-50 leading-relaxed" numberOfLines={4}>
                 {item.rawContent || item.normalizedText || t('captures.empty')}
               </Text>
             )}
@@ -532,7 +532,7 @@ export function CapturesListScreen() {
 
   if (captures.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-100">
+      <View className="flex-1 bg-neutral-100 dark:bg-neutral-900">
         <EmptyState
           icon="inbox"
           title={t('captures.empty')}
@@ -543,7 +543,7 @@ export function CapturesListScreen() {
   }
 
   return (
-    <View className="flex-1 bg-neutral-100">
+    <View className="flex-1 bg-neutral-100 dark:bg-neutral-900">
       <FlatList
         data={captures}
         keyExtractor={(item) => item.id}

@@ -11,23 +11,28 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useColorScheme } from 'nativewind';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { TranscriptionEngineSettingsScreen } from '../screens/settings/TranscriptionEngineSettingsScreen';
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
 import { LLMSettingsScreen } from '../screens/settings/LLMSettingsScreen';
-import { stackScreenOptions } from './theme';
+import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
+import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
   TranscriptionEngineSettings: undefined;
   WhisperSettings: undefined;
   LLMSettings: undefined;
+  ThemeSettings: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
 export function SettingsStackNavigator() {
   const { t } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const stackScreenOptions = colorScheme === 'dark' ? darkStackScreenOptions : lightStackScreenOptions;
 
   return (
     <Stack.Navigator
@@ -64,6 +69,14 @@ export function SettingsStackNavigator() {
         component={LLMSettingsScreen}
         options={{
           title: t('navigation.headers.aiEnhancement'),
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="ThemeSettings"
+        component={ThemeSettingsScreen}
+        options={{
+          title: t('navigation.headers.theme'),
           headerShown: true,
         }}
       />

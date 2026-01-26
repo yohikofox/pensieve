@@ -21,7 +21,7 @@ import { container } from 'tsyringe';
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useSettingsStore, type ThemePreference } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
 import { colors } from '../../design-system/tokens';
@@ -42,9 +42,22 @@ export const SettingsScreen = () => {
   const [selectedModelLabel, setSelectedModelLabel] = useState<string>(t('common.notConfigured'));
   const [llmStatusLabel, setLlmStatusLabel] = useState<string>(t('common.disabled'));
 
+  // Theme preference from global settings store
+  const themePreference = useSettingsStore((state) => state.themePreference);
+
   // Debug mode from global settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
+
+  // Get theme label for display
+  const getThemeLabel = (preference: ThemePreference): string => {
+    const labels: Record<ThemePreference, string> = {
+      light: t('settings.appearance.themeOptions.light'),
+      dark: t('settings.appearance.themeOptions.dark'),
+      system: t('settings.appearance.themeOptions.system'),
+    };
+    return labels[preference];
+  };
 
   // Google Calendar state
   const [googleAuth, setGoogleAuth] = useState<GoogleAuthState>({
@@ -357,44 +370,71 @@ export const SettingsScreen = () => {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-neutral-100">
+      <ScrollView className="flex-1 bg-neutral-100 dark:bg-neutral-900">
+        {/* Appearance Section */}
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.appearance')}
+          </Text>
+
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-4"
+            onPress={() => navigation.navigate('ThemeSettings')}
+          >
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+                {t('settings.appearance.theme')}
+              </Text>
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+                {t('settings.appearance.themeSubtitle')}
+              </Text>
+            </View>
+            <View className="flex-row items-center">
+              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">
+                {getThemeLabel(themePreference)}
+              </Text>
+              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+            </View>
+          </TouchableOpacity>
+        </Card>
+
         {/* Transcription Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.transcription')}
           </Text>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
             onPress={() => navigation.navigate('TranscriptionEngineSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900">{t('settings.transcription.engine')}</Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">{t('settings.transcription.engine')}</Text>
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.transcription.engineSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 mr-1">{engineLabel}</Text>
-              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
+              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{engineLabel}</Text>
+              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
             onPress={() => navigation.navigate('WhisperSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
                 {t('settings.transcription.whisperModel')}
               </Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.transcription.whisperModelSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 mr-1">{selectedModelLabel}</Text>
-              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
+              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{selectedModelLabel}</Text>
+              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -403,23 +443,23 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('LLMSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
                 {t('settings.transcription.aiEnhancement')}
               </Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.transcription.aiEnhancementSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 mr-1">{llmStatusLabel}</Text>
-              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
+              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{llmStatusLabel}</Text>
+              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
         </Card>
 
         {/* Integrations Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.integrations')}
           </Text>
 
@@ -431,11 +471,11 @@ export const SettingsScreen = () => {
             <View className="flex-1">
               <View className="flex-row items-center">
                 <Feather name="calendar" size={20} color={colors.primary[600]} style={{ marginRight: 8 }} />
-                <Text className="text-lg text-neutral-900">
+                <Text className="text-lg text-neutral-900 dark:text-neutral-50">
                   {t('settings.integrations.googleCalendar')}
                 </Text>
               </View>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {googleAuth.isConnected
                   ? t('settings.integrations.googleCalendarConnected', {
                       email: googleAuth.userEmail || '',
@@ -447,11 +487,11 @@ export const SettingsScreen = () => {
               {googleConnecting || googleAuth.isLoading ? (
                 <ActivityIndicator size="small" />
               ) : googleAuth.isConnected ? (
-                <Text className="text-xs font-semibold text-success-500 bg-success-50 px-2 py-1 rounded">
+                <Text className="text-xs font-semibold text-success-500 bg-success-50 dark:bg-success-900 px-2 py-1 rounded">
                   {t('settings.integrations.connected')}
                 </Text>
               ) : (
-                <Text className="text-base font-medium text-primary-500">
+                <Text className="text-base font-medium text-primary-500 dark:text-primary-400">
                   {t('settings.integrations.connect')}
                 </Text>
               )}
@@ -461,19 +501,19 @@ export const SettingsScreen = () => {
 
         {/* RGPD Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.privacy')}
           </Text>
 
           {/* Export Data */}
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
             onPress={handleExportData}
             disabled={exportLoading}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900">{t('settings.privacy.exportData')}</Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">{t('settings.privacy.exportData')}</Text>
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.privacy.exportDataSubtitle')}
               </Text>
             </View>
@@ -487,8 +527,8 @@ export const SettingsScreen = () => {
             disabled={deleteLoading}
           >
             <View className="flex-1">
-              <Text className="text-lg text-error-500">{t('settings.privacy.deleteAccount')}</Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-lg text-error-500 dark:text-error-400">{t('settings.privacy.deleteAccount')}</Text>
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.privacy.deleteAccountSubtitle')}
               </Text>
             </View>
@@ -498,16 +538,16 @@ export const SettingsScreen = () => {
 
         {/* Development Section */}
         <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.development')}
           </Text>
 
           <View className="flex-row items-center py-3 px-4">
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900">
+              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
                 {t('settings.development.debugMode')}
               </Text>
-              <Text className="text-xs text-neutral-400 mt-0.5">
+              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
                 {t('settings.development.debugModeSubtitle')}
               </Text>
             </View>

@@ -10,17 +10,20 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
+import { useColorScheme } from 'nativewind';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
 import { CapturesStackNavigator } from './CapturesStackNavigator';
 import { SettingsStackNavigator } from './SettingsStackNavigator';
 import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
 import { TabBarIcon, TabIcons } from './components';
-import { tabBarStyle } from './theme';
+import { lightTabBarStyle, darkTabBarStyle } from './theme';
 
 const Tab = createBottomTabNavigator();
 
 export const MainNavigator = () => {
   const { t } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const tabBarStyle = colorScheme === 'dark' ? darkTabBarStyle : lightTabBarStyle;
 
   return (
     <>
@@ -31,6 +34,7 @@ export const MainNavigator = () => {
           tabBarActiveTintColor: tabBarStyle.activeTintColor,
           tabBarInactiveTintColor: tabBarStyle.inactiveTintColor,
           tabBarLabelStyle: tabBarStyle.labelStyle,
+          tabBarStyle: tabBarStyle.style,
         }}
       >
         <Tab.Screen

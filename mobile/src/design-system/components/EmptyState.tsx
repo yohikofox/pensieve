@@ -24,17 +24,17 @@ export function EmptyState({
   return (
     <View className={cn('flex-1 items-center justify-center px-8 py-12', className)}>
       {icon && (
-        <View className="w-20 h-20 rounded-full bg-neutral-100 items-center justify-center mb-6">
+        <View className="w-20 h-20 rounded-full bg-neutral-100 dark:bg-neutral-800 items-center justify-center mb-6">
           <Feather name={icon} size={40} color={colors.neutral[400]} />
         </View>
       )}
 
-      <Text className="text-xl font-semibold text-neutral-900 text-center mb-2">
+      <Text className="text-xl font-semibold text-neutral-900 dark:text-neutral-50 text-center mb-2">
         {title}
       </Text>
 
       {description && (
-        <Text className="text-base text-neutral-400 text-center mb-6">
+        <Text className="text-base text-neutral-400 dark:text-neutral-500 text-center mb-6">
           {description}
         </Text>
       )}

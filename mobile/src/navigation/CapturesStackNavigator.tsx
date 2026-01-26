@@ -9,9 +9,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useColorScheme } from 'nativewind';
 import { CapturesListScreen } from '../screens/captures/CapturesListScreen';
 import { CaptureDetailScreen } from '../screens/captures/CaptureDetailScreen';
-import { stackScreenOptions } from './theme';
+import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
 
 export type CapturesStackParamList = {
   CapturesList: undefined;
@@ -22,6 +23,8 @@ const Stack = createNativeStackNavigator<CapturesStackParamList>();
 
 export function CapturesStackNavigator() {
   const { t } = useTranslation();
+  const { colorScheme } = useColorScheme();
+  const stackScreenOptions = colorScheme === 'dark' ? darkStackScreenOptions : lightStackScreenOptions;
 
   return (
     <Stack.Navigator

@@ -8,10 +8,11 @@ interface CardProps extends ViewProps {
   children: React.ReactNode;
 }
 
+// Using semantic theme-aware colors (CSS variables)
 const variantClassNames: Record<CardProps['variant'] & string, string> = {
-  elevated: 'bg-white',
-  outlined: 'bg-white border border-neutral-200',
-  filled: 'bg-neutral-50',
+  elevated: 'bg-bg-card',
+  outlined: 'bg-bg-card border border-border-default',
+  filled: 'bg-bg-subtle',
 };
 
 export function Card({

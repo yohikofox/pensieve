@@ -36,17 +36,17 @@ const variantConfig: Record<AlertDialogVariant, {
   default: {
     icon: 'info',
     iconColor: colors.primary[600],
-    iconBg: 'bg-primary-100',
+    iconBg: 'bg-primary-100 dark:bg-primary-900',
   },
   danger: {
     icon: 'alert-triangle',
     iconColor: colors.error[600],
-    iconBg: 'bg-error-100',
+    iconBg: 'bg-error-100 dark:bg-error-900',
   },
   warning: {
     icon: 'alert-circle',
     iconColor: colors.warning[600],
-    iconBg: 'bg-warning-100',
+    iconBg: 'bg-warning-100 dark:bg-warning-900',
   },
 };
 
@@ -100,7 +100,7 @@ export function AlertDialog({
         <View className="flex-1 bg-black/50 justify-center items-center px-6">
           <TouchableWithoutFeedback>
             <View
-              className="bg-white rounded-2xl w-full max-w-[320px] overflow-hidden"
+              className="bg-white dark:bg-neutral-800 rounded-2xl w-full max-w-[320px] overflow-hidden"
               style={Platform.select({
                 ios: shadows.xl,
                 android: { elevation: 12 },
@@ -123,13 +123,13 @@ export function AlertDialog({
                 </View>
 
                 {/* Title */}
-                <Text className="text-lg font-semibold text-neutral-900 text-center mb-2">
+                <Text className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 text-center mb-2">
                   {title}
                 </Text>
 
                 {/* Message */}
                 {message && (
-                  <Text className="text-base text-neutral-500 text-center leading-relaxed">
+                  <Text className="text-base text-neutral-500 dark:text-neutral-400 text-center leading-relaxed">
                     {message}
                   </Text>
                 )}

@@ -135,10 +135,25 @@ export default {
   settings: {
     title: 'Settings',
     sections: {
+      appearance: 'Appearance',
       transcription: 'Transcription',
       integrations: 'Integrations',
       privacy: 'Privacy & Data',
       development: 'Development',
+    },
+    appearance: {
+      theme: 'Theme',
+      themeSubtitle: 'Choose the application theme',
+      themeOptions: {
+        light: 'Light',
+        dark: 'Dark',
+        system: 'System',
+      },
+      themeDescriptions: {
+        light: 'Light appearance, ideal for daytime',
+        dark: 'Dark appearance, easier on the eyes',
+        system: 'Automatically follows device theme',
+      },
     },
     transcription: {
       engine: 'Transcription engine',
@@ -226,6 +241,7 @@ export default {
       transcriptionEngine: 'Transcription Engine',
       whisperModel: 'Whisper Model',
       aiEnhancement: 'AI Enhancement',
+      theme: 'Theme',
     },
   },
 

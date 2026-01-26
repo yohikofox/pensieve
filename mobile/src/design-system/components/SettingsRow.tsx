@@ -56,7 +56,7 @@ export function SettingsRow(props: SettingsRowProps) {
     <View
       className={cn(
         'flex-row items-center py-3 px-4',
-        showBorder && 'border-b border-neutral-200',
+        showBorder && 'border-b border-neutral-200 dark:border-neutral-700',
         className
       )}
     >
@@ -69,23 +69,23 @@ export function SettingsRow(props: SettingsRowProps) {
           className={cn(
             'text-lg',
             props.type === 'action' && props.actionColor === 'danger'
-              ? 'text-error-500'
-              : 'text-neutral-900'
+              ? 'text-error-500 dark:text-error-400'
+              : 'text-neutral-900 dark:text-neutral-50'
           )}
         >
           {title}
         </Text>
         {subtitle && (
-          <Text className="text-xs text-neutral-400 mt-0.5">{subtitle}</Text>
+          <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{subtitle}</Text>
         )}
       </View>
 
       {props.type === 'navigate' && (
         <View className="flex-row items-center">
           {props.value && (
-            <Text className="text-base text-neutral-400 mr-1">{props.value}</Text>
+            <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{props.value}</Text>
           )}
-          <Text className="text-xl text-neutral-300 font-semibold">›</Text>
+          <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
         </View>
       )}
 
@@ -111,7 +111,7 @@ export function SettingsRow(props: SettingsRowProps) {
       )}
 
       {props.type === 'info' && props.value && (
-        <Text className="text-base text-neutral-400">{props.value}</Text>
+        <Text className="text-base text-neutral-400 dark:text-neutral-500">{props.value}</Text>
       )}
     </View>
   );

@@ -29,8 +29,8 @@ export function ListItem({
   const content = (
     <View
       className={cn(
-        'flex-row items-center py-3 px-4 bg-white',
-        showBorder && 'border-b border-neutral-100',
+        'flex-row items-center py-3 px-4 bg-white dark:bg-neutral-800',
+        showBorder && 'border-b border-neutral-100 dark:border-neutral-700',
         disabled && 'opacity-50',
         className
       )}
@@ -38,17 +38,17 @@ export function ListItem({
       {leftElement && <View className="mr-3">{leftElement}</View>}
 
       {leftIcon && !leftElement && (
-        <View className="w-8 h-8 rounded-full bg-neutral-100 items-center justify-center mr-3">
+        <View className="w-8 h-8 rounded-full bg-neutral-100 dark:bg-neutral-700 items-center justify-center mr-3">
           <Feather name={leftIcon} size={18} color={colors.neutral[600]} />
         </View>
       )}
 
       <View className="flex-1">
-        <Text className="text-base text-neutral-900" numberOfLines={1}>
+        <Text className="text-base text-neutral-900 dark:text-neutral-50" numberOfLines={1}>
           {title}
         </Text>
         {subtitle && (
-          <Text className="text-sm text-neutral-400 mt-0.5" numberOfLines={2}>
+          <Text className="text-sm text-neutral-400 dark:text-neutral-500 mt-0.5" numberOfLines={2}>
             {subtitle}
           </Text>
         )}
