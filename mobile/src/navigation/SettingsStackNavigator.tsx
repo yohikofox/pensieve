@@ -11,13 +11,13 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from 'nativewind';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { TranscriptionEngineSettingsScreen } from '../screens/settings/TranscriptionEngineSettingsScreen';
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
 import { LLMSettingsScreen } from '../screens/settings/LLMSettingsScreen';
 import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
+import { useTheme } from '../hooks/useTheme';
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
@@ -31,8 +31,8 @@ const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
 export function SettingsStackNavigator() {
   const { t } = useTranslation();
-  const { colorScheme } = useColorScheme();
-  const stackScreenOptions = colorScheme === 'dark' ? darkStackScreenOptions : lightStackScreenOptions;
+  const { isDark } = useTheme();
+  const stackScreenOptions = isDark ? darkStackScreenOptions : lightStackScreenOptions;
 
   return (
     <Stack.Navigator

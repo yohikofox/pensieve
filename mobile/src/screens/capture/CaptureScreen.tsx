@@ -138,8 +138,8 @@ const CaptureScreenWithAudioMode = () => {
   // Show permission denied message
   if (permissionDenied) {
     return (
-      <View className="flex-1 bg-neutral-100 dark:bg-neutral-900 justify-center items-center">
-        <Text className="text-neutral-500 dark:text-neutral-400 text-center px-5">
+      <View className="flex-1 bg-bg-screen justify-center items-center">
+        <Text className="text-text-secondary text-center px-5">
           {t('capture.alerts.permissionDenied')}
           {'\n'}
           {t('capture.alerts.permissionHint')}
@@ -151,9 +151,9 @@ const CaptureScreenWithAudioMode = () => {
   // Show loading indicator while initializing
   if (!isReady) {
     return (
-      <View className="flex-1 bg-neutral-100 dark:bg-neutral-900 justify-center items-center">
+      <View className="flex-1 bg-bg-screen justify-center items-center">
         <ActivityIndicator size="large" color={colors.primary[500]} />
-        <Text className="mt-4 text-neutral-500 dark:text-neutral-400">{t('capture.recording.initializing')}</Text>
+        <Text className="mt-4 text-text-secondary">{t('capture.recording.initializing')}</Text>
       </View>
     );
   }
@@ -210,13 +210,13 @@ const CaptureToolButton = ({
       </View>
       <Text
         className={`mt-2 text-sm font-semibold text-center ${
-          isDisabled ? 'text-neutral-400 dark:text-neutral-500' : 'text-neutral-900 dark:text-neutral-50'
+          isDisabled ? 'text-text-tertiary' : 'text-text-primary'
         }`}
       >
         {label}
       </Text>
       {!tool.available && (
-        <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">{t('common.comingSoon')}</Text>
+        <Text className="text-xs text-text-tertiary mt-0.5">{t('common.comingSoon')}</Text>
       )}
     </TouchableOpacity>
   );
@@ -511,11 +511,11 @@ const CaptureScreenContent = () => {
   };
 
   return (
-    <View className="flex-1 bg-neutral-100 dark:bg-neutral-900">
+    <View className="flex-1 bg-bg-screen">
       {/* Header */}
       <View className="items-center pt-14 pb-10 px-6">
-        <Text className="text-3xl font-bold text-neutral-900 dark:text-neutral-50 mb-2">{t('capture.title')}</Text>
-        <Text className="text-base text-neutral-400 dark:text-neutral-500 text-center">{t('capture.subtitle')}</Text>
+        <Text className="text-3xl font-bold text-text-primary mb-2">{t('capture.title')}</Text>
+        <Text className="text-base text-text-secondary text-center">{t('capture.subtitle')}</Text>
       </View>
 
       {/* Tools Grid */}

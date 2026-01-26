@@ -13,20 +13,21 @@ import { shadows, colors } from '../tokens';
 type ButtonVariant = 'primary' | 'secondary' | 'accent' | 'danger' | 'ghost';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
+// Using semantic theme-aware colors (CSS variables)
 const variantStyles: Record<ButtonVariant, string> = {
-  primary: 'bg-primary-500 active:bg-primary-600 dark:bg-primary-600 dark:active:bg-primary-700',
-  secondary: 'bg-neutral-100 active:bg-neutral-200 border border-neutral-200 dark:bg-neutral-700 dark:active:bg-neutral-600 dark:border-neutral-600',
-  accent: 'bg-secondary-500 active:bg-secondary-600 dark:bg-secondary-600 dark:active:bg-secondary-700',
-  danger: 'bg-error-500 active:bg-error-600 dark:bg-error-600 dark:active:bg-error-700',
-  ghost: 'bg-transparent active:bg-neutral-100 dark:active:bg-neutral-800',
+  primary: 'bg-primary-action active:bg-primary-hover',
+  secondary: 'bg-bg-subtle active:bg-bg-screen border border-border-default',
+  accent: 'bg-secondary-action active:bg-secondary-500',
+  danger: 'bg-status-error active:bg-error-600',
+  ghost: 'bg-transparent active:bg-bg-subtle',
 };
 
 const variantTextStyles: Record<ButtonVariant, string> = {
   primary: 'text-white',
-  secondary: 'text-neutral-900 dark:text-neutral-50',
+  secondary: 'text-text-primary',
   accent: 'text-white',
   danger: 'text-white',
-  ghost: 'text-primary-500 dark:text-primary-400',
+  ghost: 'text-primary-text',
 };
 
 const sizeStyles: Record<ButtonSize, string> = {

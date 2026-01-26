@@ -184,7 +184,7 @@ export const TextCaptureInput = forwardRef<TextCaptureInputRef, TextCaptureInput
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-neutral-100"
+      className="flex-1 bg-bg-screen"
       behavior="padding"
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 20}
     >
@@ -192,8 +192,8 @@ export const TextCaptureInput = forwardRef<TextCaptureInputRef, TextCaptureInput
         <View className="flex-1 mb-4">
           <TextInput
             ref={inputRef}
-            className={`flex-1 bg-white rounded-lg p-4 text-lg text-neutral-900 border-2 ${
-              error ? 'border-error-500' : 'border-neutral-200'
+            className={`flex-1 bg-bg-input rounded-lg p-4 text-lg text-text-primary border-2 ${
+              error ? 'border-status-error' : 'border-border-default'
             }`}
             style={shadows.sm}
             value={text}
@@ -210,7 +210,7 @@ export const TextCaptureInput = forwardRef<TextCaptureInputRef, TextCaptureInput
 
           {error && (
             <View className="mt-2 px-1">
-              <Text className="text-sm text-error-500 font-medium">{error}</Text>
+              <Text className="text-sm text-status-error font-medium">{error}</Text>
             </View>
           )}
         </View>

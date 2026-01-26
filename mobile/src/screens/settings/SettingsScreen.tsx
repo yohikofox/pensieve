@@ -370,10 +370,10 @@ export const SettingsScreen = () => {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-neutral-100 dark:bg-neutral-900">
+      <ScrollView className="flex-1 bg-bg-screen">
         {/* Appearance Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.appearance')}
           </Text>
 
@@ -382,59 +382,59 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('ThemeSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+              <Text className="text-lg text-text-primary">
                 {t('settings.appearance.theme')}
               </Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.appearance.themeSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">
+              <Text className="text-base text-text-tertiary mr-1">
                 {getThemeLabel(themePreference)}
               </Text>
-              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
           </TouchableOpacity>
         </Card>
 
         {/* Transcription Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.transcription')}
           </Text>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
+            className="flex-row items-center py-3 px-4 border-b border-border-default"
             onPress={() => navigation.navigate('TranscriptionEngineSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">{t('settings.transcription.engine')}</Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-lg text-text-primary">{t('settings.transcription.engine')}</Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.transcription.engineSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{engineLabel}</Text>
-              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+              <Text className="text-base text-text-tertiary mr-1">{engineLabel}</Text>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
+            className="flex-row items-center py-3 px-4 border-b border-border-default"
             onPress={() => navigation.navigate('WhisperSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+              <Text className="text-lg text-text-primary">
                 {t('settings.transcription.whisperModel')}
               </Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.transcription.whisperModelSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{selectedModelLabel}</Text>
-              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+              <Text className="text-base text-text-tertiary mr-1">{selectedModelLabel}</Text>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -443,23 +443,23 @@ export const SettingsScreen = () => {
             onPress={() => navigation.navigate('LLMSettings')}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+              <Text className="text-lg text-text-primary">
                 {t('settings.transcription.aiEnhancement')}
               </Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.transcription.aiEnhancementSubtitle')}
               </Text>
             </View>
             <View className="flex-row items-center">
-              <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{llmStatusLabel}</Text>
-              <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+              <Text className="text-base text-text-tertiary mr-1">{llmStatusLabel}</Text>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
           </TouchableOpacity>
         </Card>
 
         {/* Integrations Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.integrations')}
           </Text>
 
@@ -471,11 +471,11 @@ export const SettingsScreen = () => {
             <View className="flex-1">
               <View className="flex-row items-center">
                 <Feather name="calendar" size={20} color={colors.primary[600]} style={{ marginRight: 8 }} />
-                <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+                <Text className="text-lg text-text-primary">
                   {t('settings.integrations.googleCalendar')}
                 </Text>
               </View>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {googleAuth.isConnected
                   ? t('settings.integrations.googleCalendarConnected', {
                       email: googleAuth.userEmail || '',
@@ -487,11 +487,11 @@ export const SettingsScreen = () => {
               {googleConnecting || googleAuth.isLoading ? (
                 <ActivityIndicator size="small" />
               ) : googleAuth.isConnected ? (
-                <Text className="text-xs font-semibold text-success-500 bg-success-50 dark:bg-success-900 px-2 py-1 rounded">
+                <Text className="text-xs font-semibold text-status-success-text bg-status-success-bg px-2 py-1 rounded">
                   {t('settings.integrations.connected')}
                 </Text>
               ) : (
-                <Text className="text-base font-medium text-primary-500 dark:text-primary-400">
+                <Text className="text-base font-medium text-primary-text">
                   {t('settings.integrations.connect')}
                 </Text>
               )}
@@ -501,19 +501,19 @@ export const SettingsScreen = () => {
 
         {/* RGPD Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.privacy')}
           </Text>
 
           {/* Export Data */}
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4 border-b border-neutral-200 dark:border-neutral-700"
+            className="flex-row items-center py-3 px-4 border-b border-border-default"
             onPress={handleExportData}
             disabled={exportLoading}
           >
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">{t('settings.privacy.exportData')}</Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-lg text-text-primary">{t('settings.privacy.exportData')}</Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.privacy.exportDataSubtitle')}
               </Text>
             </View>
@@ -527,8 +527,8 @@ export const SettingsScreen = () => {
             disabled={deleteLoading}
           >
             <View className="flex-1">
-              <Text className="text-lg text-error-500 dark:text-error-400">{t('settings.privacy.deleteAccount')}</Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-lg text-status-error">{t('settings.privacy.deleteAccount')}</Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.privacy.deleteAccountSubtitle')}
               </Text>
             </View>
@@ -538,16 +538,16 @@ export const SettingsScreen = () => {
 
         {/* Development Section */}
         <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
-          <Text className="text-xs font-semibold text-neutral-400 dark:text-neutral-500 uppercase ml-4 mb-2 mt-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.development')}
           </Text>
 
           <View className="flex-row items-center py-3 px-4">
             <View className="flex-1">
-              <Text className="text-lg text-neutral-900 dark:text-neutral-50">
+              <Text className="text-lg text-text-primary">
                 {t('settings.development.debugMode')}
               </Text>
-              <Text className="text-xs text-neutral-400 dark:text-neutral-500 mt-0.5">
+              <Text className="text-xs text-text-tertiary mt-0.5">
                 {t('settings.development.debugModeSubtitle')}
               </Text>
             </View>
@@ -570,15 +570,15 @@ export const SettingsScreen = () => {
       >
         <View className="flex-1 bg-black/50 justify-center items-center">
           <Card variant="elevated" className="w-4/5 max-w-[400px] p-5">
-            <Text className="text-lg font-semibold text-neutral-900 text-center mb-2">
+            <Text className="text-lg font-semibold text-text-primary text-center mb-2">
               {t('settings.privacy.passwordConfirmTitle')}
             </Text>
-            <Text className="text-xs text-neutral-400 text-center mb-4">
+            <Text className="text-xs text-text-tertiary text-center mb-4">
               {t('settings.privacy.passwordConfirmMessage')}
             </Text>
 
             <TextInput
-              className="border border-neutral-200 rounded-base p-3 text-lg mb-4 bg-neutral-50"
+              className="border border-border-default rounded-base p-3 text-lg mb-4 bg-bg-input text-text-primary"
               placeholder={t('settings.privacy.passwordPlaceholder')}
               secureTextEntry={true}
               value={password}

@@ -28,6 +28,7 @@ interface AlertDialogProps {
   dismissable?: boolean;
 }
 
+// Using semantic theme-aware colors (CSS variables)
 const variantConfig: Record<AlertDialogVariant, {
   icon: keyof typeof Feather.glyphMap;
   iconColor: string;
@@ -35,18 +36,18 @@ const variantConfig: Record<AlertDialogVariant, {
 }> = {
   default: {
     icon: 'info',
-    iconColor: colors.primary[600],
-    iconBg: 'bg-primary-100 dark:bg-primary-900',
+    iconColor: colors.primary[500],
+    iconBg: 'bg-primary-subtle',
   },
   danger: {
     icon: 'alert-triangle',
-    iconColor: colors.error[600],
-    iconBg: 'bg-error-100 dark:bg-error-900',
+    iconColor: colors.error[500],
+    iconBg: 'bg-status-error-bg',
   },
   warning: {
     icon: 'alert-circle',
-    iconColor: colors.warning[600],
-    iconBg: 'bg-warning-100 dark:bg-warning-900',
+    iconColor: colors.warning[500],
+    iconBg: 'bg-status-warning-bg',
   },
 };
 
@@ -100,7 +101,7 @@ export function AlertDialog({
         <View className="flex-1 bg-black/50 justify-center items-center px-6">
           <TouchableWithoutFeedback>
             <View
-              className="bg-white dark:bg-neutral-800 rounded-2xl w-full max-w-[320px] overflow-hidden"
+              className="bg-bg-card rounded-2xl w-full max-w-[320px] overflow-hidden"
               style={Platform.select({
                 ios: shadows.xl,
                 android: { elevation: 12 },
@@ -123,13 +124,13 @@ export function AlertDialog({
                 </View>
 
                 {/* Title */}
-                <Text className="text-lg font-semibold text-neutral-900 dark:text-neutral-50 text-center mb-2">
+                <Text className="text-lg font-semibold text-text-primary text-center mb-2">
                   {title}
                 </Text>
 
                 {/* Message */}
                 {message && (
-                  <Text className="text-base text-neutral-500 dark:text-neutral-400 text-center leading-relaxed">
+                  <Text className="text-base text-text-secondary text-center leading-relaxed">
                     {message}
                   </Text>
                 )}

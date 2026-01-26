@@ -43,33 +43,10 @@ const themeOptions: ThemeOption[] = [
 
 export const ThemeSettingsScreen = () => {
   const { t } = useTranslation();
-  const { themePreference, setTheme, isDark, colorScheme } = useTheme();
-
-  // Debug: log current state
-  console.log('[ThemeSettingsScreen] colorScheme:', colorScheme, 'themePreference:', themePreference, 'isDark:', isDark);
+  const { themePreference, setTheme, isDark } = useTheme();
 
   return (
     <ScrollView className="flex-1 bg-bg-screen">
-      {/* Debug box using theme-aware colors */}
-      <View className="mx-4 mt-4 p-3 bg-bg-card rounded-lg border border-border-default">
-        <Text className="text-base text-text-primary font-medium">
-          Theme Test
-        </Text>
-        <Text className="text-sm text-text-secondary mt-1">
-          Mode: {colorScheme} | Preference: {themePreference}
-        </Text>
-        <View className="flex-row gap-2 mt-3">
-          <View className="flex-1 p-2 bg-status-success-bg rounded border border-status-success-border">
-            <Text className="text-xs text-status-success-text text-center">Success</Text>
-          </View>
-          <View className="flex-1 p-2 bg-status-warning-bg rounded border border-status-warning-border">
-            <Text className="text-xs text-status-warning-text text-center">Warning</Text>
-          </View>
-          <View className="flex-1 p-2 bg-status-error-bg rounded border border-status-error-border">
-            <Text className="text-xs text-status-error-text text-center">Error</Text>
-          </View>
-        </View>
-      </View>
       <Card variant="elevated" className="mt-5 mx-4 py-2">
         {themeOptions.map((option, index) => {
           const isSelected = themePreference === option.value;

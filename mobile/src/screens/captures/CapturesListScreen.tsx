@@ -320,25 +320,26 @@ export function CapturesListScreen() {
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-row items-center">
               <View
-                className="w-8 h-8 rounded-full items-center justify-center mr-2"
-                style={{ backgroundColor: isAudio ? colors.primary[100] : colors.secondary[100] }}
+                className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${
+                  isAudio ? 'bg-primary-subtle' : 'bg-secondary-subtle'
+                }`}
               >
                 <Feather
                   name={isAudio ? CaptureIcons.voice : CaptureIcons.text}
                   size={16}
-                  color={isAudio ? colors.primary[600] : colors.secondary[600]}
+                  color={isAudio ? colors.primary[500] : colors.secondary[500]}
                 />
               </View>
-              <Text className="text-sm font-semibold text-neutral-900 dark:text-neutral-50">
+              <Text className="text-sm font-semibold text-text-primary">
                 {isAudio ? t('captures.types.audio') : t('captures.types.text')}
               </Text>
               {isAudio && item.duration && (
-                <Text className="text-sm text-neutral-400 dark:text-neutral-500 ml-1">
+                <Text className="text-sm text-text-tertiary ml-1">
                   · {Math.floor(item.duration / 1000)}s
                 </Text>
               )}
             </View>
-            <Text className="text-xs text-neutral-400 dark:text-neutral-500">
+            <Text className="text-xs text-text-tertiary">
               {item.createdAt.toLocaleDateString('fr-FR', {
                 day: 'numeric',
                 month: 'short',
@@ -499,24 +500,24 @@ export function CapturesListScreen() {
 
                 {/* Transcription result */}
                 {item.normalizedText ? (
-                  <Text className="text-base text-neutral-900 dark:text-neutral-50 leading-relaxed" numberOfLines={4}>
+                  <Text className="text-base text-text-primary leading-relaxed" numberOfLines={4}>
                     {item.normalizedText}
                   </Text>
                 ) : isProcessing ? (
-                  <Text className="text-sm text-neutral-400 dark:text-neutral-500 italic">
+                  <Text className="text-sm text-text-tertiary italic">
                     {t('capture.status.processing')}...
                   </Text>
                 ) : isCaptured ? (
-                  <Text className="text-sm text-neutral-400 dark:text-neutral-500 italic">
+                  <Text className="text-sm text-text-tertiary italic">
                     {t('capture.status.pending')}
                   </Text>
                 ) : isFailed ? (
-                  <Text className="text-sm text-error-500 dark:text-error-400 italic">{t('capture.status.failed')}</Text>
+                  <Text className="text-sm text-status-error italic">{t('capture.status.failed')}</Text>
                 ) : null}
               </>
             ) : (
               /* Text capture - show content directly */
-              <Text className="text-base text-neutral-900 dark:text-neutral-50 leading-relaxed" numberOfLines={4}>
+              <Text className="text-base text-text-primary leading-relaxed" numberOfLines={4}>
                 {item.rawContent || item.normalizedText || t('captures.empty')}
               </Text>
             )}
@@ -532,7 +533,7 @@ export function CapturesListScreen() {
 
   if (captures.length === 0) {
     return (
-      <View className="flex-1 bg-neutral-100 dark:bg-neutral-900">
+      <View className="flex-1 bg-bg-screen">
         <EmptyState
           icon="inbox"
           title={t('captures.empty')}
@@ -543,7 +544,7 @@ export function CapturesListScreen() {
   }
 
   return (
-    <View className="flex-1 bg-neutral-100 dark:bg-neutral-900">
+    <View className="flex-1 bg-bg-screen">
       <FlatList
         data={captures}
         keyExtractor={(item) => item.id}

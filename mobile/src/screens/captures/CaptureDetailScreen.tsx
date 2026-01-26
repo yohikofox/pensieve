@@ -32,6 +32,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { container } from 'tsyringe';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
+import { useTheme } from '../../hooks/useTheme';
 import {
   CaptureIcons,
   StatusIcons,
@@ -196,9 +197,61 @@ function SavedIndicator({ visible, onHidden }: { visible: boolean; onHidden: () 
   );
 }
 
+// Theme-aware color palette
+const getThemeColors = (isDark: boolean) => ({
+  // Backgrounds
+  screenBg: isDark ? colors.neutral[900] : colors.neutral[100],
+  cardBg: isDark ? colors.neutral[800] : colors.neutral[0],
+  subtleBg: isDark ? colors.neutral[700] : colors.neutral[50],
+  inputBg: isDark ? colors.neutral[800] : colors.neutral[0],
+  // Text
+  textPrimary: isDark ? colors.neutral[50] : colors.neutral[900],
+  textSecondary: isDark ? colors.neutral[400] : colors.neutral[500],
+  textTertiary: isDark ? colors.neutral[500] : colors.neutral[400],
+  textMuted: isDark ? colors.neutral[500] : '#8E8E93',
+  // Borders
+  borderDefault: isDark ? colors.neutral[700] : colors.neutral[200],
+  borderSubtle: isDark ? colors.neutral[800] : '#E5E5EA',
+  // Status backgrounds
+  statusPendingBg: isDark ? colors.warning[900] : '#FFF3E0',
+  statusProcessingBg: isDark ? colors.info[900] : '#E3F2FD',
+  statusReadyBg: isDark ? colors.success[900] : '#E8F5E9',
+  statusFailedBg: isDark ? colors.error[900] : '#FFEBEE',
+  // Analysis section
+  analysisBg: isDark ? '#2A1B35' : '#F3E5F5',
+  analysisBorder: isDark ? '#6A4C7D' : '#CE93D8',
+  analysisContentBg: isDark ? colors.neutral[800] : '#FAFAFA',
+  // Metadata section
+  metadataBg: isDark ? colors.neutral[800] : '#F5F5F5',
+  metadataBorder: isDark ? colors.neutral[700] : '#E0E0E0',
+  metadataContentBg: isDark ? colors.neutral[850] : '#FAFAFA',
+  // Action items
+  actionItemBg: isDark ? colors.neutral[800] : '#FAFAFA',
+  actionItemBorder: isDark ? colors.neutral[700] : '#E0E0E0',
+  actionItemTagBg: isDark ? '#2A1B35' : '#F3E5F5',
+  // Reprocess section
+  reprocessBg: isDark ? colors.warning[900] : '#FFF3E0',
+  reprocessBorder: isDark ? colors.warning[700] : '#FFE0B2',
+  reprocessContentBg: isDark ? colors.warning[800] : '#FFF8E1',
+  reprocessTitle: isDark ? colors.warning[300] : '#E65100',
+  reprocessText: isDark ? colors.neutral[300] : '#666',
+  reprocessStatusBg: isDark ? colors.neutral[800] : '#FFFFFF',
+  reprocessStatusBorder: isDark ? colors.neutral[700] : '#E0E0E0',
+  reprocessStatusLabel: isDark ? colors.neutral[100] : '#333',
+  reprocessStatusValue: isDark ? colors.neutral[400] : '#666',
+  reprocessStatusError: isDark ? colors.error[400] : '#EF4444',
+  // Contact picker
+  contactBg: isDark ? colors.neutral[900] : '#F2F2F7',
+  contactHeaderBg: isDark ? colors.neutral[800] : colors.neutral[0],
+  contactItemBg: isDark ? colors.neutral[800] : colors.neutral[0],
+  contactSearchBg: isDark ? colors.neutral[700] : '#F2F2F7',
+});
+
 export function CaptureDetailScreen({ route, navigation }: Props) {
   const { captureId, startAnalysis } = route.params;
   const debugMode = useSettingsStore((state) => state.debugMode);
+  const { isDark } = useTheme();
+  const themeColors = getThemeColors(isDark);
   const [capture, setCapture] = useState<Capture | null>(null);
   const [metadata, setMetadata] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
@@ -858,17 +911,17 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={[styles.loadingContainer, { backgroundColor: themeColors.screenBg }]}>
+        <ActivityIndicator size="large" color={colors.primary[500]} />
       </View>
     );
   }
 
   if (!capture) {
     return (
-      <View style={styles.errorContainer}>
-        <Feather name={StatusIcons.error} size={48} color={colors.neutral[400]} />
-        <Text style={styles.errorText}>Capture introuvable</Text>
+      <View style={[styles.errorContainer, { backgroundColor: themeColors.screenBg }]}>
+        <Feather name={StatusIcons.error} size={48} color={themeColors.textTertiary} />
+        <Text style={[styles.errorText, { color: themeColors.textMuted }]}>Capture introuvable</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Retour</Text>
         </TouchableOpacity>
@@ -881,61 +934,61 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const isEditable = capture.state === 'ready' || capture.state === 'failed' || capture.type === 'text';
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.content}>
         {/* Header Info */}
-        <View style={styles.headerCard}>
+        <View style={[styles.headerCard, { backgroundColor: themeColors.cardBg }]}>
           <View style={styles.typeRow}>
-            <View style={[styles.typeIconContainer, { backgroundColor: isAudio ? colors.primary[100] : colors.secondary[100] }]}>
+            <View style={[styles.typeIconContainer, { backgroundColor: isDark ? (isAudio ? colors.primary[900] : colors.secondary[900]) : (isAudio ? colors.primary[100] : colors.secondary[100]) }]}>
               <Feather
                 name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
                 size={20}
-                color={isAudio ? colors.primary[600] : colors.secondary[600]}
+                color={isAudio ? colors.primary[500] : colors.secondary[500]}
               />
             </View>
-            <Text style={styles.typeLabel}>{isAudio ? 'Enregistrement audio' : 'Note texte'}</Text>
+            <Text style={[styles.typeLabel, { color: themeColors.textPrimary }]}>{isAudio ? 'Enregistrement audio' : 'Note texte'}</Text>
           </View>
 
-          <Text style={styles.date}>{formatDate(capture.createdAt)}</Text>
+          <Text style={[styles.date, { color: themeColors.textMuted }]}>{formatDate(capture.createdAt)}</Text>
 
           {isAudio && capture.duration && (
-            <Text style={styles.duration}>Durée: {formatDuration(capture.duration)}</Text>
+            <Text style={[styles.duration, { color: themeColors.textMuted }]}>Durée: {formatDuration(capture.duration)}</Text>
           )}
 
           {/* Status Badge */}
           <View style={styles.statusRow}>
             {capture.state === 'captured' && (
-              <View style={[styles.statusBadge, styles.statusPending]}>
-                <Feather name={StatusIcons.pending} size={14} color={colors.warning[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6 }]}>En attente de transcription</Text>
+              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusPendingBg }]}>
+                <Feather name={StatusIcons.pending} size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>En attente de transcription</Text>
               </View>
             )}
             {capture.state === 'processing' && (
-              <View style={[styles.statusBadge, styles.statusProcessing]}>
-                <ActivityIndicator size="small" color={colors.info[600]} />
-                <Text style={[styles.statusText, { marginLeft: 8 }]}>Transcription en cours...</Text>
+              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusProcessingBg }]}>
+                <ActivityIndicator size="small" color={isDark ? colors.info[400] : colors.info[600]} />
+                <Text style={[styles.statusText, { marginLeft: 8, color: isDark ? colors.info[300] : colors.info[700] }]}>Transcription en cours...</Text>
               </View>
             )}
             {capture.state === 'ready' && (
-              <View style={[styles.statusBadge, styles.statusReady]}>
-                <Feather name={StatusIcons.success} size={14} color={colors.success[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6 }]}>Transcription terminée</Text>
+              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusReadyBg }]}>
+                <Feather name={StatusIcons.success} size={14} color={isDark ? colors.success[400] : colors.success[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.success[300] : colors.success[700] }]}>Transcription terminée</Text>
               </View>
             )}
             {capture.state === 'failed' && (
-              <View style={[styles.statusBadge, styles.statusFailed]}>
-                <Feather name={StatusIcons.error} size={14} color={colors.error[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6 }]}>Transcription échouée</Text>
+              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusFailedBg }]}>
+                <Feather name={StatusIcons.error} size={14} color={isDark ? colors.error[400] : colors.error[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.error[300] : colors.error[700] }]}>Transcription échouée</Text>
               </View>
             )}
           </View>
         </View>
 
         {/* Content */}
-        <View style={styles.contentCard}>
+        <View style={[styles.contentCard, { backgroundColor: themeColors.cardBg }]}>
           <View style={styles.contentHeader}>
-            <Text style={styles.contentTitle}>
-              {isAudio ? 'Transcription' : 'Contenu'}
+            <Text style={[styles.contentTitle, { color: themeColors.textMuted }]}>
+              {isAudio ? 'TRANSCRIPTION' : 'CONTENU'}
             </Text>
             {hasChanges && (
               <View style={styles.unsavedBadge}>
@@ -947,7 +1000,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           {isEditable && hasText ? (
             <TextInput
               ref={textInputRef}
-              style={styles.contentTextInput}
+              style={[styles.contentTextInput, { color: themeColors.textPrimary }]}
               value={editedText}
               onChangeText={handleTextChange}
               multiline
@@ -957,14 +1010,14 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               keyboardType="default"
               textAlignVertical="top"
               placeholder="Saisissez ou corrigez le texte..."
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={themeColors.textMuted}
             />
           ) : hasText ? (
-            <Text style={styles.contentText} selectable>
+            <Text style={[styles.contentText, { color: themeColors.textPrimary }]} selectable>
               {editedText}
             </Text>
           ) : (
-            <Text style={styles.placeholderText}>
+            <Text style={[styles.placeholderText, { color: themeColors.textMuted }]}>
               {capture.state === 'processing'
                 ? 'Transcription en cours...'
                 : capture.state === 'failed'
@@ -976,29 +1029,29 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
         {/* Raw Transcript (before LLM) - Show when different from final text */}
         {metadata[METADATA_KEYS.RAW_TRANSCRIPT] && metadata[METADATA_KEYS.RAW_TRANSCRIPT] !== capture.normalizedText && (
-          <View style={styles.rawTranscriptCard}>
+          <View style={[styles.rawTranscriptCard, { backgroundColor: themeColors.metadataBg, borderColor: themeColors.metadataBorder }]}>
             <Pressable
               style={styles.rawTranscriptHeader}
               onPress={() => setShowRawTranscript(!showRawTranscript)}
             >
               <View style={styles.rawTranscriptTitleRow}>
-                <Feather name={CaptureIcons.voice} size={16} color={colors.neutral[600]} />
-                <Text style={styles.rawTranscriptTitle}>Transcription brute (Whisper)</Text>
+                <Feather name={CaptureIcons.voice} size={16} color={themeColors.textSecondary} />
+                <Text style={[styles.rawTranscriptTitle, { color: themeColors.textSecondary }]}>Transcription brute (Whisper)</Text>
               </View>
               <Feather
                 name={showRawTranscript ? NavigationIcons.down : NavigationIcons.forward}
                 size={16}
-                color={colors.neutral[500]}
+                color={themeColors.textTertiary}
               />
             </Pressable>
             {showRawTranscript && (
-              <View style={styles.rawTranscriptContent}>
-                <Text style={styles.rawTranscriptText} selectable>
+              <View style={[styles.rawTranscriptContent, { backgroundColor: themeColors.metadataContentBg, borderTopColor: themeColors.metadataBorder }]}>
+                <Text style={[styles.rawTranscriptText, { color: themeColors.textSecondary }]} selectable>
                   {metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
                 </Text>
-                <View style={styles.rawTranscriptBadge}>
-                  <Feather name="zap" size={12} color={colors.success[600]} />
-                  <Text style={styles.rawTranscriptBadgeText}>Amélioré par IA</Text>
+                <View style={[styles.rawTranscriptBadge, { backgroundColor: isDark ? colors.success[900] : '#E8F5E9' }]}>
+                  <Feather name="zap" size={12} color={isDark ? colors.success[400] : colors.success[600]} />
+                  <Text style={[styles.rawTranscriptBadgeText, { color: isDark ? colors.success[400] : colors.success[600] }]}>Amélioré par IA</Text>
                 </View>
               </View>
             )}
@@ -1007,55 +1060,55 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
         {/* Metadata Section */}
         {Object.keys(metadata).length > 0 && (
-          <View style={styles.metadataCard}>
+          <View style={[styles.metadataCard, { backgroundColor: themeColors.metadataBg, borderColor: themeColors.metadataBorder }]}>
             <Pressable
               style={styles.metadataHeader}
               onPress={() => setShowMetadata(!showMetadata)}
             >
               <View style={styles.metadataTitleRow}>
-                <Feather name="info" size={16} color={colors.neutral[600]} />
-                <Text style={styles.metadataTitle}>Métadonnées de transcription</Text>
+                <Feather name="info" size={16} color={themeColors.textSecondary} />
+                <Text style={[styles.metadataTitle, { color: themeColors.textSecondary }]}>Métadonnées de transcription</Text>
               </View>
               <Feather
                 name={showMetadata ? NavigationIcons.down : NavigationIcons.forward}
                 size={16}
-                color={colors.neutral[500]}
+                color={themeColors.textTertiary}
               />
             </Pressable>
             {showMetadata && (
-              <View style={styles.metadataContent}>
+              <View style={[styles.metadataContent, { backgroundColor: themeColors.metadataContentBg, borderTopColor: themeColors.metadataBorder }]}>
                 {metadata[METADATA_KEYS.WHISPER_MODEL] && (
-                  <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Moteur de transcription</Text>
-                    <Text style={styles.metadataValue}>{metadata[METADATA_KEYS.WHISPER_MODEL]}</Text>
+                  <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
+                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Moteur de transcription</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.WHISPER_MODEL]}</Text>
                   </View>
                 )}
                 {metadata[METADATA_KEYS.WHISPER_DURATION_MS] && (
-                  <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Durée de transcription</Text>
-                    <Text style={styles.metadataValue}>
+                  <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
+                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Durée de transcription</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>
                       {Math.round(parseInt(metadata[METADATA_KEYS.WHISPER_DURATION_MS]!) / 1000 * 10) / 10}s
                     </Text>
                   </View>
                 )}
                 {metadata[METADATA_KEYS.LLM_MODEL] && (
-                  <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Modèle LLM</Text>
-                    <Text style={styles.metadataValue}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                  <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
+                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Modèle LLM</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
                   </View>
                 )}
                 {metadata[METADATA_KEYS.LLM_DURATION_MS] && (
-                  <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Durée traitement LLM</Text>
-                    <Text style={styles.metadataValue}>
+                  <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
+                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Durée traitement LLM</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>
                       {Math.round(parseInt(metadata[METADATA_KEYS.LLM_DURATION_MS]!) / 1000 * 10) / 10}s
                     </Text>
                   </View>
                 )}
                 {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT] && (
-                  <View style={styles.metadataRow}>
-                    <Text style={styles.metadataLabel}>Vocabulaire utilisé</Text>
-                    <Text style={styles.metadataValue} numberOfLines={2}>
+                  <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
+                    <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Vocabulaire utilisé</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]} numberOfLines={2}>
                       {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT]}
                     </Text>
                   </View>
@@ -1067,7 +1120,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
         {/* Analysis Section - Show for ready captures */}
         {capture.state === 'ready' && (
-          <View style={styles.analysisCard}>
+          <View style={[styles.analysisCard, { backgroundColor: themeColors.analysisBg, borderColor: themeColors.analysisBorder }]}>
             <Pressable
               style={styles.analysisHeader}
               onPress={() => {
@@ -1076,23 +1129,23 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               }}
             >
               <View style={styles.analysisTitleRow}>
-                <Feather name="cpu" size={16} color={colors.primary[700]} />
-                <Text style={styles.analysisTitle}>Analyse IA</Text>
+                <Feather name="cpu" size={16} color={isDark ? colors.primary[400] : colors.primary[700]} />
+                <Text style={[styles.analysisTitle, { color: isDark ? colors.primary[300] : colors.primary[700] }]}>Analyse IA</Text>
               </View>
               <Feather
                 name={showAnalysis ? NavigationIcons.down : NavigationIcons.forward}
                 size={16}
-                color={colors.primary[600]}
+                color={isDark ? colors.primary[400] : colors.primary[600]}
               />
             </Pressable>
             {showAnalysis && (
-              <View style={styles.analysisContent}>
+              <View style={[styles.analysisContent, { backgroundColor: themeColors.analysisContentBg, borderTopColor: themeColors.analysisBorder }]}>
                 {/* Show message if no text to analyze */}
                 {!editedText ? (
                   <View style={styles.noTextMessage}>
-                    <Feather name="file-text" size={32} color={colors.neutral[400]} />
-                    <Text style={styles.noTextTitle}>Pas de texte à analyser</Text>
-                    <Text style={styles.noTextSubtitle}>
+                    <Feather name="file-text" size={32} color={themeColors.textTertiary} />
+                    <Text style={[styles.noTextTitle, { color: themeColors.textSecondary }]}>Pas de texte à analyser</Text>
+                    <Text style={[styles.noTextSubtitle, { color: themeColors.textTertiary }]}>
                       La transcription n'a pas produit de texte. Essayez avec un enregistrement plus long ou plus clair.
                     </Text>
                   </View>
@@ -1126,87 +1179,87 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       return null;
                     })()}
                 {/* Summary Section */}
-                <View style={styles.analysisSection}>
+                <View style={[styles.analysisSection, { borderBottomColor: themeColors.borderDefault }]}>
                   <View style={styles.analysisSectionHeader}>
                     <View style={styles.analysisSectionTitleRow}>
-                      <Feather name="file-text" size={16} color={colors.primary[600]} />
-                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}</Text>
+                      <Feather name="file-text" size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
+                      <Text style={[styles.analysisSectionTitle, { color: themeColors.textPrimary }]}>{ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}</Text>
                     </View>
                     {/* Show button: loading, or no data, or debug mode for regeneration */}
                     {(analysisLoading[ANALYSIS_TYPES.SUMMARY] || !analyses[ANALYSIS_TYPES.SUMMARY] || debugMode) && (
                       <TouchableOpacity
-                        style={styles.generateButton}
+                        style={[styles.generateButton, { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder }]}
                         onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)}
                         disabled={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
                       >
                         {analysisLoading[ANALYSIS_TYPES.SUMMARY] ? (
-                          <ActivityIndicator size="small" color="#9C27B0" />
+                          <ActivityIndicator size="small" color={colors.primary[500]} />
                         ) : analyses[ANALYSIS_TYPES.SUMMARY] ? (
-                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                          <Feather name={ActionIcons.refresh} size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
                         ) : (
-                          <Text style={styles.generateButtonText}>Générer</Text>
+                          <Text style={[styles.generateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>Générer</Text>
                         )}
                       </TouchableOpacity>
                     )}
                   </View>
                   {analyses[ANALYSIS_TYPES.SUMMARY] && (
-                    <Text style={styles.analysisResult} selectable>
+                    <Text style={[styles.analysisResult, { color: themeColors.textPrimary }]} selectable>
                       {analyses[ANALYSIS_TYPES.SUMMARY].content}
                     </Text>
                   )}
                 </View>
 
                 {/* Highlights Section */}
-                <View style={styles.analysisSection}>
+                <View style={[styles.analysisSection, { borderBottomColor: themeColors.borderDefault }]}>
                   <View style={styles.analysisSectionHeader}>
                     <View style={styles.analysisSectionTitleRow}>
                       <Feather name="star" size={16} color={colors.warning[500]} />
-                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}</Text>
+                      <Text style={[styles.analysisSectionTitle, { color: themeColors.textPrimary }]}>{ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}</Text>
                     </View>
                     {/* Show button: loading, or no data, or debug mode for regeneration */}
                     {(analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] || !analyses[ANALYSIS_TYPES.HIGHLIGHTS] || debugMode) && (
                       <TouchableOpacity
-                        style={styles.generateButton}
+                        style={[styles.generateButton, { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder }]}
                         onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)}
                         disabled={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
                       >
                         {analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] ? (
-                          <ActivityIndicator size="small" color="#9C27B0" />
+                          <ActivityIndicator size="small" color={colors.primary[500]} />
                         ) : analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? (
-                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                          <Feather name={ActionIcons.refresh} size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
                         ) : (
-                          <Text style={styles.generateButtonText}>Générer</Text>
+                          <Text style={[styles.generateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>Générer</Text>
                         )}
                       </TouchableOpacity>
                     )}
                   </View>
                   {analyses[ANALYSIS_TYPES.HIGHLIGHTS] && (
-                    <Text style={styles.analysisResult} selectable>
+                    <Text style={[styles.analysisResult, { color: themeColors.textPrimary }]} selectable>
                       {analyses[ANALYSIS_TYPES.HIGHLIGHTS].content}
                     </Text>
                   )}
                 </View>
 
                 {/* Action Items Section */}
-                <View style={styles.analysisSection}>
+                <View style={[styles.analysisSection, { borderBottomColor: themeColors.borderDefault }]}>
                   <View style={styles.analysisSectionHeader}>
                     <View style={styles.analysisSectionTitleRow}>
                       <Feather name="check-square" size={16} color={colors.success[500]} />
-                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}</Text>
+                      <Text style={[styles.analysisSectionTitle, { color: themeColors.textPrimary }]}>{ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}</Text>
                     </View>
                     {/* Show button: loading, or no data, or debug mode for regeneration */}
                     {(analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] || !analyses[ANALYSIS_TYPES.ACTION_ITEMS] || debugMode) && (
                       <TouchableOpacity
-                        style={styles.generateButton}
+                        style={[styles.generateButton, { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder }]}
                         onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
                         disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
                       >
                         {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                          <ActivityIndicator size="small" color="#9C27B0" />
+                          <ActivityIndicator size="small" color={colors.primary[500]} />
                         ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                          <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
+                          <Feather name={ActionIcons.refresh} size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
                         ) : (
-                          <Text style={styles.generateButtonText}>Générer</Text>
+                          <Text style={[styles.generateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>Générer</Text>
                         )}
                       </TouchableOpacity>
                     )}
@@ -1217,10 +1270,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       return (
                         <View style={styles.actionItemsList}>
                           {actionItems.map((item, index) => (
-                            <View key={index} style={styles.actionItem}>
+                            <View key={index} style={[styles.actionItem, { backgroundColor: themeColors.actionItemBg, borderColor: themeColors.actionItemBorder }]}>
                               <View style={styles.actionItemHeader}>
-                                <View style={styles.actionItemCheckbox} />
-                                <Text style={styles.actionItemTitle} selectable>
+                                <View style={[styles.actionItemCheckbox, { borderColor: isDark ? colors.primary[400] : colors.primary[600] }]} />
+                                <Text style={[styles.actionItemTitle, { color: themeColors.textPrimary }]} selectable>
                                   {item.title}
                                 </Text>
                               </View>
@@ -1239,15 +1292,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                 <TouchableOpacity
                                   style={[
                                     styles.actionItemTag,
-                                    styles.actionItemTagClickable,
-                                    !item.deadline_date && !item.deadline_text && styles.actionItemTagEmpty,
+                                    { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder },
+                                    !item.deadline_date && !item.deadline_text && { backgroundColor: isDark ? colors.neutral[800] : '#FAFAFA', borderStyle: 'dashed' as const },
                                   ]}
                                   onPress={() => handleOpenDatePicker(index, item.deadline_date)}
                                 >
-                                  <Feather name="calendar" size={13} color={colors.primary[700]} style={styles.actionItemTagIconFeather} />
+                                  <Feather name="calendar" size={13} color={isDark ? colors.primary[400] : colors.primary[700]} style={styles.actionItemTagIconFeather} />
                                   <Text style={[
                                     styles.actionItemTagText,
-                                    !item.deadline_date && !item.deadline_text && styles.actionItemTagTextEmpty,
+                                    { color: isDark ? colors.primary[300] : colors.primary[700] },
+                                    !item.deadline_date && !item.deadline_text && { fontStyle: 'italic' as const },
                                   ]}>
                                     {item.deadline_date
                                       ? formatDeadlineDate(item.deadline_date)
@@ -1258,15 +1312,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                 <TouchableOpacity
                                   style={[
                                     styles.actionItemTag,
-                                    styles.actionItemTagClickable,
-                                    !item.target && styles.actionItemTagEmpty,
+                                    { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder },
+                                    !item.target && { backgroundColor: isDark ? colors.neutral[800] : '#FAFAFA', borderStyle: 'dashed' as const },
                                   ]}
                                   onPress={() => handleOpenContactPicker(index)}
                                 >
-                                  <Feather name="user" size={13} color={colors.primary[700]} style={styles.actionItemTagIconFeather} />
+                                  <Feather name="user" size={13} color={isDark ? colors.primary[400] : colors.primary[700]} style={styles.actionItemTagIconFeather} />
                                   <Text style={[
                                     styles.actionItemTagText,
-                                    !item.target && styles.actionItemTagTextEmpty,
+                                    { color: isDark ? colors.primary[300] : colors.primary[700] },
+                                    !item.target && { fontStyle: 'italic' as const },
                                   ]}>
                                     {item.target || 'Ajouter contact'}
                                   </Text>
@@ -1457,8 +1512,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             setContactSearchQuery('');
           }}
         >
-        <View style={styles.contactPickerContainer}>
-          <View style={styles.contactPickerHeader}>
+        <View style={[styles.contactPickerContainer, { backgroundColor: themeColors.contactBg }]}>
+          <View style={[styles.contactPickerHeader, { backgroundColor: themeColors.contactHeaderBg, borderBottomColor: themeColors.borderDefault }]}>
             <TouchableOpacity
               style={styles.contactPickerCloseButton}
               onPress={() => {
@@ -1467,16 +1522,16 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 setContactSearchQuery('');
               }}
             >
-              <Text style={styles.contactPickerCloseText}>Fermer</Text>
+              <Text style={[styles.contactPickerCloseText, { color: colors.primary[500] }]}>Fermer</Text>
             </TouchableOpacity>
-            <Text style={styles.contactPickerTitle}>Choisir un contact</Text>
+            <Text style={[styles.contactPickerTitle, { color: themeColors.textPrimary }]}>Choisir un contact</Text>
             <View style={{ width: 60 }} />
           </View>
-          <View style={styles.contactSearchContainer}>
+          <View style={[styles.contactSearchContainer, { backgroundColor: themeColors.contactHeaderBg }]}>
             <TextInput
-              style={styles.contactSearchInput}
+              style={[styles.contactSearchInput, { backgroundColor: themeColors.contactSearchBg, color: themeColors.textPrimary }]}
               placeholder="Rechercher..."
-              placeholderTextColor="#8E8E93"
+              placeholderTextColor={themeColors.textMuted}
               value={contactSearchQuery}
               onChangeText={setContactSearchQuery}
               autoCapitalize="none"
@@ -1485,8 +1540,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           </View>
           {loadingContacts ? (
             <View style={styles.contactLoadingContainer}>
-              <ActivityIndicator size="large" color="#9C27B0" />
-              <Text style={styles.contactLoadingText}>Chargement des contacts...</Text>
+              <ActivityIndicator size="large" color={colors.primary[500]} />
+              <Text style={[styles.contactLoadingText, { color: themeColors.textSecondary }]}>Chargement des contacts...</Text>
             </View>
           ) : (
             <FlatList
@@ -1494,7 +1549,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               keyExtractor={(item, index) => (item as { id?: string }).id || `contact-${index}`}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.contactItem}
+                  style={[styles.contactItem, { backgroundColor: themeColors.contactItemBg, borderBottomColor: themeColors.borderDefault }]}
                   onPress={() => handleSelectContact(item)}
                 >
                   <View style={styles.contactAvatar}>
@@ -1503,9 +1558,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     </Text>
                   </View>
                   <View style={styles.contactInfo}>
-                    <Text style={styles.contactName}>{item.name || 'Sans nom'}</Text>
+                    <Text style={[styles.contactName, { color: themeColors.textPrimary }]}>{item.name || 'Sans nom'}</Text>
                     {item.phoneNumbers && item.phoneNumbers.length > 0 && (
-                      <Text style={styles.contactPhone}>
+                      <Text style={[styles.contactPhone, { color: themeColors.textMuted }]}>
                         {item.phoneNumbers[0].number}
                       </Text>
                     )}
@@ -1514,7 +1569,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               )}
               ListEmptyComponent={
                 <View style={styles.contactEmptyContainer}>
-                  <Text style={styles.contactEmptyText}>Aucun contact trouve</Text>
+                  <Text style={[styles.contactEmptyText, { color: themeColors.textMuted }]}>Aucun contact trouvé</Text>
                 </View>
               }
             />
@@ -1524,15 +1579,15 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       )}
 
       {/* Action Bar */}
-      <View style={styles.actionBar}>
+      <View style={[styles.actionBar, { backgroundColor: themeColors.cardBg, borderTopColor: themeColors.borderSubtle }]}>
         {hasChanges ? (
           <>
             <TouchableOpacity
-              style={[styles.actionButton, styles.discardButton]}
+              style={[styles.actionButton, styles.discardButton, { backgroundColor: isDark ? colors.neutral[700] : '#F2F2F7' }]}
               onPress={handleDiscardChanges}
             >
-              <Feather name="rotate-ccw" size={22} color={colors.neutral[500]} />
-              <Text style={[styles.actionLabel, styles.discardLabel]}>Annuler</Text>
+              <Feather name="rotate-ccw" size={22} color={themeColors.textTertiary} />
+              <Text style={[styles.actionLabel, { color: themeColors.textMuted }]}>Annuler</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -1560,12 +1615,12 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     size={22}
                     color={copied ? colors.success[500] : colors.primary[500]}
                   />
-                  <Text style={styles.actionLabel}>{copied ? 'Copié!' : 'Copier'}</Text>
+                  <Text style={[styles.actionLabel, { color: colors.primary[500] }]}>{copied ? 'Copié!' : 'Copier'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
                   <Feather name={ActionIcons.share} size={22} color={colors.primary[500]} />
-                  <Text style={styles.actionLabel}>Partager</Text>
+                  <Text style={[styles.actionLabel, { color: colors.primary[500] }]}>Partager</Text>
                 </TouchableOpacity>
               </>
             )}

@@ -21,13 +21,13 @@ export function LoadingView({
     <View
       className={cn(
         'items-center justify-center',
-        fullScreen ? 'flex-1 bg-neutral-100 dark:bg-neutral-900' : 'py-8',
+        fullScreen ? 'flex-1 bg-bg-screen' : 'py-8',
         className
       )}
     >
       <ActivityIndicator size={size} color={colors.primary[500]} />
       {message && (
-        <Text className="mt-4 text-base text-neutral-500 dark:text-neutral-400 text-center">
+        <Text className="mt-4 text-base text-text-secondary text-center">
           {message}
         </Text>
       )}
