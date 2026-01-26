@@ -66,8 +66,8 @@ services:
       # ALTERNATIVE: Mount to NAS for unlimited storage
       # - /path/to/nas/pensine-audios:/data
     ports:
-      - "9000:9000"  # API
-      - "9001:9001"  # Web Console
+      - "9002:9000"  # API (externe 9002 -> interne 9000)
+      - "9003:9001"  # Web Console (externe 9003 -> interne 9001)
     networks:
       - pensine-network
     healthcheck:
@@ -77,51 +77,73 @@ services:
       retries: 3
 
   # ==========================================
-  # BACKEND: NestJS API (placeholder)
-  # Will be built in subsequent stories
+  # BACKEND: NestJS API
   # ==========================================
-  # Uncomment when backend is ready:
-  # backend:
-  #   build: ./backend
-  #   container_name: pensine-api
-  #   restart: unless-stopped
-  #   ports:
-  #     - "3000:3000"
-  #   environment:
-  #     NODE_ENV: ${NODE_ENV:-development}
-  #
-  #     # Database
-  #     DATABASE_URL: postgres://pensine:${POSTGRES_PASSWORD}@postgres:5432/pensine
-  #
-  #     # Message Queue
-  #     RABBITMQ_URL: amqp://pensine:${RABBITMQ_PASSWORD}@rabbitmq:5672
-  #
-  #     # Supabase Auth
-  #     SUPABASE_URL: ${SUPABASE_URL}
-  #     SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-  #     SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
-  #     JWT_SECRET: ${JWT_SECRET}
-  #
-  #     # MinIO Storage
-  #     MINIO_ENDPOINT: minio
-  #     MINIO_PORT: 9000
-  #     MINIO_USE_SSL: false
-  #     MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
-  #     MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
-  #     rabbitmq:
-  #       condition: service_healthy
-  #     minio:
-  #       condition: service_healthy
-  #   networks:
-  #     - pensine-network
-  #   healthcheck:
-  #     test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
-  #     interval: 30s
-  #     timeout: 10s
-  #     retries: 3
+  backend:
+    image: ${REGISTRY:-cregistry.yolo.yt}/pensine-backend:${BACKEND_VERSION:-latest}
+    container_name: pensine-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+
+      # Database
+      DATABASE_URL: postgres://pensine:${POSTGRES_PASSWORD}@postgres:5432/pensine
+
+      # Message Queue
+      RABBITMQ_URL: amqp://pensine:${RABBITMQ_PASSWORD}@rabbitmq:5672
+
+      # Supabase Auth
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+
+      # MinIO Storage
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: 9000
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+
+      # Google OAuth
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # WEB: Next.js Frontend
+  # ==========================================
+  web:
+    image: ${REGISTRY:-cregistry.yolo.yt}/pensine-web:${WEB_VERSION:-latest}
+    container_name: pensine-web
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
 networks:
   pensine-network:

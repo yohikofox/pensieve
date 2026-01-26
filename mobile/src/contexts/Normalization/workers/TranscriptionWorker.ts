@@ -31,10 +31,12 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import { InteractionManager } from 'react-native';
+import { InteractionManager, Platform } from 'react-native';
 import type { Subscription } from 'rxjs';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
 import { TranscriptionService } from '../services/TranscriptionService';
+import { TranscriptionEngineService } from '../services/TranscriptionEngineService';
+import { NativeTranscriptionEngine } from '../services/NativeTranscriptionEngine';
 import { WhisperModelService, type WhisperModelSize } from '../services/WhisperModelService';
 import { PostProcessingService } from '../services/PostProcessingService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
@@ -48,6 +50,7 @@ import {
   showTranscriptionFailedNotification,
 } from '../../../shared/utils/notificationUtils';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import type { TranscriptionEngineType } from '../services/ITranscriptionEngine';
 
 /**
  * Worker state
@@ -60,6 +63,8 @@ export class TranscriptionWorker {
   private isProcessing: boolean = false; // True when actively processing queue
   private whisperModelService: WhisperModelService;
   private postProcessingService: PostProcessingService;
+  private engineService: TranscriptionEngineService;
+  private nativeEngine: NativeTranscriptionEngine;
   private eventSubscription: Subscription | null = null;
   private currentWhisperModel: WhisperModelSize | null = null;
 
@@ -69,10 +74,43 @@ export class TranscriptionWorker {
     @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
     @inject(TOKENS.ICaptureMetadataRepository) private metadataRepository: ICaptureMetadataRepository,
     @inject('EventBus') private eventBus: EventBus,
-    postProcessingService: PostProcessingService
+    postProcessingService: PostProcessingService,
+    engineService: TranscriptionEngineService,
+    nativeEngine: NativeTranscriptionEngine
   ) {
     this.whisperModelService = new WhisperModelService();
     this.postProcessingService = postProcessingService;
+    this.engineService = engineService;
+    this.nativeEngine = nativeEngine;
+  }
+
+  /**
+   * Check if native file transcription is supported
+   * Only available on Android 13+ (API 33+)
+   */
+  private isNativeFileTranscriptionSupported(): boolean {
+    if (Platform.OS !== 'android') {
+      return false; // iOS doesn't support file-based native transcription
+    }
+    const apiLevel = Platform.Version;
+    return typeof apiLevel === 'number' && apiLevel >= 33;
+  }
+
+  /**
+   * Get the effective engine to use for transcription
+   * Falls back to Whisper if native is not available for file transcription
+   */
+  private async getEffectiveEngine(): Promise<TranscriptionEngineType> {
+    const selectedEngine = await this.engineService.getSelectedEngineType();
+
+    if (selectedEngine === 'native') {
+      if (!this.isNativeFileTranscriptionSupported()) {
+        console.log('[TranscriptionWorker] Native file transcription not supported on this device, falling back to Whisper');
+        return 'whisper';
+      }
+    }
+
+    return selectedEngine;
   }
 
   /**
@@ -328,18 +366,43 @@ export class TranscriptionWorker {
 
       console.log('[TranscriptionWorker] 📋 Found capture in queue:', queuedCapture.captureId);
 
-      // Ensure model is loaded before transcription
-      const modelReady = await this.ensureModelLoaded();
-      if (!modelReady) {
-        console.warn('[TranscriptionWorker] ⏸️ Skipping transcription - model not ready');
-        return false;
+      // Determine which engine to use
+      const effectiveEngine = await this.getEffectiveEngine();
+      const selectedEngine = await this.engineService.getSelectedEngineType();
+
+      // Log if fallback occurred
+      if (selectedEngine === 'native' && effectiveEngine === 'whisper') {
+        console.log('[TranscriptionWorker] ⚠️ Native engine selected but not supported for file transcription, falling back to Whisper');
+      }
+      console.log(`[TranscriptionWorker] 🔧 Using engine: ${effectiveEngine}`);
+
+      // Ensure model is loaded for Whisper engine
+      if (effectiveEngine === 'whisper') {
+        const modelReady = await this.ensureModelLoaded();
+        if (!modelReady) {
+          // Mark item as failed instead of silently skipping
+          const errorMessage = selectedEngine === 'native'
+            ? 'Transcription native non supportée sur cet appareil et aucun modèle Whisper téléchargé'
+            : 'Aucun modèle Whisper téléchargé';
+
+          console.error('[TranscriptionWorker] ❌ Cannot transcribe:', errorMessage);
+
+          await this.captureRepository.update(queuedCapture.captureId, {
+            state: 'failed',
+          });
+          await this.queueService.markFailed(queuedCapture.captureId, errorMessage);
+          await showTranscriptionFailedNotification(queuedCapture.captureId, errorMessage);
+
+          return true; // Item was processed (as failed)
+        }
       }
 
       console.log(
         `[TranscriptionWorker] 🎙️  Processing capture ${queuedCapture.captureId}` +
           (queuedCapture.audioDuration
             ? ` (${Math.round(queuedCapture.audioDuration / 1000)}s)`
-            : '')
+            : '') +
+          ` [${effectiveEngine}]`
       );
 
       try {
@@ -348,20 +411,37 @@ export class TranscriptionWorker {
           state: 'processing',
         });
 
-        // Transcribe audio using Whisper.rn via TranscriptionService
-        const transcriptionResult = await this.transcriptionService.transcribe(
-          queuedCapture.audioPath,
-          queuedCapture.audioDuration
-        );
+        let rawTranscript: string;
+        let wavPath: string | undefined;
+        let transcriptPrompt: string | undefined;
 
-        // Store raw Whisper transcript
-        const rawTranscript = transcriptionResult.text;
+        if (effectiveEngine === 'native') {
+          // Use native speech recognition
+          const nativeResult = await this.nativeEngine.transcribeFile(
+            queuedCapture.audioPath,
+            { language: 'fr' } // TODO: Get from user settings
+          );
+          rawTranscript = nativeResult.text;
+        } else {
+          // Use Whisper.rn via TranscriptionService
+          const transcriptionResult = await this.transcriptionService.transcribe(
+            queuedCapture.audioPath,
+            queuedCapture.audioDuration
+          );
+          rawTranscript = transcriptionResult.text;
+          wavPath = transcriptionResult.wavPath;
+          transcriptPrompt = transcriptionResult.transcriptPrompt;
+        }
 
-        // Post-process transcription with LLM if enabled
+        // Post-process transcription with LLM if automatic post-processing is enabled
         // Use InteractionManager to avoid blocking UI during LLM inference
         let finalText = rawTranscript;
         let llmApplied = false;
-        if (await this.postProcessingService.isEnabled()) {
+
+        // Check if automatic post-processing is enabled (separate from general post-processing availability)
+        const autoPostProcessEnabled = await this.postProcessingService.isAutoPostProcessEnabled();
+
+        if (autoPostProcessEnabled && await this.postProcessingService.isEnabled()) {
           try {
             // Wait for UI interactions to complete before heavy LLM work
             await new Promise<void>((resolve) => {
@@ -381,6 +461,8 @@ export class TranscriptionWorker {
             console.warn('[TranscriptionWorker] ⚠️ Post-processing failed, using original:', postProcessError);
             // Fallback: use original text if LLM fails
           }
+        } else if (!autoPostProcessEnabled) {
+          console.log('[TranscriptionWorker] ⏭️ Auto post-processing disabled, using raw transcript');
         }
 
         // Update capture with normalized text and state
@@ -389,20 +471,21 @@ export class TranscriptionWorker {
           finalTextLength: finalText?.length || 0,
           finalTextPreview: finalText?.substring(0, 50) || '(empty)',
           rawTranscriptLength: rawTranscript?.length || 0,
+          engine: effectiveEngine,
         });
         await this.captureRepository.update(queuedCapture.captureId, {
           normalizedText: finalText,
           state: 'ready',
-          wavPath: transcriptionResult.wavPath,
+          wavPath: wavPath,
         });
 
         // Save metadata to capture_metadata table
-        const metrics = this.transcriptionService.getLastPerformanceMetrics();
+        const metrics = effectiveEngine === 'whisper' ? this.transcriptionService.getLastPerformanceMetrics() : null;
         const llmModelId = llmApplied ? this.postProcessingService.getCurrentModelId() : null;
         await this.metadataRepository.setMany(queuedCapture.captureId, [
           { key: METADATA_KEYS.RAW_TRANSCRIPT, value: rawTranscript },
-          { key: METADATA_KEYS.WHISPER_MODEL, value: this.currentWhisperModel },
-          { key: METADATA_KEYS.TRANSCRIPT_PROMPT, value: transcriptionResult.transcriptPrompt || null },
+          { key: METADATA_KEYS.WHISPER_MODEL, value: effectiveEngine === 'whisper' ? this.currentWhisperModel : 'native' },
+          { key: METADATA_KEYS.TRANSCRIPT_PROMPT, value: transcriptPrompt || null },
           { key: METADATA_KEYS.WHISPER_DURATION_MS, value: metrics?.transcriptionDuration?.toString() || null },
           ...(llmApplied && llmModelId ? [
             { key: METADATA_KEYS.LLM_MODEL, value: llmModelId },
@@ -410,12 +493,12 @@ export class TranscriptionWorker {
         ]);
 
         console.log(
-          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId}: "${finalText.substring(0, 50)}${finalText.length > 50 ? '...' : ''}"` +
-          (transcriptionResult.wavPath ? ` (WAV kept: ${transcriptionResult.wavPath})` : '') +
-          (transcriptionResult.transcriptPrompt ? ` (prompt: ${transcriptionResult.transcriptPrompt.substring(0, 30)}...)` : '')
+          `[TranscriptionWorker] ✅ Transcribed capture ${queuedCapture.captureId} [${effectiveEngine}]: "${finalText.substring(0, 50)}${finalText.length > 50 ? '...' : ''}"` +
+          (wavPath ? ` (WAV kept: ${wavPath})` : '') +
+          (transcriptPrompt ? ` (prompt: ${transcriptPrompt.substring(0, 30)}...)` : '')
         );
 
-        // Log performance metrics
+        // Log performance metrics (Whisper only)
         if (metrics) {
           console.log(
             `[TranscriptionWorker] 📊 Performance: ${metrics.transcriptionDuration}ms for ${metrics.audioDuration}ms audio (${metrics.ratio}x) - NFR2: ${metrics.meetsNFR2 ? '✅' : '❌'}`
@@ -426,7 +509,7 @@ export class TranscriptionWorker {
         await this.queueService.markCompleted(queuedCapture.captureId);
 
         // Send notification (if app backgrounded)
-        await showTranscriptionCompleteNotification(queuedCapture.captureId, transcriptionResult.text);
+        await showTranscriptionCompleteNotification(queuedCapture.captureId, finalText);
       } catch (transcriptionError) {
         // Update capture state to 'failed'
         await this.captureRepository.update(queuedCapture.captureId, {

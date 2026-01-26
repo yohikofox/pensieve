@@ -120,7 +120,8 @@ function parseActionItems(content: string): ActionItem[] | null {
       return parsed.items;
     }
     return null;
-  } catch {
+  } catch (error) {
+    console.error('[parseActionItems] Failed to parse:', error);
     return null;
   }
 }
@@ -235,7 +236,37 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   useEffect(() => {
     loadCapture();
-  }, [captureId]);
+  }, [loadCapture]);
+
+  // Poll for updates when capture is in a pending state (captured or processing)
+  useEffect(() => {
+    // Only poll if capture exists and is in a non-final state
+    if (!capture || (capture.state !== 'captured' && capture.state !== 'processing')) {
+      return;
+    }
+
+    console.log('[CaptureDetailScreen] Starting polling for capture updates, state:', capture.state);
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+        const updatedCapture = await repository.findById(captureId);
+
+        if (updatedCapture && updatedCapture.state !== capture.state) {
+          console.log('[CaptureDetailScreen] Capture state changed:', capture.state, '->', updatedCapture.state);
+          // State changed, reload everything
+          await loadCapture();
+        }
+      } catch (error) {
+        console.error('[CaptureDetailScreen] Polling error:', error);
+      }
+    }, 2000); // Poll every 2 seconds
+
+    return () => {
+      console.log('[CaptureDetailScreen] Stopping polling');
+      clearInterval(pollInterval);
+    };
+  }, [capture?.state, captureId, loadCapture]);
 
   // Load existing analyses
   useEffect(() => {
@@ -687,7 +718,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const loadCapture = async () => {
+  const loadCapture = useCallback(async () => {
     try {
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
       const metadataRepository = container.resolve<ICaptureMetadataRepository>(TOKENS.ICaptureMetadataRepository);
@@ -711,7 +742,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [captureId]);
 
   const handleTextChange = (text: string) => {
     setEditedText(text);

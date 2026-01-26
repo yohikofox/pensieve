@@ -21,6 +21,7 @@ import {
   TouchableOpacity,
   RefreshControl,
   Alert,
+  Platform,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -32,6 +33,8 @@ import type { ICaptureRepository } from "../../contexts/capture/domain/ICaptureR
 import type { Capture } from "../../contexts/capture/domain/Capture.model";
 import { TranscriptionQueueService } from "../../contexts/Normalization/services/TranscriptionQueueService";
 import { WhisperModelService } from "../../contexts/Normalization/services/WhisperModelService";
+import { TranscriptionEngineService } from "../../contexts/Normalization/services/TranscriptionEngineService";
+import { NativeTranscriptionEngine } from "../../contexts/Normalization/services/NativeTranscriptionEngine";
 import { useSettingsStore } from "../../stores/settingsStore";
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -153,27 +156,86 @@ export function CapturesListScreen() {
 
   const handleTranscribe = async (capture: Capture) => {
     try {
-      // Check if any model is downloaded
-      const modelService = new WhisperModelService();
-      const bestModel = await modelService.getBestAvailableModel();
+      // Check which engine is selected
+      const engineService = container.resolve(TranscriptionEngineService);
+      const selectedEngine = await engineService.getSelectedEngineType();
 
-      if (!bestModel) {
-        Alert.alert(
-          "Modèle requis",
-          "Aucun modèle Whisper n'est téléchargé. Veuillez en télécharger un dans les Paramètres.",
-          [
-            { text: "Annuler", style: "cancel" },
-            {
-              text: "Aller aux Paramètres",
-              onPress: () => {
-                // Navigate to Settings tab
-                // @ts-ignore - Tab navigation
-                navigation.getParent()?.navigate("Settings");
+      if (selectedEngine === 'whisper') {
+        // Check if Whisper model is downloaded
+        const modelService = new WhisperModelService();
+        const bestModel = await modelService.getBestAvailableModel();
+
+        if (!bestModel) {
+          Alert.alert(
+            "Modèle requis",
+            "Aucun modèle Whisper n'est téléchargé. Veuillez en télécharger un dans les Paramètres.",
+            [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Aller aux Paramètres",
+                onPress: () => {
+                  // Navigate to Settings tab
+                  // @ts-ignore - Tab navigation
+                  navigation.getParent()?.navigate("Settings");
+                },
               },
-            },
-          ],
-        );
-        return;
+            ],
+          );
+          return;
+        }
+      } else if (selectedEngine === 'native') {
+        // Check if native transcription is available
+        const nativeEngine = container.resolve(NativeTranscriptionEngine);
+        const isAvailable = await nativeEngine.isAvailable();
+
+        if (!isAvailable) {
+          Alert.alert(
+            "Transcription native indisponible",
+            "La transcription native n'est pas disponible sur cet appareil. Veuillez activer Whisper dans les Paramètres.",
+            [
+              { text: "Annuler", style: "cancel" },
+              {
+                text: "Aller aux Paramètres",
+                onPress: () => {
+                  // @ts-ignore - Tab navigation
+                  navigation.getParent()?.navigate("Settings");
+                },
+              },
+            ],
+          );
+          return;
+        }
+
+        // Check if native file transcription is supported (Android 13+ only)
+        // If not, it will fall back to Whisper, so we need Whisper model
+        const isNativeFileSupported = Platform.OS === 'android' &&
+          typeof Platform.Version === 'number' &&
+          Platform.Version >= 33;
+
+        if (!isNativeFileSupported) {
+          // Will fall back to Whisper - check if model is available
+          const modelService = new WhisperModelService();
+          const bestModel = await modelService.getBestAvailableModel();
+
+          if (!bestModel) {
+            Alert.alert(
+              "Modèle Whisper requis",
+              "La transcription native de fichiers audio n'est pas supportée sur cet appareil (Android 13+ requis). " +
+              "Un modèle Whisper est nécessaire comme alternative.",
+              [
+                { text: "Annuler", style: "cancel" },
+                {
+                  text: "Aller aux Paramètres",
+                  onPress: () => {
+                    // @ts-ignore - Tab navigation
+                    navigation.getParent()?.navigate("Settings");
+                  },
+                },
+              ],
+            );
+            return;
+          }
+        }
       }
 
       // Enqueue for transcription
@@ -187,6 +249,7 @@ export function CapturesListScreen() {
       console.log(
         "[CapturesListScreen] 📝 Enqueued capture for transcription:",
         capture.id,
+        `[${selectedEngine}]`,
       );
       loadCaptures();
     } catch (error) {

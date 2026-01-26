@@ -17,8 +17,10 @@ import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
+import { container } from 'tsyringe';
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
+import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
@@ -31,6 +33,7 @@ export const SettingsScreen = () => {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [password, setPassword] = useState('');
+  const [engineLabel, setEngineLabel] = useState<string>('Whisper');
   const [selectedModelLabel, setSelectedModelLabel] = useState<string>('Non configuré');
   const [llmStatusLabel, setLlmStatusLabel] = useState<string>('Désactivé');
 
@@ -48,6 +51,25 @@ export const SettingsScreen = () => {
 
   const modelService = new WhisperModelService();
   const llmModelService = new LLMModelService();
+  const engineService = container.resolve(TranscriptionEngineService);
+
+  // Load transcription engine on mount and when returning to screen
+  useEffect(() => {
+    const loadEngine = async () => {
+      try {
+        const engines = await engineService.getAvailableEngines();
+        const selectedType = await engineService.getSelectedEngineType();
+        const selected = engines.find(e => e.type === selectedType);
+        setEngineLabel(selected?.displayName || 'Whisper');
+      } catch (error) {
+        console.error('[Settings] Failed to load engine:', error);
+      }
+    };
+
+    loadEngine();
+    const unsubscribe = navigation.addListener('focus', loadEngine);
+    return unsubscribe;
+  }, [navigation]);
 
   // Load selected model label on mount and when returning to screen
   useEffect(() => {
@@ -367,6 +389,22 @@ export const SettingsScreen = () => {
         {/* Transcription Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Transcription</Text>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('TranscriptionEngineSettings')}
+          >
+            <View style={styles.menuItemContent}>
+              <Text style={styles.menuItemLabel}>Moteur de transcription</Text>
+              <Text style={styles.menuItemSubtitle}>
+                Whisper ou reconnaissance native
+              </Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              <Text style={styles.menuItemValue}>{engineLabel}</Text>
+              <Text style={styles.menuItemChevron}>›</Text>
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.menuItem}

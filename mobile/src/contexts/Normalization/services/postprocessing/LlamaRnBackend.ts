@@ -278,24 +278,21 @@ export class LlamaRnBackend implements IPostProcessingBackend {
    * Build the prompt for the LLM based on the model's template format
    */
   private buildPrompt(text: string): string {
-    const systemPrompt = this.getSystemPrompt();
+    // Get the enriched prompt with {{TRANSCRIPT}} replaced by actual text
+    const enrichedPrompt = debugPromptManager.getEnrichedPrompt(text);
 
     switch (this.promptTemplate) {
       case 'gemma':
         // Gemma format - no explicit system role, user/model turns
         return `<start_of_turn>user
-${systemPrompt}
-
-${text}<end_of_turn>
+${enrichedPrompt}<end_of_turn>
 <start_of_turn>model
 `;
 
       case 'phi':
         // Phi-3 format
         return `<|system|>
-${systemPrompt}<|end|>
-<|user|>
-${text}<|end|>
+${enrichedPrompt}<|end|>
 <|assistant|>
 `;
 
@@ -303,9 +300,7 @@ ${text}<|end|>
         // Llama 3.x format (Llama 3, 3.1, 3.2)
         return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
-${systemPrompt}<|eot_id|><|start_header_id|>user<|end_header_id|>
-
-${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
+${enrichedPrompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
 
 `;
 
@@ -313,10 +308,7 @@ ${text}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
       default:
         // ChatML format (Qwen, SmolLM2, etc.)
         return `<|im_start|>system
-${systemPrompt}
-<|im_end|>
-<|im_start|>user
-${text}
+${enrichedPrompt}
 <|im_end|>
 <|im_start|>assistant
 `;
@@ -372,12 +364,18 @@ ${text}
     console.log('[LlamaRnBackend] Processing with custom prompt:', systemPrompt.substring(0, 50) + '...');
 
     try {
+      // Use stop tokens + repetition detection
+      const stopTokens = [
+        ...this.getStopTokens(),
+        '\n\n\n', // Stop on triple newline (often indicates end of response)
+      ];
+
       const result = await this.context.completion({
         prompt,
-        n_predict: 1024, // More tokens for analysis output
-        temperature: 0.3, // Slightly higher for more creative analysis
+        n_predict: 512, // Reduced to prevent runaway generation
+        temperature: 0.3,
         top_p: 0.9,
-        stop: this.getStopTokens(),
+        stop: stopTokens,
       });
 
       const processingDuration = Date.now() - startTime;

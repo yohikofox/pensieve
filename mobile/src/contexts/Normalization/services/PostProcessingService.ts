@@ -59,6 +59,14 @@ export class PostProcessingService {
   }
 
   /**
+   * Check if automatic post-processing after transcription is enabled
+   * When disabled, transcripts are saved as-is without LLM processing
+   */
+  async isAutoPostProcessEnabled(): Promise<boolean> {
+    return this.modelService.isAutoPostProcessEnabled();
+  }
+
+  /**
    * Get current configuration status
    */
   async getConfig(): Promise<PostProcessingConfig> {

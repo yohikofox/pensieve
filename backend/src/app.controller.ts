@@ -42,9 +42,7 @@ export class AppController {
   }
 
   @Get()
-  async handleAuthCallback(
-    @Res() res: Response,
-  ) {
+  async handleAuthCallback(@Res() res: Response) {
     // Handle Supabase auth callback (fragment-based)
     // Serve an HTML page that reads the fragment (#access_token=...)
     // and redirects to the mobile app via deep link
@@ -173,7 +171,9 @@ export class AppController {
     // If error from HuggingFace, redirect with error
     if (error) {
       console.error('[HuggingFace] OAuth error:', error);
-      return res.redirect(`pensine://auth/huggingface?error=${encodeURIComponent(error)}`);
+      return res.redirect(
+        `pensine://auth/huggingface?error=${encodeURIComponent(error)}`,
+      );
     }
 
     if (!code) {
@@ -192,7 +192,9 @@ export class AppController {
     });
 
     if (!clientId || !clientSecret || !redirectUri) {
-      console.error('[HuggingFace] Missing HF_CLIENT_ID, HF_CLIENT_SECRET, or HF_REDIRECT_URI');
+      console.error(
+        '[HuggingFace] Missing HF_CLIENT_ID, HF_CLIENT_SECRET, or HF_REDIRECT_URI',
+      );
       return res.redirect('pensine://auth/huggingface?error=server_config');
     }
 
@@ -214,8 +216,14 @@ export class AppController {
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error('[HuggingFace] Token exchange failed:', tokenResponse.status, errorText);
-        return res.redirect('pensine://auth/huggingface?error=token_exchange_failed');
+        console.error(
+          '[HuggingFace] Token exchange failed:',
+          tokenResponse.status,
+          errorText,
+        );
+        return res.redirect(
+          'pensine://auth/huggingface?error=token_exchange_failed',
+        );
       }
 
       const tokenData = await tokenResponse.json();
@@ -295,7 +303,6 @@ export class AppController {
         </body>
         </html>
       `);
-
     } catch (err) {
       console.error('[HuggingFace] Callback error:', err);
       return res.redirect('pensine://auth/huggingface?error=server_error');
@@ -314,7 +321,9 @@ export class AppController {
     // If error from Google, redirect with error
     if (error) {
       console.error('[Google] OAuth error:', error);
-      return res.redirect(`pensine://auth/google?error=${encodeURIComponent(error)}`);
+      return res.redirect(
+        `pensine://auth/google?error=${encodeURIComponent(error)}`,
+      );
     }
 
     if (!code) {
@@ -333,7 +342,9 @@ export class AppController {
     });
 
     if (!clientId || !clientSecret || !redirectUri) {
-      console.error('[Google] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI');
+      console.error(
+        '[Google] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI',
+      );
       return res.redirect('pensine://auth/google?error=server_config');
     }
 
@@ -355,8 +366,14 @@ export class AppController {
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error('[Google] Token exchange failed:', tokenResponse.status, errorText);
-        return res.redirect('pensine://auth/google?error=token_exchange_failed');
+        console.error(
+          '[Google] Token exchange failed:',
+          tokenResponse.status,
+          errorText,
+        );
+        return res.redirect(
+          'pensine://auth/google?error=token_exchange_failed',
+        );
       }
 
       const tokenData = await tokenResponse.json();
@@ -449,7 +466,6 @@ export class AppController {
         </body>
         </html>
       `);
-
     } catch (err) {
       console.error('[Google] Callback error:', err);
       return res.redirect('pensine://auth/google?error=server_error');
@@ -459,10 +475,7 @@ export class AppController {
   /**
    * Handle Google token refresh
    */
-  private async handleGoogleRefresh(
-    refreshToken: string,
-    res: Response,
-  ) {
+  private async handleGoogleRefresh(refreshToken: string, res: Response) {
     if (!refreshToken) {
       return res.status(400).json({ error: 'refresh_token required' });
     }
@@ -471,7 +484,9 @@ export class AppController {
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
     if (!clientId || !clientSecret) {
-      console.error('[Google] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
+      console.error(
+        '[Google] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET',
+      );
       return res.status(500).json({ error: 'server_config' });
     }
 
@@ -491,7 +506,11 @@ export class AppController {
 
       if (!tokenResponse.ok) {
         const errorText = await tokenResponse.text();
-        console.error('[Google] Token refresh failed:', tokenResponse.status, errorText);
+        console.error(
+          '[Google] Token refresh failed:',
+          tokenResponse.status,
+          errorText,
+        );
         return res.status(401).json({ error: 'refresh_failed' });
       }
 
@@ -501,7 +520,6 @@ export class AppController {
         access_token: tokenData.access_token,
         expires_in: tokenData.expires_in,
       });
-
     } catch (err) {
       console.error('[Google] Refresh error:', err);
       return res.status(500).json({ error: 'server_error' });

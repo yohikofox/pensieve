@@ -48,6 +48,7 @@ export type LLMBackendType = "llamarn" | "mediapipe";
 
 const SELECTED_MODEL_KEY = "@pensieve/selected_llm_model"; // Legacy, kept for migration
 const POSTPROCESSING_ENABLED_KEY = "@pensieve/postprocessing_enabled";
+const AUTO_POSTPROCESS_KEY = "@pensieve/auto_postprocess_transcription";
 
 /** Storage keys for task-specific model selection */
 const TASK_MODEL_KEYS: Record<LLMTask, string> = {
@@ -709,6 +710,29 @@ export class LLMModelService {
   async setPostProcessingEnabled(enabled: boolean): Promise<void> {
     await AsyncStorage.setItem(POSTPROCESSING_ENABLED_KEY, String(enabled));
     console.log("[LLMModelService] Post-processing enabled:", enabled);
+  }
+
+  /**
+   * Check if automatic post-processing after transcription is enabled
+   * When disabled, transcripts are saved as-is (raw_transcript = normalizedText)
+   * This allows LLM models to be unloaded after transcription queue is done
+   */
+  async isAutoPostProcessEnabled(): Promise<boolean> {
+    try {
+      const enabled = await AsyncStorage.getItem(AUTO_POSTPROCESS_KEY);
+      // Default to false (no automatic post-processing)
+      return enabled === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Enable or disable automatic post-processing after transcription
+   */
+  async setAutoPostProcessEnabled(enabled: boolean): Promise<void> {
+    await AsyncStorage.setItem(AUTO_POSTPROCESS_KEY, String(enabled));
+    console.log("[LLMModelService] Auto post-process transcription:", enabled);
   }
 
   /**

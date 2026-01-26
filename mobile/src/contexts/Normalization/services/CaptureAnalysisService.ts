@@ -41,6 +41,7 @@ export class CaptureAnalysisService {
   private llamaBackend: LlamaRnBackend | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<boolean> | null = null;
+  private currentModelId: string | null = null;
 
   constructor() {}
 
@@ -54,9 +55,24 @@ export class CaptureAnalysisService {
       return this.initializationPromise;
     }
 
+    // Check if model selection has changed
+    const modelService = container.resolve(LLMModelService);
+    const selectedModelId = await modelService.getBestAvailableModelForTask('analysis', 'llamarn')
+      || await modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
+
     if (this.isInitialized && this.llamaBackend?.isModelLoaded()) {
-      console.log('[CaptureAnalysisService] Already initialized');
-      return true;
+      // Check if the selected model is different from the loaded one
+      if (selectedModelId && selectedModelId !== this.currentModelId) {
+        console.log('[CaptureAnalysisService] Model changed, reloading...', {
+          current: this.currentModelId,
+          selected: selectedModelId,
+        });
+        // Dispose current backend and reinitialize
+        await this.dispose();
+      } else {
+        console.log('[CaptureAnalysisService] Already initialized with correct model');
+        return true;
+      }
     }
 
     this.initializationPromise = this.doInitialize();
@@ -109,7 +125,8 @@ export class CaptureAnalysisService {
         }
 
         this.isInitialized = true;
-        console.log('[CaptureAnalysisService] Initialized with fallback model');
+        this.currentModelId = fallbackModelId;
+        console.log('[CaptureAnalysisService] Initialized with fallback model:', fallbackModelId);
         return true;
       }
 
@@ -136,7 +153,8 @@ export class CaptureAnalysisService {
       }
 
       this.isInitialized = true;
-      console.log('[CaptureAnalysisService] Initialized successfully');
+      this.currentModelId = modelId;
+      console.log('[CaptureAnalysisService] Initialized successfully with model:', modelId);
       return true;
     } catch (error) {
       console.error('[CaptureAnalysisService] Initialization failed:', error);
@@ -340,6 +358,7 @@ export class CaptureAnalysisService {
       this.llamaBackend = null;
     }
     this.isInitialized = false;
+    this.currentModelId = null;
     console.log('[CaptureAnalysisService] Disposed');
   }
 }

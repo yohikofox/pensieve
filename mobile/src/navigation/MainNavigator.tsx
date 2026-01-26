@@ -12,6 +12,7 @@ export const MainNavigator = () => {
   return (
     <>
       <Tab.Navigator
+        initialRouteName="Capture"
         screenOptions={{
           headerShown: true,
           tabBarActiveTintColor: '#007AFF',

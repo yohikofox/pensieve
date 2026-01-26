@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # CONTAINER REGISTRY: Docker Registry
+  # Private registry for Docker images
+  # ==========================================
+  registry:
+    image: registry:2
+    container_name: pensine-registry
+    restart: unless-stopped
+    environment:
+      REGISTRY_HTTP_ADDR: 0.0.0.0:5000
+      REGISTRY_STORAGE_DELETE_ENABLED: "true"
+      # Basic auth (optional - uncomment to enable)
+      # REGISTRY_AUTH: htpasswd
+      # REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+      # REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+    volumes:
+      - registry-data:/var/lib/registry
+      # Uncomment for auth:
+      # - ./registry/auth:/auth:ro
+    ports:
+      - "5000:5000"
+    networks:
+      - registry-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:5000/v2/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # REGISTRY UI: Docker Registry Browser
+  # Web interface to browse images
+  # ==========================================
+  registry-ui:
+    image: joxit/docker-registry-ui:latest
+    container_name: pensine-registry-ui
+    restart: unless-stopped
+    environment:
+      SINGLE_REGISTRY: "true"
+      REGISTRY_TITLE: Pensine Registry
+      # Ne pas définir REGISTRY_URL pour éviter le mixed content
+      # L'UI utilisera son propre nginx pour proxifier les requêtes
+      DELETE_IMAGES: "true"
+      SHOW_CONTENT_DIGEST: "true"
+      SHOW_CATALOG_NB_TAGS: "true"
+      CATALOG_MIN_BRANCHES: 0
+      CATALOG_MAX_BRANCHES: 0
+      TAGLIST_PAGE_SIZE: 100
+      REGISTRY_SECURED: "false"
+      # Le nginx interne proxy les appels vers le registry
+      NGINX_PROXY_PASS_URL: http://registry:5000
+    ports:
+      - "5001:80"
+    networks:
+      - registry-network
+    depends_on:
+      registry:
+        condition: service_healthy
+
+networks:
+  registry-network:
+    driver: bridge
+
+volumes:
+  registry-data:
+    driver: local

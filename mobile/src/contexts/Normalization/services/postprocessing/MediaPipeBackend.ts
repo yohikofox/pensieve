@@ -275,12 +275,11 @@ export class MediaPipeBackend implements IPostProcessingBackend {
    * Uses Gemma's conversation format with proper turn markers
    */
   private buildPrompt(text: string): string {
-    const systemPrompt = this.getSystemPrompt();
+    // Get the enriched prompt with {{TRANSCRIPT}} replaced by actual text
+    const enrichedPrompt = debugPromptManager.getEnrichedPrompt(text);
     // Gemma 3 format: user turn with instruction, then model turn for response
     return `<start_of_turn>user
-${systemPrompt}
-
-Input: ${text}<end_of_turn>
+${enrichedPrompt}<end_of_turn>
 <start_of_turn>model
 `;
   }

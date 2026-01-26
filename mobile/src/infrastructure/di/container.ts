@@ -43,6 +43,10 @@ import { PostProcessingService } from '../../contexts/Normalization/services/Pos
 import { HuggingFaceAuthService } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { CaptureAnalysisService } from '../../contexts/Normalization/services/CaptureAnalysisService';
 
+// Native Speech Recognition
+import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
+import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
+
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
 import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
@@ -107,6 +111,10 @@ export function registerServices() {
   container.registerSingleton(PostProcessingService);
   container.registerSingleton(CaptureAnalysisService);
   container.registerSingleton(TranscriptionWorker);
+
+  // Native Speech Recognition Engine
+  container.registerSingleton(NativeTranscriptionEngine);
+  container.registerSingleton(TranscriptionEngineService);
 
   servicesRegistered = true;
   console.log('[DI Container] ✅ Services registered');

@@ -54,6 +54,7 @@ export function LLMSettingsScreen() {
   const [selectedPostProcessingModel, setSelectedPostProcessingModel] = useState<LLMModelId | null>(null);
   const [selectedAnalysisModel, setSelectedAnalysisModel] = useState<LLMModelId | null>(null);
   const [isEnabled, setIsEnabled] = useState(false);
+  const [isAutoPostProcess, setIsAutoPostProcess] = useState(false);
   const [npuInfo, setNpuInfo] = useState<NPUInfo | null>(null);
   const [tpuModels, setTpuModels] = useState<LLMModelConfig[]>([]);
   const [standardModels, setStandardModels] = useState<LLMModelConfig[]>([]);
@@ -124,6 +125,10 @@ export function LLMSettingsScreen() {
       // Load enabled state
       const enabled = await modelService.isPostProcessingEnabled();
       setIsEnabled(enabled);
+
+      // Load auto post-process setting
+      const autoPostProcess = await modelService.isAutoPostProcessEnabled();
+      setIsAutoPostProcess(autoPostProcess);
 
       // Load task-specific model selections
       const postProcessingModel = await modelService.getModelForTask('postProcessing');
@@ -203,7 +208,7 @@ export function LLMSettingsScreen() {
     setIsEnabled(value);
     await modelService.setPostProcessingEnabled(value);
 
-    if (value && !selectedModel) {
+    if (value && !selectedPostProcessingModel) {
       // Prompt to select a model
       const downloaded = await modelService.getDownloadedModels();
       if (downloaded.length === 0) {
@@ -213,6 +218,14 @@ export function LLMSettingsScreen() {
         );
       }
     }
+  };
+
+  /**
+   * Toggle automatic post-processing after transcription
+   */
+  const handleToggleAutoPostProcess = async (value: boolean) => {
+    setIsAutoPostProcess(value);
+    await modelService.setAutoPostProcessEnabled(value);
   };
 
   /**
@@ -316,7 +329,7 @@ export function LLMSettingsScreen() {
           <View style={styles.toggleContent}>
             <Text style={styles.toggleLabel}>Activer l'amélioration IA</Text>
             <Text style={styles.toggleDescription}>
-              Améliore automatiquement les transcriptions après Whisper
+              Active les fonctionnalités IA (analyses, résumés)
             </Text>
           </View>
           <Switch
@@ -326,6 +339,25 @@ export function LLMSettingsScreen() {
             thumbColor="#FFFFFF"
           />
         </View>
+
+        {/* Auto post-process toggle - only show when IA is enabled */}
+        {isEnabled && (
+          <View style={[styles.toggleRow, styles.toggleRowIndented]}>
+            <View style={styles.toggleContent}>
+              <Text style={styles.toggleLabel}>Post-traitement automatique</Text>
+              <Text style={styles.toggleDescription}>
+                Améliorer automatiquement les transcriptions après Whisper.
+                Désactivé = transcription brute, modèles déchargés plus vite.
+              </Text>
+            </View>
+            <Switch
+              value={isAutoPostProcess}
+              onValueChange={handleToggleAutoPostProcess}
+              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        )}
       </View>
 
       {/* NPU Detection */}
@@ -568,6 +600,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
+  },
+  toggleRowIndented: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5EA',
+    paddingLeft: 24,
+    backgroundColor: '#FAFAFA',
   },
   toggleContent: {
     flex: 1,
