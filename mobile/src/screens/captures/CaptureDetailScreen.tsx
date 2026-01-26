@@ -43,6 +43,7 @@ import { PostProcessingService } from '../../contexts/Normalization/services/Pos
 import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
+import { GoogleCalendarService } from '../../services/GoogleCalendarService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 /** Action item structure from LLM JSON output */
@@ -229,6 +230,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [localActionItems, setLocalActionItems] = useState<ActionItem[] | null>(null);
   const [savingActionIndex, setSavingActionIndex] = useState<number | null>(null);
   const [savedActionIndex, setSavedActionIndex] = useState<number | null>(null);
+  const [addingToCalendarIndex, setAddingToCalendarIndex] = useState<number | null>(null);
+  const [addedToCalendarIndex, setAddedToCalendarIndex] = useState<number | null>(null);
 
   useEffect(() => {
     loadCapture();
@@ -513,6 +516,78 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     const name = contact.name?.toLowerCase() || '';
     return name.includes(contactSearchQuery.toLowerCase());
   });
+
+  // Handler for adding action item to Google Calendar
+  const handleAddToCalendar = async (index: number, item: ActionItem) => {
+    if (!item.deadline_date) return;
+
+    // Check if Google is connected
+    const isConnected = await GoogleCalendarService.isConnected();
+
+    if (!isConnected) {
+      Alert.alert(
+        'Google Calendar non connecté',
+        'Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier.',
+        [
+          { text: 'Annuler', style: 'cancel' },
+          {
+            text: 'Paramètres',
+            onPress: () => {
+              // Navigate to settings - we can't easily do this from here
+              // So just show a message
+              Alert.alert('Info', 'Allez dans Paramètres > Intégrations > Google Calendar');
+            },
+          },
+        ]
+      );
+      return;
+    }
+
+    setAddingToCalendarIndex(index);
+    setAddedToCalendarIndex(null);
+
+    try {
+      // Parse the date from "JJ-MM-AAAA, HH:mm" format
+      const match = item.deadline_date.match(/^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/);
+      if (!match) {
+        Alert.alert('Erreur', 'Format de date invalide');
+        setAddingToCalendarIndex(null);
+        return;
+      }
+
+      const [, day, month, year, hours, minutes] = match;
+      const startDate = new Date(
+        parseInt(year, 10),
+        parseInt(month, 10) - 1,
+        parseInt(day, 10),
+        parseInt(hours, 10),
+        parseInt(minutes, 10)
+      );
+
+      const result = await GoogleCalendarService.createEvent({
+        summary: item.title,
+        description: item.target ? `Pour: ${item.target}` : undefined,
+        startDateTime: startDate,
+      });
+
+      if (result.success) {
+        setAddingToCalendarIndex(null);
+        setAddedToCalendarIndex(index);
+
+        // Clear indicator after 2 seconds
+        setTimeout(() => {
+          setAddedToCalendarIndex(prev => prev === index ? null : prev);
+        }, 2000);
+      } else {
+        Alert.alert('Erreur', result.error || 'Impossible de créer l\'événement');
+        setAddingToCalendarIndex(null);
+      }
+    } catch (error) {
+      console.error('[CaptureDetailScreen] Add to calendar error:', error);
+      Alert.alert('Erreur', 'Impossible de créer l\'événement');
+      setAddingToCalendarIndex(null);
+    }
+  };
 
   // Reprocessing handlers
   const handleReTranscribe = async () => {
@@ -1130,6 +1205,32 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                     {item.target || 'Ajouter contact'}
                                   </Text>
                                 </TouchableOpacity>
+                                {/* Add to Calendar button - only when date exists */}
+                                {item.deadline_date && (
+                                  <TouchableOpacity
+                                    style={[
+                                      styles.actionItemTag,
+                                      styles.actionItemCalendarButton,
+                                      addedToCalendarIndex === index && styles.actionItemCalendarButtonDone,
+                                    ]}
+                                    onPress={() => handleAddToCalendar(index, item)}
+                                    disabled={addingToCalendarIndex === index}
+                                  >
+                                    {addingToCalendarIndex === index ? (
+                                      <ActivityIndicator size="small" color="#4285F4" />
+                                    ) : addedToCalendarIndex === index ? (
+                                      <>
+                                        <Text style={styles.actionItemTagIcon}>✓</Text>
+                                        <Text style={styles.actionItemCalendarTextDone}>Ajouté</Text>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Text style={styles.actionItemTagIcon}>📆</Text>
+                                        <Text style={styles.actionItemCalendarText}>Calendrier</Text>
+                                      </>
+                                    )}
+                                  </TouchableOpacity>
+                                )}
                               </View>
                             </View>
                           ))}
@@ -1985,6 +2086,25 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
     color: '#32CD32', // Lime green
+  },
+  actionItemCalendarButton: {
+    backgroundColor: '#E8F0FE',
+    borderWidth: 1,
+    borderColor: '#4285F4',
+  },
+  actionItemCalendarButtonDone: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#32CD32',
+  },
+  actionItemCalendarText: {
+    fontSize: 13,
+    color: '#4285F4',
+    fontWeight: '500',
+  },
+  actionItemCalendarTextDone: {
+    fontSize: 13,
+    color: '#32CD32',
+    fontWeight: '500',
   },
   // Contact Picker styles
   contactPickerContainer: {

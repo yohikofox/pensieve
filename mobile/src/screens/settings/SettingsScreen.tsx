@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   ScrollView,
@@ -20,6 +20,7 @@ import { apiConfig } from '../../config/api';
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsMain'>;
@@ -36,6 +37,14 @@ export const SettingsScreen = () => {
   // Debug mode from global settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
+
+  // Google Calendar state
+  const [googleAuth, setGoogleAuth] = useState<GoogleAuthState>({
+    isConnected: false,
+    userEmail: null,
+    isLoading: true,
+  });
+  const [googleConnecting, setGoogleConnecting] = useState(false);
 
   const modelService = new WhisperModelService();
   const llmModelService = new LLMModelService();
@@ -87,6 +96,70 @@ export const SettingsScreen = () => {
     const unsubscribe = navigation.addListener('focus', loadLlmStatus);
     return unsubscribe;
   }, [navigation]);
+
+  // Load Google Calendar auth state
+  const loadGoogleAuthState = useCallback(async () => {
+    try {
+      const authState = await GoogleCalendarService.getAuthState();
+      setGoogleAuth({ ...authState, isLoading: false });
+    } catch (error) {
+      console.error('[Settings] Failed to load Google auth state:', error);
+      setGoogleAuth({ isConnected: false, userEmail: null, isLoading: false });
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGoogleAuthState();
+    const unsubscribe = navigation.addListener('focus', loadGoogleAuthState);
+    return unsubscribe;
+  }, [navigation, loadGoogleAuthState]);
+
+  /**
+   * Handle Google Calendar connect
+   */
+  const handleGoogleConnect = async () => {
+    setGoogleConnecting(true);
+    try {
+      const result = await GoogleCalendarService.connect();
+
+      if (result.success) {
+        await loadGoogleAuthState();
+        Alert.alert('Succès', 'Compte Google connecté avec succès !');
+      } else {
+        Alert.alert('Erreur', result.error || 'Connexion échouée');
+      }
+    } catch (error) {
+      console.error('[Settings] Google connect error:', error);
+      Alert.alert('Erreur', 'Impossible de se connecter à Google');
+    } finally {
+      setGoogleConnecting(false);
+    }
+  };
+
+  /**
+   * Handle Google Calendar disconnect
+   */
+  const handleGoogleDisconnect = async () => {
+    Alert.alert(
+      'Déconnecter Google Calendar',
+      'Vous ne pourrez plus ajouter des événements à votre calendrier depuis l\'app.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Déconnecter',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await GoogleCalendarService.disconnect();
+              setGoogleAuth({ isConnected: false, userEmail: null, isLoading: false });
+            } catch (error) {
+              console.error('[Settings] Google disconnect error:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   /**
    * Handle Data Export
@@ -328,6 +401,38 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </View>
 
+        {/* Integrations Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Intégrations</Text>
+
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={googleAuth.isConnected ? handleGoogleDisconnect : handleGoogleConnect}
+            disabled={googleConnecting || googleAuth.isLoading}
+          >
+            <View style={styles.menuItemContent}>
+              <View style={styles.menuItemLabelRow}>
+                <Text style={styles.googleIcon}>📅</Text>
+                <Text style={styles.menuItemLabel}>Google Calendar</Text>
+              </View>
+              <Text style={styles.menuItemSubtitle}>
+                {googleAuth.isConnected
+                  ? `Connecté: ${googleAuth.userEmail || 'compte Google'}`
+                  : 'Ajouter des événements à votre calendrier'}
+              </Text>
+            </View>
+            <View style={styles.menuItemRight}>
+              {(googleConnecting || googleAuth.isLoading) ? (
+                <ActivityIndicator size="small" />
+              ) : googleAuth.isConnected ? (
+                <Text style={styles.googleConnectedBadge}>Connecté</Text>
+              ) : (
+                <Text style={styles.googleConnectText}>Connecter</Text>
+              )}
+            </View>
+          </TouchableOpacity>
+        </View>
+
         {/* RGPD Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Confidentialité & Données</Text>
@@ -550,5 +655,27 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  menuItemLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  googleIcon: {
+    fontSize: 18,
+    marginRight: 8,
+  },
+  googleConnectedBadge: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#34C759',
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  googleConnectText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#007AFF',
   },
 });

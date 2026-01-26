@@ -1,7 +1,8 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Controller, Get, Post, Query, Body, Res } from '@nestjs/common';
 import type { Response } from 'express';
 
 const HF_TOKEN_ENDPOINT = 'https://huggingface.co/oauth/token';
+const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
 @Controller()
 export class AppController {
@@ -12,6 +13,23 @@ export class AppController {
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
     };
+  }
+
+  @Get('auth/google/callback')
+  async handleGoogleOAuthCallback(
+    @Query('code') code: string | undefined,
+    @Query('error') error: string | undefined,
+    @Res() res: Response,
+  ) {
+    return this.handleGoogleCallback(code, error, res);
+  }
+
+  @Post('auth/google/refresh')
+  async handleGoogleTokenRefresh(
+    @Body('refresh_token') refreshToken: string,
+    @Res() res: Response,
+  ) {
+    return this.handleGoogleRefresh(refreshToken, res);
   }
 
   @Get('auth/huggingface/callback')
@@ -281,6 +299,212 @@ export class AppController {
     } catch (err) {
       console.error('[HuggingFace] Callback error:', err);
       return res.redirect('pensine://auth/huggingface?error=server_error');
+    }
+  }
+
+  /**
+   * Handle Google OAuth callback
+   * Exchanges auth code for access token and redirects to mobile app
+   */
+  private async handleGoogleCallback(
+    code: string | undefined,
+    error: string | undefined,
+    res: Response,
+  ) {
+    // If error from Google, redirect with error
+    if (error) {
+      console.error('[Google] OAuth error:', error);
+      return res.redirect(`pensine://auth/google?error=${encodeURIComponent(error)}`);
+    }
+
+    if (!code) {
+      return res.redirect('pensine://auth/google?error=no_code');
+    }
+
+    // Read env vars at runtime
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+    const redirectUri = process.env.GOOGLE_REDIRECT_URI;
+
+    console.log('[Google] Config:', {
+      clientId: clientId ? `${clientId.substring(0, 20)}...` : '(empty)',
+      clientSecret: clientSecret ? '***' : '(empty)',
+      redirectUri: redirectUri || '(empty)',
+    });
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      console.error('[Google] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI');
+      return res.redirect('pensine://auth/google?error=server_config');
+    }
+
+    try {
+      // Exchange authorization code for access token
+      const tokenResponse = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'authorization_code',
+          client_id: clientId,
+          client_secret: clientSecret,
+          code: code,
+          redirect_uri: redirectUri,
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('[Google] Token exchange failed:', tokenResponse.status, errorText);
+        return res.redirect('pensine://auth/google?error=token_exchange_failed');
+      }
+
+      const tokenData = await tokenResponse.json();
+      const accessToken = tokenData.access_token;
+      const refreshToken = tokenData.refresh_token;
+      const expiresIn = tokenData.expires_in;
+
+      if (!accessToken) {
+        console.error('[Google] No access_token in response:', tokenData);
+        return res.redirect('pensine://auth/google?error=no_token');
+      }
+
+      console.log('[Google] OAuth successful, redirecting to app');
+
+      // Build deep link with tokens
+      const params = new URLSearchParams({
+        access_token: accessToken,
+      });
+      if (refreshToken) {
+        params.set('refresh_token', refreshToken);
+      }
+      if (expiresIn) {
+        params.set('expires_in', expiresIn.toString());
+      }
+
+      const deepLink = `pensine://auth/google?${params.toString()}`;
+
+      // Serve HTML page that redirects to mobile app via deep link
+      return res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Google Calendar Connected</title>
+          <style>
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+              margin: 0;
+              background: linear-gradient(135deg, #4285F4 0%, #34A853 100%);
+            }
+            .container {
+              background: white;
+              padding: 40px;
+              border-radius: 12px;
+              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+              text-align: center;
+              max-width: 400px;
+            }
+            h1 { color: #333; margin-bottom: 20px; }
+            p { color: #666; margin-bottom: 30px; }
+            .emoji { font-size: 64px; margin-bottom: 20px; }
+            .button {
+              display: inline-block;
+              background: #4285F4;
+              color: white;
+              padding: 12px 24px;
+              border-radius: 6px;
+              text-decoration: none;
+              font-weight: 600;
+              margin-top: 20px;
+            }
+            .button:hover {
+              background: #3367D6;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="emoji">📅</div>
+            <h1>Google Calendar Connected!</h1>
+            <p id="message">Opening Pensieve app...</p>
+            <a id="deeplink" href="${deepLink}" class="button">Open Pensieve App</a>
+          </div>
+          <script>
+            // Try to open app automatically
+            setTimeout(() => {
+              window.location.href = "${deepLink}";
+            }, 500);
+
+            // Update message after delay
+            setTimeout(() => {
+              document.getElementById('message').textContent = 'Click the button below if the app did not open automatically.';
+            }, 2000);
+          </script>
+        </body>
+        </html>
+      `);
+
+    } catch (err) {
+      console.error('[Google] Callback error:', err);
+      return res.redirect('pensine://auth/google?error=server_error');
+    }
+  }
+
+  /**
+   * Handle Google token refresh
+   */
+  private async handleGoogleRefresh(
+    refreshToken: string,
+    res: Response,
+  ) {
+    if (!refreshToken) {
+      return res.status(400).json({ error: 'refresh_token required' });
+    }
+
+    const clientId = process.env.GOOGLE_CLIENT_ID;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+
+    if (!clientId || !clientSecret) {
+      console.error('[Google] Missing GOOGLE_CLIENT_ID or GOOGLE_CLIENT_SECRET');
+      return res.status(500).json({ error: 'server_config' });
+    }
+
+    try {
+      const tokenResponse = await fetch(GOOGLE_TOKEN_ENDPOINT, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          grant_type: 'refresh_token',
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+        }).toString(),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorText = await tokenResponse.text();
+        console.error('[Google] Token refresh failed:', tokenResponse.status, errorText);
+        return res.status(401).json({ error: 'refresh_failed' });
+      }
+
+      const tokenData = await tokenResponse.json();
+
+      return res.json({
+        access_token: tokenData.access_token,
+        expires_in: tokenData.expires_in,
+      });
+
+    } catch (err) {
+      console.error('[Google] Refresh error:', err);
+      return res.status(500).json({ error: 'server_error' });
     }
   }
 }

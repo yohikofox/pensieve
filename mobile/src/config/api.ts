@@ -18,4 +18,9 @@ export const apiConfig = {
       health: `${API_URL}/api/auth/health`,
     },
   },
+  google: {
+    // Google OAuth Client ID for calendar integration
+    // Create at: https://console.cloud.google.com/apis/credentials
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+  },
 };
