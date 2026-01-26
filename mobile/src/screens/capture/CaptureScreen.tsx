@@ -7,12 +7,14 @@ import {
   Alert,
   ActivityIndicator,
   Modal,
+  Dimensions,
 } from 'react-native';
 import {
   useAudioRecorder,
   RecordingPresets,
   setAudioModeAsync,
 } from 'expo-audio';
+import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
@@ -24,9 +26,66 @@ import { StorageMonitorService } from '../../contexts/capture/services/StorageMo
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 import { TextCaptureInput } from '../../components/capture/TextCaptureInput';
-import { RecordButtonUI } from '../../contexts/capture/ui/RecordButtonUI';
+import { RecordingOverlay } from '../../components/capture/RecordingOverlay';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ICON_SIZE = (SCREEN_WIDTH - 80) / 3; // 3 icons per row with padding
 
 type RecordingState = 'idle' | 'recording' | 'stopping';
+
+/** Capture tool definition */
+interface CaptureTool {
+  id: string;
+  label: string;
+  iconName: keyof typeof Feather.glyphMap;
+  color: string;
+  available: boolean;
+}
+
+const CAPTURE_TOOLS: CaptureTool[] = [
+  {
+    id: 'voice',
+    label: 'Voix',
+    iconName: 'mic',
+    color: '#4A90D9',
+    available: true,
+  },
+  {
+    id: 'text',
+    label: 'Texte',
+    iconName: 'edit-3',
+    color: '#E85D75',
+    available: true,
+  },
+  {
+    id: 'photo',
+    label: 'Photo/Vidéo',
+    iconName: 'camera',
+    color: '#5B9BD5',
+    available: false,
+  },
+  {
+    id: 'url',
+    label: 'URL',
+    iconName: 'link-2',
+    color: '#8B5CF6',
+    available: false,
+  },
+  {
+    id: 'document',
+    label: 'Document',
+    iconName: 'file-text',
+    color: '#EC4899',
+    available: false,
+  },
+  {
+    id: 'clipboard',
+    label: 'Presse-papiers',
+    iconName: 'clipboard',
+    color: '#F59E0B',
+    available: false,
+  },
+];
 
 /**
  * Permission & Audio Mode Initializer
@@ -104,6 +163,50 @@ const CaptureScreenWithAudioMode = () => {
 };
 
 /**
+ * Capture Tool Button Component
+ */
+const CaptureToolButton = ({
+  tool,
+  onPress,
+  disabled,
+}: {
+  tool: CaptureTool;
+  onPress: () => void;
+  disabled?: boolean;
+}) => {
+  const isDisabled = disabled || !tool.available;
+
+  return (
+    <TouchableOpacity
+      style={styles.toolContainer}
+      onPress={onPress}
+      disabled={isDisabled}
+      activeOpacity={0.8}
+      accessibilityLabel={tool.label}
+      accessibilityHint={tool.available ? `Capturer via ${tool.label}` : 'Bientôt disponible'}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled }}
+    >
+      <View
+        style={[
+          styles.toolButton,
+          { backgroundColor: tool.color },
+          isDisabled && styles.toolButtonDisabled,
+        ]}
+      >
+        <Feather name={tool.iconName} size={36} color="#FFFFFF" />
+      </View>
+      <Text style={[styles.toolLabel, isDisabled && styles.toolLabelDisabled]}>
+        {tool.label}
+      </Text>
+      {!tool.available && (
+        <Text style={styles.comingSoon}>Bientôt</Text>
+      )}
+    </TouchableOpacity>
+  );
+};
+
+/**
  * Actual CaptureScreen content
  * Only rendered after permissions are granted and audio mode is initialized
  */
@@ -111,7 +214,8 @@ const CaptureScreenContent = () => {
   const { user } = useAuthListener();
   const [state, setState] = useState<RecordingState>('idle');
   const [showTextCapture, setShowTextCapture] = useState(false);
-  const [recordingDuration, setRecordingDuration] = useState(0); // Story 2.3: Timer for RecordButtonUI
+  const [showRecordingOverlay, setShowRecordingOverlay] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
 
   // Create recorder using official HIGH_QUALITY preset (permissions + audio mode already configured by parent)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -137,7 +241,6 @@ const CaptureScreenContent = () => {
   // AC4: Crash recovery on app launch
   useEffect(() => {
     const performCrashRecovery = async () => {
-      // Resolve via TSyringe container
       const crashRecoveryService = container.resolve(CrashRecoveryService);
       const recovered = await crashRecoveryService.recoverIncompleteRecordings();
 
@@ -167,7 +270,7 @@ const CaptureScreenContent = () => {
     performCrashRecovery();
   }, []);
 
-  // Story 2.3: Timer for recording duration display
+  // Timer for recording duration display
   useEffect(() => {
     let interval: NodeJS.Timeout | null = null;
 
@@ -194,12 +297,12 @@ const CaptureScreenContent = () => {
       return;
     }
 
-    // AC2: Check storage before recording
+    // Check storage before recording
     const storageMonitor = storageMonitorServiceRef.current;
     if (!storageMonitor) {
       Alert.alert(
         'Erreur',
-        'Service de surveillance du stockage non disponible. Impossible de vérifier l\'espace disponible.',
+        'Service de surveillance du stockage non disponible.',
         [{ text: 'OK' }]
       );
       return;
@@ -211,19 +314,15 @@ const CaptureScreenContent = () => {
         const storageInfo = await storageMonitor.getStorageInfo();
         Alert.alert(
           'Espace de stockage faible',
-          `Il ne reste que ${storageInfo.freeFormatted} d'espace disponible. Libérez de l'espace avant d'enregistrer pour éviter la perte de données.`,
+          `Il ne reste que ${storageInfo.freeFormatted} d'espace disponible.`,
           [{ text: 'OK' }]
         );
         return;
       }
     } catch (error) {
       console.error('[CaptureScreen] Storage check failed:', error);
-      // If storage check fails, proceed with caution but warn user
-      console.warn('[CaptureScreen] Proceeding without storage verification (check failed)');
     }
 
-    // Permissions and audio mode already configured by parent component
-    // Prepare expo-audio recording (external lib - try/catch allowed)
     try {
       await audioRecorder.prepareToRecordAsync();
       const tempUri = audioRecorder.uri;
@@ -232,7 +331,6 @@ const CaptureScreenContent = () => {
         throw new Error('No URI available after prepare');
       }
 
-      // NOW create Capture entity with temporary URI
       const result = await recordingService.startRecording(tempUri);
 
       if (result.type !== 'success') {
@@ -242,19 +340,20 @@ const CaptureScreenContent = () => {
         return;
       }
 
-      // Start actual recording
       audioRecorder.record();
       setState('recording');
+      setShowRecordingOverlay(true);
     } catch (error) {
       console.error('[CaptureScreen] Audio recorder error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement audio: ' + errorMessage);
+      Alert.alert('Erreur', 'Impossible de démarrer l\'enregistrement: ' + errorMessage);
       setState('idle');
     }
   };
 
   const stopRecording = async () => {
     setState('stopping');
+    setShowRecordingOverlay(false);
 
     const recordingService = recordingServiceRef.current;
     if (!recordingService) {
@@ -263,21 +362,17 @@ const CaptureScreenContent = () => {
       return;
     }
 
-    // Stop expo-audio recording (external lib - try/catch allowed)
     try {
       await audioRecorder.stop();
     } catch (error) {
       console.error('[CaptureScreen] Audio recorder stop error:', error);
       const errorMessage = error instanceof Error ? error.message : String(error);
-      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement audio: ' + errorMessage);
+      Alert.alert('Erreur', 'Impossible d\'arrêter l\'enregistrement: ' + errorMessage);
       setState('idle');
       return;
     }
 
-    // Get recording info from expo-audio
     const uri = audioRecorder.uri;
-    // Use our manually tracked duration instead of recorderState (disabled to avoid iOS crash)
-    // recordingDuration is in seconds, convert to milliseconds
     const durationMs = recordingDuration * 1000;
 
     if (!uri) {
@@ -286,7 +381,6 @@ const CaptureScreenContent = () => {
       return;
     }
 
-    // Stop RecordingService
     const stopResult = await recordingService.stopRecording(uri, durationMs);
 
     if (stopResult.type !== 'success' || !stopResult.data) {
@@ -296,7 +390,6 @@ const CaptureScreenContent = () => {
       return;
     }
 
-    // Move audio file from temp to permanent storage
     if (fileStorageServiceRef.current && repositoryRef.current) {
       const storageResult = await fileStorageServiceRef.current.moveToStorage(
         stopResult.data.filePath,
@@ -311,10 +404,6 @@ const CaptureScreenContent = () => {
         return;
       }
 
-      // Update capture with file metadata AND set state='captured'
-      // IMPORTANT: Setting state='captured' HERE (after file move) ensures that
-      // the CaptureRecorded event is published with the permanent path, not the temp path.
-      // This triggers transcription with the correct file location.
       const updateResult = await repositoryRef.current.update(stopResult.data.captureId, {
         state: 'captured',
         rawContent: storageResult.data.permanentPath,
@@ -331,60 +420,50 @@ const CaptureScreenContent = () => {
 
     Alert.alert(
       'Capture enregistrée!',
-      `Durée: ${Math.floor(stopResult.data.duration / 1000)}s\n\nLa capture a été sauvegardée localement.\nLa transcription sera disponible bientôt.`,
+      `Durée: ${Math.floor(stopResult.data.duration / 1000)}s`,
       [{ text: 'OK' }]
     );
 
     setState('idle');
   };
 
-  /**
-   * Story 2.3: Cancel recording with immediate stop
-   * AC1: Cancel Recording with Immediate Stop
-   * - Stops expo-audio recorder
-   * - Deletes partial audio file
-   * - Removes Capture entity from WatermelonDB
-   */
   const cancelRecording = async () => {
     const recordingService = recordingServiceRef.current;
     if (!recordingService) {
       Alert.alert('Erreur', 'Service d\'enregistrement non initialisé');
       setState('idle');
+      setShowRecordingOverlay(false);
       return;
     }
 
-    // AC1: Stop expo-audio recorder FIRST (fixes code review issue #4)
     try {
       await audioRecorder.stop();
     } catch (error) {
       console.error('[CaptureScreen] Failed to stop audio recorder during cancel:', error);
-      // Continue with cancel even if stop fails
     }
 
-    // AC1: Delete file + DB entity via RecordingService
     const result = await recordingService.cancelRecording();
 
     if (result.type !== 'success') {
       console.error('[CaptureScreen] Failed to cancel recording:', result.type, result.error);
       Alert.alert(
         'Attention',
-        'L\'enregistrement a été arrêté mais le nettoyage a échoué. Vous pouvez réessayer.',
+        'L\'enregistrement a été arrêté mais le nettoyage a échoué.',
         [{ text: 'OK' }]
       );
     }
 
     setState('idle');
+    setShowRecordingOverlay(false);
   };
 
   const handleTextCaptureSave = async (text: string): Promise<void> => {
-    // AC2: Save text capture using TextCaptureService
     const textCaptureService = textCaptureServiceRef.current;
     if (!textCaptureService) {
       Alert.alert('Erreur', 'Service non initialisé');
       throw new Error('Service non initialisé');
     }
 
-    // Use service layer instead of direct repository access
     const result = await textCaptureService.createTextCapture(text);
 
     if (result.type !== 'success' || !result.data) {
@@ -393,14 +472,11 @@ const CaptureScreenContent = () => {
       throw new Error(errorMsg);
     }
 
-    // Close modal
     setShowTextCapture(false);
 
-    // Show success message
     Alert.alert(
       'Capture enregistrée!',
-      `Votre pensée a été sauvegardée localement.
-La synchronisation se fera automatiquement.`,
+      'Votre pensée a été sauvegardée.',
       [{ text: 'OK' }]
     );
   };
@@ -409,57 +485,43 @@ La synchronisation se fera automatiquement.`,
     setShowTextCapture(false);
   };
 
+  const handleToolPress = (toolId: string) => {
+    switch (toolId) {
+      case 'voice':
+        startRecording();
+        break;
+      case 'text':
+        setShowTextCapture(true);
+        break;
+      case 'photo':
+      case 'url':
+      case 'document':
+      case 'clipboard':
+        Alert.alert('Bientôt disponible', 'Cette fonctionnalité sera disponible prochainement.');
+        break;
+    }
+  };
+
   return (
     <View style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Pensées Vocales</Text>
+        <Text style={styles.title}>Outils de Capture</Text>
         <Text style={styles.subtitle}>
-          {state === 'idle'
-            ? 'Tap pour enregistrer'
-            : state === 'recording'
-            ? 'Enregistrement en cours...'
-            : 'Sauvegarde...'}
+          Choisissez un outil pour saisir votre contenu
         </Text>
       </View>
 
-      <View style={styles.buttonContainer}>
-        <View style={styles.captureButtons}>
-          {/* Story 2.3: RecordButtonUI with cancel functionality */}
-          <RecordButtonUI
-            onRecordPress={startRecording}
-            onStopPress={stopRecording}
-            onCancelConfirm={cancelRecording}
-            isRecording={state === 'recording'}
-            recordingDuration={recordingDuration}
-            disabled={state === 'stopping'}
-          />
-
-          {/* Text Capture Button - AC1: Distinct icon, 44x44 tap target */}
-          <TouchableOpacity
-            style={styles.textCaptureButton}
-            onPress={() => setShowTextCapture(true)}
+      {/* Tools Grid */}
+      <View style={styles.toolsGrid}>
+        {CAPTURE_TOOLS.map((tool) => (
+          <CaptureToolButton
+            key={tool.id}
+            tool={tool}
+            onPress={() => handleToolPress(tool.id)}
             disabled={state !== 'idle'}
-            activeOpacity={0.8}
-            testID="text-capture-button"
-            accessibilityLabel="Capturer du texte"
-            accessibilityHint="Ouvre le clavier pour saisir une pensée sous forme de texte"
-            accessibilityRole="button"
-            accessibilityState={{ disabled: state !== 'idle' }}
-          >
-            <Text style={styles.textCaptureIcon}>✏️</Text>
-            <Text style={styles.textCaptureLabel}>Texte</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoText}>
-          {state === 'idle'
-            ? 'Tapez une fois pour commencer\nTapez à nouveau pour arrêter'
-            : state === 'recording'
-            ? 'Parlez naturellement...'
-            : 'Sauvegarde en cours...'}
-        </Text>
+          />
+        ))}
       </View>
 
       {/* Text Capture Modal */}
@@ -474,6 +536,21 @@ La synchronisation se fera automatiquement.`,
           onCancel={handleTextCaptureCancel}
         />
       </Modal>
+
+      {/* Recording Overlay */}
+      <Modal
+        visible={showRecordingOverlay}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={cancelRecording}
+      >
+        <RecordingOverlay
+          duration={recordingDuration}
+          onStop={stopRecording}
+          onCancel={cancelRecording}
+          isStopping={state === 'stopping'}
+        />
+      </Modal>
     </View>
   );
 };
@@ -482,128 +559,65 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F2F2F7',
-    padding: 24,
   },
   header: {
     alignItems: 'center',
-    marginTop: 60,
-    marginBottom: 40,
+    paddingTop: 60,
+    paddingBottom: 40,
+    paddingHorizontal: 24,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#000',
+    color: '#1C1C1E',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 18,
+    fontSize: 16,
     color: '#8E8E93',
+    textAlign: 'center',
   },
-  buttonContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  captureButtons: {
+  toolsGrid: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 32,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    gap: 16,
   },
-  recordButton: {
-    width: 200,
-    height: 200,
-    borderRadius: 100,
+  toolContainer: {
+    width: ICON_SIZE,
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  toolButton: {
+    width: ICON_SIZE - 20,
+    height: ICON_SIZE - 20,
+    borderRadius: (ICON_SIZE - 20) / 2,
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  textCaptureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#34C759', // Green for text
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  textCaptureIcon: {
-    fontSize: 32,
-    marginBottom: 4,
+  toolButtonDisabled: {
+    opacity: 0.5,
   },
-  textCaptureLabel: {
-    fontSize: 12,
+  toolLabel: {
+    marginTop: 8,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#1C1C1E',
+    textAlign: 'center',
   },
-  buttonText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    lineHeight: 28,
-    textAlignVertical: 'center',
-  },
-  infoContainer: {
-    marginTop: 40,
-    alignItems: 'center',
-    minHeight: 48, // 2 lignes * lineHeight(24) pour éviter le décalage du bouton
-  },
-  infoText: {
-    fontSize: 16,
+  toolLabelDisabled: {
     color: '#8E8E93',
-    textAlign: 'center',
-    lineHeight: 24,
   },
-  permissionWarning: {
-    position: 'absolute',
-    bottom: 40,
-    left: 24,
-    right: 24,
-    padding: 16,
-    backgroundColor: '#FFF3CD',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FFE69C',
-  },
-  permissionWarningText: {
-    fontSize: 14,
-    color: '#856404',
-    textAlign: 'center',
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  permissionSubtext: {
-    fontSize: 12,
-    color: '#856404',
-    textAlign: 'center',
-  },
-  devToolsToggle: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    backgroundColor: '#1E1E1E',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 2,
-    borderColor: '#007AFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  devToolsToggleText: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#007AFF',
+  comingSoon: {
+    fontSize: 10,
+    color: '#8E8E93',
+    marginTop: 2,
   },
 });
 
