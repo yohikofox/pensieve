@@ -1,32 +1,51 @@
+/**
+ * MainNavigator - Bottom Tab Navigation
+ *
+ * Main navigation with three tabs:
+ * - Captures: List of all captures
+ * - Capture: Recording/capture screen
+ * - Settings: App settings
+ */
+
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
 import { CapturesStackNavigator } from './CapturesStackNavigator';
 import { SettingsStackNavigator } from './SettingsStackNavigator';
 import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
+import { TabBarIcon, TabIcons } from './components';
+import { tabBarStyle } from './theme';
 
 const Tab = createBottomTabNavigator();
 
 export const MainNavigator = () => {
+  const { t } = useTranslation();
+
   return (
     <>
       <Tab.Navigator
         initialRouteName="Capture"
         screenOptions={{
           headerShown: true,
-          tabBarActiveTintColor: '#007AFF',
-          tabBarInactiveTintColor: '#8E8E93',
+          tabBarActiveTintColor: tabBarStyle.activeTintColor,
+          tabBarInactiveTintColor: tabBarStyle.inactiveTintColor,
+          tabBarLabelStyle: tabBarStyle.labelStyle,
         }}
       >
         <Tab.Screen
           name="Captures"
           component={CapturesStackNavigator}
           options={{
-            title: 'Mes Captures',
-            tabBarLabel: 'Captures',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="list" size={size} color={color} />
+            title: t('navigation.headers.captures'),
+            tabBarLabel: t('navigation.tabs.captures'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon
+                name={TabIcons.captures}
+                color={color}
+                size={size}
+                focused={focused}
+              />
             ),
           }}
         />
@@ -34,10 +53,15 @@ export const MainNavigator = () => {
           name="Capture"
           component={CaptureScreen}
           options={{
-            title: 'Capturer',
-            tabBarLabel: 'Capturer',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="mic" size={size} color={color} />
+            title: t('navigation.headers.capture'),
+            tabBarLabel: t('navigation.tabs.capture'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon
+                name={TabIcons.capture}
+                color={color}
+                size={size}
+                focused={focused}
+              />
             ),
           }}
         />
@@ -45,10 +69,15 @@ export const MainNavigator = () => {
           name="Settings"
           component={SettingsStackNavigator}
           options={{
-            title: 'Paramètres',
-            tabBarLabel: 'Paramètres',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="settings" size={size} color={color} />
+            title: t('navigation.headers.settings'),
+            tabBarLabel: t('navigation.tabs.settings'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon
+                name={TabIcons.settings}
+                color={color}
+                size={size}
+                focused={focused}
+              />
             ),
           }}
         />

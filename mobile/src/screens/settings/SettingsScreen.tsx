@@ -4,15 +4,15 @@ import {
   ScrollView,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Alert,
   ActivityIndicator,
   Modal,
   TextInput,
   Switch,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -24,18 +24,23 @@ import { TranscriptionEngineService } from '../../contexts/Normalization/service
 import { useSettingsStore } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+import { colors } from '../../design-system/tokens';
+import { Card, Button, AlertDialog, useToast } from '../../design-system/components';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsMain'>;
 
 export const SettingsScreen = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [exportLoading, setExportLoading] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [passwordModalVisible, setPasswordModalVisible] = useState(false);
   const [password, setPassword] = useState('');
-  const [engineLabel, setEngineLabel] = useState<string>('Whisper');
-  const [selectedModelLabel, setSelectedModelLabel] = useState<string>('Non configuré');
-  const [llmStatusLabel, setLlmStatusLabel] = useState<string>('Désactivé');
+  const [engineLabel, setEngineLabel] = useState<string>(
+    t('settings.transcription.engineOptions.whisper')
+  );
+  const [selectedModelLabel, setSelectedModelLabel] = useState<string>(t('common.notConfigured'));
+  const [llmStatusLabel, setLlmStatusLabel] = useState<string>(t('common.disabled'));
 
   // Debug mode from global settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
@@ -49,6 +54,13 @@ export const SettingsScreen = () => {
   });
   const [googleConnecting, setGoogleConnecting] = useState(false);
 
+  // Dialog states
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [showExportDialog, setShowExportDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showDeleteSuccessDialog, setShowDeleteSuccessDialog] = useState(false);
+  const toast = useToast();
+
   const modelService = new WhisperModelService();
   const llmModelService = new LLMModelService();
   const engineService = container.resolve(TranscriptionEngineService);
@@ -59,8 +71,8 @@ export const SettingsScreen = () => {
       try {
         const engines = await engineService.getAvailableEngines();
         const selectedType = await engineService.getSelectedEngineType();
-        const selected = engines.find(e => e.type === selectedType);
-        setEngineLabel(selected?.displayName || 'Whisper');
+        const selected = engines.find((e) => e.type === selectedType);
+        setEngineLabel(selected?.displayName || t('settings.transcription.engineOptions.whisper'));
       } catch (error) {
         console.error('[Settings] Failed to load engine:', error);
       }
@@ -69,7 +81,7 @@ export const SettingsScreen = () => {
     loadEngine();
     const unsubscribe = navigation.addListener('focus', loadEngine);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, t]);
 
   // Load selected model label on mount and when returning to screen
   useEffect(() => {
@@ -77,14 +89,14 @@ export const SettingsScreen = () => {
       const selected = await modelService.getBestAvailableModel();
       if (selected) {
         const labels: Record<string, string> = {
-          tiny: 'Tiny',
-          base: 'Base',
-          small: 'Small',
-          medium: 'Medium',
+          tiny: t('settings.transcription.modelOptions.tiny'),
+          base: t('settings.transcription.modelOptions.base'),
+          small: t('settings.transcription.modelOptions.small'),
+          medium: t('settings.transcription.modelOptions.medium'),
         };
         setSelectedModelLabel(labels[selected] || selected);
       } else {
-        setSelectedModelLabel('Non configuré');
+        setSelectedModelLabel(t('common.notConfigured'));
       }
     };
 
@@ -93,14 +105,14 @@ export const SettingsScreen = () => {
     // Refresh when screen comes into focus
     const unsubscribe = navigation.addListener('focus', loadSelectedModel);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, t]);
 
   // Load LLM status on mount and when returning to screen
   useEffect(() => {
     const loadLlmStatus = async () => {
       const enabled = await llmModelService.isPostProcessingEnabled();
       if (!enabled) {
-        setLlmStatusLabel('Désactivé');
+        setLlmStatusLabel(t('common.disabled'));
         return;
       }
 
@@ -109,7 +121,7 @@ export const SettingsScreen = () => {
         const config = llmModelService.getModelConfig(selected);
         setLlmStatusLabel(config.name);
       } else {
-        setLlmStatusLabel('Activé');
+        setLlmStatusLabel(t('common.enabled'));
       }
     };
 
@@ -117,7 +129,7 @@ export const SettingsScreen = () => {
 
     const unsubscribe = navigation.addListener('focus', loadLlmStatus);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, t]);
 
   // Load Google Calendar auth state
   const loadGoogleAuthState = useCallback(async () => {
@@ -146,13 +158,13 @@ export const SettingsScreen = () => {
 
       if (result.success) {
         await loadGoogleAuthState();
-        Alert.alert('Succès', 'Compte Google connecté avec succès !');
+        toast.success(t('settings.integrations.connectSuccess'));
       } else {
-        Alert.alert('Erreur', result.error || 'Connexion échouée');
+        toast.error(result.error || t('settings.integrations.connectError'));
       }
     } catch (error) {
       console.error('[Settings] Google connect error:', error);
-      Alert.alert('Erreur', 'Impossible de se connecter à Google');
+      toast.error(t('settings.integrations.connectError'));
     } finally {
       setGoogleConnecting(false);
     }
@@ -161,137 +173,109 @@ export const SettingsScreen = () => {
   /**
    * Handle Google Calendar disconnect
    */
-  const handleGoogleDisconnect = async () => {
-    Alert.alert(
-      'Déconnecter Google Calendar',
-      'Vous ne pourrez plus ajouter des événements à votre calendrier depuis l\'app.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnecter',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await GoogleCalendarService.disconnect();
-              setGoogleAuth({ isConnected: false, userEmail: null, isLoading: false });
-            } catch (error) {
-              console.error('[Settings] Google disconnect error:', error);
-            }
-          },
-        },
-      ]
-    );
+  const handleGoogleDisconnect = () => {
+    setShowDisconnectDialog(true);
+  };
+
+  const confirmGoogleDisconnect = async () => {
+    setShowDisconnectDialog(false);
+    try {
+      await GoogleCalendarService.disconnect();
+      setGoogleAuth({ isConnected: false, userEmail: null, isLoading: false });
+    } catch (error) {
+      console.error('[Settings] Google disconnect error:', error);
+    }
   };
 
   /**
    * Handle Data Export
    */
-  const handleExportData = async () => {
-    Alert.alert(
-      'Exporter mes données',
-      'Toutes vos données seront téléchargées dans un fichier ZIP. Cela peut prendre quelques minutes.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Exporter',
-          onPress: async () => {
-            setExportLoading(true);
+  const handleExportData = () => {
+    setShowExportDialog(true);
+  };
 
-            try {
-              // Get auth token
-              const {
-                data: { session },
-              } = await supabase.auth.getSession();
+  const executeExport = async () => {
+    setShowExportDialog(false);
+    setExportLoading(true);
 
-              if (!session) {
-                throw new Error('Non authentifié');
-              }
+    try {
+      // Get auth token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
 
-              // Call export API (POST request)
-              const response = await fetch(apiConfig.endpoints.rgpd.export, {
-                method: 'POST',
-                headers: {
-                  Authorization: `Bearer ${session.access_token}`,
-                },
-              });
+      if (!session) {
+        throw new Error(t('auth.notAuthenticated'));
+      }
 
-              if (!response.ok) {
-                const errorText = await response.text();
-                let errorMessage = 'Erreur inconnue';
-                try {
-                  const errorJson = JSON.parse(errorText);
-                  errorMessage = errorJson.message || errorJson.error || errorMessage;
-                } catch (e) {
-                  errorMessage = errorText.substring(0, 100);
-                }
-                throw new Error(`Erreur HTTP ${response.status}: ${errorMessage}`);
-              }
-
-              // Download ZIP blob
-              const blob = await response.blob();
-
-              // Convert blob to base64
-              const reader = new FileReader();
-              const base64Promise = new Promise<string>((resolve, reject) => {
-                reader.onloadend = () => {
-                  const base64 = (reader.result as string).split(',')[1];
-                  resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(blob);
-              });
-
-              const base64Data = await base64Promise;
-
-              // Save to file system
-              const filename = `pensine-export-${Date.now()}.zip`;
-              const localPath = `${FileSystem.documentDirectory}${filename}`;
-              await FileSystem.writeAsStringAsync(localPath, base64Data, {
-                encoding: FileSystem.EncodingType.Base64,
-              });
-
-              // Share ZIP (user can save to Files app or email)
-              await Sharing.shareAsync(localPath, {
-                mimeType: 'application/zip',
-                dialogTitle: 'Sauvegarder vos données Pensine',
-              });
-
-              Alert.alert(
-                'Export terminé',
-                'Vos données ont été exportées avec succès.',
-              );
-            } catch (error: any) {
-              Alert.alert(
-                'Erreur',
-                `Impossible d'exporter vos données: ${error.message}`,
-              );
-            } finally {
-              setExportLoading(false);
-            }
-          },
+      // Call export API (POST request)
+      const response = await fetch(apiConfig.endpoints.rgpd.export, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
         },
-      ],
-    );
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorMessage = t('errors.unknown');
+        try {
+          const errorJson = JSON.parse(errorText);
+          errorMessage = errorJson.message || errorJson.error || errorMessage;
+        } catch {
+          errorMessage = errorText.substring(0, 100);
+        }
+        throw new Error(`HTTP ${response.status}: ${errorMessage}`);
+      }
+
+      // Download ZIP blob
+      const blob = await response.blob();
+
+      // Convert blob to base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve, reject) => {
+        reader.onloadend = () => {
+                const base64 = (reader.result as string).split(',')[1];
+                resolve(base64);
+              };
+              reader.onerror = reject;
+              reader.readAsDataURL(blob);
+            });
+
+            const base64Data = await base64Promise;
+
+            // Save to file system
+            const filename = `pensine-export-${Date.now()}.zip`;
+            const localPath = `${FileSystem.documentDirectory}${filename}`;
+            await FileSystem.writeAsStringAsync(localPath, base64Data, {
+              encoding: FileSystem.EncodingType.Base64,
+            });
+
+            // Share ZIP (user can save to Files app or email)
+            await Sharing.shareAsync(localPath, {
+              mimeType: 'application/zip',
+              dialogTitle: t('settings.privacy.exportData'),
+            });
+
+      toast.success(t('settings.privacy.exportSuccessMessage'));
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(t('settings.privacy.exportError', { error: errorMessage }));
+    } finally {
+      setExportLoading(false);
+    }
   };
 
   /**
    * Handle Account Deletion
    */
-  const handleDeleteAccount = async () => {
-    Alert.alert(
-      '⚠️ Supprimer mon compte',
-      'Cette action est DÉFINITIVE et IRRÉVERSIBLE.\n\n' +
-        'Toutes vos données seront supprimées.\n\n' +
-        'Voulez-vous vraiment continuer ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: () => promptPasswordConfirmation(),
-        },
-      ],
-    );
+  const handleDeleteAccount = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDeleteAccount = () => {
+    setShowDeleteDialog(false);
+    promptPasswordConfirmation();
   };
 
   /**
@@ -307,7 +291,7 @@ export const SettingsScreen = () => {
    */
   const handlePasswordConfirm = async () => {
     if (!password || password.trim() === '') {
-      Alert.alert('Erreur', 'Veuillez saisir votre mot de passe.');
+      toast.error(t('settings.privacy.passwordRequired'));
       return;
     }
     setPasswordModalVisible(false);
@@ -335,7 +319,7 @@ export const SettingsScreen = () => {
       } = await supabase.auth.getSession();
 
       if (!session) {
-        throw new Error('Non authentifié');
+        throw new Error(t('auth.notAuthenticated'));
       }
 
       // Call deletion API
@@ -350,141 +334,147 @@ export const SettingsScreen = () => {
 
       if (response.status === 204) {
         // Deletion successful
-        Alert.alert(
-          'Compte supprimé',
-          'Votre compte et toutes vos données ont été supprimés.\n\nVous allez être déconnecté.',
-          [
-            {
-              text: 'OK',
-              onPress: async () => {
-                // Sign out and return to login
-                await supabase.auth.signOut();
-                // Navigation handled by auth state listener
-              },
-            },
-          ],
-        );
+        setShowDeleteSuccessDialog(true);
       } else if (response.status === 401) {
-        Alert.alert('Erreur', 'Mot de passe incorrect.');
+        toast.error(t('settings.privacy.incorrectPassword'));
       } else {
         const error = await response.json();
-        Alert.alert(
-          'Erreur',
-          error.message || 'Impossible de supprimer le compte.',
-        );
+        toast.error(error.message || t('settings.privacy.deleteError', { error: '' }));
       }
-    } catch (error: any) {
-      Alert.alert(
-        'Erreur',
-        `Impossible de supprimer le compte: ${error.message}`,
-      );
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(t('settings.privacy.deleteError', { error: errorMessage }));
     } finally {
       setDeleteLoading(false);
     }
   };
 
+  const handleDeleteSuccessConfirm = async () => {
+    setShowDeleteSuccessDialog(false);
+    await supabase.auth.signOut();
+    // Navigation handled by auth state listener
+  };
+
   return (
     <>
-      <ScrollView style={styles.container}>
+      <ScrollView className="flex-1 bg-neutral-100">
         {/* Transcription Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Transcription</Text>
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.transcription')}
+          </Text>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
             onPress={() => navigation.navigate('TranscriptionEngineSettings')}
           >
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemLabel}>Moteur de transcription</Text>
-              <Text style={styles.menuItemSubtitle}>
-                Whisper ou reconnaissance native
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900">{t('settings.transcription.engine')}</Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.transcription.engineSubtitle')}
               </Text>
             </View>
-            <View style={styles.menuItemRight}>
-              <Text style={styles.menuItemValue}>{engineLabel}</Text>
-              <Text style={styles.menuItemChevron}>›</Text>
+            <View className="flex-row items-center">
+              <Text className="text-base text-neutral-400 mr-1">{engineLabel}</Text>
+              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
             onPress={() => navigation.navigate('WhisperSettings')}
           >
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemLabel}>Modèle Whisper</Text>
-              <Text style={styles.menuItemSubtitle}>
-                Configurer le modèle de transcription
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900">
+                {t('settings.transcription.whisperModel')}
+              </Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.transcription.whisperModelSubtitle')}
               </Text>
             </View>
-            <View style={styles.menuItemRight}>
-              <Text style={styles.menuItemValue}>{selectedModelLabel}</Text>
-              <Text style={styles.menuItemChevron}>›</Text>
+            <View className="flex-row items-center">
+              <Text className="text-base text-neutral-400 mr-1">{selectedModelLabel}</Text>
+              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4"
             onPress={() => navigation.navigate('LLMSettings')}
           >
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemLabel}>Amélioration IA</Text>
-              <Text style={styles.menuItemSubtitle}>
-                Améliorer automatiquement les transcriptions
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900">
+                {t('settings.transcription.aiEnhancement')}
+              </Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.transcription.aiEnhancementSubtitle')}
               </Text>
             </View>
-            <View style={styles.menuItemRight}>
-              <Text style={styles.menuItemValue}>{llmStatusLabel}</Text>
-              <Text style={styles.menuItemChevron}>›</Text>
+            <View className="flex-row items-center">
+              <Text className="text-base text-neutral-400 mr-1">{llmStatusLabel}</Text>
+              <Text className="text-xl text-neutral-300 font-semibold">›</Text>
             </View>
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* Integrations Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Intégrations</Text>
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.integrations')}
+          </Text>
 
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4"
             onPress={googleAuth.isConnected ? handleGoogleDisconnect : handleGoogleConnect}
             disabled={googleConnecting || googleAuth.isLoading}
           >
-            <View style={styles.menuItemContent}>
-              <View style={styles.menuItemLabelRow}>
-                <Text style={styles.googleIcon}>📅</Text>
-                <Text style={styles.menuItemLabel}>Google Calendar</Text>
+            <View className="flex-1">
+              <View className="flex-row items-center">
+                <Feather name="calendar" size={20} color={colors.primary[600]} style={{ marginRight: 8 }} />
+                <Text className="text-lg text-neutral-900">
+                  {t('settings.integrations.googleCalendar')}
+                </Text>
               </View>
-              <Text style={styles.menuItemSubtitle}>
+              <Text className="text-xs text-neutral-400 mt-0.5">
                 {googleAuth.isConnected
-                  ? `Connecté: ${googleAuth.userEmail || 'compte Google'}`
-                  : 'Ajouter des événements à votre calendrier'}
+                  ? t('settings.integrations.googleCalendarConnected', {
+                      email: googleAuth.userEmail || '',
+                    })
+                  : t('settings.integrations.googleCalendarSubtitle')}
               </Text>
             </View>
-            <View style={styles.menuItemRight}>
-              {(googleConnecting || googleAuth.isLoading) ? (
+            <View className="flex-row items-center">
+              {googleConnecting || googleAuth.isLoading ? (
                 <ActivityIndicator size="small" />
               ) : googleAuth.isConnected ? (
-                <Text style={styles.googleConnectedBadge}>Connecté</Text>
+                <Text className="text-xs font-semibold text-success-500 bg-success-50 px-2 py-1 rounded">
+                  {t('settings.integrations.connected')}
+                </Text>
               ) : (
-                <Text style={styles.googleConnectText}>Connecter</Text>
+                <Text className="text-base font-medium text-primary-500">
+                  {t('settings.integrations.connect')}
+                </Text>
               )}
             </View>
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* RGPD Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Confidentialité & Données</Text>
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.privacy')}
+          </Text>
 
           {/* Export Data */}
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4 border-b border-neutral-200"
             onPress={handleExportData}
             disabled={exportLoading}
           >
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemLabel}>Exporter mes données</Text>
-              <Text style={styles.menuItemSubtitle}>
-                Télécharger toutes vos données
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900">{t('settings.privacy.exportData')}</Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.privacy.exportDataSubtitle')}
               </Text>
             </View>
             {exportLoading && <ActivityIndicator />}
@@ -492,41 +482,43 @@ export const SettingsScreen = () => {
 
           {/* Delete Account */}
           <TouchableOpacity
-            style={styles.menuItem}
+            className="flex-row items-center py-3 px-4"
             onPress={handleDeleteAccount}
             disabled={deleteLoading}
           >
-            <View style={styles.menuItemContent}>
-              <Text style={[styles.menuItemLabel, { color: '#FF3B30' }]}>
-                Supprimer mon compte
-              </Text>
-              <Text style={styles.menuItemSubtitle}>
-                Suppression définitive et irréversible
+            <View className="flex-1">
+              <Text className="text-lg text-error-500">{t('settings.privacy.deleteAccount')}</Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.privacy.deleteAccountSubtitle')}
               </Text>
             </View>
             {deleteLoading && <ActivityIndicator />}
           </TouchableOpacity>
-        </View>
+        </Card>
 
         {/* Development Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Développement</Text>
+        <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
+          <Text className="text-xs font-semibold text-neutral-400 uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.development')}
+          </Text>
 
-          <View style={styles.menuItem}>
-            <View style={styles.menuItemContent}>
-              <Text style={styles.menuItemLabel}>Mode debug</Text>
-              <Text style={styles.menuItemSubtitle}>
-                Active les outils de diagnostic (logs, lecture WAV...)
+          <View className="flex-row items-center py-3 px-4">
+            <View className="flex-1">
+              <Text className="text-lg text-neutral-900">
+                {t('settings.development.debugMode')}
+              </Text>
+              <Text className="text-xs text-neutral-400 mt-0.5">
+                {t('settings.development.debugModeSubtitle')}
               </Text>
             </View>
             <Switch
               value={debugMode}
               onValueChange={toggleDebugMode}
-              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
-              thumbColor="#FFFFFF"
+              trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+              thumbColor={colors.neutral[0]}
             />
           </View>
-        </View>
+        </Card>
       </ScrollView>
 
       {/* Password Confirmation Modal */}
@@ -536,184 +528,101 @@ export const SettingsScreen = () => {
         animationType="fade"
         onRequestClose={handlePasswordCancel}
       >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Confirmer votre mot de passe</Text>
-            <Text style={styles.modalMessage}>
-              Pour des raisons de sécurité, veuillez saisir votre mot de passe.
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <Card variant="elevated" className="w-4/5 max-w-[400px] p-5">
+            <Text className="text-lg font-semibold text-neutral-900 text-center mb-2">
+              {t('settings.privacy.passwordConfirmTitle')}
+            </Text>
+            <Text className="text-xs text-neutral-400 text-center mb-4">
+              {t('settings.privacy.passwordConfirmMessage')}
             </Text>
 
             <TextInput
-              style={styles.modalInput}
-              placeholder="Mot de passe"
+              className="border border-neutral-200 rounded-base p-3 text-lg mb-4 bg-neutral-50"
+              placeholder={t('settings.privacy.passwordPlaceholder')}
               secureTextEntry={true}
               value={password}
               onChangeText={setPassword}
               autoFocus={true}
               autoCapitalize="none"
               autoCorrect={false}
+              placeholderTextColor={colors.neutral[400]}
             />
 
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonCancel]}
+            <View className="flex-row justify-between gap-3">
+              <Button
+                variant="secondary"
+                size="lg"
+                className="flex-1"
                 onPress={handlePasswordCancel}
               >
-                <Text style={styles.modalButtonTextCancel}>Annuler</Text>
-              </TouchableOpacity>
+                {t('common.cancel')}
+              </Button>
 
-              <TouchableOpacity
-                style={[styles.modalButton, styles.modalButtonConfirm]}
+              <Button
+                variant="danger"
+                size="lg"
+                className="flex-1"
                 onPress={handlePasswordConfirm}
               >
-                <Text style={styles.modalButtonTextConfirm}>Confirmer</Text>
-              </TouchableOpacity>
+                {t('common.confirm')}
+              </Button>
             </View>
-          </View>
+          </Card>
         </View>
       </Modal>
+
+      {/* AlertDialogs */}
+      <AlertDialog
+        visible={showDisconnectDialog}
+        onClose={() => setShowDisconnectDialog(false)}
+        variant="warning"
+        title={t('settings.integrations.disconnectTitle')}
+        message={t('settings.integrations.disconnectMessage')}
+        confirmAction={{
+          label: t('settings.integrations.disconnect'),
+          variant: 'danger',
+          onPress: confirmGoogleDisconnect,
+        }}
+      />
+
+      <AlertDialog
+        visible={showExportDialog}
+        onClose={() => setShowExportDialog(false)}
+        variant="default"
+        title={t('settings.privacy.exportConfirmTitle')}
+        message={t('settings.privacy.exportConfirmMessage')}
+        confirmAction={{
+          label: t('settings.privacy.exportButton'),
+          onPress: executeExport,
+        }}
+      />
+
+      <AlertDialog
+        visible={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        variant="danger"
+        title={t('settings.privacy.deleteConfirmTitle')}
+        message={t('settings.privacy.deleteConfirmMessage')}
+        confirmAction={{
+          label: t('common.delete'),
+          onPress: confirmDeleteAccount,
+        }}
+      />
+
+      <AlertDialog
+        visible={showDeleteSuccessDialog}
+        onClose={handleDeleteSuccessConfirm}
+        variant="default"
+        icon="check-circle"
+        title={t('settings.privacy.deleteSuccess')}
+        message={t('settings.privacy.deleteSuccessMessage')}
+        cancelAction={false}
+        confirmAction={{
+          label: t('common.ok'),
+          onPress: handleDeleteSuccessConfirm,
+        }}
+      />
     </>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F2F2F7',
-  },
-  section: {
-    marginTop: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    marginHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#8E8E93',
-    textTransform: 'uppercase',
-    marginLeft: 16,
-    marginBottom: 8,
-    marginTop: 8,
-  },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA',
-  },
-  menuItemContent: {
-    flex: 1,
-  },
-  menuItemLabel: {
-    fontSize: 17,
-    fontWeight: '400',
-    color: '#000000',
-  },
-  menuItemSubtitle: {
-    fontSize: 13,
-    color: '#8E8E93',
-    marginTop: 2,
-  },
-  menuItemRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuItemValue: {
-    fontSize: 15,
-    color: '#8E8E93',
-    marginRight: 4,
-  },
-  menuItemChevron: {
-    fontSize: 20,
-    color: '#C7C7CC',
-    fontWeight: '600',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    padding: 20,
-    width: '80%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  modalMessage: {
-    fontSize: 13,
-    color: '#8E8E93',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  modalInput: {
-    borderWidth: 1,
-    borderColor: '#E5E5EA',
-    borderRadius: 8,
-    padding: 12,
-    fontSize: 17,
-    marginBottom: 16,
-    backgroundColor: '#F2F2F7',
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  modalButtonCancel: {
-    backgroundColor: '#F2F2F7',
-  },
-  modalButtonConfirm: {
-    backgroundColor: '#FF3B30',
-  },
-  modalButtonTextCancel: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#007AFF',
-  },
-  modalButtonTextConfirm: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  menuItemLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  googleIcon: {
-    fontSize: 18,
-    marginRight: 8,
-  },
-  googleConnectedBadge: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#34C759',
-    backgroundColor: '#E8F5E9',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  googleConnectText: {
-    fontSize: 15,
-    fontWeight: '500',
-    color: '#007AFF',
-  },
-});

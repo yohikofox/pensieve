@@ -20,12 +20,12 @@ import {
   StyleSheet,
   Animated,
   Platform,
-  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { container } from 'tsyringe';
 import { RecordingService } from '../services/RecordingService';
 import { RepositoryResultType } from '../domain/Result';
+import { AlertDialog } from '../../../design-system/components';
 
 interface RecordButtonProps {
   onRecordingStart?: (captureId: string) => void;
@@ -58,6 +58,7 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const discardAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -143,46 +144,39 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
   /**
    * Story 2.3: Handle cancel button press with confirmation
    * AC2: Cancel Gesture with Confirmation
-   * AC3: Haptic Feedback on Cancellation
    */
-  const handleCancel = async () => {
-    Alert.alert(
-      'Discard this recording?',
-      'This recording will be permanently deleted.',
-      [
-        {
-          text: 'Keep Recording',
-          style: 'cancel',
-        },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: async () => {
-            // AC3: Haptic feedback on cancellation (Heavy for warning)
-            if (Platform.OS === 'ios' || Platform.OS === 'android') {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            }
+  const handleCancel = () => {
+    setShowDiscardDialog(true);
+  };
 
-            // AC4: Discard animation
-            Animated.timing(discardAnim, {
-              toValue: 0,
-              duration: 200,
-              useNativeDriver: true,
-            }).start(async () => {
-              // Cancel recording
-              await recordingService.cancelRecording();
+  /**
+   * AC3: Confirm discard with Haptic Feedback on Cancellation
+   * AC4: Discard animation
+   */
+  const confirmDiscard = async () => {
+    setShowDiscardDialog(false);
 
-              // Reset state
-              setIsRecording(false);
-              discardAnim.setValue(1);
+    // AC3: Haptic feedback on cancellation (Heavy for warning)
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
 
-              // Notify parent
-              onRecordingCancel?.();
-            });
-          },
-        },
-      ]
-    );
+    // AC4: Discard animation
+    Animated.timing(discardAnim, {
+      toValue: 0,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(async () => {
+      // Cancel recording
+      await recordingService.cancelRecording();
+
+      // Reset state
+      setIsRecording(false);
+      discardAnim.setValue(1);
+
+      // Notify parent
+      onRecordingCancel?.();
+    });
   };
 
   /**
@@ -236,6 +230,24 @@ export const RecordButton: React.FC<RecordButtonProps> = ({
           <Text style={styles.cancelButtonText}>✕</Text>
         </TouchableOpacity>
       )}
+
+      {/* Discard confirmation dialog */}
+      <AlertDialog
+        visible={showDiscardDialog}
+        onClose={() => setShowDiscardDialog(false)}
+        title="Discard this recording?"
+        message="This recording will be permanently deleted."
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Discard',
+          onPress: confirmDiscard,
+        }}
+        cancelAction={{
+          label: 'Keep Recording',
+          onPress: () => setShowDiscardDialog(false),
+        }}
+      />
     </View>
   );
 };

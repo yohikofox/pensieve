@@ -6,7 +6,7 @@
  * Features:
  * - AC1: Auto-focus, auto-open keyboard, multiline support
  * - AC5: Empty text validation
- * - Liquid Glass Design System styling
+ * - Design System styling with NativeWind
  *
  * Story: 2.2 - Capture Texte Rapide
  */
@@ -15,14 +15,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   TextInput,
-  TouchableOpacity,
   Text,
-  StyleSheet,
   Keyboard,
-  Alert,
   Animated,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { useTranslation } from 'react-i18next';
+import { colors, shadows } from '../../design-system/tokens';
+import { Button, AlertDialog } from '../../design-system/components';
 
 // Timing constants for animations and focus delays
 const FOCUS_DELAY_MS = 100;
@@ -39,11 +39,13 @@ interface TextCaptureInputProps {
 export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
   onSave,
   onCancel,
-  placeholder = 'Notez votre pensée...',
+  placeholder,
 }) => {
+  const { t } = useTranslation();
   const [text, setText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   // AC6: Animation values for save confirmation
@@ -73,14 +75,14 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
 
     // AC5: Empty text validation
     if (!trimmedText) {
-      setError('Veuillez entrer du texte');
+      setError(t('capture.textCapture.emptyError'));
       return;
     }
 
     // AC6: Haptic feedback on save
     try {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    } catch (error) {
+    } catch {
       // Haptic feedback may not be available on all devices (silently ignore)
     }
 
@@ -129,9 +131,9 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
           });
         }, ANIMATION_HOLD_MS);
       });
-    } catch (error) {
+    } catch {
       // If save fails, show error and keep the text
-      setError('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      setError(t('capture.textCapture.saveError'));
       setIsSaving(false);
     }
   };
@@ -147,27 +149,7 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
 
     if (hasUnsavedContent) {
       // Show confirmation dialog
-      Alert.alert(
-        'Rejeter la capture?',
-        'Le texte non sauvegardé sera perdu.',
-        [
-          {
-            text: 'Continuer l\'édition',
-            style: 'cancel',
-          },
-          {
-            text: 'Rejeter',
-            style: 'destructive',
-            onPress: () => {
-              // Clear text and close
-              setText('');
-              setError(null);
-              Keyboard.dismiss();
-              onCancel();
-            },
-          },
-        ]
-      );
+      setShowDiscardDialog(true);
     } else {
       // No unsaved content, just close
       Keyboard.dismiss();
@@ -175,19 +157,31 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
     }
   };
 
+  const confirmDiscard = () => {
+    setShowDiscardDialog(false);
+    // Clear text and close
+    setText('');
+    setError(null);
+    Keyboard.dismiss();
+    onCancel();
+  };
+
   const isSaveDisabled = !text.trim();
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputContainer}>
+    <View className="flex-1 p-4 bg-neutral-100">
+      <View className="flex-1 mb-4">
         <TextInput
           ref={inputRef}
-          style={[styles.input, error ? styles.inputError : null]}
+          className={`flex-1 bg-white rounded-lg p-4 text-lg text-neutral-900 border-2 ${
+            error ? 'border-error-500' : 'border-neutral-200'
+          }`}
+          style={shadows.sm}
           value={text}
           onChangeText={handleTextChange}
           onSubmitEditing={handleSubmitEditing}
-          placeholder={placeholder}
-          placeholderTextColor="#8E8E93"
+          placeholder={placeholder ?? t('capture.textCapture.placeholder')}
+          placeholderTextColor={colors.neutral[400]}
           multiline
           autoFocus
           blurOnSubmit={false}
@@ -196,173 +190,70 @@ export const TextCaptureInput: React.FC<TextCaptureInputProps> = ({
         />
 
         {error && (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
+          <View className="mt-2 px-1">
+            <Text className="text-sm text-error-500 font-medium">{error}</Text>
           </View>
         )}
       </View>
 
-      <View style={styles.buttonContainer}>
-        <TouchableOpacity
-          style={styles.cancelButton}
+      <View className="flex-row gap-3">
+        <Button
+          variant="secondary"
+          size="lg"
+          className="flex-1"
           onPress={handleCancel}
-          activeOpacity={0.7}
           testID="cancel-button"
         >
-          <Text style={styles.cancelButtonText}>Annuler</Text>
-        </TouchableOpacity>
+          {t('common.cancel')}
+        </Button>
 
-        <TouchableOpacity
-          style={[
-            styles.saveButton,
-            isSaveDisabled && styles.saveButtonDisabled,
-          ]}
+        <Button
+          variant="primary"
+          size="lg"
+          className="flex-1"
           onPress={handleSave}
           disabled={isSaveDisabled}
           accessibilityState={{ disabled: isSaveDisabled }}
-          activeOpacity={0.7}
           testID="save-button"
         >
-          <Text
-            style={[
-              styles.saveButtonText,
-              isSaveDisabled && styles.saveButtonTextDisabled,
-            ]}
-          >
-            Sauvegarder
-          </Text>
-        </TouchableOpacity>
+          {t('common.save')}
+        </Button>
       </View>
 
       {/* AC6: Save confirmation animation (Subtask 1.4) */}
       {isSaving && (
         <Animated.View
+          className="absolute top-[40%] left-1/2 -ml-20 w-40 bg-primary-500/95 rounded-xl p-5 items-center justify-center"
           style={[
-            styles.saveConfirmation,
             {
               opacity: saveAnimOpacity,
               transform: [{ scale: saveAnimScale }],
             },
+            shadows.lg,
           ]}
         >
-          <Text style={styles.saveConfirmationIcon}>✓</Text>
-          <Text style={styles.saveConfirmationText}>Sauvegardé</Text>
+          <Text className="text-5xl text-white font-bold mb-2">✓</Text>
+          <Text className="text-lg font-semibold text-white">{t('capture.textCapture.saved')}</Text>
         </Animated.View>
       )}
+
+      {/* Discard confirmation dialog */}
+      <AlertDialog
+        visible={showDiscardDialog}
+        onClose={() => setShowDiscardDialog(false)}
+        title={t('capture.textCapture.discardTitle')}
+        message={t('capture.textCapture.discardMessage')}
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: t('capture.textCapture.discard'),
+          onPress: confirmDiscard,
+        }}
+        cancelAction={{
+          label: t('capture.textCapture.continueEditing'),
+          onPress: () => setShowDiscardDialog(false),
+        }}
+      />
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-    backgroundColor: '#F2F2F7',
-  },
-  inputContainer: {
-    flex: 1,
-    marginBottom: 16,
-  },
-  input: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    fontSize: 17,
-    color: '#000000',
-    borderWidth: 2,
-    borderColor: '#E5E5EA',
-    // Liquid Glass Design: Subtle shadow
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  inputError: {
-    borderColor: '#FF3B30',
-  },
-  errorContainer: {
-    marginTop: 8,
-    paddingHorizontal: 4,
-  },
-  errorText: {
-    fontSize: 14,
-    color: '#FF3B30',
-    fontWeight: '500',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  cancelButton: {
-    flex: 1,
-    height: 50,
-    backgroundColor: '#E5E5EA',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#000000',
-  },
-  saveButton: {
-    flex: 1,
-    height: 50,
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    // Liquid Glass Design: Subtle shadow
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  saveButtonDisabled: {
-    backgroundColor: '#C7C7CC',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  saveButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  saveButtonTextDisabled: {
-    color: '#8E8E93',
-  },
-  // AC6: Save confirmation overlay styles
-  saveConfirmation: {
-    position: 'absolute',
-    top: '40%',
-    left: '50%',
-    marginLeft: -80,
-    width: 160,
-    backgroundColor: 'rgba(0, 122, 255, 0.95)',
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    // Liquid Glass Design: Enhanced shadow
-    shadowColor: '#007AFF',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  saveConfirmationIcon: {
-    fontSize: 48,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginBottom: 8,
-  },
-  saveConfirmationText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-});

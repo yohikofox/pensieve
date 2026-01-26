@@ -11,31 +11,35 @@
  * - Retry button for "failed" state
  */
 
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   FlatList,
-  StyleSheet,
   ActivityIndicator,
   TouchableOpacity,
   RefreshControl,
-  Alert,
   Platform,
-} from "react-native";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
-import * as FileSystemLegacy from "expo-file-system/legacy";
-import { container } from "tsyringe";
-import { TOKENS } from "../../infrastructure/di/tokens";
-import type { ICaptureRepository } from "../../contexts/capture/domain/ICaptureRepository";
-import type { Capture } from "../../contexts/capture/domain/Capture.model";
-import { TranscriptionQueueService } from "../../contexts/Normalization/services/TranscriptionQueueService";
-import { WhisperModelService } from "../../contexts/Normalization/services/WhisperModelService";
-import { TranscriptionEngineService } from "../../contexts/Normalization/services/TranscriptionEngineService";
-import { NativeTranscriptionEngine } from "../../contexts/Normalization/services/NativeTranscriptionEngine";
-import { useSettingsStore } from "../../stores/settingsStore";
+} from 'react-native';
+import { Feather } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import { useTranslation } from 'react-i18next';
+import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
+import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
+import type { Capture } from '../../contexts/capture/domain/Capture.model';
+import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
+import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
+import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
+import { useSettingsStore } from '../../stores/settingsStore';
+import { colors, shadows } from '../../design-system/tokens';
+import { Card, Badge, Button, IconButton, LoadingView, EmptyState, AlertDialog, useToast } from '../../design-system/components';
+import { CaptureIcons, StatusIcons, MediaIcons, ActionIcons } from '../../design-system/icons';
+
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
   CapturesList: undefined;
@@ -43,15 +47,13 @@ type CapturesStackParamListExtended = {
 };
 
 type CaptureWithTranscription = Capture & {
-  transcriptionStatus?: "pending" | "processing" | "completed" | "failed";
+  transcriptionStatus?: 'pending' | 'processing' | 'completed' | 'failed';
 };
 
-type NavigationProp = NativeStackNavigationProp<
-  CapturesStackParamListExtended,
-  "CapturesList"
->;
+type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 'CapturesList'>;
 
 export function CapturesListScreen() {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [captures, setCaptures] = useState<CaptureWithTranscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,6 +65,12 @@ export function CapturesListScreen() {
 
   // Debug mode from settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
+  const toast = useToast();
+
+  // Dialog states
+  const [showModelDialog, setShowModelDialog] = useState(false);
+  const [showDeleteWavDialog, setShowDeleteWavDialog] = useState(false);
+  const [captureToDeleteWav, setCaptureToDeleteWav] = useState<Capture | null>(null);
 
   // Audio player - source changes when user taps play on different capture
   const player = useAudioPlayer(currentAudioPath);
@@ -87,7 +95,7 @@ export function CapturesListScreen() {
     (capture: Capture) => {
       const audioPath = capture.rawContent;
       if (!audioPath) {
-        Alert.alert("Erreur", "Fichier audio introuvable");
+        toast.error(t('capture.alerts.noAudioFile'));
         return;
       }
 
@@ -105,24 +113,20 @@ export function CapturesListScreen() {
         setShouldAutoPlay(true);
       }
     },
-    [playingCaptureId, currentAudioPath, playerStatus.playing, player],
+    [playingCaptureId, currentAudioPath, playerStatus.playing, player, t]
   );
 
   const loadCaptures = useCallback(async () => {
     try {
-      const repository = container.resolve<ICaptureRepository>(
-        TOKENS.ICaptureRepository,
-      );
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
       const allCaptures = await repository.findAll();
 
       // Sort by createdAt descending (newest first)
-      const sorted = allCaptures.sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
-      );
+      const sorted = allCaptures.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       setCaptures(sorted);
     } catch (error) {
-      console.error("[CapturesListScreen] Failed to load captures:", error);
+      console.error('[CapturesListScreen] Failed to load captures:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -150,7 +154,7 @@ export function CapturesListScreen() {
         loadCaptures();
       }
     } catch (error) {
-      console.error("[CapturesListScreen] Retry failed:", error);
+      console.error('[CapturesListScreen] Retry failed:', error);
     }
   };
 
@@ -166,21 +170,7 @@ export function CapturesListScreen() {
         const bestModel = await modelService.getBestAvailableModel();
 
         if (!bestModel) {
-          Alert.alert(
-            "Modèle requis",
-            "Aucun modèle Whisper n'est téléchargé. Veuillez en télécharger un dans les Paramètres.",
-            [
-              { text: "Annuler", style: "cancel" },
-              {
-                text: "Aller aux Paramètres",
-                onPress: () => {
-                  // Navigate to Settings tab
-                  // @ts-ignore - Tab navigation
-                  navigation.getParent()?.navigate("Settings");
-                },
-              },
-            ],
-          );
+          setShowModelDialog(true);
           return;
         }
       } else if (selectedEngine === 'native') {
@@ -189,50 +179,20 @@ export function CapturesListScreen() {
         const isAvailable = await nativeEngine.isAvailable();
 
         if (!isAvailable) {
-          Alert.alert(
-            "Transcription native indisponible",
-            "La transcription native n'est pas disponible sur cet appareil. Veuillez activer Whisper dans les Paramètres.",
-            [
-              { text: "Annuler", style: "cancel" },
-              {
-                text: "Aller aux Paramètres",
-                onPress: () => {
-                  // @ts-ignore - Tab navigation
-                  navigation.getParent()?.navigate("Settings");
-                },
-              },
-            ],
-          );
+          setShowModelDialog(true);
           return;
         }
 
         // Check if native file transcription is supported (Android 13+ only)
-        // If not, it will fall back to Whisper, so we need Whisper model
-        const isNativeFileSupported = Platform.OS === 'android' &&
-          typeof Platform.Version === 'number' &&
-          Platform.Version >= 33;
+        const isNativeFileSupported =
+          Platform.OS === 'android' && typeof Platform.Version === 'number' && Platform.Version >= 33;
 
         if (!isNativeFileSupported) {
-          // Will fall back to Whisper - check if model is available
           const modelService = new WhisperModelService();
           const bestModel = await modelService.getBestAvailableModel();
 
           if (!bestModel) {
-            Alert.alert(
-              "Modèle Whisper requis",
-              "La transcription native de fichiers audio n'est pas supportée sur cet appareil (Android 13+ requis). " +
-              "Un modèle Whisper est nécessaire comme alternative.",
-              [
-                { text: "Annuler", style: "cancel" },
-                {
-                  text: "Aller aux Paramètres",
-                  onPress: () => {
-                    // @ts-ignore - Tab navigation
-                    navigation.getParent()?.navigate("Settings");
-                  },
-                },
-              ],
-            );
+            setShowModelDialog(true);
             return;
           }
         }
@@ -242,27 +202,24 @@ export function CapturesListScreen() {
       const queueService = container.resolve(TranscriptionQueueService);
       await queueService.enqueue({
         captureId: capture.id,
-        audioPath: capture.rawContent || "",
+        audioPath: capture.rawContent || '',
         audioDuration: capture.duration ?? undefined,
       });
 
       console.log(
-        "[CapturesListScreen] 📝 Enqueued capture for transcription:",
+        '[CapturesListScreen] Enqueued capture for transcription:',
         capture.id,
-        `[${selectedEngine}]`,
+        `[${selectedEngine}]`
       );
       loadCaptures();
     } catch (error) {
-      console.error(
-        "[CapturesListScreen] Failed to enqueue transcription:",
-        error,
-      );
-      Alert.alert("Erreur", "Impossible de lancer la transcription");
+      console.error('[CapturesListScreen] Failed to enqueue transcription:', error);
+      toast.error(t('capture.alerts.error'));
     }
   };
 
   const handleCapturePress = (captureId: string) => {
-    navigation.navigate("CaptureDetail", { captureId });
+    navigation.navigate('CaptureDetail', { captureId });
   };
 
   /**
@@ -271,11 +228,10 @@ export function CapturesListScreen() {
   const handlePlayWav = useCallback(
     (capture: Capture) => {
       if (!capture.wavPath) {
-        Alert.alert("Erreur", "Fichier WAV introuvable");
+        toast.error(t('capture.alerts.noAudioFile'));
         return;
       }
 
-      // If same capture, toggle play/pause
       if (playingWavCaptureId === capture.id && currentAudioPath === capture.wavPath) {
         if (playerStatus.playing) {
           player.pause();
@@ -283,476 +239,335 @@ export function CapturesListScreen() {
           player.play();
         }
       } else {
-        // Different capture or different file - switch to WAV
         setCurrentAudioPath(capture.wavPath);
-        setPlayingCaptureId(null); // Not playing original audio
+        setPlayingCaptureId(null);
         setPlayingWavCaptureId(capture.id);
         setShouldAutoPlay(true);
       }
     },
-    [playingWavCaptureId, currentAudioPath, playerStatus.playing, player],
+    [playingWavCaptureId, currentAudioPath, playerStatus.playing, player, t]
   );
 
   /**
    * Delete WAV file for a capture (debug cleanup)
    */
   const handleDeleteWav = useCallback(
-    async (capture: Capture) => {
+    (capture: Capture) => {
       if (!capture.wavPath) return;
-
-      Alert.alert(
-        "Supprimer le WAV ?",
-        "Le fichier WAV de debug sera supprimé définitivement.",
-        [
-          { text: "Annuler", style: "cancel" },
-          {
-            text: "Supprimer",
-            style: "destructive",
-            onPress: async () => {
-              try {
-                // Delete the file
-                await FileSystemLegacy.deleteAsync(capture.wavPath!, { idempotent: true });
-
-                // Update capture to clear wavPath
-                const repository = container.resolve<ICaptureRepository>(
-                  TOKENS.ICaptureRepository,
-                );
-                await repository.update(capture.id, { wavPath: null });
-
-                // Stop playback if this WAV was playing
-                if (playingWavCaptureId === capture.id) {
-                  player.pause();
-                  setPlayingWavCaptureId(null);
-                  setCurrentAudioPath(null);
-                }
-
-                // Refresh list
-                loadCaptures();
-                console.log("[CapturesListScreen] 🗑️ Deleted WAV for capture:", capture.id);
-              } catch (error) {
-                console.error("[CapturesListScreen] Failed to delete WAV:", error);
-                Alert.alert("Erreur", "Impossible de supprimer le fichier WAV");
-              }
-            },
-          },
-        ],
-      );
+      setCaptureToDeleteWav(capture);
+      setShowDeleteWavDialog(true);
     },
-    [playingWavCaptureId, player, loadCaptures],
+    []
   );
 
+  /**
+   * Confirm deletion of WAV file
+   */
+  const confirmDeleteWav = useCallback(async () => {
+    if (!captureToDeleteWav?.wavPath) return;
+    setShowDeleteWavDialog(false);
+
+    try {
+      await FileSystemLegacy.deleteAsync(captureToDeleteWav.wavPath, { idempotent: true });
+
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      await repository.update(captureToDeleteWav.id, { wavPath: null });
+
+      if (playingWavCaptureId === captureToDeleteWav.id) {
+        player.pause();
+        setPlayingWavCaptureId(null);
+        setCurrentAudioPath(null);
+      }
+
+      loadCaptures();
+      console.log('[CapturesListScreen] Deleted WAV for capture:', captureToDeleteWav.id);
+    } catch (error) {
+      console.error('[CapturesListScreen] Failed to delete WAV:', error);
+      toast.error(t('errors.generic'));
+    }
+    setCaptureToDeleteWav(null);
+  }, [captureToDeleteWav, playingWavCaptureId, player, loadCaptures, t, toast]);
+
   const renderCaptureItem = ({ item }: { item: CaptureWithTranscription }) => {
-    const isAudio = item.type === "audio";
-    const isProcessing = item.state === "processing";
-    const isReady = item.state === "ready";
-    const isFailed = item.state === "failed";
-    const isCaptured = item.state === "captured";
+    const isAudio = item.type === 'audio';
+    const isProcessing = item.state === 'processing';
+    const isReady = item.state === 'ready';
+    const isFailed = item.state === 'failed';
+    const isCaptured = item.state === 'captured';
+    const isPlaying = playingCaptureId === item.id && playerStatus.playing;
+    const isPlayingWav = playingWavCaptureId === item.id && playerStatus.playing;
 
     return (
-      <TouchableOpacity
-        style={styles.captureCard}
-        onPress={() => handleCapturePress(item.id)}
-        activeOpacity={0.7}
-      >
-        {/* Header: Type + Time */}
-        <View style={styles.cardHeader}>
-          <View style={styles.typeContainer}>
-            <Text style={styles.typeIcon}>{isAudio ? "🎙️" : "✏️"}</Text>
-            <Text style={styles.typeLabel}>{isAudio ? "Audio" : "Texte"}</Text>
-          </View>
-          <Text style={styles.timestamp}>
-            {item.createdAt.toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
-        </View>
-
-        {/* Status Badge */}
-        <View style={styles.statusContainer}>
-          {isAudio && isCaptured && (
-            <View style={styles.pendingRow}>
-              <View style={[styles.statusBadge, styles.statusPending]}>
-                <Text style={styles.statusText}>⏳ En attente</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.transcribeButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  handleTranscribe(item);
-                }}
+      <TouchableOpacity onPress={() => handleCapturePress(item.id)} activeOpacity={0.7}>
+        <Card variant="elevated" className="mb-3">
+          {/* Header: Type + Duration + Date */}
+          <View className="flex-row justify-between items-center mb-3">
+            <View className="flex-row items-center">
+              <View
+                className="w-8 h-8 rounded-full items-center justify-center mr-2"
+                style={{ backgroundColor: isAudio ? colors.primary[100] : colors.secondary[100] }}
               >
-                <Text style={styles.transcribeButtonText}>🎯 Transcrire</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {isAudio && isProcessing && (
-            <View style={[styles.statusBadge, styles.statusProcessing]}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={[styles.statusText, { marginLeft: 8 }]}>
-                Transcription...
+                <Feather
+                  name={isAudio ? CaptureIcons.voice : CaptureIcons.text}
+                  size={16}
+                  color={isAudio ? colors.primary[600] : colors.secondary[600]}
+                />
+              </View>
+              <Text className="text-sm font-semibold text-neutral-900">
+                {isAudio ? t('captures.types.audio') : t('captures.types.text')}
               </Text>
+              {isAudio && item.duration && (
+                <Text className="text-sm text-neutral-400 ml-1">
+                  · {Math.floor(item.duration / 1000)}s
+                </Text>
+              )}
             </View>
-          )}
-          {isAudio && isReady && (
-            <View style={styles.readyRow}>
-              <View style={[styles.statusBadge, styles.statusReady]}>
-                <Text style={styles.statusText}>✅ Prêt</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.analyzeButton}
-                onPress={(e) => {
-                  e.stopPropagation();
-                  console.log('[CapturesListScreen] Analyze button pressed for capture:', item.id);
-                  navigation.navigate('CaptureDetail', { captureId: item.id, startAnalysis: true });
-                }}
-              >
-                <Text style={styles.analyzeButtonText}>📊 Analyser</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-          {isAudio && isFailed && (
-            <View style={[styles.statusBadge, styles.statusFailed]}>
-              <Text style={styles.statusText}>❌ Échec</Text>
-              <TouchableOpacity
-                style={styles.retryButton}
-                onPress={() => handleRetry(item.id)}
-              >
-                <Text style={styles.retryText}>Réessayer</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+            <Text className="text-xs text-neutral-400">
+              {item.createdAt.toLocaleDateString('fr-FR', {
+                day: 'numeric',
+                month: 'short',
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </Text>
+          </View>
 
-        {/* Content */}
-        <View style={styles.contentContainer}>
-          {isAudio ? (
-            <>
-              {/* Audio controls: Duration + Play button */}
-              <View style={styles.audioControlsRow}>
-                {item.duration && (
-                  <Text style={styles.duration}>
-                    Durée: {Math.floor(item.duration / 1000)}s
-                  </Text>
+          {/* Status Badge + Action Buttons */}
+          {isAudio && (
+            <View className="flex-row items-center justify-between mb-3">
+              {/* Badge */}
+              <View>
+                {isCaptured && (
+                  <Badge variant="pending">
+                    <View className="flex-row items-center">
+                      <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
+                      <Text className="ml-1 text-xs font-medium text-warning-700">
+                        {t('capture.status.pending')}
+                      </Text>
+                    </View>
+                  </Badge>
                 )}
-                <View style={styles.audioButtonsGroup}>
+
+                {isProcessing && (
+                  <Badge variant="processing">
+                    <View className="flex-row items-center">
+                      <ActivityIndicator size="small" color={colors.info[600]} />
+                      <Text className="ml-2 text-xs font-medium text-info-700">
+                        {t('capture.status.processing')}
+                      </Text>
+                    </View>
+                  </Badge>
+                )}
+
+                {isReady && (
+                  <Badge variant="ready">
+                    <View className="flex-row items-center">
+                      <Feather name={StatusIcons.success} size={12} color={colors.success[700]} />
+                      <Text className="ml-1 text-xs font-medium text-success-700">
+                        {t('capture.status.ready')}
+                      </Text>
+                    </View>
+                  </Badge>
+                )}
+
+                {isFailed && (
+                  <Badge variant="failed">
+                    <View className="flex-row items-center">
+                      <Feather name={StatusIcons.error} size={12} color={colors.error[700]} />
+                      <Text className="ml-1 text-xs font-medium text-error-700">
+                        {t('capture.status.failed')}
+                      </Text>
+                    </View>
+                  </Badge>
+                )}
+              </View>
+
+              {/* Action Buttons - anchored right */}
+              <View className="flex-row items-center gap-2">
+                {/* Play/Pause button */}
+                <TouchableOpacity
+                  className="w-10 h-10 rounded-lg bg-neutral-100 border border-neutral-200 items-center justify-center"
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handlePlayPause(item);
+                  }}
+                >
+                  <Feather name={isPlaying ? MediaIcons.pause : MediaIcons.play} size={20} color={colors.neutral[900]} />
+                </TouchableOpacity>
+
+                {/* Transcribe button (pending only) */}
+                {isCaptured && (
                   <TouchableOpacity
-                    style={styles.playButton}
+                    className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
+                    activeOpacity={0.7}
                     onPress={(e) => {
                       e.stopPropagation();
-                      handlePlayPause(item);
+                      handleTranscribe(item);
                     }}
                   >
-                    <Text style={styles.playButtonText}>
-                      {playingCaptureId === item.id && playerStatus.playing
-                        ? "⏸️ Pause"
-                        : "▶️ Écouter"}
-                    </Text>
+                    <Feather name={ActionIcons.edit} size={20} color={colors.neutral[0]} />
                   </TouchableOpacity>
+                )}
 
-                  {/* WAV debug buttons - only show if debug mode AND wavPath exists */}
-                  {debugMode && item.wavPath && (
-                    <>
-                      <TouchableOpacity
-                        style={[styles.playButton, styles.wavButton]}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handlePlayWav(item);
-                        }}
-                      >
-                        <Text style={styles.playButtonText}>
-                          {playingWavCaptureId === item.id && playerStatus.playing
-                            ? "⏸️ WAV"
-                            : "🔊 WAV"}
-                        </Text>
-                      </TouchableOpacity>
-                      <TouchableOpacity
-                        style={[styles.playButton, styles.deleteWavButton]}
-                        onPress={(e) => {
-                          e.stopPropagation();
-                          handleDeleteWav(item);
-                        }}
-                      >
-                        <Text style={styles.deleteWavButtonText}>🗑️</Text>
-                      </TouchableOpacity>
-                    </>
-                  )}
-                </View>
+                {/* Retry button (failed only) */}
+                {isFailed && (
+                  <TouchableOpacity
+                    className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
+                    activeOpacity={0.7}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleRetry(item.id);
+                    }}
+                  >
+                    <Feather name="refresh-cw" size={20} color={colors.neutral[0]} />
+                  </TouchableOpacity>
+                )}
               </View>
-              {/* Transcription result */}
-              {item.normalizedText ? (
-                <Text style={styles.transcriptionText} numberOfLines={4}>
-                  {item.normalizedText}
-                </Text>
-              ) : isProcessing ? (
-                <Text style={styles.placeholderText}>
-                  Transcription en cours...
-                </Text>
-              ) : isCaptured ? (
-                <Text style={styles.placeholderText}>
-                  En attente de transcription
-                </Text>
-              ) : isFailed ? (
-                <Text style={styles.errorText}>La transcription a échoué</Text>
-              ) : null}
-            </>
-          ) : (
-            /* Text capture - show content directly */
-            <Text style={styles.textContent} numberOfLines={4}>
-              {item.rawContent || item.normalizedText || "(Contenu vide)"}
-            </Text>
+            </View>
           )}
-        </View>
+
+          {/* Content */}
+          <View>
+            {isAudio ? (
+              <>
+                {/* WAV debug buttons */}
+                {debugMode && item.wavPath && (
+                  <View className="flex-row items-center gap-2 mb-2">
+                    <TouchableOpacity
+                      className="flex-row items-center px-2 py-1.5 bg-success-50 rounded-lg border border-success-200"
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handlePlayWav(item);
+                      }}
+                    >
+                      <Feather
+                        name={isPlayingWav ? MediaIcons.pause : MediaIcons.volume}
+                        size={14}
+                        color={colors.success[700]}
+                      />
+                      <Text className="ml-1 text-xs font-medium text-success-700">WAV</Text>
+                    </TouchableOpacity>
+                    <IconButton
+                      icon={ActionIcons.delete}
+                      size="sm"
+                      variant="ghost"
+                      color={colors.error[600]}
+                      className="bg-error-50 border border-error-200"
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        handleDeleteWav(item);
+                      }}
+                    />
+                  </View>
+                )}
+
+                {/* Transcription result */}
+                {item.normalizedText ? (
+                  <Text className="text-base text-neutral-900 leading-relaxed" numberOfLines={4}>
+                    {item.normalizedText}
+                  </Text>
+                ) : isProcessing ? (
+                  <Text className="text-sm text-neutral-400 italic">
+                    {t('capture.status.processing')}...
+                  </Text>
+                ) : isCaptured ? (
+                  <Text className="text-sm text-neutral-400 italic">
+                    {t('capture.status.pending')}
+                  </Text>
+                ) : isFailed ? (
+                  <Text className="text-sm text-error-500 italic">{t('capture.status.failed')}</Text>
+                ) : null}
+              </>
+            ) : (
+              /* Text capture - show content directly */
+              <Text className="text-base text-neutral-900 leading-relaxed" numberOfLines={4}>
+                {item.rawContent || item.normalizedText || t('captures.empty')}
+              </Text>
+            )}
+          </View>
+        </Card>
       </TouchableOpacity>
     );
   };
 
   if (loading) {
+    return <LoadingView fullScreen message={t('common.loading')} />;
+  }
+
+  if (captures.length === 0) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Chargement...</Text>
+      <View className="flex-1 bg-neutral-100">
+        <EmptyState
+          icon="inbox"
+          title={t('captures.empty')}
+          description={t('captures.emptyHint')}
+        />
       </View>
     );
   }
 
   return (
-    <View style={styles.container}>
-      {captures.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyIcon}>📝</Text>
-          <Text style={styles.emptyTitle}>Aucune capture</Text>
-          <Text style={styles.emptySubtitle}>
-            Utilisez l'onglet "Capturer" pour enregistrer vos pensées
-          </Text>
-        </View>
-      ) : (
-        <FlatList
-          data={captures}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCaptureItem}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
-        />
-      )}
+    <View className="flex-1 bg-neutral-100">
+      <FlatList
+        data={captures}
+        keyExtractor={(item) => item.id}
+        renderItem={renderCaptureItem}
+        contentContainerStyle={{ padding: 16 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary[500]}
+          />
+        }
+      />
+
+      {/* Model not available dialog */}
+      <AlertDialog
+        visible={showModelDialog}
+        onClose={() => setShowModelDialog(false)}
+        title={t('settings.transcription.whisperModel')}
+        message={t('capture.alerts.serviceNotInitialized')}
+        icon="alert-triangle"
+        variant="warning"
+        confirmAction={{
+          label: t('navigation.tabs.settings'),
+          onPress: () => {
+            setShowModelDialog(false);
+            // @ts-ignore - Tab navigation
+            navigation.getParent()?.navigate('Settings');
+          },
+        }}
+        cancelAction={{
+          label: t('common.cancel'),
+          onPress: () => setShowModelDialog(false),
+        }}
+      />
+
+      {/* Delete WAV confirmation dialog */}
+      <AlertDialog
+        visible={showDeleteWavDialog}
+        onClose={() => {
+          setShowDeleteWavDialog(false);
+          setCaptureToDeleteWav(null);
+        }}
+        title={t('common.delete')}
+        message={t('captures.deleteConfirm.message')}
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: t('common.delete'),
+          onPress: confirmDeleteWav,
+        }}
+        cancelAction={{
+          label: t('common.cancel'),
+          onPress: () => {
+            setShowDeleteWavDialog(false);
+            setCaptureToDeleteWav(null);
+          },
+        }}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F2F2F7",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F2F2F7",
-  },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: "#8E8E93",
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    padding: 24,
-  },
-  emptyIcon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: "bold",
-    color: "#000",
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    color: "#8E8E93",
-    textAlign: "center",
-  },
-  listContent: {
-    padding: 16,
-  },
-  separator: {
-    height: 12,
-  },
-  captureCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  typeContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  typeIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  typeLabel: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#000",
-  },
-  timestamp: {
-    fontSize: 12,
-    color: "#8E8E93",
-  },
-  statusContainer: {
-    marginBottom: 12,
-  },
-  pendingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  readyRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  analyzeButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: "#9C27B0",
-    borderRadius: 8,
-  },
-  analyzeButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  statusPending: {
-    backgroundColor: "#FFF3E0",
-  },
-  transcribeButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    backgroundColor: "#007AFF",
-    borderRadius: 8,
-  },
-  transcribeButtonText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  statusProcessing: {
-    backgroundColor: "#E3F2FD",
-  },
-  statusReady: {
-    backgroundColor: "#E8F5E9",
-  },
-  statusFailed: {
-    backgroundColor: "#FFEBEE",
-  },
-  statusText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#333",
-  },
-  retryButton: {
-    marginLeft: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    backgroundColor: "#FF5722",
-    borderRadius: 4,
-  },
-  retryText: {
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  contentContainer: {
-    marginTop: 4,
-  },
-  audioControlsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 8,
-  },
-  duration: {
-    fontSize: 12,
-    color: "#8E8E93",
-  },
-  audioButtonsGroup: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  playButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    backgroundColor: "#F0F0F5",
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#E0E0E5",
-  },
-  wavButton: {
-    backgroundColor: "#E8F5E9",
-    borderColor: "#81C784",
-  },
-  deleteWavButton: {
-    backgroundColor: "#FFEBEE",
-    borderColor: "#EF9A9A",
-    paddingHorizontal: 8,
-  },
-  deleteWavButtonText: {
-    fontSize: 14,
-  },
-  playButtonText: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#333",
-  },
-  transcriptionText: {
-    fontSize: 15,
-    color: "#000",
-    lineHeight: 22,
-  },
-  placeholderText: {
-    fontSize: 14,
-    color: "#8E8E93",
-    fontStyle: "italic",
-  },
-  errorText: {
-    fontSize: 14,
-    color: "#D32F2F",
-    fontStyle: "italic",
-  },
-  textContent: {
-    fontSize: 15,
-    color: "#000",
-    lineHeight: 22,
-  },
-});

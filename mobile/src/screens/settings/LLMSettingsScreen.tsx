@@ -22,7 +22,10 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
+import { colors } from '../../design-system/tokens';
+import { AlertDialog, useToast } from '../../design-system/components';
 import { LLMModelCard } from '../../components/llm/LLMModelCard';
 import {
   LLMModelService,
@@ -36,15 +39,15 @@ import { debugPromptManager } from '../../contexts/Normalization/services/postpr
 import { useSettingsStore } from '../../stores/settingsStore';
 
 /** Task labels for display */
-const TASK_LABELS: Record<LLMTask, { name: string; emoji: string; description: string }> = {
+const TASK_LABELS: Record<LLMTask, { name: string; icon: string; description: string }> = {
   postProcessing: {
     name: 'Post-traitement',
-    emoji: '✍️',
+    icon: 'edit-3',
     description: 'Correction et amélioration des transcriptions',
   },
   analysis: {
     name: 'Analyse',
-    emoji: '🔍',
+    icon: 'search',
     description: 'Résumés, points clés et actions',
   },
 };
@@ -69,6 +72,10 @@ export function LLMSettingsScreen() {
   const [customPrompt, setCustomPrompt] = useState(debugPromptManager.getPrompt());
   const [isPromptModified, setIsPromptModified] = useState(debugPromptManager.hasCustomPrompt());
 
+  // AlertDialog state
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const toast = useToast();
+
   // Get services from DI container (singleton instances)
   const modelService = useMemo(() => container.resolve(LLMModelService), []);
   const npuDetection = useMemo(() => container.resolve(NPUDetectionService), []);
@@ -77,18 +84,18 @@ export function LLMSettingsScreen() {
   /**
    * Get NPU title for display
    */
-  const getNPUTitle = (info: NPUInfo): string => {
+  const getNPUTitle = (info: NPUInfo): { icon: string; text: string } => {
     switch (info.type) {
       case 'neural-engine':
-        return '🍎 Apple Neural Engine détecté';
+        return { icon: 'cpu', text: 'Apple Neural Engine détecté' };
       case 'tensor-tpu':
-        return '🚀 Google Tensor TPU détecté';
+        return { icon: 'zap', text: 'Google Tensor TPU détecté' };
       case 'samsung-npu':
-        return '📱 Samsung NPU détecté';
+        return { icon: 'smartphone', text: 'Samsung NPU détecté' };
       case 'snapdragon-npu':
-        return '⚡ Qualcomm NPU détecté';
+        return { icon: 'zap', text: 'Qualcomm NPU détecté' };
       default:
-        return '💻 Mode standard (GPU/CPU)';
+        return { icon: 'monitor', text: 'Mode standard (GPU/CPU)' };
     }
   };
 
@@ -164,41 +171,27 @@ export function LLMSettingsScreen() {
       if (success) {
         setIsHfAuthenticated(true);
         setHfUser(authService.getUser());
-        Alert.alert(
-          'Connecté à HuggingFace',
-          `Bienvenue ${authService.getUser()?.name || 'utilisateur'} ! Vous pouvez maintenant télécharger les modèles protégés.`
-        );
+        toast.success(`Bienvenue ${authService.getUser()?.name || 'utilisateur'} !`);
       }
     } catch (error) {
-      Alert.alert(
-        'Erreur de connexion',
-        `Impossible de se connecter à HuggingFace: ${error instanceof Error ? error.message : 'Erreur inconnue'}`
-      );
+      toast.error(`Connexion HuggingFace échouée: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setIsAuthLoading(false);
     }
-  }, [authService]);
+  }, [authService, toast]);
 
   /**
    * Handle HuggingFace logout
    */
-  const handleHfLogout = useCallback(async () => {
-    Alert.alert(
-      'Déconnexion',
-      'Voulez-vous vous déconnecter de HuggingFace ? Vous ne pourrez plus télécharger les modèles protégés.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Déconnecter',
-          style: 'destructive',
-          onPress: async () => {
-            await authService.logout();
-            setIsHfAuthenticated(false);
-            setHfUser(null);
-          },
-        },
-      ]
-    );
+  const handleHfLogout = useCallback(() => {
+    setShowDisconnectDialog(true);
+  }, []);
+
+  const confirmHfLogout = useCallback(async () => {
+    setShowDisconnectDialog(false);
+    await authService.logout();
+    setIsHfAuthenticated(false);
+    setHfUser(null);
   }, [authService]);
 
   /**
@@ -212,10 +205,7 @@ export function LLMSettingsScreen() {
       // Prompt to select a model
       const downloaded = await modelService.getDownloadedModels();
       if (downloaded.length === 0) {
-        Alert.alert(
-          'Aucun modèle',
-          'Téléchargez d\'abord un modèle pour activer l\'amélioration IA.'
-        );
+        toast.warning('Téléchargez d\'abord un modèle pour activer l\'amélioration IA.');
       }
     }
   };
@@ -247,11 +237,8 @@ export function LLMSettingsScreen() {
     }
 
     const taskLabel = TASK_LABELS[task];
-    Alert.alert(
-      'Modèle sélectionné',
-      `${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.emoji} ${taskLabel.name.toLowerCase()}.`
-    );
-  }, [isEnabled, modelService]);
+    toast.success(`${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.name.toLowerCase()}.`);
+  }, [isEnabled, modelService, toast]);
 
   /**
    * Show task selection menu for a model
@@ -264,15 +251,15 @@ export function LLMSettingsScreen() {
       'Pour quelle tâche voulez-vous utiliser ce modèle ?',
       [
         {
-          text: `${TASK_LABELS.postProcessing.emoji} Post-traitement`,
+          text: 'Post-traitement',
           onPress: () => handleUseModelForTask(modelId, 'postProcessing'),
         },
         {
-          text: `${TASK_LABELS.analysis.emoji} Analyse`,
+          text: 'Analyse',
           onPress: () => handleUseModelForTask(modelId, 'analysis'),
         },
         {
-          text: '✅ Les deux',
+          text: 'Les deux',
           onPress: async () => {
             await handleUseModelForTask(modelId, 'postProcessing');
             await handleUseModelForTask(modelId, 'analysis');
@@ -296,11 +283,8 @@ export function LLMSettingsScreen() {
   const handleApplyPrompt = useCallback(() => {
     debugPromptManager.setCustomPrompt(customPrompt);
     setIsPromptModified(true);
-    Alert.alert(
-      'Prompt appliqué',
-      'Le prompt personnalisé sera utilisé pour les prochaines transcriptions.\n\n⚠️ Ce changement est temporaire et sera perdu au redémarrage de l\'app.'
-    );
-  }, [customPrompt]);
+    toast.success('Prompt personnalisé appliqué');
+  }, [customPrompt, toast]);
 
   /**
    * Reset to default prompt (debug mode only)
@@ -309,8 +293,8 @@ export function LLMSettingsScreen() {
     debugPromptManager.resetToDefault();
     setCustomPrompt(debugPromptManager.getDefaultPrompt());
     setIsPromptModified(false);
-    Alert.alert('Prompt réinitialisé', 'Le prompt par défaut a été restauré.');
-  }, []);
+    toast.info('Prompt par défaut restauré');
+  }, [toast]);
 
   return (
     <ScrollView style={styles.container}>
@@ -369,16 +353,20 @@ export function LLMSettingsScreen() {
             npuInfo.type === 'neural-engine' && styles.tpuCardApple,
             npuInfo.type === 'samsung-npu' && styles.tpuCardSamsung,
           ]}>
-            <Text style={styles.tpuTitle}>
-              {getNPUTitle(npuInfo)}
-            </Text>
+            <View style={styles.tpuTitleRow}>
+              <Feather name={getNPUTitle(npuInfo).icon as any} size={20} color={colors.primary[600]} />
+              <Text style={styles.tpuTitle}>{getNPUTitle(npuInfo).text}</Text>
+            </View>
             <Text style={styles.tpuDescription}>
               {getNPUDescription(npuInfo)}
             </Text>
             {npuInfo.isRecommendedForLLM && (
-              <Text style={styles.tpuRecommendation}>
-                ✨ Accélération matérielle optimisée pour l'IA
-              </Text>
+              <View style={styles.tpuRecommendationRow}>
+                <Feather name="zap" size={14} color={colors.success[600]} />
+                <Text style={styles.tpuRecommendation}>
+                  Accélération matérielle optimisée pour l'IA
+                </Text>
+              </View>
             )}
           </View>
         </View>
@@ -396,7 +384,7 @@ export function LLMSettingsScreen() {
             {isHfAuthenticated ? (
               <>
                 <View style={styles.authUserInfo}>
-                  <Text style={styles.authConnectedIcon}>✅</Text>
+                  <Feather name="check-circle" size={24} color={colors.success[500]} style={styles.authConnectedIcon} />
                   <View style={styles.authUserDetails}>
                     <Text style={styles.authUserName}>
                       {hfUser?.fullname || hfUser?.name || 'Utilisateur'}
@@ -414,7 +402,7 @@ export function LLMSettingsScreen() {
             ) : (
               <>
                 <View style={styles.authNotConnected}>
-                  <Text style={styles.authNotConnectedIcon}>🔒</Text>
+                  <Feather name="lock" size={20} color={colors.neutral[500]} style={styles.authNotConnectedIcon} />
                   <Text style={styles.authNotConnectedText}>
                     Non connecté - Connectez-vous pour télécharger les modèles Gemma optimisés TPU
                   </Text>
@@ -444,7 +432,7 @@ export function LLMSettingsScreen() {
             {/* Post-processing task */}
             <View style={styles.taskAssignmentRow}>
               <View style={styles.taskInfo}>
-                <Text style={styles.taskEmoji}>{TASK_LABELS.postProcessing.emoji}</Text>
+                <Feather name={TASK_LABELS.postProcessing.icon as any} size={20} color={colors.primary[600]} style={styles.taskIcon} />
                 <View style={styles.taskDetails}>
                   <Text style={styles.taskName}>{TASK_LABELS.postProcessing.name}</Text>
                   <Text style={styles.taskDescription}>{TASK_LABELS.postProcessing.description}</Text>
@@ -460,7 +448,7 @@ export function LLMSettingsScreen() {
             {/* Analysis task */}
             <View style={styles.taskAssignmentRow}>
               <View style={styles.taskInfo}>
-                <Text style={styles.taskEmoji}>{TASK_LABELS.analysis.emoji}</Text>
+                <Feather name={TASK_LABELS.analysis.icon as any} size={20} color={colors.primary[600]} style={styles.taskIcon} />
                 <View style={styles.taskDetails}>
                   <Text style={styles.taskName}>{TASK_LABELS.analysis.name}</Text>
                   <Text style={styles.taskDescription}>{TASK_LABELS.analysis.description}</Text>
@@ -517,7 +505,10 @@ export function LLMSettingsScreen() {
       {debugMode && (
         <View style={styles.debugSection}>
           <View style={styles.debugHeader}>
-            <Text style={styles.debugTitle}>🛠️ Debug: Prompt Système</Text>
+            <View style={styles.debugTitleRow}>
+              <Feather name="tool" size={16} color={colors.warning[600]} />
+              <Text style={styles.debugTitle}>Debug: Prompt Système</Text>
+            </View>
             {isPromptModified && (
               <View style={styles.debugBadge}>
                 <Text style={styles.debugBadgeText}>Modifié</Text>
@@ -543,13 +534,19 @@ export function LLMSettingsScreen() {
               style={[styles.debugButton, styles.debugButtonSecondary]}
               onPress={handleResetPrompt}
             >
-              <Text style={styles.debugButtonSecondaryText}>↩️ Restaurer</Text>
+              <View style={styles.debugButtonContent}>
+                <Feather name="rotate-ccw" size={14} color={colors.warning[700]} />
+                <Text style={styles.debugButtonSecondaryText}>Restaurer</Text>
+              </View>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.debugButton, styles.debugButtonPrimary]}
               onPress={handleApplyPrompt}
             >
-              <Text style={styles.debugButtonPrimaryText}>✅ Appliquer</Text>
+              <View style={styles.debugButtonContent}>
+                <Feather name="check" size={14} color={colors.neutral[0]} />
+                <Text style={styles.debugButtonPrimaryText}>Appliquer</Text>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -565,6 +562,19 @@ export function LLMSettingsScreen() {
           Temps de traitement estimé : 1-5 secondes par transcription selon le modèle.
         </Text>
       </View>
+
+      <AlertDialog
+        visible={showDisconnectDialog}
+        onClose={() => setShowDisconnectDialog(false)}
+        variant="warning"
+        title="Déconnexion HuggingFace"
+        message="Voulez-vous vous déconnecter de HuggingFace ? Vous ne pourrez plus télécharger les modèles protégés."
+        confirmAction={{
+          label: 'Déconnecter',
+          variant: 'danger',
+          onPress: confirmHfLogout,
+        }}
+      />
     </ScrollView>
   );
 }
@@ -647,20 +657,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8F0FE',
     borderColor: '#1A73E8',
   },
+  tpuTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
   tpuTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#333',
-    marginBottom: 4,
   },
   tpuDescription: {
     fontSize: 14,
     color: '#666',
   },
+  tpuRecommendationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 6,
+  },
   tpuRecommendation: {
     fontSize: 13,
     color: '#7B1FA2',
-    marginTop: 8,
     fontWeight: '500',
   },
   modelsSection: {
@@ -718,8 +738,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 12,
   },
-  taskEmoji: {
-    fontSize: 20,
+  taskIcon: {
     marginRight: 12,
   },
   taskDetails: {
@@ -763,6 +782,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+  },
+  debugTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   debugTitle: {
     fontSize: 15,
@@ -808,6 +832,11 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
   },
+  debugButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   debugButtonPrimary: {
     backgroundColor: '#FF9800',
   },
@@ -844,7 +873,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   authConnectedIcon: {
-    fontSize: 24,
     marginRight: 12,
   },
   authUserDetails: {
@@ -877,7 +905,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   authNotConnectedIcon: {
-    fontSize: 20,
     marginRight: 12,
   },
   authNotConnectedText: {

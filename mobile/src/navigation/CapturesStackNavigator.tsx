@@ -8,8 +8,10 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { CapturesListScreen } from '../screens/captures/CapturesListScreen';
 import { CaptureDetailScreen } from '../screens/captures/CaptureDetailScreen';
+import { stackScreenOptions } from './theme';
 
 export type CapturesStackParamList = {
   CapturesList: undefined;
@@ -19,10 +21,13 @@ export type CapturesStackParamList = {
 const Stack = createNativeStackNavigator<CapturesStackParamList>();
 
 export function CapturesStackNavigator() {
+  const { t } = useTranslation();
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerBackTitle: 'Retour',
+        ...stackScreenOptions,
+        headerBackTitle: t('common.back'),
       }}
     >
       <Stack.Screen
@@ -36,7 +41,7 @@ export function CapturesStackNavigator() {
         name="CaptureDetail"
         component={CaptureDetailScreen}
         options={{
-          title: 'Détail',
+          title: t('navigation.headers.captureDetail'),
           headerShown: true,
         }}
       />

@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from "react-native";
+import { useToast } from "../../../design-system/components";
 import { supabase } from "../../../lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
@@ -33,11 +33,12 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   // Email/Password Login
   const handleEmailLogin = async () => {
     if (!email || !password) {
-      Alert.alert("Error", "Please fill in all fields");
+      toast.error("Please fill in all fields");
       return;
     }
 
@@ -52,7 +53,7 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
       // Navigation handled by auth state listener
     } catch (error: any) {
-      Alert.alert("Login Failed", error.message);
+      toast.error(error.message || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -104,11 +105,11 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
           }
         } catch (parseError: any) {
           console.error("Failed to parse OAuth callback:", parseError);
-          Alert.alert("Authentication Error", "Failed to process Google sign-in response");
+          toast.error("Failed to process Google sign-in response");
         }
       }
     } catch (error: any) {
-      Alert.alert("Google Sign-In Failed", error.message);
+      toast.error(error.message || "Google Sign-In Failed");
     } finally {
       setLoading(false);
     }

@@ -1,12 +1,16 @@
 import 'reflect-metadata';
+import './global.css';
+import './src/i18n';
 import React, { useEffect } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { MainNavigator } from './src/navigation/MainNavigator';
-import { ActivityIndicator, View, AppState, type AppStateStatus } from 'react-native';
+import { navigationTheme } from './src/navigation/theme';
+import { AppState, type AppStateStatus } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { LoadingView, ToastProvider } from './src/design-system/components';
 import { registerServices } from './src/infrastructure/di/container';
 import { container } from 'tsyringe';
 import { TOKENS } from './src/infrastructure/di/tokens';
@@ -35,9 +39,13 @@ NetInfo.configure({
   reachabilityRequestTimeout: 15 * 1000, // 15s
 });
 
-export default function App() {
+/**
+ * AppContent - Inner component wrapped by ToastProvider
+ * This allows hooks like useDeepLinkAuth to access the toast context
+ */
+function AppContent() {
   const { user, loading } = useAuthListener();
-  useDeepLinkAuth(); // Handle deep link authentication
+  useDeepLinkAuth(); // Handle deep link authentication (requires ToastProvider)
 
   // AC4: Check for crash-recovered recordings on app launch
   // Story 2.1 - Crash Recovery Notification
@@ -134,24 +142,26 @@ export default function App() {
   }, []); // Run once on mount
 
   if (loading) {
-    return (
-      <SafeAreaProvider>
-        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-          <ActivityIndicator size="large" />
-        </View>
-      </SafeAreaProvider>
-    );
+    return <LoadingView fullScreen />;
   }
 
   return (
+    <DevPanelProvider>
+      <NavigationContainer theme={navigationTheme}>
+        {user ? <MainNavigator /> : <AuthNavigator />}
+      </NavigationContainer>
+      {/* Global DevPanel - Floating button accessible from any screen */}
+      <DevPanel />
+    </DevPanelProvider>
+  );
+}
+
+export default function App() {
+  return (
     <SafeAreaProvider>
-      <DevPanelProvider>
-        <NavigationContainer>
-          {user ? <MainNavigator /> : <AuthNavigator />}
-        </NavigationContainer>
-        {/* Global DevPanel - Floating button accessible from any screen */}
-        <DevPanel />
-      </DevPanelProvider>
+      <ToastProvider>
+        <AppContent />
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }

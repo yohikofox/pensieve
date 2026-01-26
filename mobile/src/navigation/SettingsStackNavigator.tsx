@@ -10,10 +10,12 @@
 
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useTranslation } from 'react-i18next';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { TranscriptionEngineSettingsScreen } from '../screens/settings/TranscriptionEngineSettingsScreen';
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
 import { LLMSettingsScreen } from '../screens/settings/LLMSettingsScreen';
+import { stackScreenOptions } from './theme';
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
@@ -25,10 +27,13 @@ export type SettingsStackParamList = {
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
 export function SettingsStackNavigator() {
+  const { t } = useTranslation();
+
   return (
     <Stack.Navigator
       screenOptions={{
-        headerBackTitle: 'Retour',
+        ...stackScreenOptions,
+        headerBackTitle: t('common.back'),
       }}
     >
       <Stack.Screen
@@ -42,7 +47,7 @@ export function SettingsStackNavigator() {
         name="TranscriptionEngineSettings"
         component={TranscriptionEngineSettingsScreen}
         options={{
-          title: 'Moteur de transcription',
+          title: t('navigation.headers.transcriptionEngine'),
           headerShown: true,
         }}
       />
@@ -50,7 +55,7 @@ export function SettingsStackNavigator() {
         name="WhisperSettings"
         component={WhisperSettingsScreen}
         options={{
-          title: 'Modèle Whisper',
+          title: t('navigation.headers.whisperModel'),
           headerShown: true,
         }}
       />
@@ -58,7 +63,7 @@ export function SettingsStackNavigator() {
         name="LLMSettings"
         component={LLMSettingsScreen}
         options={{
-          title: 'Amélioration IA',
+          title: t('navigation.headers.aiEnhancement'),
           headerShown: true,
         }}
       />

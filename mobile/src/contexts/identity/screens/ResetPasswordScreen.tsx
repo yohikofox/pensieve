@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
+import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -36,6 +36,7 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 8) return 'Password must be at least 8 characters';
@@ -46,18 +47,18 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
 
     const passwordError = validatePassword(newPassword);
     if (passwordError) {
-      Alert.alert('Error', passwordError);
+      toast.error(passwordError);
       return;
     }
 
     if (newPassword !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -69,13 +70,10 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
 
       if (error) throw error;
 
-      Alert.alert(
-        'Success',
-        'Your password has been reset successfully.',
-        [{ text: 'OK', onPress: () => navigation.replace('Login') }],
-      );
+      toast.success('Your password has been reset successfully');
+      navigation.replace('Login');
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      toast.error(error.message || 'Failed to reset password');
     } finally {
       setLoading(false);
     }

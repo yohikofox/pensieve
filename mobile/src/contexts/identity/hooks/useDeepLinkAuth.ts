@@ -1,28 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import * as Linking from 'expo-linking';
 import { supabase } from '../../../lib/supabase';
-import { Alert } from 'react-native';
+import { useToast } from '../../../design-system/components';
 
 export const useDeepLinkAuth = () => {
-  useEffect(() => {
-    // Handle initial URL if app was opened from a deep link
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink(url);
-      }
-    });
+  const toast = useToast();
 
-    // Listen for deep links while app is running
-    const subscription = Linking.addEventListener('url', (event) => {
-      handleDeepLink(event.url);
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  const handleDeepLink = async (url: string) => {
+  const handleDeepLink = useCallback(async (url: string) => {
     try {
       const parsed = Linking.parse(url);
 
@@ -42,17 +26,14 @@ export const useDeepLinkAuth = () => {
           });
 
           if (error) {
-            Alert.alert('Authentication Error', error.message);
+            toast.error(error.message);
           } else {
             // Success! The useAuthListener hook will detect the session change
             // and navigate to the main app
             if (type === 'signup') {
-              Alert.alert(
-                'Welcome!',
-                'Your email has been confirmed. You are now logged in.',
-              );
+              toast.success('Your email has been confirmed. You are now logged in.');
             } else {
-              Alert.alert('Success', 'You are now logged in.');
+              toast.success('You are now logged in.');
             }
           }
         }
@@ -60,5 +41,23 @@ export const useDeepLinkAuth = () => {
     } catch (error: any) {
       console.error('Deep link error:', error);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    // Handle initial URL if app was opened from a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink(url);
+      }
+    });
+
+    // Listen for deep links while app is running
+    const subscription = Linking.addEventListener('url', (event) => {
+      handleDeepLink(event.url);
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [handleDeepLink]);
 };

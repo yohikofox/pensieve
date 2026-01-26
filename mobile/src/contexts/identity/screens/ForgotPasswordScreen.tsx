@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
+import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -27,10 +27,11 @@ interface ForgotPasswordScreenProps {
 export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) => {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const handleResetPassword = async () => {
     if (!email.trim()) {
-      Alert.alert('Error', 'Please enter your email address');
+      toast.error('Please enter your email address');
       return;
     }
 
@@ -45,13 +46,10 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
 
       if (error) throw error;
 
-      Alert.alert(
-        'Check Your Email',
-        'Password reset instructions have been sent to your email address.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }],
-      );
+      toast.success('Password reset instructions sent to your email');
+      navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Error', error.message);
+      toast.error(error.message || 'Failed to send reset email');
     } finally {
       setLoading(false);
     }

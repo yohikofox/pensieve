@@ -5,8 +5,8 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  Alert,
 } from 'react-native';
+import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -29,6 +29,7 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const toast = useToast();
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 8) {
@@ -46,24 +47,24 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   const handleRegister = async () => {
     // Validation
     if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields');
+      toast.error('Please fill in all fields');
       return;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      Alert.alert('Error', 'Please enter a valid email address');
+      toast.error('Please enter a valid email address');
       return;
     }
 
     const passwordError = validatePassword(password);
     if (passwordError) {
-      Alert.alert('Error', passwordError);
+      toast.error(passwordError);
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match');
+      toast.error('Passwords do not match');
       return;
     }
 
@@ -76,13 +77,10 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
 
       if (error) throw error;
 
-      Alert.alert(
-        'Success',
-        'Account created! Please check your email to confirm your account.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Login') }],
-      );
+      toast.success('Account created! Please check your email to confirm.');
+      navigation.navigate('Login');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.message);
+      toast.error(error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }

@@ -17,7 +17,7 @@
  * - Permission checks
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -26,9 +26,9 @@ import {
   StyleSheet,
   Platform,
   Animated,
-  Alert,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
+import { AlertDialog } from '../../../design-system/components';
 
 interface RecordButtonUIProps {
   /** Called when user taps record button to START recording */
@@ -54,6 +54,7 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
   disabled = false,
 }) => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const [showDiscardDialog, setShowDiscardDialog] = useState(false);
 
   /**
    * AC3: Pulsing animation during recording
@@ -105,33 +106,25 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
   /**
    * Story 2.3: Handle cancel button press with confirmation
    * AC2: Cancel Gesture with Confirmation
-   * AC3: Haptic Feedback on Cancellation
    */
-  const handleCancel = async () => {
-    Alert.alert(
-      'Discard this recording?',
-      'This recording will be permanently deleted.',
-      [
-        {
-          text: 'Keep Recording',
-          style: 'cancel',
-        },
-        {
-          text: 'Discard',
-          style: 'destructive',
-          onPress: async () => {
-            // AC3: Haptic feedback on cancellation (Heavy for warning)
-            if (Platform.OS === 'ios' || Platform.OS === 'android') {
-              await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-            }
+  const handleCancel = () => {
+    setShowDiscardDialog(true);
+  };
 
-            // Call parent immediately - no discard animation
-            // Fix: Removed discardAnim to prevent white square + shadow artifacts
-            onCancelConfirm();
-          },
-        },
-      ]
-    );
+  /**
+   * AC3: Confirm discard with Haptic Feedback on Cancellation
+   */
+  const confirmDiscard = async () => {
+    setShowDiscardDialog(false);
+
+    // AC3: Haptic feedback on cancellation (Heavy for warning)
+    if (Platform.OS === 'ios' || Platform.OS === 'android') {
+      await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    }
+
+    // Call parent immediately - no discard animation
+    // Fix: Removed discardAnim to prevent white square + shadow artifacts
+    onCancelConfirm();
   };
 
   /**
@@ -185,6 +178,24 @@ export const RecordButtonUI: React.FC<RecordButtonUIProps> = ({
       <Text style={[styles.label, isRecording ? styles.labelRecording : styles.labelIdle]}>
         {isRecording ? 'Tap to Stop' : 'Tap to Record'}
       </Text>
+
+      {/* Discard confirmation dialog */}
+      <AlertDialog
+        visible={showDiscardDialog}
+        onClose={() => setShowDiscardDialog(false)}
+        title="Discard this recording?"
+        message="This recording will be permanently deleted."
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Discard',
+          onPress: confirmDiscard,
+        }}
+        cancelAction={{
+          label: 'Keep Recording',
+          onPress: () => setShowDiscardDialog(false),
+        }}
+      />
     </View>
   );
 };

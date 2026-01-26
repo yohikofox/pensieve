@@ -1,12 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Animated,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { useTranslation } from 'react-i18next';
+import { formatDuration } from '../../design-system/utils';
+import { Button } from '../../design-system/components';
 
 interface RecordingOverlayProps {
   duration: number;
@@ -14,15 +10,6 @@ interface RecordingOverlayProps {
   onCancel: () => void;
   isStopping: boolean;
 }
-
-/**
- * Format duration in seconds to mm:ss format
- */
-const formatDuration = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-};
 
 /**
  * Recording Overlay Component
@@ -34,6 +21,7 @@ export const RecordingOverlay = ({
   onCancel,
   isStopping,
 }: RecordingOverlayProps) => {
+  const { t } = useTranslation();
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Pulse animation for the recording indicator
@@ -58,48 +46,60 @@ export const RecordingOverlay = ({
   }, [pulseAnim]);
 
   return (
-    <View style={styles.overlay}>
-      <View style={styles.content}>
+    <View className="flex-1 bg-black/85 justify-center items-center">
+      <View className="items-center px-10">
         {/* Recording indicator */}
         <Animated.View
-          style={[
-            styles.recordingIndicator,
-            { transform: [{ scale: pulseAnim }] },
-          ]}
+          className="w-[100px] h-[100px] rounded-full bg-error-500/20 justify-center items-center mb-8"
+          style={{ transform: [{ scale: pulseAnim }] }}
         >
-          <View style={styles.recordingDot} />
+          <View className="w-10 h-10 rounded-full bg-error-500" />
         </Animated.View>
 
         {/* Status text */}
-        <Text style={styles.statusText}>
-          {isStopping ? 'Arrêt en cours...' : 'Enregistrement en cours'}
+        <Text className="text-lg text-white mb-4 font-medium">
+          {isStopping ? t('capture.recording.isStopping') : t('capture.recording.inProgress')}
         </Text>
 
         {/* Duration display */}
-        <Text style={styles.duration}>{formatDuration(duration)}</Text>
+        <Text
+          className="text-[64px] font-extralight text-white mb-14"
+          style={{ fontVariant: ['tabular-nums'] }}
+        >
+          {formatDuration(duration)}
+        </Text>
 
         {/* Buttons */}
-        <View style={styles.buttonContainer}>
+        <View className="flex-row items-center gap-10">
           {isStopping ? (
             <ActivityIndicator size="large" color="#FFFFFF" />
           ) : (
             <>
               <TouchableOpacity
-                style={styles.cancelButton}
+                className="py-3 px-6"
                 onPress={onCancel}
-                accessibilityLabel="Annuler l'enregistrement"
+                accessibilityLabel={t('common.cancel')}
                 accessibilityRole="button"
               >
-                <Text style={styles.cancelButtonText}>Annuler</Text>
+                <Text className="text-lg text-neutral-400 font-medium">
+                  {t('common.cancel')}
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
-                style={styles.stopButton}
+                className="w-20 h-20 rounded-full bg-error-500 justify-center items-center"
+                style={{
+                  shadowColor: '#FF3B30',
+                  shadowOffset: { width: 0, height: 4 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 8,
+                  elevation: 8,
+                }}
                 onPress={onStop}
-                accessibilityLabel="Arrêter l'enregistrement"
+                accessibilityLabel={t('capture.recording.stop')}
                 accessibilityRole="button"
               >
-                <View style={styles.stopIcon} />
+                <View className="w-7 h-7 rounded-sm bg-white" />
               </TouchableOpacity>
             </>
           )}
@@ -108,77 +108,3 @@ export const RecordingOverlay = ({
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  content: {
-    alignItems: 'center',
-    paddingHorizontal: 40,
-  },
-  recordingIndicator: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 59, 48, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  recordingDot: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#FF3B30',
-  },
-  statusText: {
-    fontSize: 18,
-    color: '#FFFFFF',
-    marginBottom: 16,
-    fontWeight: '500',
-  },
-  duration: {
-    fontSize: 64,
-    fontWeight: '200',
-    color: '#FFFFFF',
-    fontVariant: ['tabular-nums'],
-    marginBottom: 60,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 40,
-  },
-  cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-  },
-  cancelButtonText: {
-    fontSize: 18,
-    color: '#8E8E93',
-    fontWeight: '500',
-  },
-  stopButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#FF3B30',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#FF3B30',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  stopIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 4,
-    backgroundColor: '#FFFFFF',
-  },
-});

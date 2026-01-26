@@ -17,13 +17,15 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import {
   WhisperModelService,
   type WhisperModelSize,
   type DownloadProgress,
 } from '../../contexts/Normalization/services/WhisperModelService';
+import { colors } from '../../design-system/tokens';
+import { AlertDialog, useToast } from '../../design-system/components';
 
 type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready';
 
@@ -43,6 +45,8 @@ export function WhisperModelCard({
   const [downloadSpeed, setDownloadSpeed] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const toast = useToast();
 
   const modelService = new WhisperModelService();
   const expectedSize = modelService.getExpectedSize(modelSize);
@@ -103,25 +107,17 @@ export function WhisperModelCard({
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Supprimer le modèle',
-      'Le modèle Whisper sera supprimé. Vous devrez le retélécharger pour transcrire vos enregistrements.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await modelService.deleteModel(modelSize);
-              setStatus('not_downloaded');
-            } catch (err) {
-              Alert.alert('Erreur', 'Impossible de supprimer le modèle');
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteDialog(false);
+    try {
+      await modelService.deleteModel(modelSize);
+      setStatus('not_downloaded');
+    } catch (err) {
+      toast.error('Impossible de supprimer le modèle');
+    }
   };
 
   const handleUseModel = async () => {
@@ -184,39 +180,39 @@ export function WhisperModelCard({
     }
   };
 
-  const getModelAdvice = (): { emoji: string; text: string; badge?: string } => {
+  const getModelAdvice = (): { icon: string; text: string; badge?: string } => {
     switch (modelSize) {
       case 'tiny':
         return {
-          emoji: '⚡',
+          icon: 'zap',
           text: 'Le plus rapide. Idéal pour des notes courtes ou un téléphone avec peu d\'espace.',
           badge: 'Rapide',
         };
       case 'base':
         return {
-          emoji: '⭐',
+          icon: 'star',
           text: 'Bon équilibre entre qualité et taille. Recommandé pour la plupart des utilisateurs.',
           badge: 'Recommandé',
         };
       case 'small':
         return {
-          emoji: '🎯',
+          icon: 'target',
           text: 'Meilleure précision, notamment pour les accents et termes techniques. Nécessite plus d\'espace.',
         };
       case 'medium':
         return {
-          emoji: '🏆',
+          icon: 'award',
           text: 'Qualité professionnelle. Réservé aux appareils récents avec beaucoup d\'espace libre.',
           badge: 'Pro',
         };
       case 'large-v3':
         return {
-          emoji: '🚀',
+          icon: 'zap',
           text: 'Le meilleur modèle Whisper. Qualité maximale pour les transcriptions complexes. Nécessite beaucoup d\'espace et un appareil puissant.',
           badge: 'Ultimate',
         };
       default:
-        return { emoji: '', text: '' };
+        return { icon: 'cpu', text: '' };
     }
   };
 
@@ -227,7 +223,10 @@ export function WhisperModelCard({
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>{advice.emoji} {getModelLabel()}</Text>
+            <View style={styles.titleWithIcon}>
+              <Feather name={advice.icon as any} size={18} color={colors.primary[600]} />
+              <Text style={styles.title}>{getModelLabel()}</Text>
+            </View>
             {advice.badge && !isSelected && (
               <View style={[
                 styles.adviceBadge,
@@ -261,7 +260,8 @@ export function WhisperModelCard({
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusNotDownloaded]}>
-              <Text style={styles.statusBadgeText}>⬇️ Non téléchargé</Text>
+              <Feather name="download" size={14} color={colors.neutral[600]} />
+              <Text style={styles.statusBadgeText}>Non téléchargé</Text>
             </View>
           </View>
 
@@ -325,9 +325,12 @@ export function WhisperModelCard({
             <Text style={styles.statsText}>{formatSpeed(downloadSpeed)}</Text>
           </View>
 
-          <Text style={styles.warningText}>
-            ⚠️ Gardez l'application ouverte pendant le téléchargement
-          </Text>
+          <View style={styles.warningContainer}>
+            <Feather name="alert-triangle" size={14} color={colors.warning[600]} />
+            <Text style={styles.warningText}>
+              Gardez l'application ouverte pendant le téléchargement
+            </Text>
+          </View>
         </View>
       )}
 
@@ -346,7 +349,8 @@ export function WhisperModelCard({
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusReady]}>
-              <Text style={styles.statusBadgeText}>✅ Téléchargé</Text>
+              <Feather name="check-circle" size={14} color={colors.success[600]} />
+              <Text style={styles.statusBadgeText}>Téléchargé</Text>
             </View>
           </View>
 
@@ -371,6 +375,18 @@ export function WhisperModelCard({
           </View>
         </View>
       )}
+
+      <AlertDialog
+        visible={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        variant="danger"
+        title="Supprimer le modèle"
+        message="Le modèle Whisper sera supprimé. Vous devrez le retélécharger pour transcrire vos enregistrements."
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDelete,
+        }}
+      />
     </View>
   );
 }
@@ -407,6 +423,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
+    gap: 8,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   title: {
@@ -480,6 +501,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#333',
+    marginLeft: 6,
   },
   statusText: {
     fontSize: 14,
@@ -531,10 +553,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
   },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   warningText: {
     fontSize: 12,
     color: '#FF9800',
-    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',

@@ -14,7 +14,6 @@ import {
   ScrollView,
   Text,
   StyleSheet,
-  Alert,
   TextInput,
   TouchableOpacity,
 } from 'react-native';
@@ -27,12 +26,17 @@ import {
   CorrectionLearningService,
   type CorrectionEntry,
 } from '../../contexts/Normalization/services/CorrectionLearningService';
+import { AlertDialog, useToast } from '../../design-system/components';
 
 export function WhisperSettingsScreen() {
   const [selectedModel, setSelectedModel] = useState<WhisperModelSize | null>(null);
   const [vocabularyText, setVocabularyText] = useState<string>('');
   const [isSavingVocabulary, setIsSavingVocabulary] = useState(false);
   const [suggestions, setSuggestions] = useState<CorrectionEntry[]>([]);
+  const [showDeleteOthersDialog, setShowDeleteOthersDialog] = useState(false);
+  const [pendingDeleteModels, setPendingDeleteModels] = useState<WhisperModelSize[]>([]);
+  const [deleteDialogMessage, setDeleteDialogMessage] = useState('');
+  const toast = useToast();
 
   const modelService = new WhisperModelService();
 
@@ -88,29 +92,28 @@ export function WhisperSettingsScreen() {
         return acc + sizes[m];
       }, 0);
 
-      Alert.alert(
-        'Supprimer les autres modèles ?',
-        `${downloadedOthers.length > 1 ? 'Les modèles suivants sont' : 'Le modèle suivant est'} toujours téléchargé${downloadedOthers.length > 1 ? 's' : ''} :\n${otherLabels}\n\nVoulez-vous ${downloadedOthers.length > 1 ? 'les' : 'le'} supprimer pour libérer ~${totalSize >= 1000 ? (totalSize / 1000).toFixed(1) + ' GB' : totalSize + ' MB'} ?`,
-        [
-          { text: 'Garder', style: 'cancel' },
-          {
-            text: 'Supprimer',
-            style: 'destructive',
-            onPress: async () => {
-              try {
-                for (const model of downloadedOthers) {
-                  await modelService.deleteModel(model);
-                }
-                Alert.alert('Modèles supprimés', `${downloadedOthers.length > 1 ? 'Les modèles ont été supprimés' : 'Le modèle a été supprimé'}.`);
-              } catch (error) {
-                Alert.alert('Erreur', 'Impossible de supprimer certains modèles.');
-              }
-            },
-          },
-        ]
-      );
+      const message = `${downloadedOthers.length > 1 ? 'Les modèles suivants sont' : 'Le modèle suivant est'} toujours téléchargé${downloadedOthers.length > 1 ? 's' : ''} :\n${otherLabels}\n\nVoulez-vous ${downloadedOthers.length > 1 ? 'les' : 'le'} supprimer pour libérer ~${totalSize >= 1000 ? (totalSize / 1000).toFixed(1) + ' GB' : totalSize + ' MB'} ?`;
+      setDeleteDialogMessage(message);
+      setPendingDeleteModels(downloadedOthers);
+      setShowDeleteOthersDialog(true);
     }
   }, []);
+
+  /**
+   * Confirm deletion of other models
+   */
+  const confirmDeleteOthers = useCallback(async () => {
+    setShowDeleteOthersDialog(false);
+    try {
+      for (const model of pendingDeleteModels) {
+        await modelService.deleteModel(model);
+      }
+      toast.success(pendingDeleteModels.length > 1 ? 'Les modèles ont été supprimés' : 'Le modèle a été supprimé');
+    } catch (error) {
+      toast.error('Impossible de supprimer certains modèles');
+    }
+    setPendingDeleteModels([]);
+  }, [pendingDeleteModels, toast]);
 
   /**
    * Parse vocabulary text into array of words
@@ -131,18 +134,16 @@ export function WhisperSettingsScreen() {
     try {
       const words = parseVocabularyText(vocabularyText);
       await modelService.setCustomVocabulary(words);
-      Alert.alert(
-        'Vocabulaire enregistré',
-        words.length > 0
-          ? `${words.length} mot${words.length > 1 ? 's' : ''} enregistré${words.length > 1 ? 's' : ''}.`
-          : 'Le vocabulaire a été vidé.'
-      );
+      const message = words.length > 0
+        ? `${words.length} mot${words.length > 1 ? 's' : ''} enregistré${words.length > 1 ? 's' : ''}`
+        : 'Le vocabulaire a été vidé';
+      toast.success(message);
     } catch (error) {
-      Alert.alert('Erreur', 'Impossible d\'enregistrer le vocabulaire.');
+      toast.error('Impossible d\'enregistrer le vocabulaire');
     } finally {
       setIsSavingVocabulary(false);
     }
-  }, [vocabularyText]);
+  }, [vocabularyText, toast]);
 
   /**
    * Add a suggestion to vocabulary
@@ -163,11 +164,8 @@ export function WhisperSettingsScreen() {
     await CorrectionLearningService.dismissSuggestion(suggestion.id);
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
 
-    Alert.alert(
-      'Ajouté au vocabulaire',
-      `"${suggestion.suggestedPhrase}" a été ajouté à votre vocabulaire personnalisé.`
-    );
-  }, [vocabularyText]);
+    toast.success(`"${suggestion.suggestedPhrase}" ajouté au vocabulaire`);
+  }, [vocabularyText, toast]);
 
   /**
    * Dismiss a suggestion without adding
@@ -279,6 +277,29 @@ export function WhisperSettingsScreen() {
           Vos enregistrements ne quittent jamais votre téléphone.
         </Text>
       </View>
+
+      <AlertDialog
+        visible={showDeleteOthersDialog}
+        onClose={() => {
+          setShowDeleteOthersDialog(false);
+          setPendingDeleteModels([]);
+        }}
+        title="Supprimer les autres modèles ?"
+        message={deleteDialogMessage}
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDeleteOthers,
+        }}
+        cancelAction={{
+          label: 'Garder',
+          onPress: () => {
+            setShowDeleteOthersDialog(false);
+            setPendingDeleteModels([]);
+          },
+        }}
+      />
     </ScrollView>
   );
 }

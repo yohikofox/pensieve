@@ -17,7 +17,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   Share,
   ActivityIndicator,
   TextInput,
@@ -26,10 +25,20 @@ import {
   Modal,
   FlatList,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Contacts from 'expo-contacts';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { container } from 'tsyringe';
+import { colors } from '../../design-system/tokens';
+import { AlertDialog, useToast } from '../../design-system/components';
+import {
+  CaptureIcons,
+  StatusIcons,
+  ActionIcons,
+  NavigationIcons,
+  UIIcons,
+} from '../../design-system/icons';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { ICaptureMetadataRepository } from '../../contexts/capture/domain/ICaptureMetadataRepository';
@@ -42,7 +51,7 @@ import { TranscriptionQueueService } from '../../contexts/Normalization/services
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
-import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
+import { ANALYSIS_LABELS } from '../../contexts/Normalization/services/analysisPrompts';
 import { GoogleCalendarService } from '../../services/GoogleCalendarService';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 
@@ -181,7 +190,7 @@ function SavedIndicator({ visible, onHidden }: { visible: boolean; onHidden: () 
         { opacity, transform: [{ scale }] },
       ]}
     >
-      <Text style={styles.actionItemSavedIcon}>✓</Text>
+      <Feather name={StatusIcons.success} size={18} color={colors.success[500]} />
     </Animated.View>
   );
 }
@@ -233,6 +242,11 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [savedActionIndex, setSavedActionIndex] = useState<number | null>(null);
   const [addingToCalendarIndex, setAddingToCalendarIndex] = useState<number | null>(null);
   const [addedToCalendarIndex, setAddedToCalendarIndex] = useState<number | null>(null);
+
+  // Toast and dialog states
+  const toast = useToast();
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showCalendarDialog, setShowCalendarDialog] = useState(false);
 
   useEffect(() => {
     loadCapture();
@@ -328,13 +342,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         setAnalyses(prev => ({ ...prev, [type]: result.analysis }));
       } else {
         setAnalysisError(result.error);
-        Alert.alert('Erreur', result.error);
+        toast.error(result.error ?? 'Erreur d\'analyse');
       }
     } catch (error) {
       console.error('[CaptureDetailScreen] Analysis failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
       setAnalysisError(errorMsg);
-      Alert.alert('Erreur', errorMsg);
+      toast.error(errorMsg);
     } finally {
       setAnalysisLoading(prev => ({ ...prev, [type]: false }));
     }
@@ -374,13 +388,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       setAnalyses(newAnalyses);
 
       if (hasError) {
-        Alert.alert('Attention', 'Certaines analyses ont echoue. Verifiez les logs.');
+        toast.warning('Certaines analyses ont échoué. Vérifiez les logs.');
       }
     } catch (error) {
       console.error('[CaptureDetailScreen] AnalyzeAll failed:', error);
       const errorMsg = error instanceof Error ? error.message : 'Erreur inconnue';
       setAnalysisError(errorMsg);
-      Alert.alert('Erreur', errorMsg);
+      toast.error(errorMsg);
     } finally {
       setAnalysisLoading({
         [ANALYSIS_TYPES.SUMMARY]: false,
@@ -501,7 +515,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     try {
       const { status } = await Contacts.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission requise', 'L\'accès aux contacts est nécessaire pour cette fonctionnalité.');
+        toast.warning('L\'accès aux contacts est nécessaire pour cette fonctionnalité');
         setShowContactPicker(false);
         setLoadingContacts(false);
         return;
@@ -515,7 +529,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       setContacts(data);
     } catch (error) {
       console.error('[CaptureDetailScreen] Failed to load contacts:', error);
-      Alert.alert('Erreur', 'Impossible de charger les contacts.');
+      toast.error('Impossible de charger les contacts');
       setShowContactPicker(false);
     } finally {
       setLoadingContacts(false);
@@ -556,21 +570,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     const isConnected = await GoogleCalendarService.isConnected();
 
     if (!isConnected) {
-      Alert.alert(
-        'Google Calendar non connecté',
-        'Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier.',
-        [
-          { text: 'Annuler', style: 'cancel' },
-          {
-            text: 'Paramètres',
-            onPress: () => {
-              // Navigate to settings - we can't easily do this from here
-              // So just show a message
-              Alert.alert('Info', 'Allez dans Paramètres > Intégrations > Google Calendar');
-            },
-          },
-        ]
-      );
+      setShowCalendarDialog(true);
       return;
     }
 
@@ -581,7 +581,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       // Parse the date from "JJ-MM-AAAA, HH:mm" format
       const match = item.deadline_date.match(/^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/);
       if (!match) {
-        Alert.alert('Erreur', 'Format de date invalide');
+        toast.error('Format de date invalide');
         setAddingToCalendarIndex(null);
         return;
       }
@@ -610,12 +610,12 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           setAddedToCalendarIndex(prev => prev === index ? null : prev);
         }, 2000);
       } else {
-        Alert.alert('Erreur', result.error || 'Impossible de créer l\'événement');
+        toast.error(result.error || 'Impossible de créer l\'événement');
         setAddingToCalendarIndex(null);
       }
     } catch (error) {
       console.error('[CaptureDetailScreen] Add to calendar error:', error);
-      Alert.alert('Erreur', 'Impossible de créer l\'événement');
+      toast.error('Impossible de créer l\'événement');
       setAddingToCalendarIndex(null);
     }
   };
@@ -649,13 +649,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         audioDuration: capture.duration || undefined,
       });
 
-      Alert.alert('Succès', 'La capture a été remise en queue pour transcription.');
+      toast.success('La capture a été remise en queue pour transcription');
 
       // Reload capture to see new state
       await loadCapture();
     } catch (error) {
       console.error('[CaptureDetailScreen] Re-transcribe failed:', error);
-      Alert.alert('Erreur', 'Impossible de relancer la transcription.');
+      toast.error('Impossible de relancer la transcription');
     } finally {
       setReprocessing(prev => ({ ...prev, transcribe: false }));
     }
@@ -666,7 +666,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
     const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
     if (!rawTranscript) {
-      Alert.alert('Erreur', 'Pas de transcription brute disponible.');
+      toast.error('Pas de transcription brute disponible');
       return;
     }
 
@@ -680,7 +680,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       // Check if post-processing is enabled
       const isEnabled = await postProcessingService.isEnabled();
       if (!isEnabled) {
-        Alert.alert('Erreur', 'Le post-traitement LLM n\'est pas activé dans les paramètres.');
+        toast.error('Le post-traitement LLM n\'est pas activé dans les paramètres');
         return;
       }
 
@@ -706,13 +706,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         await metadataRepository.set(captureId, METADATA_KEYS.LLM_MODEL, llmModelId);
       }
 
-      Alert.alert('Succès', `Post-traitement terminé. ${processedText !== rawTranscript ? 'Texte modifié.' : 'Aucune modification.'}`);
+      toast.success(`Post-traitement terminé. ${processedText !== rawTranscript ? 'Texte modifié.' : 'Aucune modification.'}`);
 
       // Reload capture
       await loadCapture();
     } catch (error) {
       console.error('[CaptureDetailScreen] Re-post-process failed:', error);
-      Alert.alert('Erreur', `Post-traitement échoué: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
+      toast.error(`Post-traitement échoué: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setReprocessing(prev => ({ ...prev, postProcess: false }));
     }
@@ -780,7 +780,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       console.log('[CaptureDetailScreen] Transcript saved successfully');
     } catch (error) {
       console.error('[CaptureDetailScreen] Failed to save transcript:', error);
-      Alert.alert('Erreur', 'Impossible de sauvegarder les modifications');
+      toast.error('Impossible de sauvegarder les modifications');
     } finally {
       setIsSaving(false);
     }
@@ -819,26 +819,18 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Supprimer cette capture ?',
-      'Cette action est irréversible.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-              await repository.delete(captureId);
-              navigation.goBack();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer la capture');
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteDialog(false);
+    try {
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      await repository.delete(captureId);
+      navigation.goBack();
+    } catch (error) {
+      toast.error('Impossible de supprimer la capture');
+    }
   };
 
   const formatDate = (date: Date): string => {
@@ -873,7 +865,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   if (!capture) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>😕</Text>
+        <Feather name={StatusIcons.error} size={48} color={colors.neutral[400]} />
         <Text style={styles.errorText}>Capture introuvable</Text>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Text style={styles.backButtonText}>Retour</Text>
@@ -892,7 +884,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         {/* Header Info */}
         <View style={styles.headerCard}>
           <View style={styles.typeRow}>
-            <Text style={styles.typeIcon}>{isAudio ? '🎙️' : '✏️'}</Text>
+            <View style={[styles.typeIconContainer, { backgroundColor: isAudio ? colors.primary[100] : colors.secondary[100] }]}>
+              <Feather
+                name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
+                size={20}
+                color={isAudio ? colors.primary[600] : colors.secondary[600]}
+              />
+            </View>
             <Text style={styles.typeLabel}>{isAudio ? 'Enregistrement audio' : 'Note texte'}</Text>
           </View>
 
@@ -906,23 +904,26 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           <View style={styles.statusRow}>
             {capture.state === 'captured' && (
               <View style={[styles.statusBadge, styles.statusPending]}>
-                <Text style={styles.statusText}>⏳ En attente de transcription</Text>
+                <Feather name={StatusIcons.pending} size={14} color={colors.warning[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6 }]}>En attente de transcription</Text>
               </View>
             )}
             {capture.state === 'processing' && (
               <View style={[styles.statusBadge, styles.statusProcessing]}>
-                <ActivityIndicator size="small" color="#007AFF" />
+                <ActivityIndicator size="small" color={colors.info[600]} />
                 <Text style={[styles.statusText, { marginLeft: 8 }]}>Transcription en cours...</Text>
               </View>
             )}
             {capture.state === 'ready' && (
               <View style={[styles.statusBadge, styles.statusReady]}>
-                <Text style={styles.statusText}>✅ Transcription terminée</Text>
+                <Feather name={StatusIcons.success} size={14} color={colors.success[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6 }]}>Transcription terminée</Text>
               </View>
             )}
             {capture.state === 'failed' && (
               <View style={[styles.statusBadge, styles.statusFailed]}>
-                <Text style={styles.statusText}>❌ Transcription échouée</Text>
+                <Feather name={StatusIcons.error} size={14} color={colors.error[700]} />
+                <Text style={[styles.statusText, { marginLeft: 6 }]}>Transcription échouée</Text>
               </View>
             )}
           </View>
@@ -979,12 +980,14 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               onPress={() => setShowRawTranscript(!showRawTranscript)}
             >
               <View style={styles.rawTranscriptTitleRow}>
-                <Text style={styles.rawTranscriptIcon}>🎙️</Text>
+                <Feather name={CaptureIcons.voice} size={16} color={colors.neutral[600]} />
                 <Text style={styles.rawTranscriptTitle}>Transcription brute (Whisper)</Text>
               </View>
-              <Text style={styles.rawTranscriptToggle}>
-                {showRawTranscript ? '▼' : '▶'}
-              </Text>
+              <Feather
+                name={showRawTranscript ? NavigationIcons.down : NavigationIcons.forward}
+                size={16}
+                color={colors.neutral[500]}
+              />
             </Pressable>
             {showRawTranscript && (
               <View style={styles.rawTranscriptContent}>
@@ -992,9 +995,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                   {metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
                 </Text>
                 <View style={styles.rawTranscriptBadge}>
-                  <Text style={styles.rawTranscriptBadgeText}>
-                    ✨ Amélioré par IA
-                  </Text>
+                  <Feather name="zap" size={12} color={colors.success[600]} />
+                  <Text style={styles.rawTranscriptBadgeText}>Amélioré par IA</Text>
                 </View>
               </View>
             )}
@@ -1009,12 +1011,14 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               onPress={() => setShowMetadata(!showMetadata)}
             >
               <View style={styles.metadataTitleRow}>
-                <Text style={styles.metadataIcon}>📊</Text>
+                <Feather name="info" size={16} color={colors.neutral[600]} />
                 <Text style={styles.metadataTitle}>Métadonnées de transcription</Text>
               </View>
-              <Text style={styles.metadataToggle}>
-                {showMetadata ? '▼' : '▶'}
-              </Text>
+              <Feather
+                name={showMetadata ? NavigationIcons.down : NavigationIcons.forward}
+                size={16}
+                color={colors.neutral[500]}
+              />
             </Pressable>
             {showMetadata && (
               <View style={styles.metadataContent}>
@@ -1070,19 +1074,21 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               }}
             >
               <View style={styles.analysisTitleRow}>
-                <Text style={styles.analysisIcon}>🤖</Text>
+                <Feather name="cpu" size={16} color={colors.primary[700]} />
                 <Text style={styles.analysisTitle}>Analyse IA</Text>
               </View>
-              <Text style={styles.analysisToggle}>
-                {showAnalysis ? '▼' : '▶'}
-              </Text>
+              <Feather
+                name={showAnalysis ? NavigationIcons.down : NavigationIcons.forward}
+                size={16}
+                color={colors.primary[600]}
+              />
             </Pressable>
             {showAnalysis && (
               <View style={styles.analysisContent}>
                 {/* Show message if no text to analyze */}
                 {!editedText ? (
                   <View style={styles.noTextMessage}>
-                    <Text style={styles.noTextIcon}>📝</Text>
+                    <Feather name="file-text" size={32} color={colors.neutral[400]} />
                     <Text style={styles.noTextTitle}>Pas de texte à analyser</Text>
                     <Text style={styles.noTextSubtitle}>
                       La transcription n'a pas produit de texte. Essayez avec un enregistrement plus long ou plus clair.
@@ -1099,15 +1105,19 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       {isAnyAnalysisLoading ? (
                         <ActivityIndicator size="small" color="#FFFFFF" />
                       ) : (
-                        <Text style={styles.analyzeAllButtonText}>🚀 Analyser tout</Text>
+                        <View style={styles.analyzeAllContent}>
+                          <Feather name="zap" size={16} color={colors.neutral[0]} />
+                          <Text style={styles.analyzeAllButtonText}>Analyser tout</Text>
+                        </View>
                       )}
                     </TouchableOpacity>
                 {/* Summary Section */}
                 <View style={styles.analysisSection}>
                   <View style={styles.analysisSectionHeader}>
-                    <Text style={styles.analysisSectionTitle}>
-                      {ANALYSIS_ICONS[ANALYSIS_TYPES.SUMMARY]} {ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}
-                    </Text>
+                    <View style={styles.analysisSectionTitleRow}>
+                      <Feather name="file-text" size={16} color={colors.primary[600]} />
+                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.SUMMARY]}</Text>
+                    </View>
                     <TouchableOpacity
                       style={styles.generateButton}
                       onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)}
@@ -1115,10 +1125,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     >
                       {analysisLoading[ANALYSIS_TYPES.SUMMARY] ? (
                         <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : analyses[ANALYSIS_TYPES.SUMMARY] ? (
+                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
                       ) : (
-                        <Text style={styles.generateButtonText}>
-                          {analyses[ANALYSIS_TYPES.SUMMARY] ? '🔄' : 'Generer'}
-                        </Text>
+                        <Text style={styles.generateButtonText}>Générer</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1132,9 +1142,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 {/* Highlights Section */}
                 <View style={styles.analysisSection}>
                   <View style={styles.analysisSectionHeader}>
-                    <Text style={styles.analysisSectionTitle}>
-                      {ANALYSIS_ICONS[ANALYSIS_TYPES.HIGHLIGHTS]} {ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}
-                    </Text>
+                    <View style={styles.analysisSectionTitleRow}>
+                      <Feather name="star" size={16} color={colors.warning[500]} />
+                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.HIGHLIGHTS]}</Text>
+                    </View>
                     <TouchableOpacity
                       style={styles.generateButton}
                       onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)}
@@ -1142,10 +1153,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     >
                       {analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS] ? (
                         <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? (
+                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
                       ) : (
-                        <Text style={styles.generateButtonText}>
-                          {analyses[ANALYSIS_TYPES.HIGHLIGHTS] ? '🔄' : 'Generer'}
-                        </Text>
+                        <Text style={styles.generateButtonText}>Générer</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1159,9 +1170,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 {/* Action Items Section */}
                 <View style={styles.analysisSection}>
                   <View style={styles.analysisSectionHeader}>
-                    <Text style={styles.analysisSectionTitle}>
-                      {ANALYSIS_ICONS[ANALYSIS_TYPES.ACTION_ITEMS]} {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
-                    </Text>
+                    <View style={styles.analysisSectionTitleRow}>
+                      <Feather name="check-square" size={16} color={colors.success[500]} />
+                      <Text style={styles.analysisSectionTitle}>{ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}</Text>
+                    </View>
                     <TouchableOpacity
                       style={styles.generateButton}
                       onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
@@ -1169,10 +1181,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     >
                       {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
                         <ActivityIndicator size="small" color="#9C27B0" />
+                      ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                        <Feather name={ActionIcons.refresh} size={16} color={colors.primary[600]} />
                       ) : (
-                        <Text style={styles.generateButtonText}>
-                          {analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? '🔄' : 'Generer'}
-                        </Text>
+                        <Text style={styles.generateButtonText}>Générer</Text>
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1209,7 +1221,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                   ]}
                                   onPress={() => handleOpenDatePicker(index, item.deadline_date)}
                                 >
-                                  <Text style={styles.actionItemTagIcon}>📅</Text>
+                                  <Feather name="calendar" size={13} color={colors.primary[700]} style={styles.actionItemTagIconFeather} />
                                   <Text style={[
                                     styles.actionItemTagText,
                                     !item.deadline_date && !item.deadline_text && styles.actionItemTagTextEmpty,
@@ -1228,7 +1240,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                   ]}
                                   onPress={() => handleOpenContactPicker(index)}
                                 >
-                                  <Text style={styles.actionItemTagIcon}>👤</Text>
+                                  <Feather name="user" size={13} color={colors.primary[700]} style={styles.actionItemTagIconFeather} />
                                   <Text style={[
                                     styles.actionItemTagText,
                                     !item.target && styles.actionItemTagTextEmpty,
@@ -1251,12 +1263,12 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                                       <ActivityIndicator size="small" color="#4285F4" />
                                     ) : addedToCalendarIndex === index ? (
                                       <>
-                                        <Text style={styles.actionItemTagIcon}>✓</Text>
+                                        <Feather name="check" size={13} color={colors.success[600]} style={styles.actionItemTagIconFeather} />
                                         <Text style={styles.actionItemCalendarTextDone}>Ajouté</Text>
                                       </>
                                     ) : (
                                       <>
-                                        <Text style={styles.actionItemTagIcon}>📆</Text>
+                                        <Feather name="calendar" size={13} color={colors.info[600]} style={styles.actionItemTagIconFeather} />
                                         <Text style={styles.actionItemCalendarText}>Calendrier</Text>
                                       </>
                                     )}
@@ -1291,12 +1303,14 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               onPress={() => setShowReprocess(!showReprocess)}
             >
               <View style={styles.reprocessTitleRow}>
-                <Text style={styles.reprocessIcon}>🔧</Text>
+                <Feather name="tool" size={18} color={colors.warning[700]} />
                 <Text style={styles.reprocessTitle}>Retraitement</Text>
               </View>
-              <Text style={styles.reprocessToggle}>
-                {showReprocess ? '▼' : '▶'}
-              </Text>
+              <Feather
+                name={showReprocess ? NavigationIcons.down : NavigationIcons.forward}
+                size={16}
+                color={colors.warning[600]}
+              />
             </Pressable>
             {showReprocess && (
               <View style={styles.reprocessContent}>
@@ -1307,15 +1321,39 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 {/* Status info */}
                 <View style={styles.reprocessStatus}>
                   <Text style={styles.reprocessStatusLabel}>État actuel:</Text>
-                  <Text style={styles.reprocessStatusValue}>
-                    • raw_transcript: {metadata[METADATA_KEYS.RAW_TRANSCRIPT] ? `${metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars` : '❌ absent'}
-                  </Text>
-                  <Text style={styles.reprocessStatusValue}>
-                    • normalizedText: {capture.normalizedText ? `${capture.normalizedText.length} chars` : '❌ absent'}
-                  </Text>
-                  <Text style={styles.reprocessStatusValue}>
-                    • LLM model: {metadata[METADATA_KEYS.LLM_MODEL] || '❌ non appliqué'}
-                  </Text>
+                  <View style={styles.reprocessStatusRow}>
+                    <Text style={styles.reprocessStatusValue}>• raw_transcript: </Text>
+                    {metadata[METADATA_KEYS.RAW_TRANSCRIPT] ? (
+                      <Text style={styles.reprocessStatusValue}>{metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars</Text>
+                    ) : (
+                      <View style={styles.reprocessStatusMissing}>
+                        <Feather name="x-circle" size={12} color={colors.error[500]} />
+                        <Text style={styles.reprocessStatusMissingText}>absent</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.reprocessStatusRow}>
+                    <Text style={styles.reprocessStatusValue}>• normalizedText: </Text>
+                    {capture.normalizedText ? (
+                      <Text style={styles.reprocessStatusValue}>{capture.normalizedText.length} chars</Text>
+                    ) : (
+                      <View style={styles.reprocessStatusMissing}>
+                        <Feather name="x-circle" size={12} color={colors.error[500]} />
+                        <Text style={styles.reprocessStatusMissingText}>absent</Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.reprocessStatusRow}>
+                    <Text style={styles.reprocessStatusValue}>• LLM model: </Text>
+                    {metadata[METADATA_KEYS.LLM_MODEL] ? (
+                      <Text style={styles.reprocessStatusValue}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                    ) : (
+                      <View style={styles.reprocessStatusMissing}>
+                        <Feather name="x-circle" size={12} color={colors.error[500]} />
+                        <Text style={styles.reprocessStatusMissingText}>non appliqué</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
 
                 {/* Re-transcribe button */}
@@ -1328,7 +1366,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Text style={styles.reprocessButtonIcon}>🎙️</Text>
+                      <Feather name={CaptureIcons.voice} size={24} color={colors.neutral[0]} style={styles.reprocessButtonIconFeather} />
                       <View style={styles.reprocessButtonTextContainer}>
                         <Text style={styles.reprocessButtonTitle}>Re-transcrire</Text>
                         <Text style={styles.reprocessButtonDesc}>Relance Whisper sur l'audio</Text>
@@ -1347,7 +1385,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
                     <>
-                      <Text style={styles.reprocessButtonIcon}>🤖</Text>
+                      <Feather name="cpu" size={24} color={colors.neutral[0]} style={styles.reprocessButtonIconFeather} />
                       <View style={styles.reprocessButtonTextContainer}>
                         <Text style={styles.reprocessButtonTitle}>Re-post-traiter</Text>
                         <Text style={styles.reprocessButtonDesc}>
@@ -1361,9 +1399,12 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 </TouchableOpacity>
 
                 {/* Info about analysis */}
-                <Text style={styles.reprocessNote}>
-                  💡 Pour relancer l'analyse IA, utilisez la section "Analyse IA" ci-dessus.
-                </Text>
+                <View style={styles.reprocessNoteContainer}>
+                  <Feather name="info" size={14} color={colors.neutral[500]} />
+                  <Text style={styles.reprocessNote}>
+                    Pour relancer l'analyse IA, utilisez la section "Analyse IA" ci-dessus.
+                  </Text>
+                </View>
               </View>
             )}
           </View>
@@ -1467,7 +1508,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               style={[styles.actionButton, styles.discardButton]}
               onPress={handleDiscardChanges}
             >
-              <Text style={styles.actionIcon}>↩️</Text>
+              <Feather name="rotate-ccw" size={22} color={colors.neutral[500]} />
               <Text style={[styles.actionLabel, styles.discardLabel]}>Annuler</Text>
             </TouchableOpacity>
 
@@ -1479,7 +1520,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               {isSaving ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.actionIcon}>💾</Text>
+                <Feather name={ActionIcons.save} size={22} color={colors.neutral[0]} />
               )}
               <Text style={[styles.actionLabel, styles.saveLabel]}>
                 {isSaving ? 'Enregistrement...' : 'Enregistrer'}
@@ -1491,24 +1532,67 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             {hasText && (
               <>
                 <TouchableOpacity style={styles.actionButton} onPress={handleCopy}>
-                  <Text style={styles.actionIcon}>{copied ? '✅' : '📋'}</Text>
+                  <Feather
+                    name={copied ? StatusIcons.success : ActionIcons.copy}
+                    size={22}
+                    color={copied ? colors.success[500] : colors.primary[500]}
+                  />
                   <Text style={styles.actionLabel}>{copied ? 'Copié!' : 'Copier'}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity style={styles.actionButton} onPress={handleShare}>
-                  <Text style={styles.actionIcon}>📤</Text>
+                  <Feather name={ActionIcons.share} size={22} color={colors.primary[500]} />
                   <Text style={styles.actionLabel}>Partager</Text>
                 </TouchableOpacity>
               </>
             )}
 
             <TouchableOpacity style={[styles.actionButton, styles.deleteButton]} onPress={handleDelete}>
-              <Text style={styles.actionIcon}>🗑️</Text>
+              <Feather name={ActionIcons.delete} size={22} color={colors.error[500]} />
               <Text style={[styles.actionLabel, styles.deleteLabel]}>Supprimer</Text>
             </TouchableOpacity>
           </>
         )}
       </View>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog
+        visible={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        title="Supprimer cette capture ?"
+        message="Cette action est irréversible."
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDelete,
+        }}
+        cancelAction={{
+          label: 'Annuler',
+          onPress: () => setShowDeleteDialog(false),
+        }}
+      />
+
+      {/* Google Calendar connection dialog */}
+      <AlertDialog
+        visible={showCalendarDialog}
+        onClose={() => setShowCalendarDialog(false)}
+        title="Google Calendar non connecté"
+        message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
+        icon="calendar"
+        variant="warning"
+        confirmAction={{
+          label: 'OK',
+          onPress: () => {
+            setShowCalendarDialog(false);
+            toast.info('Allez dans Paramètres > Intégrations > Google Calendar');
+          },
+        }}
+        cancelAction={{
+          label: 'Annuler',
+          onPress: () => setShowCalendarDialog(false),
+        }}
+      />
     </View>
   );
 }
@@ -1531,11 +1615,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F2F2F7',
     padding: 24,
   },
-  errorIcon: {
-    fontSize: 48,
-    marginBottom: 16,
-  },
   errorText: {
+    marginTop: 16,
     fontSize: 18,
     color: '#8E8E93',
     marginBottom: 24,
@@ -1573,9 +1654,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  typeIcon: {
-    fontSize: 24,
-    marginRight: 8,
+  typeIconContainer: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
   },
   typeLabel: {
     fontSize: 18,
@@ -1689,18 +1774,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  rawTranscriptIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   rawTranscriptTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: '#666',
-  },
-  rawTranscriptToggle: {
-    fontSize: 12,
-    color: '#999',
+    marginLeft: 8,
   },
   rawTranscriptContent: {
     borderTopWidth: 1,
@@ -1715,12 +1793,15 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   rawTranscriptBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     alignSelf: 'flex-start',
     marginTop: 12,
     paddingHorizontal: 10,
     paddingVertical: 4,
     backgroundColor: '#E8F5E9',
     borderRadius: 12,
+    gap: 4,
   },
   rawTranscriptBadgeText: {
     fontSize: 12,
@@ -1745,18 +1826,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  metadataIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   metadataTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: '#666',
-  },
-  metadataToggle: {
-    fontSize: 12,
-    color: '#999',
+    marginLeft: 8,
   },
   metadataContent: {
     borderTopWidth: 1,
@@ -1804,18 +1878,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  analysisIcon: {
-    fontSize: 16,
-    marginRight: 8,
-  },
   analysisTitle: {
     fontSize: 14,
     fontWeight: '600',
     color: '#7B1FA2',
-  },
-  analysisToggle: {
-    fontSize: 12,
-    color: '#9C27B0',
+    marginLeft: 8,
   },
   analysisContent: {
     borderTopWidth: 1,
@@ -1834,6 +1901,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 8,
+  },
+  analysisSectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   analysisSectionTitle: {
     fontSize: 14,
@@ -1911,6 +1983,9 @@ const styles = StyleSheet.create({
     fontSize: 13,
     marginRight: 5,
   },
+  actionItemTagIconFeather: {
+    marginRight: 5,
+  },
   actionItemTagText: {
     fontSize: 13,
     color: '#7B1FA2',
@@ -1924,6 +1999,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  analyzeAllContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   analyzeAllButtonText: {
     color: '#FFFFFF',
     fontSize: 15,
@@ -1933,11 +2013,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 20,
   },
-  noTextIcon: {
-    fontSize: 32,
-    marginBottom: 8,
-  },
   noTextTitle: {
+    marginTop: 12,
     fontSize: 16,
     fontWeight: '600',
     color: '#666',
@@ -1963,11 +2040,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  actionIcon: {
-    fontSize: 24,
-    marginBottom: 4,
-  },
   actionLabel: {
+    marginTop: 4,
     fontSize: 12,
     color: '#007AFF',
     fontWeight: '500',
@@ -2012,18 +2086,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  reprocessIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
   reprocessTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#E65100',
-  },
-  reprocessToggle: {
-    fontSize: 14,
-    color: '#FF9800',
+    marginLeft: 8,
   },
   reprocessContent: {
     borderTopWidth: 1,
@@ -2051,11 +2118,25 @@ const styles = StyleSheet.create({
     color: '#333',
     marginBottom: 8,
   },
+  reprocessStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   reprocessStatusValue: {
     fontSize: 12,
     color: '#666',
     fontFamily: 'monospace',
-    marginBottom: 4,
+  },
+  reprocessStatusMissing: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  reprocessStatusMissingText: {
+    fontSize: 12,
+    color: '#EF4444',
+    fontFamily: 'monospace',
   },
   reprocessButton: {
     flexDirection: 'row',
@@ -2070,8 +2151,7 @@ const styles = StyleSheet.create({
   reprocessButtonPostProcess: {
     backgroundColor: '#9C27B0',
   },
-  reprocessButtonIcon: {
-    fontSize: 24,
+  reprocessButtonIconFeather: {
     marginRight: 12,
   },
   reprocessButtonTextContainer: {
@@ -2087,11 +2167,16 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.8)',
     marginTop: 2,
   },
+  reprocessNoteContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 12,
+    gap: 6,
+  },
   reprocessNote: {
     fontSize: 12,
     color: '#666',
-    marginTop: 8,
-    textAlign: 'center',
     fontStyle: 'italic',
   },
   // Action item interactive styles

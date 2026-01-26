@@ -18,8 +18,8 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import {
   LLMModelService,
   type LLMModelId,
@@ -27,6 +27,8 @@ import {
   type DownloadProgress,
 } from '../../contexts/Normalization/services/LLMModelService';
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
+import { colors } from '../../design-system/tokens';
+import { AlertDialog, useToast } from '../../design-system/components';
 
 type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready' | 'auth_required';
 
@@ -50,6 +52,8 @@ export function LLMModelCard({
   const [isSelecting, setIsSelecting] = useState(false);
   const [config, setConfig] = useState<LLMModelConfig | null>(null);
   const [canDownload, setCanDownload] = useState(true);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const toast = useToast();
 
   const npuDetection = new NPUDetectionService();
   const modelService = new LLMModelService(npuDetection);
@@ -132,25 +136,17 @@ export function LLMModelCard({
   };
 
   const handleDelete = () => {
-    Alert.alert(
-      'Supprimer le modèle',
-      'Le modèle LLM sera supprimé. Vous devrez le retélécharger pour utiliser l\'amélioration IA.',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        {
-          text: 'Supprimer',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await modelService.deleteModel(modelId);
-              setStatus('not_downloaded');
-            } catch (err) {
-              Alert.alert('Erreur', 'Impossible de supprimer le modèle');
-            }
-          },
-        },
-      ]
-    );
+    setShowDeleteDialog(true);
+  };
+
+  const confirmDelete = async () => {
+    setShowDeleteDialog(false);
+    try {
+      await modelService.deleteModel(modelId);
+      setStatus('not_downloaded');
+    } catch (err) {
+      toast.error('Impossible de supprimer le modèle');
+    }
   };
 
   const handleUseModel = async () => {
@@ -216,10 +212,12 @@ export function LLMModelCard({
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.titleRow}>
-            <Text style={styles.title}>
-              {isTpuModel ? '🚀 ' : '🤖 '}
-              {config.name} ({getSizeLabel()})
-            </Text>
+            <View style={styles.titleWithIcon}>
+              <Feather name={isTpuModel ? 'zap' : 'cpu'} size={18} color={isTpuModel ? colors.warning[500] : colors.primary[600]} />
+              <Text style={styles.title}>
+                {config.name} ({getSizeLabel()})
+              </Text>
+            </View>
             {config.recommended && !isSelected && (
               <View style={[styles.badge, isTpuModel ? styles.badgeTpu : styles.badgeRecommended]}>
                 <Text style={styles.badgeText}>
@@ -255,7 +253,8 @@ export function LLMModelCard({
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusAuthRequired]}>
-              <Text style={styles.statusBadgeText}>🔒 Connexion requise</Text>
+              <Feather name="lock" size={14} color={colors.warning[700]} />
+              <Text style={styles.statusBadgeText}>Connexion requise</Text>
             </View>
           </View>
 
@@ -271,11 +270,13 @@ export function LLMModelCard({
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusNotDownloaded]}>
-              <Text style={styles.statusBadgeText}>⬇️ Non téléchargé</Text>
+              <Feather name="download" size={14} color={colors.neutral[600]} />
+              <Text style={styles.statusBadgeText}>Non téléchargé</Text>
             </View>
             {config?.requiresAuth && (
               <View style={[styles.statusBadge, styles.statusAuthOk]}>
-                <Text style={styles.statusBadgeText}>🔓 Autorisé</Text>
+                <Feather name="unlock" size={14} color={colors.success[600]} />
+                <Text style={styles.statusBadgeText}>Autorisé</Text>
               </View>
             )}
           </View>
@@ -334,9 +335,12 @@ export function LLMModelCard({
             <Text style={styles.statsText}>{formatSpeed(downloadSpeed)}</Text>
           </View>
 
-          <Text style={styles.warningText}>
-            ⚠️ Gardez l'application ouverte pendant le téléchargement
-          </Text>
+          <View style={styles.warningContainer}>
+            <Feather name="alert-triangle" size={14} color={colors.warning[600]} />
+            <Text style={styles.warningText}>
+              Gardez l'application ouverte pendant le téléchargement
+            </Text>
+          </View>
         </View>
       )}
 
@@ -355,7 +359,8 @@ export function LLMModelCard({
         <View style={styles.content}>
           <View style={styles.statusContainer}>
             <View style={[styles.statusBadge, styles.statusReady]}>
-              <Text style={styles.statusBadgeText}>✅ Téléchargé</Text>
+              <Feather name="check-circle" size={14} color={colors.success[600]} />
+              <Text style={styles.statusBadgeText}>Téléchargé</Text>
             </View>
           </View>
 
@@ -380,6 +385,18 @@ export function LLMModelCard({
           </View>
         </View>
       )}
+
+      <AlertDialog
+        visible={showDeleteDialog}
+        onClose={() => setShowDeleteDialog(false)}
+        variant="danger"
+        title="Supprimer le modèle"
+        message="Le modèle LLM sera supprimé. Vous devrez le retélécharger pour utiliser l'amélioration IA."
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDelete,
+        }}
+      />
     </View>
   );
 }
@@ -416,6 +433,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
+    gap: 8,
+  },
+  titleWithIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
   title: {
@@ -492,6 +514,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '500',
     color: '#333',
+    marginLeft: 6,
   },
   statusText: {
     fontSize: 14,
@@ -543,10 +566,15 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#8E8E93',
   },
+  warningContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
   warningText: {
     fontSize: 12,
     color: '#FF9800',
-    textAlign: 'center',
   },
   buttonRow: {
     flexDirection: 'row',
