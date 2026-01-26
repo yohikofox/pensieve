@@ -84,12 +84,16 @@ export function CapturesListScreen() {
     }
   }, [shouldAutoPlay, playerStatus.isLoaded, playerStatus.playing, player]);
 
-  // Reset playing state when audio finishes
+  // Reset playing state and seek to beginning when audio finishes
   useEffect(() => {
-    if (playerStatus.didJustFinish) {
+    if (playerStatus.didJustFinish && playingCaptureId) {
+      player.pause();
+      setTimeout(() => {
+        player.seekTo(0);
+      }, 100);
       setPlayingCaptureId(null);
     }
-  }, [playerStatus.didJustFinish]);
+  }, [playerStatus.didJustFinish, player, playingCaptureId]);
 
   const handlePlayPause = useCallback(
     (capture: Capture) => {
@@ -114,6 +118,18 @@ export function CapturesListScreen() {
       }
     },
     [playingCaptureId, currentAudioPath, playerStatus.playing, player, t]
+  );
+
+  const handleStop = useCallback(
+    (capture: Capture) => {
+      // Stop and reset to beginning
+      if (playingCaptureId === capture.id) {
+        player.pause();
+        player.seekTo(0);
+        setPlayingCaptureId(null);
+      }
+    },
+    [playingCaptureId, player]
   );
 
   const loadCaptures = useCallback(async () => {
@@ -384,16 +400,34 @@ export function CapturesListScreen() {
 
               {/* Action Buttons - anchored right */}
               <View className="flex-row items-center gap-2">
+                {/* Stop button - only visible when playing */}
+                {isPlaying && (
+                  <TouchableOpacity
+                    className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
+                    activeOpacity={0.7}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      handleStop(item);
+                    }}
+                  >
+                    <Feather name="square" size={18} color={colors.neutral[0]} />
+                  </TouchableOpacity>
+                )}
+
                 {/* Play/Pause button */}
                 <TouchableOpacity
-                  className="w-10 h-10 rounded-lg bg-neutral-100 border border-neutral-200 items-center justify-center"
+                  className="w-10 h-10 rounded-lg bg-success-500 items-center justify-center"
                   activeOpacity={0.7}
                   onPress={(e) => {
                     e.stopPropagation();
                     handlePlayPause(item);
                   }}
                 >
-                  <Feather name={isPlaying ? MediaIcons.pause : MediaIcons.play} size={20} color={colors.neutral[900]} />
+                  <Feather
+                    name={isPlaying ? MediaIcons.pause : MediaIcons.play}
+                    size={20}
+                    color={colors.neutral[0]}
+                  />
                 </TouchableOpacity>
 
                 {/* Transcribe button (pending only) */}
