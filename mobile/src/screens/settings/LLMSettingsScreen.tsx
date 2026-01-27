@@ -216,6 +216,21 @@ export function LLMSettingsScreen() {
   }, []);
 
   /**
+   * Refresh models list (e.g., after HuggingFace auth changes)
+   */
+  const refreshModels = useCallback(async () => {
+    if (!npuInfo) return;
+
+    // Reload models by category, filtered for current device
+    const tpu = npuInfo.type === 'tensor-tpu'
+      ? await modelService.getModelsForBackendAndDevice('mediapipe')
+      : [];
+    const standard = await modelService.getModelsForBackendAndDevice('llamarn');
+    setTpuModels(tpu);
+    setStandardModels(standard);
+  }, [npuInfo, modelService]);
+
+  /**
    * Handle HuggingFace login
    */
   const handleHfLogin = useCallback(async () => {
@@ -226,13 +241,16 @@ export function LLMSettingsScreen() {
         setIsHfAuthenticated(true);
         setHfUser(authService.getUser());
         toast.success(`Bienvenue ${authService.getUser()?.name || 'utilisateur'} !`);
+
+        // Refresh models to update gated models availability
+        await refreshModels();
       }
     } catch (error) {
       toast.error(`Connexion HuggingFace échouée: ${error instanceof Error ? error.message : 'Erreur inconnue'}`);
     } finally {
       setIsAuthLoading(false);
     }
-  }, [authService, toast]);
+  }, [authService, toast, refreshModels]);
 
   /**
    * Handle HuggingFace logout
@@ -246,7 +264,10 @@ export function LLMSettingsScreen() {
     await authService.logout();
     setIsHfAuthenticated(false);
     setHfUser(null);
-  }, [authService]);
+
+    // Refresh models to update gated models availability
+    await refreshModels();
+  }, [authService, refreshModels]);
 
   /**
    * Toggle post-processing enabled state
@@ -538,6 +559,7 @@ export function LLMSettingsScreen() {
               isSelected={selectedPostProcessingModel === model.id || selectedAnalysisModel === model.id}
               showTpuBadge
               onUseModel={handleUseModel}
+              isHfAuthenticated={isHfAuthenticated}
             />
           ))}
         </View>
@@ -557,6 +579,7 @@ export function LLMSettingsScreen() {
             modelId={model.id}
             isSelected={selectedPostProcessingModel === model.id || selectedAnalysisModel === model.id}
             onUseModel={handleUseModel}
+            isHfAuthenticated={isHfAuthenticated}
           />
         ))}
       </View>

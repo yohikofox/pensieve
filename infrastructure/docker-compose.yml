@@ -115,6 +115,7 @@ services:
       # HuggingFace OAuth (for gated models like Gemma)
       HF_CLIENT_ID: ${HF_CLIENT_ID}
       HF_CLIENT_SECRET: ${HF_CLIENT_SECRET}
+      HF_REDIRECT_URI: ${HF_REDIRECT_URI}
     depends_on:
       postgres:
         condition: service_healthy

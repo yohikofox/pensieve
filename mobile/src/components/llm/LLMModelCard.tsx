@@ -69,6 +69,8 @@ interface LLMModelCardProps {
   isSelected?: boolean;
   showTpuBadge?: boolean;
   onUseModel?: (modelId: LLMModelId) => Promise<void>;
+  /** Trigger re-check when HF auth state changes */
+  isHfAuthenticated?: boolean;
 }
 
 export function LLMModelCard({
@@ -76,6 +78,7 @@ export function LLMModelCard({
   isSelected = false,
   showTpuBadge = false,
   onUseModel,
+  isHfAuthenticated,
 }: LLMModelCardProps) {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
@@ -127,7 +130,7 @@ export function LLMModelCard({
 
   useEffect(() => {
     checkModelStatus();
-  }, [checkModelStatus]);
+  }, [checkModelStatus, isHfAuthenticated]);
 
   // Track download speed
   useEffect(() => {
