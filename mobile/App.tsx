@@ -29,6 +29,8 @@ import NetInfo from '@react-native-community/netinfo';
 import { TranscriptionQueueProcessor } from './src/contexts/Normalization/processors/TranscriptionQueueProcessor';
 import { TranscriptionWorker } from './src/contexts/Normalization/workers/TranscriptionWorker';
 import { registerTranscriptionBackgroundTask } from './src/contexts/Normalization/tasks/transcriptionBackgroundTask';
+import { LLMModelService } from './src/contexts/Normalization/services/LLMModelService';
+import { NPUDetectionService } from './src/contexts/Normalization/services/NPUDetectionService';
 import { DevPanelProvider } from './src/components/dev/DevPanelContext';
 import { DevPanel } from './src/components/dev/DevPanel';
 
@@ -86,6 +88,32 @@ function AppContent() {
     };
 
     checkCrashRecovery();
+  }, []); // Run once on mount
+
+  // Recover interrupted LLM model downloads after app restart
+  useEffect(() => {
+    const recoverDownloads = async () => {
+      try {
+        // Resolve service from DI container (singleton)
+        const modelService = container.resolve(LLMModelService);
+
+        // Initialize service (auth + downloader config)
+        await modelService.initialize();
+
+        // Recover interrupted downloads
+        const recoveredModels = await modelService.recoverInterruptedDownloads();
+
+        if (recoveredModels.length > 0) {
+          console.log('[App] Recovered interrupted downloads:', recoveredModels);
+          // TODO: Show toast notification if we want to inform user
+        }
+      } catch (error) {
+        // Silent fail - don't block app startup
+        console.error('[App] Download recovery failed:', error);
+      }
+    };
+
+    recoverDownloads();
   }, []); // Run once on mount
 
   // Story 2.5 - Request notification permissions for transcription notifications

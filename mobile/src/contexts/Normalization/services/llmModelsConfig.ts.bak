@@ -90,6 +90,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Official Qwen GGUF - public, no auth required
     downloadUrl:
       "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    sha256: "74a4da8c9fdbcd15bd1f6d01d621410d31c6fc00986f5eb687824e7b93d7a9db",
     expectedSize: 400 * 1024 * 1024, // ~400MB
     backend: "llamarn",
     description: "Modèle léger et rapide, idéal pour les corrections basiques",
@@ -109,6 +110,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Official Qwen GGUF - public, no auth required
     downloadUrl:
       "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+    sha256: "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
     expectedSize: 1100 * 1024 * 1024, // ~1.1GB
     backend: "llamarn",
     description: "Meilleure qualité pour l'analyse et les résumés",
@@ -127,6 +129,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Official Qwen GGUF - public, no auth required
     downloadUrl:
       "https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf",
+    sha256: "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d",
     expectedSize: 2000 * 1024 * 1024, // ~2GB
     backend: "llamarn",
     description: "Modèle plus puissant pour des tâches complexes",
@@ -203,6 +206,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // SmolLM2 from HuggingFace - public, good quality, no auth required
     downloadUrl:
       "https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
+    sha256: "77665ea4815999596525c636fbeb56ba8b080b46ae85efef4f0d986a139834d7",
     expectedSize: 1000 * 1024 * 1024, // ~1GB
     backend: "llamarn",
     description: "Bon équilibre qualité/performance (HuggingFace)",
@@ -221,6 +225,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Phi-3.5 from bartowski - public, no auth required
     downloadUrl:
       "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
+    sha256: "e4165e3a71af97f1b4820da61079826d8752a2088e313af0c7d346796c38eff5",
     expectedSize: 2300 * 1024 * 1024, // ~2.3GB
     backend: "llamarn",
     description: "Raisonnement robuste multilingue (Microsoft)",
@@ -243,6 +248,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Gemma 3 1B Q4 from unsloth - public, no auth required
     downloadUrl:
       "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
+    sha256: "8270790f3ab69fdfe860b7b64008d9a19986d8df7e407bb018184caa08798ebd",
     expectedSize: 766 * 1024 * 1024, // ~766MB
     backend: "llamarn",
     description: "Gemma 3 1B - Optimisé Google Pixel",
@@ -263,6 +269,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Gemma 3 1B Q3 from unsloth - public, no auth required
     downloadUrl:
       "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q3_K_M.gguf",
+    sha256: "8e7b279535cdf39e322d6cdf1b10941a80807a96b851fb8aa22176425e8f9755",
     expectedSize: 600 * 1024 * 1024, // ~600MB
     backend: "llamarn",
     description: "Gemma 3 1B léger - Optimisé Google Pixel",
@@ -282,6 +289,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Gemma 3 1B Q2 from unsloth - public, no auth required
     downloadUrl:
       "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q2_K.gguf",
+    sha256: "a947b704218e9aac8d40642e58691d86b5f4a908156cb73c023fba95fd444475",
     expectedSize: 450 * 1024 * 1024, // ~450MB
     backend: "llamarn",
     description: "Gemma 3 1B ultra-léger - Optimisé Google Pixel",
@@ -346,6 +354,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Llama 3.1 8B from bartowski - public
     downloadUrl:
       "https://huggingface.co/bartowski/Meta-Llama-3.1-8B-Instruct-GGUF/resolve/main/Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
+    sha256: "7b064f5842bf9532c91456deda288a1b672397a54fa729aa665952863033557c",
     expectedSize: 4900 * 1024 * 1024, // ~4.9GB
     backend: "llamarn",
     description: "Meilleure qualité linguistique sur mobile",
@@ -366,6 +375,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Llama 3.2 1B from hugging-quants - public
     downloadUrl:
       "https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF/resolve/main/llama-3.2-1b-instruct-q4_k_m.gguf",
+    sha256: "1d0e9419ec4e12aef73ccf4ffd122703e94c48344a96bc7c5f0f2772c2152ce3",
     expectedSize: 750 * 1024 * 1024, // ~750MB
     backend: "llamarn",
     description: "Léger et rapide pour tous les appareils",
@@ -385,6 +395,7 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
     // Llama 3.2 3B from hugging-quants - public
     downloadUrl:
       "https://huggingface.co/hugging-quants/Llama-3.2-3B-Instruct-Q4_K_M-GGUF/resolve/main/llama-3.2-3b-instruct-q4_k_m.gguf",
+    sha256: "c55a83bfb6396799337853ca69918a0b9bbb2917621078c34570bc17d20fd7a1",
     expectedSize: 2000 * 1024 * 1024, // ~2GB
     backend: "llamarn",
     description: "Mobile performant mais taille moindre",

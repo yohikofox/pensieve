@@ -227,15 +227,33 @@ export default {
     unknown: 'Unknown error',
   },
 
+  projects: {
+    comingSoon: {
+      title: 'Projects - Coming Soon',
+      description: 'Organize your captures into projects to better structure your ideas.',
+    },
+  },
+
+  news: {
+    comingSoon: {
+      title: 'News - Coming Soon',
+      description: 'Stay informed about app updates and new features.',
+    },
+  },
+
   navigation: {
     tabs: {
+      news: 'News',
       captures: 'Captures',
       capture: 'Capture',
+      projects: 'Projects',
       settings: 'Settings',
     },
     headers: {
+      news: 'News',
       captures: 'My Captures',
       capture: 'Capture',
+      projects: 'Projects',
       settings: 'Settings',
       captureDetail: 'Detail',
       transcriptionEngine: 'Transcription Engine',

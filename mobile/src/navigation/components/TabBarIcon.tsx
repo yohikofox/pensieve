@@ -46,8 +46,10 @@ export function TabBarIcon({ name, focused, color, size, badge }: TabBarIconProp
  */
 export const TabIcons = {
   // Navigation tabs - symbolic representations
+  news: 'rss' as const,              // RSS feed = news/updates
   captures: 'inbox' as const,        // Inbox = collected items
   capture: 'plus-circle' as const,   // Plus circle = create/add action
+  projects: 'folder' as const,       // Folder = organized collections
   settings: 'sliders' as const,      // Sliders = adjustments/preferences
 
   // Alternative semantic icons

@@ -1,9 +1,11 @@
 /**
  * MainNavigator - Bottom Tab Navigation
  *
- * Main navigation with three tabs:
+ * Main navigation with five tabs:
+ * - News: News feed and updates (coming soon)
  * - Captures: List of all captures
  * - Capture: Recording/capture screen
+ * - Projects: Project organization (coming soon)
  * - Settings: App settings
  */
 
@@ -11,6 +13,8 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { useTranslation } from 'react-i18next';
 import { CaptureScreen } from '../screens/capture/CaptureScreen';
+import { ProjectsScreen } from '../screens/projects/ProjectsScreen';
+import { NewsScreen } from '../screens/news/NewsScreen';
 import { CapturesStackNavigator } from './CapturesStackNavigator';
 import { SettingsStackNavigator } from './SettingsStackNavigator';
 import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
@@ -38,6 +42,22 @@ export const MainNavigator = () => {
         }}
       >
         <Tab.Screen
+          name="News"
+          component={NewsScreen}
+          options={{
+            title: t('navigation.headers.news'),
+            tabBarLabel: t('navigation.tabs.news'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon
+                name={TabIcons.news}
+                color={color}
+                size={size}
+                focused={focused}
+              />
+            ),
+          }}
+        />
+        <Tab.Screen
           name="Captures"
           component={CapturesStackNavigator}
           options={{
@@ -62,6 +82,22 @@ export const MainNavigator = () => {
             tabBarIcon: ({ color, size, focused }) => (
               <TabBarIcon
                 name={TabIcons.capture}
+                color={color}
+                size={size}
+                focused={focused}
+              />
+            ),
+          }}
+        />
+        <Tab.Screen
+          name="Projects"
+          component={ProjectsScreen}
+          options={{
+            title: t('navigation.headers.projects'),
+            tabBarLabel: t('navigation.tabs.projects'),
+            tabBarIcon: ({ color, size, focused }) => (
+              <TabBarIcon
+                name={TabIcons.projects}
                 color={color}
                 size={size}
                 focused={focused}

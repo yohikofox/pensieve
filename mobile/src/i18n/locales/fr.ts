@@ -229,15 +229,33 @@ export default {
     unknown: 'Erreur inconnue',
   },
 
+  projects: {
+    comingSoon: {
+      title: 'Projets - Bientôt disponible',
+      description: 'Organisez vos captures en projets pour mieux structurer vos idées.',
+    },
+  },
+
+  news: {
+    comingSoon: {
+      title: 'Actualités - Bientôt disponible',
+      description: 'Restez informé des nouveautés et mises à jour de l\'application.',
+    },
+  },
+
   navigation: {
     tabs: {
+      news: 'Actualités',
       captures: 'Captures',
       capture: 'Capturer',
+      projects: 'Projets',
       settings: 'Réglages',
     },
     headers: {
+      news: 'Actualités',
       captures: 'Mes Captures',
       capture: 'Capturer',
+      projects: 'Projets',
       settings: 'Réglages',
       captureDetail: 'Détail',
       transcriptionEngine: 'Moteur de transcription',

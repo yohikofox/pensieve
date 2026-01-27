@@ -90,6 +90,7 @@ export function LLMModelCard({
   const [config, setConfig] = useState<LLMModelConfig | null>(null);
   const [canDownload, setCanDownload] = useState(true);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const toast = useToast();
 
   const npuDetection = new NPUDetectionService();
@@ -159,16 +160,19 @@ export function LLMModelCard({
     setProgress(null);
     setError(null);
     setDownloadSpeed(0);
+    setIsPaused(false);
 
     try {
       await modelService.downloadModelWithRetry(modelId, (prog) => {
         setProgress(prog);
-      });
+      }, { verifyChecksum: true });
       setStatus('ready');
       setProgress(null);
+      setIsPaused(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur de téléchargement');
       setStatus('not_downloaded');
+      setIsPaused(false);
     }
   };
 
@@ -183,6 +187,42 @@ export function LLMModelCard({
       setStatus('not_downloaded');
     } catch (err) {
       toast.error('Impossible de supprimer le modèle');
+    }
+  };
+
+  const handlePause = async () => {
+    try {
+      await modelService.pauseDownload(modelId);
+      setIsPaused(true);
+    } catch (err) {
+      console.error('Failed to pause:', err);
+      setError(err instanceof Error ? err.message : 'Erreur pause');
+    }
+  };
+
+  const handleResume = async () => {
+    setIsPaused(false);
+    try {
+      // resumeDownload uses the original progress callback from when download was created
+      await modelService.resumeDownload(modelId);
+
+      setStatus('ready');
+      setProgress(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur reprise');
+      setStatus('not_downloaded');
+      setIsPaused(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    try {
+      await modelService.cancelDownload(modelId);
+      setStatus('not_downloaded');
+      setProgress(null);
+      setIsPaused(false);
+    } catch (err) {
+      console.error('Failed to cancel:', err);
     }
   };
 
@@ -355,7 +395,7 @@ export function LLMModelCard({
             <View style={[styles.statusBadge, { backgroundColor: themeColors.statusDownloadingBg }]}>
               <ActivityIndicator size="small" color={themeColors.progressFillBg} />
               <Text style={[styles.statusBadgeText, { marginLeft: 8, color: themeColors.statusBadgeText }]}>
-                Téléchargement...
+                {isPaused ? 'En pause' : 'Téléchargement...'}
               </Text>
             </View>
           </View>
@@ -378,12 +418,43 @@ export function LLMModelCard({
             <Text style={[styles.statsText, { color: themeColors.textTertiary }]}>{formatSpeed(downloadSpeed)}</Text>
           </View>
 
-          <View style={styles.warningContainer}>
-            <Feather name="alert-triangle" size={14} color={isDark ? colors.warning[400] : colors.warning[600]} />
-            <Text style={[styles.warningText, { color: themeColors.warningText }]}>
-              Gardez l'application ouverte pendant le téléchargement
-            </Text>
+          {/* Download control buttons */}
+          <View style={styles.downloadActionsRow}>
+            {!isPaused ? (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.pauseButton, { backgroundColor: themeColors.downloadButtonBg }]}
+                onPress={handlePause}
+              >
+                <Feather name="pause" size={16} color={themeColors.downloadButtonText} />
+                <Text style={[styles.actionButtonText, { color: themeColors.downloadButtonText }]}>Pause</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                style={[styles.actionButton, styles.resumeButton, { backgroundColor: themeColors.useButtonBg }]}
+                onPress={handleResume}
+              >
+                <Feather name="play" size={16} color="#FFFFFF" />
+                <Text style={styles.actionButtonTextWhite}>Reprendre</Text>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity
+              style={[styles.actionButton, styles.cancelButton, { backgroundColor: themeColors.deleteButtonBg }]}
+              onPress={handleCancel}
+            >
+              <Feather name="x" size={16} color={themeColors.deleteButtonText} />
+              <Text style={[styles.actionButtonText, { color: themeColors.deleteButtonText }]}>Annuler</Text>
+            </TouchableOpacity>
           </View>
+
+          {!isPaused && (
+            <View style={styles.warningContainer}>
+              <Feather name="alert-triangle" size={14} color={isDark ? colors.warning[400] : colors.warning[600]} />
+              <Text style={[styles.warningText, { color: themeColors.warningText }]}>
+                Gardez l'application ouverte pendant le téléchargement
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -663,5 +734,40 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#FF3B30',
+  },
+  downloadActionsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 8,
+    gap: 6,
+    flex: 1,
+  },
+  pauseButton: {
+    // backgroundColor set via themeColors
+  },
+  resumeButton: {
+    // backgroundColor set via themeColors
+  },
+  cancelButton: {
+    // backgroundColor set via themeColors
+  },
+  actionButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    // color set via themeColors
+  },
+  actionButtonTextWhite: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

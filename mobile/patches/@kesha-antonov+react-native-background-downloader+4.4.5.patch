@@ -1,0 +1,20 @@
+diff --git a/node_modules/@kesha-antonov/react-native-background-downloader/src/index.ts b/node_modules/@kesha-antonov/react-native-background-downloader/src/index.ts
+index edb7bec..268c8e4 100644
+--- a/node_modules/@kesha-antonov/react-native-background-downloader/src/index.ts
++++ b/node_modules/@kesha-antonov/react-native-background-downloader/src/index.ts
+@@ -241,11 +241,10 @@ function initializeEventListeners () {
+       })
+     }
+   } else {
+-    // Old architecture: use NativeEventEmitter with the native module
+-    // RCTEventEmitter on native side requires NativeEventEmitter on JS side
+-    // RNBackgroundDownloader is guaranteed to be non-null here since initializeEventListeners
+-    // is only called after ensureNativeModuleInitialized() succeeds
+-    const eventEmitter = new NativeEventEmitter(RNBackgroundDownloader!)
++    // Old architecture: use NativeEventEmitter with null to avoid warnings
++    // React Native 0.65+ recommends passing null for legacy modules
++    // The event names are still properly namespaced by the native module
++    const eventEmitter = new NativeEventEmitter(null as any)
+ 
+     eventSubscriptions.push(
+       eventEmitter.addListener('downloadBegin', (data: DownloadBeginEvent) => {

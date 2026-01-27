@@ -22,9 +22,15 @@
 
 import "reflect-metadata";
 import { container, inject, injectable } from "tsyringe";
-import { fetch } from "expo/fetch";
 import { File, Paths } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import {
+  setConfig,
+  createDownloadTask,
+  getExistingDownloadTasks,
+  type DownloadTask,
+} from "@kesha-antonov/react-native-background-downloader";
+import FileHash from "@preeternal/react-native-file-hash";
 import { NPUDetectionService } from "./NPUDetectionService";
 import { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 import {
@@ -56,6 +62,14 @@ export interface DownloadProgress {
   progress: number; // 0-1
 }
 
+/** Type for resumable downloads */
+export interface ResumableDownload {
+  task: DownloadTask;
+  modelId: LLMModelId;
+  status: 'downloading' | 'paused';
+  expectedSha256?: string; // SHA256 retrieved from x-linked-etag header
+}
+
 // Re-export types for external use
 export type { LLMModelId, LLMModelConfig, PromptTemplate, DeviceCompatibility, LLMBackendType, LLMModelCategory };
 
@@ -63,6 +77,9 @@ export type { LLMModelId, LLMModelConfig, PromptTemplate, DeviceCompatibility, L
 export class LLMModelService {
   private cachedDeviceType: DeviceCompatibility | null = null;
   private authService: HuggingFaceAuthService;
+
+  /** Map of active downloads for pause/resume support */
+  private activeDownloads: Map<LLMModelId, ResumableDownload> = new Map();
 
   constructor(
     @inject(NPUDetectionService) private npuDetectionService: NPUDetectionService,
@@ -72,10 +89,15 @@ export class LLMModelService {
   }
 
   /**
-   * Initialize the service (including auth)
+   * Initialize the service (including auth and downloader config)
    */
   async initialize(): Promise<void> {
     await this.authService.initialize();
+
+    // Configure background downloader
+    setConfig({
+      isLogsEnabled: __DEV__,
+    });
   }
 
   /**
@@ -203,16 +225,78 @@ export class LLMModelService {
   /**
    * Download LLM model to device storage with progress tracking
    *
+   * Uses react-native-background-downloader for:
+   * - Pause/Resume support with range requests
+   * - Background download (continues when app is closed)
+   * - Automatic recovery after interruption
+   * - Optional SHA256 checksum verification
+   *
    * @param modelId - Model to download
    * @param onProgress - Callback for download progress updates
+   * @param options - Download options (resume, checksum)
    * @returns Path to downloaded model file
    */
+  /**
+   * Fetch SHA256 checksum from HuggingFace LFS x-linked-etag header
+   * Makes a HEAD request to get the checksum without downloading the file
+   *
+   * @param url - The download URL
+   * @param headers - Request headers (for authentication if needed)
+   * @returns The SHA256 checksum from x-linked-etag header, or null if not available
+   */
+  private async fetchChecksumFromHuggingFace(
+    url: string,
+    headers: Record<string, string>
+  ): Promise<string | null> {
+    try {
+      console.log("[LLMModelService] Fetching checksum from HuggingFace...");
+
+      const response = await fetch(url, {
+        method: 'HEAD',
+        headers,
+      });
+
+      if (!response.ok) {
+        console.warn(`[LLMModelService] Failed to fetch checksum: ${response.status} ${response.statusText}`);
+        return null;
+      }
+
+      const linkedEtag = response.headers.get('x-linked-etag');
+
+      if (!linkedEtag) {
+        console.warn("[LLMModelService] No x-linked-etag header found");
+        return null;
+      }
+
+      // Remove quotes if present
+      const sha256 = linkedEtag.replace(/"/g, '');
+
+      console.log(`[LLMModelService] ✓ Retrieved checksum: ${sha256.substring(0, 16)}...`);
+      return sha256;
+    } catch (error) {
+      console.error("[LLMModelService] Error fetching checksum:", error);
+      return null;
+    }
+  }
+
   async downloadModel(
     modelId: LLMModelId,
     onProgress?: (progress: DownloadProgress) => void,
+    options?: {
+      enableResume?: boolean;  // Default: true
+      verifyChecksum?: boolean; // Default: false (SHA256 is costly)
+    }
   ): Promise<string> {
     const config = this.getModelConfig(modelId);
     const modelFile = this.getModelFile(modelId);
+    const verifyChecksum = options?.verifyChecksum ?? false;
+
+    // Check if there's already an active download (from recovery or previous attempt)
+    const existingDownload = this.activeDownloads.get(modelId);
+    if (existingDownload && existingDownload.status === 'paused') {
+      console.log("[LLMModelService] Found paused download, resuming instead of creating new one");
+      return this.resumeDownload(modelId);
+    }
 
     // Check if authentication is required
     if (config.requiresAuth && !this.authService.isAuthenticated()) {
@@ -224,11 +308,12 @@ export class LLMModelService {
     console.log("[LLMModelService] Starting download:", {
       model: modelId,
       url: config.downloadUrl,
-      path: modelFile.uri,
+      destination: modelFile.uri,
       requiresAuth: config.requiresAuth,
+      verifyChecksum,
     });
 
-    try {
+    return new Promise(async (resolve, reject) => {
       // Build headers with auth if needed
       const headers: Record<string, string> = {
         "User-Agent": "Pensieve-App/1.0",
@@ -236,100 +321,92 @@ export class LLMModelService {
 
       if (config.requiresAuth) {
         const authHeaders = this.authService.getAuthHeader();
-        const token = this.authService.getAccessToken();
-        console.log("[LLMModelService] Using authenticated download, token:", token ? `${token.substring(0, 10)}...${token.substring(token.length - 5)}` : '(none)');
         Object.assign(headers, authHeaders);
       }
 
-      console.log("[LLMModelService] Fetching with headers:", Object.keys(headers));
+      // Fetch checksum from HuggingFace if verification is enabled
+      let expectedSha256: string | null = null;
+      if (verifyChecksum) {
+        expectedSha256 = await this.fetchChecksumFromHuggingFace(config.downloadUrl, headers);
+        if (!expectedSha256) {
+          console.warn("[LLMModelService] Could not retrieve checksum, verification will be skipped");
+        }
+      }
 
-      const response = await fetch(config.downloadUrl, {
+      // Create download task (doesn't start automatically)
+      const task = createDownloadTask({
+        id: modelId,
+        url: config.downloadUrl,
+        destination: modelFile.uri,
         headers,
       });
 
-      console.log("[LLMModelService] Response status:", response.status, response.statusText);
+      // Store in activeDownloads with expected checksum
+      this.activeDownloads.set(modelId, {
+        task,
+        modelId,
+        status: 'downloading',
+        expectedSha256: expectedSha256 || undefined,
+      });
 
-      if (!response.ok) {
-        // Try to get error body
-        let errorBody = '';
-        try {
-          errorBody = await response.text();
-          console.error("[LLMModelService] Error response body:", errorBody.substring(0, 500));
-        } catch (e) {
-          // ignore
-        }
-        throw new Error(
-          `HTTP error: ${response.status} ${response.statusText}`,
-        );
-      }
+      // Save state for crash recovery
+      this.saveDownloadState(modelId, {
+        url: config.downloadUrl,
+        destination: modelFile.uri,
+        headers,
+      });
 
-      const contentLength = response.headers.get("content-length");
-      const totalBytes = contentLength
-        ? parseInt(contentLength, 10)
-        : config.expectedSize;
-
-      console.log("[LLMModelService] Content-Length:", totalBytes);
-
-      if (!response.body) {
-        throw new Error("Response body is null");
-      }
-
-      // CRITICAL FIX: Stream directly to file to avoid OOM on large models (3GB+)
-      // Write chunks incrementally instead of buffering everything in memory
-      const reader = response.body.getReader();
-      let receivedBytes = 0;
-      let fileHandle = modelFile;
-
-      // Delete existing file if present to start fresh
-      if (await fileHandle.exists) {
-        await fileHandle.delete();
-      }
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        // ✅ WRITE IMMEDIATELY - Don't accumulate in memory
-        // Use append mode to write chunks as they arrive
-        await fileHandle.write(value);
-
-        receivedBytes += value.length;
-
-        // Report progress
+      // Set up callbacks before starting
+      task.begin((expectedBytes) => {
+        console.log("[LLMModelService] Download started, expected:", expectedBytes);
+      })
+      .progress(({ bytesDownloaded, bytesTotal }) => {
         if (onProgress) {
-          const progress = receivedBytes / totalBytes;
+          const percent = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
+
           onProgress({
-            totalBytesWritten: receivedBytes,
-            totalBytesExpectedToWrite: totalBytes,
-            progress: Math.min(progress, 1),
+            totalBytesWritten: bytesDownloaded,
+            totalBytesExpectedToWrite: bytesTotal,
+            progress: bytesDownloaded / bytesTotal,
           });
 
-          // Log progress every ~10%
-          if (
-            Math.floor(progress * 10) !==
-            Math.floor(((receivedBytes - value.length) / totalBytes) * 10)
-          ) {
-            console.log("[LLMModelService] Progress:", {
-              written: receivedBytes,
-              total: totalBytes,
-              percent: Math.round(progress * 100),
-            });
+          // Log every ~10%
+          if (Math.floor(percent / 10) !== Math.floor(((bytesDownloaded - 1024) / bytesTotal * 100) / 10)) {
+            console.log(`[LLMModelService] Progress: ${Math.round(percent)}%`);
           }
         }
-      }
+      })
+      .done(({ location }) => {
+        console.log("[LLMModelService] Download completed:", location);
 
-      console.log("[LLMModelService] Download completed:", modelFile.uri);
+        // Retrieve checksum before deleting from activeDownloads
+        const download = this.activeDownloads.get(modelId);
+        const retrievedSha256 = download?.expectedSha256;
 
-      return modelFile.uri;
-    } catch (error) {
-      console.error("[LLMModelService] Download failed:", error);
-      throw new Error(
-        `Failed to download ${config.name}: ${error instanceof Error ? error.message : "Unknown error"}`,
-      );
-    }
+        this.activeDownloads.delete(modelId);
+        this.clearDownloadState(modelId);
+
+        // Verify checksum if requested and available
+        if (verifyChecksum && retrievedSha256) {
+          this.verifyModelChecksum(modelId, retrievedSha256)
+            .then(() => resolve(location))
+            .catch(reject);
+        } else {
+          if (verifyChecksum && !retrievedSha256) {
+            console.warn("[LLMModelService] Checksum verification was requested but no checksum was retrieved");
+          }
+          resolve(location);
+        }
+      })
+      .error(({ error }) => {
+        console.error("[LLMModelService] Download failed:", error);
+        this.activeDownloads.delete(modelId);
+        reject(new Error(`Failed to download ${config.name}: ${error}`));
+      });
+
+      // Start the download!
+      task.start();
+    });
   }
 
   /**
@@ -344,13 +421,14 @@ export class LLMModelService {
   async downloadModelWithRetry(
     modelId: LLMModelId,
     onProgress?: (progress: DownloadProgress) => void,
+    options?: { enableResume?: boolean; verifyChecksum?: boolean }
   ): Promise<string> {
     const retryDelays = [5000, 30000, 5 * 60 * 1000];
     let lastError: Error | null = null;
 
     // Initial attempt
     try {
-      return await this.downloadModel(modelId, onProgress);
+      return await this.downloadModel(modelId, onProgress, options);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Unknown error");
       console.error("[LLMModelService] Initial download failed:", lastError.message);
@@ -364,7 +442,7 @@ export class LLMModelService {
       await new Promise((resolve) => setTimeout(resolve, delay));
 
       try {
-        return await this.downloadModel(modelId, onProgress);
+        return await this.downloadModel(modelId, onProgress, options);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error("Unknown error");
         console.error(`[LLMModelService] Retry ${attempt + 1} failed:`, lastError.message);
@@ -627,5 +705,233 @@ export class LLMModelService {
       }
     }
     return downloaded;
+  }
+
+  /**
+   * Pause an active download
+   */
+  async pauseDownload(modelId: LLMModelId): Promise<void> {
+    const download = this.activeDownloads.get(modelId);
+    if (!download) {
+      throw new Error(`No active download for model: ${modelId}`);
+    }
+
+    try {
+      download.task.pause();
+      download.status = 'paused';
+      console.log("[LLMModelService] Download paused:", modelId);
+    } catch (error) {
+      console.error("[LLMModelService] Failed to pause:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Resume a paused download
+   * Note: The download will continue with its original callbacks
+   */
+  async resumeDownload(modelId: LLMModelId): Promise<string> {
+    const download = this.activeDownloads.get(modelId);
+    if (!download) {
+      throw new Error(`No paused download for model: ${modelId}`);
+    }
+
+    try {
+      download.task.resume();
+      download.status = 'downloading';
+      console.log("[LLMModelService] Download resumed:", modelId);
+
+      // The task already has callbacks attached from when it was created
+      // Just return the file path since the callbacks will handle completion
+      const modelFile = this.getModelFile(modelId);
+      return modelFile.uri;
+    } catch (error) {
+      console.error("[LLMModelService] Failed to resume:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel an active download and remove partial file
+   */
+  async cancelDownload(modelId: LLMModelId): Promise<void> {
+    const download = this.activeDownloads.get(modelId);
+    if (!download) {
+      console.warn(`[LLMModelService] No active download to cancel: ${modelId}`);
+      return;
+    }
+
+    try {
+      download.task.stop();
+      this.activeDownloads.delete(modelId);
+      this.clearDownloadState(modelId);
+
+      // Delete partial file
+      const modelFile = this.getModelFile(modelId);
+      if (await modelFile.exists) {
+        await modelFile.delete();
+      }
+
+      console.log("[LLMModelService] Download cancelled:", modelId);
+    } catch (error) {
+      console.error("[LLMModelService] Failed to cancel:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get download status
+   */
+  getDownloadStatus(modelId: LLMModelId): 'downloading' | 'paused' | null {
+    const download = this.activeDownloads.get(modelId);
+    return download ? download.status : null;
+  }
+
+  /**
+   * Verify the integrity of a downloaded model via SHA256
+   * Uses streaming hash to avoid loading entire file in memory
+   */
+  /**
+   * Verify model file integrity using SHA256 checksum
+   *
+   * @param modelId - The model ID
+   * @param expectedSha256 - Expected SHA256 hash (from HuggingFace x-linked-etag or config)
+   */
+  private async verifyModelChecksum(modelId: LLMModelId, expectedSha256?: string): Promise<void> {
+    const config = this.getModelConfig(modelId);
+    const modelFile = this.getModelFile(modelId);
+
+    // Use provided checksum or fall back to config
+    const checksumToVerify = expectedSha256 || config.sha256;
+
+    // Skip if no checksum available
+    if (!checksumToVerify) {
+      console.log("[LLMModelService] No checksum available, skipping verification");
+      return;
+    }
+
+    console.log("[LLMModelService] Verifying SHA256 checksum for:", modelId);
+    console.log(`[LLMModelService] Expected: ${checksumToVerify.substring(0, 16)}...`);
+
+    try {
+      // Calculate SHA256 using streaming hash (efficient for large files)
+      const hash = await FileHash.SHA256(modelFile.uri);
+
+      if (hash.toLowerCase() !== checksumToVerify.toLowerCase()) {
+        throw new Error(
+          `Checksum mismatch! Expected: ${checksumToVerify}, Got: ${hash}`
+        );
+      }
+
+      console.log("[LLMModelService] ✓ Checksum verified successfully");
+    } catch (error) {
+      console.error("[LLMModelService] ✗ Checksum verification failed:", error);
+      // Delete corrupted file
+      await modelFile.delete();
+      throw error;
+    }
+  }
+
+  /**
+   * Save download state to AsyncStorage for recovery after crash
+   */
+  private async saveDownloadState(
+    modelId: LLMModelId,
+    downloadInfo: { url: string; destination: string; headers: Record<string, string> }
+  ): Promise<void> {
+    try {
+      await AsyncStorage.setItem(
+        `@pensieve/download_resume_${modelId}`,
+        JSON.stringify(downloadInfo)
+      );
+    } catch (error) {
+      console.error("[LLMModelService] Failed to save download state:", error);
+    }
+  }
+
+  /**
+   * Get download state from AsyncStorage
+   */
+  private async getDownloadState(
+    modelId: LLMModelId
+  ): Promise<{ url: string; destination: string; headers: Record<string, string> } | null> {
+    try {
+      const data = await AsyncStorage.getItem(`@pensieve/download_resume_${modelId}`);
+      return data ? JSON.parse(data) : null;
+    } catch (error) {
+      console.error("[LLMModelService] Failed to get download state:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Clear download state from AsyncStorage
+   */
+  private async clearDownloadState(modelId: LLMModelId): Promise<void> {
+    try {
+      await AsyncStorage.removeItem(`@pensieve/download_resume_${modelId}`);
+    } catch (error) {
+      console.error("[LLMModelService] Failed to clear download state:", error);
+    }
+  }
+
+  /**
+   * Recover interrupted downloads after crash/app restart
+   * Uses getExistingDownloadTasks() from react-native-background-downloader
+   * Call this at app startup
+   */
+  async recoverInterruptedDownloads(): Promise<LLMModelId[]> {
+    const recoveredModels: LLMModelId[] = [];
+
+    try {
+      // Get existing download tasks (native feature)
+      const tasks = await getExistingDownloadTasks();
+
+      for (const task of tasks) {
+        const modelId = task.id as LLMModelId;
+
+        // Verify this is a valid model ID
+        if (!MODEL_CONFIGS[modelId]) {
+          console.warn(`[LLMModelService] Unknown model ID from recovery: ${modelId}`);
+          continue;
+        }
+
+        // Reattach callbacks
+        task.progress(({ bytesDownloaded, bytesTotal }) => {
+          const percent = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
+          console.log(`[Recovery] ${modelId}: ${Math.round(percent)}%`);
+        })
+        .done(() => {
+          console.log(`[Recovery] ${modelId} completed`);
+          this.activeDownloads.delete(modelId);
+          this.clearDownloadState(modelId);
+        })
+        .error(({ error }) => {
+          console.error(`[Recovery] ${modelId} failed:`, error);
+          this.activeDownloads.delete(modelId);
+        });
+
+        // Determine status from task state
+        const status = task.state === 'DOWNLOADING' ? 'downloading' : 'paused';
+
+        // Add to active downloads
+        this.activeDownloads.set(modelId, {
+          task,
+          modelId,
+          status,
+        });
+
+        recoveredModels.push(modelId);
+      }
+
+      if (recoveredModels.length > 0) {
+        console.log(`[LLMModelService] Recovered ${recoveredModels.length} downloads`);
+      }
+
+      return recoveredModels;
+    } catch (error) {
+      console.error("[LLMModelService] Recovery failed:", error);
+      return [];
+    }
   }
 }
