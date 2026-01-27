@@ -27,24 +27,18 @@ import { File, Paths } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { NPUDetectionService } from "./NPUDetectionService";
 import { HuggingFaceAuthService } from "./HuggingFaceAuthService";
-
-export type LLMModelId =
-  | "qwen2.5-0.5b"
-  | "qwen2.5-1.5b"
-  | "gemma3-1b"
-  | "gemma3-1b-q4"
-  | "gemma3-1b-q3"
-  | "gemma3-1b-q2"
-  | "llama3.2-1b"
-  | "llama3.2-3b"
-  | "phi3-mini"
-  | "gemma3-1b-mediapipe"
-  | "gemma3n-2b";
+import {
+  MODEL_CONFIGS,
+  type LLMModelId,
+  type LLMModelConfig,
+  type PromptTemplate,
+  type DeviceCompatibility,
+  type LLMBackendType,
+  type LLMModelCategory,
+} from "./llmModelsConfig";
 
 /** LLM task types for task-specific model selection */
 export type LLMTask = "postProcessing" | "analysis";
-
-export type LLMBackendType = "llamarn" | "mediapipe";
 
 const SELECTED_MODEL_KEY = "@pensieve/selected_llm_model"; // Legacy, kept for migration
 const POSTPROCESSING_ENABLED_KEY = "@pensieve/postprocessing_enabled";
@@ -62,193 +56,8 @@ export interface DownloadProgress {
   progress: number; // 0-1
 }
 
-export type PromptTemplate = "chatml" | "gemma" | "phi" | "llama";
-
-/** Device compatibility for model recommendations */
-export type DeviceCompatibility = "all" | "google" | "apple";
-
-export interface LLMModelConfig {
-  id: LLMModelId;
-  name: string;
-  filename: string;
-  downloadUrl: string;
-  expectedSize: number; // bytes
-  backend: LLMBackendType;
-  description: string;
-  recommended?: boolean;
-  /** Chat template format for the model */
-  promptTemplate: PromptTemplate;
-  /** Device compatibility - which devices this model is optimized for */
-  deviceCompatibility: DeviceCompatibility;
-  /** Whether this model requires HuggingFace authentication (gated model) */
-  requiresAuth?: boolean;
-}
-
-/**
- * Model configurations
- *
- * Note: All URLs point to publicly accessible models (no authentication required)
- * Using community quantizations from bartowski and official public releases
- *
- * MediaPipe models use expo-llm-mediapipe (SDK 0.10.22) with GPU acceleration.
- */
-const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
-  // === MODÈLES GÉNÉRAUX (tous appareils) ===
-  "qwen2.5-0.5b": {
-    id: "qwen2.5-0.5b",
-    name: "Qwen 2.5 0.5B",
-    filename: "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-    // Official Qwen GGUF - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf",
-    expectedSize: 400 * 1024 * 1024, // ~400MB
-    backend: "llamarn",
-    description: "Modèle léger et rapide, idéal pour les corrections basiques",
-    recommended: true,
-    promptTemplate: "chatml",
-    deviceCompatibility: "all",
-  },
-  "qwen2.5-1.5b": {
-    id: "qwen2.5-1.5b",
-    name: "Qwen 2.5 1.5B",
-    filename: "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-    // Official Qwen GGUF - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/main/qwen2.5-1.5b-instruct-q4_k_m.gguf",
-    expectedSize: 1100 * 1024 * 1024, // ~1.1GB
-    backend: "llamarn",
-    description: "Meilleure qualité pour l'analyse et les résumés",
-    promptTemplate: "chatml",
-    deviceCompatibility: "all",
-  },
-  "gemma3-1b": {
-    id: "gemma3-1b",
-    name: "SmolLM2 1.7B",
-    filename: "smollm2-1.7b-instruct-q4_k_m.gguf",
-    // SmolLM2 from HuggingFace - public, good quality, no auth required
-    downloadUrl:
-      "https://huggingface.co/bartowski/SmolLM2-1.7B-Instruct-GGUF/resolve/main/SmolLM2-1.7B-Instruct-Q4_K_M.gguf",
-    expectedSize: 1000 * 1024 * 1024, // ~1GB
-    backend: "llamarn",
-    description: "Bon équilibre qualité/performance (HuggingFace)",
-    promptTemplate: "chatml",
-    deviceCompatibility: "all",
-  },
-  "phi3-mini": {
-    id: "phi3-mini",
-    name: "Phi-3.5 Mini",
-    filename: "phi-3.5-mini-instruct-q4_k_m.gguf",
-    // Phi-3.5 from bartowski - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/bartowski/Phi-3.5-mini-instruct-GGUF/resolve/main/Phi-3.5-mini-instruct-Q4_K_M.gguf",
-    expectedSize: 2300 * 1024 * 1024, // ~2.3GB
-    backend: "llamarn",
-    description: "Meilleure qualité (Microsoft), nécessite plus d'espace",
-    promptTemplate: "phi",
-    deviceCompatibility: "all",
-  },
-
-  // === MODÈLES OPTIMISÉS GOOGLE PIXEL (Gemma) ===
-  "gemma3-1b-q4": {
-    id: "gemma3-1b-q4",
-    name: "Gemma 3 1B (Q4)",
-    filename: "gemma-3-1b-it-Q4_K_M.gguf",
-    // Gemma 3 1B Q4 from unsloth - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q4_K_M.gguf",
-    expectedSize: 766 * 1024 * 1024, // ~766MB
-    backend: "llamarn",
-    description: "Gemma 3 1B - Optimisé Google Pixel",
-    promptTemplate: "gemma",
-    deviceCompatibility: "google",
-    recommended: true,
-  },
-  "gemma3-1b-q3": {
-    id: "gemma3-1b-q3",
-    name: "Gemma 3 1B (Q3)",
-    filename: "gemma-3-1b-it-Q3_K_M.gguf",
-    // Gemma 3 1B Q3 from unsloth - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q3_K_M.gguf",
-    expectedSize: 600 * 1024 * 1024, // ~600MB
-    backend: "llamarn",
-    description: "Gemma 3 1B léger - Optimisé Google Pixel",
-    promptTemplate: "gemma",
-    deviceCompatibility: "google",
-  },
-  "gemma3-1b-q2": {
-    id: "gemma3-1b-q2",
-    name: "Gemma 3 1B (Q2)",
-    filename: "gemma-3-1b-it-Q2_K.gguf",
-    // Gemma 3 1B Q2 from unsloth - public, no auth required
-    downloadUrl:
-      "https://huggingface.co/unsloth/gemma-3-1b-it-GGUF/resolve/main/gemma-3-1b-it-Q2_K.gguf",
-    expectedSize: 450 * 1024 * 1024, // ~450MB
-    backend: "llamarn",
-    description: "Gemma 3 1B ultra-léger - Optimisé Google Pixel",
-    promptTemplate: "gemma",
-    deviceCompatibility: "google",
-  },
-  // === MODÈLES MEDIAPIPE (nécessitent authentification HuggingFace) ===
-  "gemma3-1b-mediapipe": {
-    id: "gemma3-1b-mediapipe",
-    name: "Gemma 3 1B (MediaPipe)",
-    filename: "gemma3-1b-mediapipe.task",
-    // LiteRT Community - requires HuggingFace auth (gated)
-    downloadUrl:
-      "https://huggingface.co/litert-community/Gemma3-1B-IT/resolve/main/Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task",
-    expectedSize: 555 * 1024 * 1024, // ~555MB
-    backend: "mediapipe",
-    description: "Gemma 3 1B MediaPipe - Optimisé TPU Tensor",
-    promptTemplate: "gemma",
-    deviceCompatibility: "google",
-    requiresAuth: true,
-  },
-  "gemma3n-2b": {
-    id: "gemma3n-2b",
-    name: "Gemma 3n 2B (TPU)",
-    filename: "gemma3n-2b-tpu.litertlm",
-    // Google official - requires HuggingFace auth (gated)
-    downloadUrl:
-      "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm",
-    expectedSize: 3660 * 1024 * 1024, // ~3.66GB
-    backend: "mediapipe",
-    description: "Gemma 3n 2B - Optimisé TPU Tensor (Pixel 6+)",
-    promptTemplate: "gemma",
-    deviceCompatibility: "google",
-    requiresAuth: true,
-    recommended: true,
-  },
-
-  // === MODÈLES OPTIMISÉS APPLE (Llama) ===
-  "llama3.2-1b": {
-    id: "llama3.2-1b",
-    name: "Llama 3.2 1B",
-    filename: "llama-3.2-1b-instruct-q4_k_m.gguf",
-    // Llama 3.2 1B from hugging-quants - public
-    downloadUrl:
-      "https://huggingface.co/hugging-quants/Llama-3.2-1B-Instruct-Q4_K_M-GGUF/resolve/main/llama-3.2-1b-instruct-q4_k_m.gguf",
-    expectedSize: 750 * 1024 * 1024, // ~750MB
-    backend: "llamarn",
-    description: "Llama 3.2 1B - Optimisé Apple",
-    promptTemplate: "llama",
-    deviceCompatibility: "apple",
-    recommended: true,
-  },
-  "llama3.2-3b": {
-    id: "llama3.2-3b",
-    name: "Llama 3.2 3B",
-    filename: "llama-3.2-3b-instruct-q4_k_m.gguf",
-    // Llama 3.2 3B from hugging-quants - public
-    downloadUrl:
-      "https://huggingface.co/hugging-quants/Llama-3.2-3B-Instruct-Q4_K_M-GGUF/resolve/main/llama-3.2-3b-instruct-q4_k_m.gguf",
-    expectedSize: 2000 * 1024 * 1024, // ~2GB
-    backend: "llamarn",
-    description: "Llama 3.2 3B - Meilleure qualité Apple",
-    promptTemplate: "llama",
-    deviceCompatibility: "apple",
-  },
-};
+// Re-export types for external use
+export type { LLMModelId, LLMModelConfig, PromptTemplate, DeviceCompatibility, LLMBackendType, LLMModelCategory };
 
 @injectable()
 export class LLMModelService {
@@ -465,10 +274,16 @@ export class LLMModelService {
         throw new Error("Response body is null");
       }
 
-      // Read stream with progress tracking
+      // CRITICAL FIX: Stream directly to file to avoid OOM on large models (3GB+)
+      // Write chunks incrementally instead of buffering everything in memory
       const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
       let receivedBytes = 0;
+      let fileHandle = modelFile;
+
+      // Delete existing file if present to start fresh
+      if (await fileHandle.exists) {
+        await fileHandle.delete();
+      }
 
       while (true) {
         const { done, value } = await reader.read();
@@ -477,7 +292,10 @@ export class LLMModelService {
           break;
         }
 
-        chunks.push(value);
+        // ✅ WRITE IMMEDIATELY - Don't accumulate in memory
+        // Use append mode to write chunks as they arrive
+        await fileHandle.write(value);
+
         receivedBytes += value.length;
 
         // Report progress
@@ -502,18 +320,6 @@ export class LLMModelService {
           }
         }
       }
-
-      // Combine chunks into single Uint8Array
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const fileData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        fileData.set(chunk, offset);
-        offset += chunk.length;
-      }
-
-      // Write to file
-      await modelFile.write(fileData);
 
       console.log("[LLMModelService] Download completed:", modelFile.uri);
 

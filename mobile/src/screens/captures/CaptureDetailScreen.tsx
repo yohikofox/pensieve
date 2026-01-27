@@ -225,6 +225,13 @@ const getThemeColors = (isDark: boolean) => ({
   metadataBg: isDark ? colors.neutral[800] : '#F5F5F5',
   metadataBorder: isDark ? colors.neutral[700] : '#E0E0E0',
   metadataContentBg: isDark ? colors.neutral[850] : '#FAFAFA',
+  // Actions section
+  actionsBg: isDark ? '#1A2F3F' : '#E3F2FD',
+  actionsBorder: isDark ? '#2C5F7C' : '#90CAF9',
+  actionsContentBg: isDark ? colors.neutral[800] : '#FAFAFA',
+  actionsTitle: isDark ? colors.info[300] : colors.info[700],
+  actionButtonBg: isDark ? colors.info[700] : colors.info[500],
+  actionButtonDisabledBg: isDark ? colors.neutral[700] : colors.neutral[300],
   // Action items
   actionItemBg: isDark ? colors.neutral[800] : '#FAFAFA',
   actionItemBorder: isDark ? colors.neutral[700] : '#E0E0E0',
@@ -263,6 +270,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [isSaving, setIsSaving] = useState(false);
   const [showRawTranscript, setShowRawTranscript] = useState(false);
   const [showMetadata, setShowMetadata] = useState(false);
+  const [showOriginalContent, setShowOriginalContent] = useState(false);
   const textInputRef = useRef<TextInput>(null);
 
   // Analysis state
@@ -384,12 +392,43 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     }
   };
 
+  /**
+   * Ensure text is saved to DB before analysis (required for text captures)
+   */
+  const ensureTextSaved = async () => {
+    if (!capture) return;
+
+    // For text captures, always ensure normalizedText is set (even if no changes)
+    // This handles old notes created before normalizedText was set automatically
+    const needsSave = hasChanges || (capture.type === 'text' && !capture.normalizedText && editedText);
+    if (!needsSave) return;
+
+    console.log('[CaptureDetailScreen] Saving text before analysis...', {
+      hasChanges,
+      isText: capture.type === 'text',
+      hasNormalizedText: !!capture.normalizedText,
+      hasEditedText: !!editedText,
+    });
+
+    const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+    await repository.update(captureId, {
+      normalizedText: editedText,
+    });
+
+    // Update local state
+    setCapture({ ...capture, normalizedText: editedText });
+    setHasChanges(false);
+  };
+
   const handleGenerateAnalysis = async (type: AnalysisType) => {
     console.log('[CaptureDetailScreen] handleGenerateAnalysis called for:', type);
     setAnalysisLoading(prev => ({ ...prev, [type]: true }));
     setAnalysisError(null);
 
     try {
+      // Save text to DB if there are unsaved changes (needed for analysis)
+      await ensureTextSaved();
+
       const analysisService = container.resolve(CaptureAnalysisService);
       console.log('[CaptureDetailScreen] Calling analysisService.analyze...');
       const result = await analysisService.analyze(captureId, type);
@@ -422,6 +461,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     setAnalysisError(null);
 
     try {
+      // Save text to DB if there are unsaved changes (needed for analysis)
+      await ensureTextSaved();
+
       const analysisService = container.resolve(CaptureAnalysisService);
       const results = await analysisService.analyzeAll(captureId);
 
@@ -721,16 +763,25 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const handleRePostProcess = async () => {
     if (!capture) return;
 
+    // For audio captures, use raw_transcript; for text captures, use editedText
+    const isTextCapture = capture.type === 'text';
     const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
-    if (!rawTranscript) {
-      toast.error('Pas de transcription brute disponible');
+    const sourceText = isTextCapture ? editedText : rawTranscript;
+
+    if (!sourceText) {
+      toast.error(isTextCapture ? 'Pas de texte à traiter' : 'Pas de transcription brute disponible');
       return;
     }
 
     try {
+      // Save text to DB for text captures before processing
+      if (isTextCapture) {
+        await ensureTextSaved();
+      }
+
       setReprocessing(prev => ({ ...prev, postProcess: true }));
-      console.log('[CaptureDetailScreen] Re-post-processing capture:', captureId);
-      console.log('[CaptureDetailScreen] Raw transcript length:', rawTranscript.length);
+      console.log('[CaptureDetailScreen] Post-processing capture:', captureId);
+      console.log('[CaptureDetailScreen] Source text length:', sourceText.length);
 
       const postProcessingService = container.resolve(PostProcessingService);
 
@@ -741,13 +792,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         return;
       }
 
-      // Process the raw transcript
-      const processedText = await postProcessingService.process(rawTranscript);
+      // Process the text
+      const processedText = await postProcessingService.process(sourceText);
 
       console.log('[CaptureDetailScreen] Post-processing result:', {
-        inputLength: rawTranscript.length,
+        inputLength: sourceText.length,
         outputLength: processedText.length,
-        changed: processedText !== rawTranscript,
+        changed: processedText !== sourceText,
       });
 
       // Save to normalizedText
@@ -763,7 +814,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         await metadataRepository.set(captureId, METADATA_KEYS.LLM_MODEL, llmModelId);
       }
 
-      toast.success(`Post-traitement terminé. ${processedText !== rawTranscript ? 'Texte modifié.' : 'Aucune modification.'}`);
+      toast.success(`Post-traitement terminé. ${processedText !== sourceText ? 'Texte modifié.' : 'Aucune modification.'}`);
 
       // Reload capture
       await loadCapture();
@@ -957,76 +1008,119 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             <Text style={[styles.duration, { color: themeColors.textMuted }]}>Durée: {formatDuration(capture.duration)}</Text>
           )}
 
-          {/* Status Badge */}
-          <View style={styles.statusRow}>
-            {capture.state === 'captured' && (
-              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusPendingBg }]}>
-                <Feather name={StatusIcons.pending} size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>En attente de transcription</Text>
-              </View>
-            )}
-            {capture.state === 'processing' && (
-              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusProcessingBg }]}>
-                <ActivityIndicator size="small" color={isDark ? colors.info[400] : colors.info[600]} />
-                <Text style={[styles.statusText, { marginLeft: 8, color: isDark ? colors.info[300] : colors.info[700] }]}>Transcription en cours...</Text>
-              </View>
-            )}
-            {capture.state === 'ready' && (
-              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusReadyBg }]}>
-                <Feather name={StatusIcons.success} size={14} color={isDark ? colors.success[400] : colors.success[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.success[300] : colors.success[700] }]}>Transcription terminée</Text>
-              </View>
-            )}
-            {capture.state === 'failed' && (
-              <View style={[styles.statusBadge, { backgroundColor: themeColors.statusFailedBg }]}>
-                <Feather name={StatusIcons.error} size={14} color={isDark ? colors.error[400] : colors.error[700]} />
-                <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.error[300] : colors.error[700] }]}>Transcription échouée</Text>
-              </View>
-            )}
-          </View>
+          {/* Status Badge - Only for audio captures */}
+          {isAudio && (
+            <View style={styles.statusRow}>
+              {capture.state === 'captured' && (
+                <View style={[styles.statusBadge, { backgroundColor: themeColors.statusPendingBg }]}>
+                  <Feather name={StatusIcons.pending} size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
+                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>En attente de transcription</Text>
+                </View>
+              )}
+              {capture.state === 'processing' && (
+                <View style={[styles.statusBadge, { backgroundColor: themeColors.statusProcessingBg }]}>
+                  <ActivityIndicator size="small" color={isDark ? colors.info[400] : colors.info[600]} />
+                  <Text style={[styles.statusText, { marginLeft: 8, color: isDark ? colors.info[300] : colors.info[700] }]}>Transcription en cours...</Text>
+                </View>
+              )}
+              {capture.state === 'ready' && (
+                <View style={[styles.statusBadge, { backgroundColor: themeColors.statusReadyBg }]}>
+                  <Feather name={StatusIcons.success} size={14} color={isDark ? colors.success[400] : colors.success[700]} />
+                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.success[300] : colors.success[700] }]}>Transcription terminée</Text>
+                </View>
+              )}
+              {capture.state === 'failed' && (
+                <View style={[styles.statusBadge, { backgroundColor: themeColors.statusFailedBg }]}>
+                  <Feather name={StatusIcons.error} size={14} color={isDark ? colors.error[400] : colors.error[700]} />
+                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.error[300] : colors.error[700] }]}>Transcription échouée</Text>
+                </View>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Content */}
         <View style={[styles.contentCard, { backgroundColor: themeColors.cardBg }]}>
-          <View style={styles.contentHeader}>
-            <Text style={[styles.contentTitle, { color: themeColors.textMuted }]}>
-              {isAudio ? 'TRANSCRIPTION' : 'CONTENU'}
-            </Text>
-            {hasChanges && (
-              <View style={styles.unsavedBadge}>
-                <Text style={styles.unsavedText}>Non enregistré</Text>
-              </View>
-            )}
-          </View>
+          {(() => {
+            // Check if content has been AI-enhanced
+            const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
+            const originalText = isAudio ? rawTranscript : capture?.rawContent;
+            const hasBeenEnhanced = !!originalText && capture?.normalizedText && originalText !== capture.normalizedText;
 
-          {isEditable && hasText ? (
-            <TextInput
-              ref={textInputRef}
-              style={[styles.contentTextInput, { color: themeColors.textPrimary }]}
-              value={editedText}
-              onChangeText={handleTextChange}
-              multiline
-              autoCorrect={true}
-              spellCheck={true}
-              autoCapitalize="sentences"
-              keyboardType="default"
-              textAlignVertical="top"
-              placeholder="Saisissez ou corrigez le texte..."
-              placeholderTextColor={themeColors.textMuted}
-            />
-          ) : hasText ? (
-            <Text style={[styles.contentText, { color: themeColors.textPrimary }]} selectable>
-              {editedText}
-            </Text>
-          ) : (
-            <Text style={[styles.placeholderText, { color: themeColors.textMuted }]}>
-              {capture.state === 'processing'
-                ? 'Transcription en cours...'
-                : capture.state === 'failed'
-                ? 'La transcription a échoué'
-                : 'Aucun contenu disponible'}
-            </Text>
-          )}
+            // Determine which text to display
+            const displayText = showOriginalContent && hasBeenEnhanced ? originalText : editedText;
+
+            return (
+              <>
+                <View style={styles.contentHeader}>
+                  <View style={styles.contentTitleRow}>
+                    <Text style={[styles.contentTitle, { color: themeColors.textMuted }]}>
+                      {isAudio ? 'TRANSCRIPTION' : 'CONTENU'}
+                    </Text>
+                    {hasBeenEnhanced && (
+                      <View style={[styles.aiEnhancedBadge, { backgroundColor: isDark ? colors.success[900] : '#E8F5E9' }]}>
+                        <Feather name="zap" size={10} color={isDark ? colors.success[400] : colors.success[600]} />
+                        <Text style={[styles.aiEnhancedBadgeText, { color: isDark ? colors.success[400] : colors.success[600] }]}>
+                          Amélioré par IA
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                  <View style={styles.contentHeaderActions}>
+                    {hasBeenEnhanced && (
+                      <TouchableOpacity
+                        style={[styles.toggleVersionButton, { backgroundColor: isDark ? colors.neutral[700] : '#F2F2F7' }]}
+                        onPress={() => setShowOriginalContent(!showOriginalContent)}
+                      >
+                        <Feather
+                          name={showOriginalContent ? "eye" : "eye-off"}
+                          size={14}
+                          color={isDark ? colors.neutral[300] : colors.neutral[600]}
+                        />
+                        <Text style={[styles.toggleVersionText, { color: isDark ? colors.neutral[300] : colors.neutral[600] }]}>
+                          {showOriginalContent ? 'Version IA' : 'Original'}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                    {hasChanges && (
+                      <View style={styles.unsavedBadge}>
+                        <Text style={styles.unsavedText}>Non enregistré</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+
+                {isEditable && hasText && !showOriginalContent ? (
+                  <TextInput
+                    ref={textInputRef}
+                    style={[styles.contentTextInput, { color: themeColors.textPrimary }]}
+                    value={displayText}
+                    onChangeText={handleTextChange}
+                    multiline
+                    autoCorrect={true}
+                    spellCheck={true}
+                    autoCapitalize="sentences"
+                    keyboardType="default"
+                    textAlignVertical="top"
+                    placeholder="Saisissez ou corrigez le texte..."
+                    placeholderTextColor={themeColors.textMuted}
+                  />
+                ) : hasText || (showOriginalContent && originalText) ? (
+                  <Text style={[styles.contentText, { color: showOriginalContent ? themeColors.textSecondary : themeColors.textPrimary }]} selectable>
+                    {displayText}
+                  </Text>
+                ) : (
+                  <Text style={[styles.placeholderText, { color: themeColors.textMuted }]}>
+                    {capture.state === 'processing'
+                      ? 'Transcription en cours...'
+                      : capture.state === 'failed'
+                      ? 'La transcription a échoué'
+                      : 'Aucun contenu disponible'}
+                  </Text>
+                )}
+              </>
+            );
+          })()}
         </View>
 
         {/* Raw Transcript (before LLM) - Show when different from final text */}
@@ -1120,8 +1214,104 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           </View>
         )}
 
-        {/* Analysis Section - Show for ready captures */}
-        {capture.state === 'ready' && (
+        {/* Actions Section - Quick actions for captures */}
+        {(() => {
+          const isAudioCapture = capture.type === 'audio';
+          const isTextCapture = capture.type === 'text';
+          const hasRawTranscript = !!metadata[METADATA_KEYS.RAW_TRANSCRIPT];
+          const hasBeenPostProcessed = !!metadata[METADATA_KEYS.LLM_MODEL];
+          const canPostProcess = (isAudioCapture && hasRawTranscript) || (isTextCapture && editedText);
+          const showPostProcessButton = canPostProcess && (!hasBeenPostProcessed || debugMode);
+          const showReTranscribeButton = isAudioCapture && debugMode;
+
+          // Only show section if there are actions available
+          if (!showPostProcessButton && !showReTranscribeButton) return null;
+
+          return (
+            <View style={[styles.actionsCard, { backgroundColor: themeColors.actionsBg, borderColor: themeColors.actionsBorder }]}>
+              <View style={styles.actionsHeader}>
+                <View style={styles.actionsTitleRow}>
+                  <Feather name="zap" size={16} color={isDark ? colors.info[400] : colors.info[700]} />
+                  <Text style={[styles.actionsTitle, { color: themeColors.actionsTitle }]}>Actions rapides</Text>
+                </View>
+              </View>
+
+              <View style={[styles.actionsContent, { backgroundColor: themeColors.actionsContentBg }]}>
+                {/* Post-processing action */}
+                {showPostProcessButton && (
+                  <TouchableOpacity
+                    style={[styles.quickActionButton, { backgroundColor: themeColors.actionButtonBg }]}
+                    onPress={handleRePostProcess}
+                    disabled={reprocessing.postProcess}
+                  >
+                    {reprocessing.postProcess ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <View style={styles.actionButtonTextContainer}>
+                          <Text style={styles.actionButtonTitle}>Traitement en cours...</Text>
+                          <Text style={styles.actionButtonDesc}>Le LLM analyse le texte</Text>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Feather name="cpu" size={20} color={colors.neutral[0]} />
+                        <View style={styles.actionButtonTextContainer}>
+                          <Text style={styles.actionButtonTitle}>
+                            {hasBeenPostProcessed ? 'Re-post-traiter' : 'Post-traitement LLM'}
+                          </Text>
+                          <Text style={styles.actionButtonDesc}>
+                            {isTextCapture
+                              ? 'Améliorer le texte avec l\'IA'
+                              : 'Améliorer la transcription avec l\'IA'
+                            }
+                          </Text>
+                        </View>
+                        {hasBeenPostProcessed && debugMode && (
+                          <View style={styles.debugBadge}>
+                            <Text style={styles.debugBadgeText}>DEBUG</Text>
+                          </View>
+                        )}
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+
+                {/* Re-transcribe action (audio only, debug only) */}
+                {showReTranscribeButton && (
+                  <TouchableOpacity
+                    style={[styles.quickActionButton, { backgroundColor: themeColors.reprocessButtonTranscribe, marginTop: 12 }]}
+                    onPress={handleReTranscribe}
+                    disabled={reprocessing.transcribe}
+                  >
+                    {reprocessing.transcribe ? (
+                      <>
+                        <ActivityIndicator size="small" color="#FFFFFF" />
+                        <View style={styles.actionButtonTextContainer}>
+                          <Text style={styles.actionButtonTitle}>Transcription en cours...</Text>
+                          <Text style={styles.actionButtonDesc}>Whisper analyse l'audio</Text>
+                        </View>
+                      </>
+                    ) : (
+                      <>
+                        <Feather name={CaptureIcons.voice} size={20} color={colors.neutral[0]} />
+                        <View style={styles.actionButtonTextContainer}>
+                          <Text style={styles.actionButtonTitle}>Re-transcrire</Text>
+                          <Text style={styles.actionButtonDesc}>Relancer Whisper sur l'audio</Text>
+                        </View>
+                        <View style={styles.debugBadge}>
+                          <Text style={styles.debugBadgeText}>DEBUG</Text>
+                        </View>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          );
+        })()}
+
+        {/* Analysis Section - Show for ready audio captures AND all text notes with content */}
+        {(capture.state === 'ready' || (capture.type === 'text' && editedText)) && (
           <View style={[styles.analysisCard, { backgroundColor: themeColors.analysisBg, borderColor: themeColors.analysisBorder }]}>
             <Pressable
               style={styles.analysisHeader}
@@ -1807,6 +1997,40 @@ const styles = StyleSheet.create({
     color: '#8E8E93',
     textTransform: 'uppercase',
   },
+  contentTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  contentHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  aiEnhancedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    gap: 4,
+  },
+  aiEnhancedBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  toggleVersionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 6,
+    gap: 6,
+  },
+  toggleVersionText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
   unsavedBadge: {
     backgroundColor: '#FFF3E0',
     paddingHorizontal: 8,
@@ -1827,7 +2051,6 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#000',
     lineHeight: 26,
-    minHeight: 120,
     padding: 0,
     textAlignVertical: 'top',
   },
@@ -1940,6 +2163,68 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   // Analysis section styles
+  // Actions section
+  actionsCard: {
+    backgroundColor: '#E3F2FD',
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#90CAF9',
+    overflow: 'hidden',
+  },
+  actionsHeader: {
+    padding: 12,
+  },
+  actionsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionsTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#1976D2',
+    marginLeft: 8,
+  },
+  actionsContent: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: '#FAFAFA',
+  },
+  quickActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2196F3',
+    borderRadius: 8,
+    padding: 12,
+    minHeight: 56,
+  },
+  actionButtonTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  actionButtonTitle: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 2,
+  },
+  actionButtonDesc: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+  },
+  debugBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  debugBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
   analysisCard: {
     backgroundColor: '#F3E5F5',
     borderRadius: 12,
