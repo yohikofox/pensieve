@@ -36,6 +36,8 @@ import { WhisperModelService } from '../../contexts/Normalization/services/Whisp
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useCapturesStore } from '../../stores/capturesStore';
+import { useCapturesListener } from '../../hooks/useCapturesListener';
 import { useTheme } from '../../hooks/useTheme';
 import { colors, shadows } from '../../design-system/tokens';
 import { Card, Badge, Button, IconButton, LoadingView, EmptyState, AlertDialog, useToast } from '../../design-system/components';
@@ -57,8 +59,15 @@ export function CapturesListScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { isDark } = useTheme();
-  const [captures, setCaptures] = useState<CaptureWithTranscription[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  // Zustand store pour les captures (remplace useState)
+  const captures = useCapturesStore(state => state.captures);
+  const isLoading = useCapturesStore(state => state.isLoading);
+  const loadCaptures = useCapturesStore(state => state.loadCaptures);
+
+  // Active l'écoute des événements
+  useCapturesListener();
+
   const [refreshing, setRefreshing] = useState(false);
   const [playingCaptureId, setPlayingCaptureId] = useState<string | null>(null);
   const [currentAudioPath, setCurrentAudioPath] = useState<string | null>(null);
@@ -158,82 +167,24 @@ export function CapturesListScreen() {
     [playingCaptureId, player]
   );
 
-  const loadCaptures = useCallback(async () => {
-    try {
-      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-      const allCaptures = await repository.findAll();
-
-      // Clean up wavPath entries for files that no longer exist (debug mode only)
-      if (debugMode) {
-        console.log('[CapturesListScreen] Checking WAV files existence...');
-        let cleanedCount = 0;
-
-        for (const capture of allCaptures) {
-          if (capture.wavPath) {
-            try {
-              const fileInfo = await FileSystemLegacy.getInfoAsync(capture.wavPath);
-              if (!fileInfo.exists) {
-                console.log('[CapturesListScreen] WAV file missing for capture', capture.id, '- cleaning DB');
-                await repository.update(capture.id, { wavPath: null });
-                capture.wavPath = null; // Update in-memory object
-                cleanedCount++;
-              }
-            } catch (error) {
-              console.error('[CapturesListScreen] Error checking WAV file for', capture.id, error);
-              await repository.update(capture.id, { wavPath: null });
-              capture.wavPath = null;
-              cleanedCount++;
-            }
-          }
-        }
-
-        if (cleanedCount > 0) {
-          console.log(`[CapturesListScreen] Cleaned up ${cleanedCount} missing WAV references`);
-        }
-      }
-
-      // Sort by createdAt descending (newest first)
-      const sorted = allCaptures.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-      setCaptures(sorted);
-    } catch (error) {
-      console.error('[CapturesListScreen] Failed to load captures:', error);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [debugMode]);
-
-  // Use ref to avoid recreating interval when loadCaptures changes
-  const loadCapturesRef = useRef(loadCaptures);
+  // Charge les captures une seule fois au mount
   useEffect(() => {
-    loadCapturesRef.current = loadCaptures;
+    loadCaptures();
   }, [loadCaptures]);
-
-  useEffect(() => {
-    // Initial load
-    loadCapturesRef.current();
-
-    // Refresh every 2 seconds to see transcription progress
-    const interval = setInterval(() => {
-      loadCapturesRef.current();
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, []); // Empty deps - only run once on mount
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
-    loadCaptures();
+    loadCaptures().finally(() => {
+      setRefreshing(false);
+    });
   }, [loadCaptures]);
 
   const handleRetry = async (captureId: string) => {
     try {
       const queueService = container.resolve(TranscriptionQueueService);
-      const success = await queueService.retryFailedByCaptureId(captureId);
-      if (success) {
-        loadCaptures();
-      }
+      await queueService.retryFailedByCaptureId(captureId);
+      // L'événement QueueItemStarted sera émis automatiquement
+      // Le listener mettra à jour le store
     } catch (error) {
       console.error('[CapturesListScreen] Retry failed:', error);
     }
@@ -292,7 +243,8 @@ export function CapturesListScreen() {
         capture.id,
         `[${selectedEngine}]`
       );
-      loadCaptures();
+      // L'événement QueueItemAdded sera émis automatiquement
+      // Le listener mettra à jour le store
     } catch (error) {
       console.error('[CapturesListScreen] Failed to enqueue transcription:', error);
       toast.error(t('capture.alerts.error'));
@@ -379,14 +331,15 @@ export function CapturesListScreen() {
         setCurrentAudioPath(null);
       }
 
-      loadCaptures();
+      // Trigger une mise à jour via le store
+      useCapturesStore.getState().updateCapture(captureToDeleteWav.id);
       console.log('[CapturesListScreen] Deleted WAV for capture:', captureToDeleteWav.id);
     } catch (error) {
       console.error('[CapturesListScreen] Failed to delete WAV:', error);
       toast.error(t('errors.generic'));
     }
     setCaptureToDeleteWav(null);
-  }, [captureToDeleteWav, playingWavCaptureId, player, loadCaptures, t, toast]);
+  }, [captureToDeleteWav, playingWavCaptureId, player, t, toast]);
 
   const renderCaptureItem = ({ item }: { item: CaptureWithTranscription }) => {
     const isAudio = item.type === 'audio';
@@ -624,7 +577,7 @@ export function CapturesListScreen() {
     );
   };
 
-  if (loading) {
+  if (isLoading) {
     return <LoadingView fullScreen message={t('common.loading')} />;
   }
 
