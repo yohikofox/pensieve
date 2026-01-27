@@ -30,7 +30,6 @@ import {
   getExistingDownloadTasks,
   type DownloadTask,
 } from "@kesha-antonov/react-native-background-downloader";
-import FileHash from "@preeternal/react-native-file-hash";
 import { NPUDetectionService } from "./NPUDetectionService";
 import { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 import {
@@ -67,7 +66,6 @@ export interface ResumableDownload {
   task: DownloadTask;
   modelId: LLMModelId;
   status: 'downloading' | 'paused';
-  expectedSha256?: string; // SHA256 retrieved from x-linked-etag header
 }
 
 // Re-export types for external use
@@ -229,67 +227,17 @@ export class LLMModelService {
    * - Pause/Resume support with range requests
    * - Background download (continues when app is closed)
    * - Automatic recovery after interruption
-   * - Optional SHA256 checksum verification
    *
    * @param modelId - Model to download
    * @param onProgress - Callback for download progress updates
-   * @param options - Download options (resume, checksum)
    * @returns Path to downloaded model file
    */
-  /**
-   * Fetch SHA256 checksum from HuggingFace LFS x-linked-etag header
-   * Makes a HEAD request to get the checksum without downloading the file
-   *
-   * @param url - The download URL
-   * @param headers - Request headers (for authentication if needed)
-   * @returns The SHA256 checksum from x-linked-etag header, or null if not available
-   */
-  private async fetchChecksumFromHuggingFace(
-    url: string,
-    headers: Record<string, string>
-  ): Promise<string | null> {
-    try {
-      console.log("[LLMModelService] Fetching checksum from HuggingFace...");
-
-      const response = await fetch(url, {
-        method: 'HEAD',
-        headers,
-      });
-
-      if (!response.ok) {
-        console.warn(`[LLMModelService] Failed to fetch checksum: ${response.status} ${response.statusText}`);
-        return null;
-      }
-
-      const linkedEtag = response.headers.get('x-linked-etag');
-
-      if (!linkedEtag) {
-        console.warn("[LLMModelService] No x-linked-etag header found");
-        return null;
-      }
-
-      // Remove quotes if present
-      const sha256 = linkedEtag.replace(/"/g, '');
-
-      console.log(`[LLMModelService] ✓ Retrieved checksum: ${sha256.substring(0, 16)}...`);
-      return sha256;
-    } catch (error) {
-      console.error("[LLMModelService] Error fetching checksum:", error);
-      return null;
-    }
-  }
-
   async downloadModel(
     modelId: LLMModelId,
-    onProgress?: (progress: DownloadProgress) => void,
-    options?: {
-      enableResume?: boolean;  // Default: true
-      verifyChecksum?: boolean; // Default: false (SHA256 is costly)
-    }
+    onProgress?: (progress: DownloadProgress) => void
   ): Promise<string> {
     const config = this.getModelConfig(modelId);
     const modelFile = this.getModelFile(modelId);
-    const verifyChecksum = options?.verifyChecksum ?? false;
 
     // Check if there's already an active download (from recovery or previous attempt)
     const existingDownload = this.activeDownloads.get(modelId);
@@ -310,7 +258,6 @@ export class LLMModelService {
       url: config.downloadUrl,
       destination: modelFile.uri,
       requiresAuth: config.requiresAuth,
-      verifyChecksum,
     });
 
     return new Promise(async (resolve, reject) => {
@@ -324,15 +271,6 @@ export class LLMModelService {
         Object.assign(headers, authHeaders);
       }
 
-      // Fetch checksum from HuggingFace if verification is enabled
-      let expectedSha256: string | null = null;
-      if (verifyChecksum) {
-        expectedSha256 = await this.fetchChecksumFromHuggingFace(config.downloadUrl, headers);
-        if (!expectedSha256) {
-          console.warn("[LLMModelService] Could not retrieve checksum, verification will be skipped");
-        }
-      }
-
       // Create download task (doesn't start automatically)
       const task = createDownloadTask({
         id: modelId,
@@ -341,12 +279,11 @@ export class LLMModelService {
         headers,
       });
 
-      // Store in activeDownloads with expected checksum
+      // Store in activeDownloads
       this.activeDownloads.set(modelId, {
         task,
         modelId,
         status: 'downloading',
-        expectedSha256: expectedSha256 || undefined,
       });
 
       // Save state for crash recovery
@@ -379,24 +316,11 @@ export class LLMModelService {
       .done(({ location }) => {
         console.log("[LLMModelService] Download completed:", location);
 
-        // Retrieve checksum before deleting from activeDownloads
-        const download = this.activeDownloads.get(modelId);
-        const retrievedSha256 = download?.expectedSha256;
-
         this.activeDownloads.delete(modelId);
         this.clearDownloadState(modelId);
 
-        // Verify checksum if requested and available
-        if (verifyChecksum && retrievedSha256) {
-          this.verifyModelChecksum(modelId, retrievedSha256)
-            .then(() => resolve(location))
-            .catch(reject);
-        } else {
-          if (verifyChecksum && !retrievedSha256) {
-            console.warn("[LLMModelService] Checksum verification was requested but no checksum was retrieved");
-          }
-          resolve(location);
-        }
+        // Checksum verification disabled - HuggingFace headers contain incorrect checksums
+        resolve(location);
       })
       .error(({ error }) => {
         console.error("[LLMModelService] Download failed:", error);
@@ -420,15 +344,14 @@ export class LLMModelService {
    */
   async downloadModelWithRetry(
     modelId: LLMModelId,
-    onProgress?: (progress: DownloadProgress) => void,
-    options?: { enableResume?: boolean; verifyChecksum?: boolean }
+    onProgress?: (progress: DownloadProgress) => void
   ): Promise<string> {
     const retryDelays = [5000, 30000, 5 * 60 * 1000];
     let lastError: Error | null = null;
 
     // Initial attempt
     try {
-      return await this.downloadModel(modelId, onProgress, options);
+      return await this.downloadModel(modelId, onProgress);
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Unknown error");
       console.error("[LLMModelService] Initial download failed:", lastError.message);
@@ -442,7 +365,7 @@ export class LLMModelService {
       await new Promise((resolve) => setTimeout(resolve, delay));
 
       try {
-        return await this.downloadModel(modelId, onProgress, options);
+        return await this.downloadModel(modelId, onProgress);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error("Unknown error");
         console.error(`[LLMModelService] Retry ${attempt + 1} failed:`, lastError.message);
@@ -785,51 +708,6 @@ export class LLMModelService {
   getDownloadStatus(modelId: LLMModelId): 'downloading' | 'paused' | null {
     const download = this.activeDownloads.get(modelId);
     return download ? download.status : null;
-  }
-
-  /**
-   * Verify the integrity of a downloaded model via SHA256
-   * Uses streaming hash to avoid loading entire file in memory
-   */
-  /**
-   * Verify model file integrity using SHA256 checksum
-   *
-   * @param modelId - The model ID
-   * @param expectedSha256 - Expected SHA256 hash (from HuggingFace x-linked-etag or config)
-   */
-  private async verifyModelChecksum(modelId: LLMModelId, expectedSha256?: string): Promise<void> {
-    const config = this.getModelConfig(modelId);
-    const modelFile = this.getModelFile(modelId);
-
-    // Use provided checksum or fall back to config
-    const checksumToVerify = expectedSha256 || config.sha256;
-
-    // Skip if no checksum available
-    if (!checksumToVerify) {
-      console.log("[LLMModelService] No checksum available, skipping verification");
-      return;
-    }
-
-    console.log("[LLMModelService] Verifying SHA256 checksum for:", modelId);
-    console.log(`[LLMModelService] Expected: ${checksumToVerify.substring(0, 16)}...`);
-
-    try {
-      // Calculate SHA256 using streaming hash (efficient for large files)
-      const hash = await FileHash.SHA256(modelFile.uri);
-
-      if (hash.toLowerCase() !== checksumToVerify.toLowerCase()) {
-        throw new Error(
-          `Checksum mismatch! Expected: ${checksumToVerify}, Got: ${hash}`
-        );
-      }
-
-      console.log("[LLMModelService] ✓ Checksum verified successfully");
-    } catch (error) {
-      console.error("[LLMModelService] ✗ Checksum verification failed:", error);
-      // Delete corrupted file
-      await modelFile.delete();
-      throw error;
-    }
   }
 
   /**

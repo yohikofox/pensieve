@@ -11,7 +11,7 @@
  * - Retry button for "failed" state
  */
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -204,13 +204,23 @@ export function CapturesListScreen() {
     }
   }, [debugMode]);
 
+  // Use ref to avoid recreating interval when loadCaptures changes
+  const loadCapturesRef = useRef(loadCaptures);
   useEffect(() => {
-    loadCaptures();
+    loadCapturesRef.current = loadCaptures;
+  }, [loadCaptures]);
+
+  useEffect(() => {
+    // Initial load
+    loadCapturesRef.current();
 
     // Refresh every 2 seconds to see transcription progress
-    const interval = setInterval(loadCaptures, 2000);
+    const interval = setInterval(() => {
+      loadCapturesRef.current();
+    }, 2000);
+
     return () => clearInterval(interval);
-  }, [loadCaptures]);
+  }, []); // Empty deps - only run once on mount
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

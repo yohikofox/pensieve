@@ -1,0 +1,1137 @@
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/results.bin b/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/results.bin
+new file mode 100644
+index 0000000..0d259dd
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/results.bin
+@@ -0,0 +1 @@
++o/classes
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/transformed/classes/classes_dex/classes.dex b/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/transformed/classes/classes_dex/classes.dex
+new file mode 100644
+index 0000000..85f2c64
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/.transforms/329ceee5642d15cf9b94c1c27313619b/transformed/classes/classes_dex/classes.dex differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/results.bin b/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/results.bin
+new file mode 100644
+index 0000000..0d259dd
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/results.bin
+@@ -0,0 +1 @@
++o/classes
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/transformed/classes/classes_dex/classes.dex b/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/transformed/classes/classes_dex/classes.dex
+new file mode 100644
+index 0000000..85f2c64
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/.transforms/6e245119bca13a20a627a7f8d8f3dc79/transformed/classes/classes_dex/classes.dex differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/results.bin b/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/results.bin
+new file mode 100644
+index 0000000..0d259dd
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/results.bin
+@@ -0,0 +1 @@
++o/classes
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/transformed/classes/classes_dex/classes.dex b/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/transformed/classes/classes_dex/classes.dex
+new file mode 100644
+index 0000000..85f2c64
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/.transforms/932eaefc29fe10fe95019300ef7200fe/transformed/classes/classes_dex/classes.dex differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/results.bin b/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/results.bin
+new file mode 100644
+index 0000000..0d259dd
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/results.bin
+@@ -0,0 +1 @@
++o/classes
+diff --git a/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/transformed/classes/classes_dex/classes.dex b/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/transformed/classes/classes_dex/classes.dex
+new file mode 100644
+index 0000000..85f2c64
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/.transforms/eb6aa6a35ffe618628a78451f9f468a5/transformed/classes/classes_dex/classes.dex differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/generated/source/buildConfig/debug/expo/modules/llmmediapipe/BuildConfig.java b/node_modules/expo-llm-mediapipe/android/build/generated/source/buildConfig/debug/expo/modules/llmmediapipe/BuildConfig.java
+new file mode 100644
+index 0000000..0751eca
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/generated/source/buildConfig/debug/expo/modules/llmmediapipe/BuildConfig.java
+@@ -0,0 +1,10 @@
++/**
++ * Automatically generated file. DO NOT MODIFY
++ */
++package expo.modules.llmmediapipe;
++
++public final class BuildConfig {
++  public static final boolean DEBUG = Boolean.parseBoolean("true");
++  public static final String LIBRARY_PACKAGE_NAME = "expo.modules.llmmediapipe";
++  public static final String BUILD_TYPE = "debug";
++}
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml
+new file mode 100644
+index 0000000..507de09
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/AndroidManifest.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="expo.modules.llmmediapipe" >
++
++    <uses-sdk android:minSdkVersion="24" />
++
++    <application>
++        <uses-native-library
++            android:name="libOpenCL.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-car.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-pixel.so"
++            android:required="false" />
++    </application>
++
++</manifest>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json b/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json
+new file mode 100644
+index 0000000..d91777f
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/aapt_friendly_merged_manifests/debug/processDebugManifest/aapt/output-metadata.json
+@@ -0,0 +1,18 @@
++{
++  "version": 3,
++  "artifactType": {
++    "type": "AAPT_FRIENDLY_MERGED_MANIFESTS",
++    "kind": "Directory"
++  },
++  "applicationId": "expo.modules.llmmediapipe",
++  "variantName": "debug",
++  "elements": [
++    {
++      "type": "SINGLE",
++      "filters": [],
++      "attributes": [],
++      "outputFile": "AndroidManifest.xml"
++    }
++  ],
++  "elementType": "File"
++}
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties b/node_modules/expo-llm-mediapipe/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties
+new file mode 100644
+index 0000000..1211b1e
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/aar_metadata/debug/writeDebugAarMetadata/aar-metadata.properties
+@@ -0,0 +1,6 @@
++aarFormatVersion=1.0
++aarMetadataVersion=1.0
++minCompileSdk=1
++minCompileSdkExtension=0
++minAndroidGradlePluginVersion=1.0.0
++coreLibraryDesugaringEnabled=false
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json b/node_modules/expo-llm-mediapipe/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json
+new file mode 100644
+index 0000000..9e26dfe
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/annotation_processor_list/debug/javaPreCompileDebug/annotationProcessors.json
+@@ -0,0 +1 @@
++{}
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar b/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar
+new file mode 100644
+index 0000000..428222d
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_library_classes_jar/debug/bundleLibCompileToJarDebug/classes.jar differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar b/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar
+new file mode 100644
+index 0000000..d9f9e55
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_r_class_jar/debug/generateDebugRFile/R.jar differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_symbol_list/debug/generateDebugRFile/R.txt b/node_modules/expo-llm-mediapipe/android/build/intermediates/compile_symbol_list/debug/generateDebugRFile/R.txt
+new file mode 100644
+index 0000000..e69de29
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
+new file mode 100644
+index 0000000..e7647e5
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/compile-file-map.properties
+@@ -0,0 +1 @@
++#Sun Jan 25 20:35:25 CET 2026
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
+new file mode 100644
+index 0000000..681991e
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/debug/packageDebugResources/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="main" generated-set="main$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/debug/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="debug" generated-set="debug$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/debug/res"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated$Generated" generated="true" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/build/generated/res/resValues/debug"/></dataSet><dataSet aapt-namespace="http://schemas.android.com/apk/res-auto" config="generated" generated-set="generated$Generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/build/generated/res/resValues/debug"/></dataSet><mergedItems/></merger>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugAssets/merger.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugAssets/merger.xml
+new file mode 100644
+index 0000000..cf85388
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugAssets/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/assets"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/debug/assets"/></dataSet><dataSet config="generated" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/build/intermediates/shader_assets/debug/compileDebugShaders/out"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml
+new file mode 100644
+index 0000000..0e20810
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugJniLibFolders/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/jniLibs"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/debug/jniLibs"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugShaders/merger.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugShaders/merger.xml
+new file mode 100644
+index 0000000..91360c3
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/incremental/mergeDebugShaders/merger.xml
+@@ -0,0 +1,2 @@
++<?xml version="1.0" encoding="utf-8"?>
++<merger version="3"><dataSet config="main" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/shaders"/></dataSet><dataSet config="debug" ignore_pattern="!.svn:!.git:!.ds_store:!*.scc:.*:&lt;dir>_*:!CVS:!thumbs.db:!picasa.ini:!*~"><source path="/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/debug/shaders"/></dataSet></merger>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/java_res/debug/processDebugJavaRes/out/META-INF/expo-llm-mediapipe_debug.kotlin_module b/node_modules/expo-llm-mediapipe/android/build/intermediates/java_res/debug/processDebugJavaRes/out/META-INF/expo-llm-mediapipe_debug.kotlin_module
+new file mode 100644
+index 0000000..425ed1e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/intermediates/java_res/debug/processDebugJavaRes/out/META-INF/expo-llm-mediapipe_debug.kotlin_module differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/expo/modules/llmmediapipe/BuildConfig.class b/node_modules/expo-llm-mediapipe/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/expo/modules/llmmediapipe/BuildConfig.class
+new file mode 100644
+index 0000000..eca950c
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/intermediates/javac/debug/compileDebugJavaWithJavac/classes/expo/modules/llmmediapipe/BuildConfig.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt b/node_modules/expo-llm-mediapipe/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt
+new file mode 100644
+index 0000000..78ac5b8
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/local_only_symbol_list/debug/parseDebugLocalResources/R-def.txt
+@@ -0,0 +1,2 @@
++R_DEF: Internal format may change without notice
++local
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt b/node_modules/expo-llm-mediapipe/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt
+new file mode 100644
+index 0000000..e4df932
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/manifest_merge_blame_file/debug/processDebugManifest/manifest-merger-blame-debug-report.txt
+@@ -0,0 +1,29 @@
++1<?xml version="1.0" encoding="utf-8"?>
++2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++3    package="expo.modules.llmmediapipe" >
++4
++5    <uses-sdk android:minSdkVersion="24" />
++6
++7    <application>
++7-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:3:5-7:19
++8        <uses-native-library
++8-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:9-84
++9            android:name="libOpenCL.so"
++9-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:30-57
++10            android:required="false" />
++10-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:58-82
++11        <uses-native-library
++11-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:9-84
++12            android:name="libOpenCL-car.so"
++12-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:30-57
++13            android:required="false" />
++13-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:58-82
++14        <uses-native-library
++14-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:9-84
++15            android:name="libOpenCL-pixel.so"
++15-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:30-57
++16            android:required="false" />
++16-->/Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:58-82
++17    </application>
++18
++19</manifest>
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml b/node_modules/expo-llm-mediapipe/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml
+new file mode 100644
+index 0000000..507de09
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml
+@@ -0,0 +1,19 @@
++<?xml version="1.0" encoding="utf-8"?>
++<manifest xmlns:android="http://schemas.android.com/apk/res/android"
++    package="expo.modules.llmmediapipe" >
++
++    <uses-sdk android:minSdkVersion="24" />
++
++    <application>
++        <uses-native-library
++            android:name="libOpenCL.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-car.so"
++            android:required="false" />
++        <uses-native-library
++            android:name="libOpenCL-pixel.so"
++            android:required="false" />
++    </application>
++
++</manifest>
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json b/node_modules/expo-llm-mediapipe/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json
+new file mode 100644
+index 0000000..0637a08
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/navigation_json/debug/extractDeepLinksDebug/navigation.json
+@@ -0,0 +1 @@
++[]
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt b/node_modules/expo-llm-mediapipe/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt
+new file mode 100644
+index 0000000..08f4ebe
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/nested_resources_validation_report/debug/generateDebugResources/nestedResourcesValidationReport.txt
+@@ -0,0 +1 @@
++0 Warning/Error
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar b/node_modules/expo-llm-mediapipe/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar
+new file mode 100644
+index 0000000..9b60e32
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/intermediates/runtime_library_classes_jar/debug/bundleLibRuntimeToJarDebug/classes.jar differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt b/node_modules/expo-llm-mediapipe/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt
+new file mode 100644
+index 0000000..d0a0dfc
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/intermediates/symbol_list_with_package_name/debug/generateDebugRFile/package-aware-r.txt
+@@ -0,0 +1 @@
++expo.modules.llmmediapipe
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab
+new file mode 100644
+index 0000000..ff46e7b
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream
+new file mode 100644
+index 0000000..8d612da
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream.len
+new file mode 100644
+index 0000000..9edc14a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.len
+new file mode 100644
+index 0000000..01bdaa1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values.at
+new file mode 100644
+index 0000000..ae1fd9e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i
+new file mode 100644
+index 0000000..a4e190f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/inputs/source-to-output.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab
+new file mode 100644
+index 0000000..ccc49c9
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream
+new file mode 100644
+index 0000000..d1d6e8f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream.len
+new file mode 100644
+index 0000000..14f7c06
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.len
+new file mode 100644
+index 0000000..a9f80ae
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.values.at
+new file mode 100644
+index 0000000..fe23964
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i
+new file mode 100644
+index 0000000..9e508ec
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-attributes.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab
+new file mode 100644
+index 0000000..db211ba
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream
+new file mode 100644
+index 0000000..d1d6e8f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream.len
+new file mode 100644
+index 0000000..14f7c06
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.len
+new file mode 100644
+index 0000000..a9f80ae
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.values.at
+new file mode 100644
+index 0000000..751cddf
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i
+new file mode 100644
+index 0000000..9e508ec
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/class-fq-name-to-source.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab
+new file mode 100644
+index 0000000..17772fd
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream
+new file mode 100644
+index 0000000..1b43c2f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream.len
+new file mode 100644
+index 0000000..0ec1bee
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.len
+new file mode 100644
+index 0000000..62cf1e5
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.values.at
+new file mode 100644
+index 0000000..6a87a72
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i
+new file mode 100644
+index 0000000..0de8cf7
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/internal-name-to-source.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab
+new file mode 100644
+index 0000000..bdf584a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream
+new file mode 100644
+index 0000000..408457b
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream.len
+new file mode 100644
+index 0000000..bcd95fb
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.len
+new file mode 100644
+index 0000000..2a17e6e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.values.at
+new file mode 100644
+index 0000000..46d6744
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i
+new file mode 100644
+index 0000000..ea4ef5f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/package-parts.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab
+new file mode 100644
+index 0000000..ac83d13
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream
+new file mode 100644
+index 0000000..6a74a34
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream.len
+new file mode 100644
+index 0000000..c580238
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.len
+new file mode 100644
+index 0000000..ec8f944
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.values.at
+new file mode 100644
+index 0000000..82fa5c3
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i
+new file mode 100644
+index 0000000..c7ab714
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/proto.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab
+new file mode 100644
+index 0000000..8cfa025
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream
+new file mode 100644
+index 0000000..8d612da
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream.len
+new file mode 100644
+index 0000000..9edc14a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.len
+new file mode 100644
+index 0000000..01bdaa1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.values.at
+new file mode 100644
+index 0000000..6a237a2
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i
+new file mode 100644
+index 0000000..a4e190f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/source-to-classes.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab
+new file mode 100644
+index 0000000..bdf584a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream
+new file mode 100644
+index 0000000..093092c
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream.len
+new file mode 100644
+index 0000000..68d7fbd
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.len
+new file mode 100644
+index 0000000..2a17e6e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.values.at
+new file mode 100644
+index 0000000..463fd76
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i
+new file mode 100644
+index 0000000..006451f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/subtypes.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab
+new file mode 100644
+index 0000000..bdf584a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream
+new file mode 100644
+index 0000000..ea4ec9e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream.len
+new file mode 100644
+index 0000000..1c209ae
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.len
+new file mode 100644
+index 0000000..2a17e6e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.values.at
+new file mode 100644
+index 0000000..875403e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i
+new file mode 100644
+index 0000000..32cffed
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/jvm/kotlin/supertypes.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/counters.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/counters.tab
+new file mode 100644
+index 0000000..2ceb12b
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/counters.tab
+@@ -0,0 +1,2 @@
++2
++0
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab
+new file mode 100644
+index 0000000..410190c
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream
+new file mode 100644
+index 0000000..8d612da
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream.len
+new file mode 100644
+index 0000000..9edc14a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.len
+new file mode 100644
+index 0000000..01bdaa1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.values.at
+new file mode 100644
+index 0000000..7d30a43
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i
+new file mode 100644
+index 0000000..a4e190f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/file-to-id.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab
+new file mode 100644
+index 0000000..85ba8ee
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream
+new file mode 100644
+index 0000000..100d205
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream.len
+new file mode 100644
+index 0000000..ccfcbf4
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.len
+new file mode 100644
+index 0000000..01bdaa1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.values.at
+new file mode 100644
+index 0000000..1e2cabe
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i
+new file mode 100644
+index 0000000..f768a77
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/id-to-file.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab
+new file mode 100644
+index 0000000..ffd785b
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream
+new file mode 100644
+index 0000000..813f178
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream.len
+new file mode 100644
+index 0000000..33aca07
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.keystream.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.len
+new file mode 100644
+index 0000000..7e5dc43
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.at b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.at
+new file mode 100644
+index 0000000..b166fc7
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab.values.at differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i
+new file mode 100644
+index 0000000..31b2d68
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i.len b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i.len
+new file mode 100644
+index 0000000..131e265
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/caches-jvm/lookups/lookups.tab_i.len differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/last-build.bin b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/last-build.bin
+new file mode 100644
+index 0000000..c685528
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/cacheable/last-build.bin differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/classpath-snapshot/shrunk-classpath-snapshot.bin b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/classpath-snapshot/shrunk-classpath-snapshot.bin
+new file mode 100644
+index 0000000..f8fb1f2
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/kotlin/compileDebugKotlin/classpath-snapshot/shrunk-classpath-snapshot.bin differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/outputs/logs/manifest-merger-debug-report.txt b/node_modules/expo-llm-mediapipe/android/build/outputs/logs/manifest-merger-debug-report.txt
+new file mode 100644
+index 0000000..fa7ea81
+--- /dev/null
++++ b/node_modules/expo-llm-mediapipe/android/build/outputs/logs/manifest-merger-debug-report.txt
+@@ -0,0 +1,25 @@
++-- Merging decision tree log ---
++manifest
++ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:2:1-8:12
++INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:2:1-8:12
++	package
++		ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:2:70-105
++		INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml
++	xmlns:android
++		ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:2:11-69
++application
++ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:3:5-7:19
++uses-native-library
++ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:9-84
++	android:required
++		ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:58-82
++	android:name
++		ADDED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml:4:30-57
++uses-sdk
++INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml reason: use-sdk injection requested
++INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml
++INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml
++	android:targetSdkVersion
++		INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml
++	android:minSdkVersion
++		INJECTED from /Users/yoannlorho/ws/pensine/pensieve/mobile/node_modules/expo-llm-mediapipe/android/src/main/AndroidManifest.xml
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin b/node_modules/expo-llm-mediapipe/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin
+new file mode 100644
+index 0000000..9288771
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/compileDebugJavaWithJavac/previous-compilation-data.bin differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/META-INF/expo-llm-mediapipe_debug.kotlin_module b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/META-INF/expo-llm-mediapipe_debug.kotlin_module
+new file mode 100644
+index 0000000..425ed1e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/META-INF/expo-llm-mediapipe_debug.kotlin_module differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$createInferenceListener$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$createInferenceListener$1.class
+new file mode 100644
+index 0000000..88f166e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$createInferenceListener$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$3.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$3.class
+new file mode 100644
+index 0000000..81caaee
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$3.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$4.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$4.class
+new file mode 100644
+index 0000000..9da26dd
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1$4.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1.class
+new file mode 100644
+index 0000000..e055ad2
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$10$downloadJob$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$6$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$6$1.class
+new file mode 100644
+index 0000000..f243aa6
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$1$6$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$1.class
+new file mode 100644
+index 0000000..d39ecf4
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$2.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$2.class
+new file mode 100644
+index 0000000..6fed3f5
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$2.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$3.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$3.class
+new file mode 100644
+index 0000000..6de7ebe
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunction$3.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$1.class
+new file mode 100644
+index 0000000..045da20
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$10.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$10.class
+new file mode 100644
+index 0000000..359d984
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$10.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$11.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$11.class
+new file mode 100644
+index 0000000..34417e8
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$11.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$12.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$12.class
+new file mode 100644
+index 0000000..840fa88
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$12.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$13.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$13.class
+new file mode 100644
+index 0000000..4a9c1cf
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$13.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$14.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$14.class
+new file mode 100644
+index 0000000..bc58e56
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$14.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$15.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$15.class
+new file mode 100644
+index 0000000..83de2ae
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$15.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$16.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$16.class
+new file mode 100644
+index 0000000..14e347f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$16.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$17.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$17.class
+new file mode 100644
+index 0000000..ba984b1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$17.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$18.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$18.class
+new file mode 100644
+index 0000000..9aeb1bb
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$18.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$19.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$19.class
+new file mode 100644
+index 0000000..a5143dd
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$19.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$2.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$2.class
+new file mode 100644
+index 0000000..0fea8d6
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$2.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$20.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$20.class
+new file mode 100644
+index 0000000..6eff37e
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$20.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$21.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$21.class
+new file mode 100644
+index 0000000..c2991e8
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$21.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$22.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$22.class
+new file mode 100644
+index 0000000..944ba73
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$22.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$23.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$23.class
+new file mode 100644
+index 0000000..bd063d8
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$23.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$24.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$24.class
+new file mode 100644
+index 0000000..6884b5f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$24.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$25.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$25.class
+new file mode 100644
+index 0000000..9a07206
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$25.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$26.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$26.class
+new file mode 100644
+index 0000000..d2a318b
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$26.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$27.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$27.class
+new file mode 100644
+index 0000000..5e884e1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$27.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$28.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$28.class
+new file mode 100644
+index 0000000..93e0384
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$28.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$29.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$29.class
+new file mode 100644
+index 0000000..0aa9c25
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$29.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$3.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$3.class
+new file mode 100644
+index 0000000..971ce91
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$3.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$30.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$30.class
+new file mode 100644
+index 0000000..44c1038
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$30.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$31.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$31.class
+new file mode 100644
+index 0000000..8e66bc1
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$31.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$32.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$32.class
+new file mode 100644
+index 0000000..9eb46ea
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$32.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$33.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$33.class
+new file mode 100644
+index 0000000..1afa220
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$33.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$34.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$34.class
+new file mode 100644
+index 0000000..d475428
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$34.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$35.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$35.class
+new file mode 100644
+index 0000000..afb7323
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$35.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$36.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$36.class
+new file mode 100644
+index 0000000..8399a04
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$36.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$37.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$37.class
+new file mode 100644
+index 0000000..dc671c6
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$37.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$38.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$38.class
+new file mode 100644
+index 0000000..b190432
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$38.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$4.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$4.class
+new file mode 100644
+index 0000000..fb8486a
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$4.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$5.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$5.class
+new file mode 100644
+index 0000000..a284ae2
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$5.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$6.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$6.class
+new file mode 100644
+index 0000000..c264ffa
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$6.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$7.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$7.class
+new file mode 100644
+index 0000000..204c379
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$7.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$8.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$8.class
+new file mode 100644
+index 0000000..a485afc
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$8.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$9.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$9.class
+new file mode 100644
+index 0000000..ea6f048
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$AsyncFunctionWithPromise$9.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$FunctionWithoutArgs$1.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$FunctionWithoutArgs$1.class
+new file mode 100644
+index 0000000..b53ec16
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule$definition$lambda$16$$inlined$FunctionWithoutArgs$1.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule.class
+new file mode 100644
+index 0000000..af6d7dc
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModule.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModuleKt.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModuleKt.class
+new file mode 100644
+index 0000000..38bfaa5
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/ExpoLlmMediapipeModuleKt.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/InferenceListener.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/InferenceListener.class
+new file mode 100644
+index 0000000..9d9bf3f
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/InferenceListener.class differ
+diff --git a/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/LlmInferenceModel.class b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/LlmInferenceModel.class
+new file mode 100644
+index 0000000..c57b11b
+Binary files /dev/null and b/node_modules/expo-llm-mediapipe/android/build/tmp/kotlin-classes/debug/expo/modules/llmmediapipe/LlmInferenceModel.class differ
+diff --git a/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipe.podspec b/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipe.podspec
+index 7aad1d8..231cfed 100644
+--- a/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipe.podspec
++++ b/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipe.podspec
+@@ -17,9 +17,10 @@ Pod::Spec.new do |s|
+ 
+   s.dependency 'ExpoModulesCore'
+ 
+-  # MediaPipe LLM dependencies - need both
+-  s.dependency 'MediaPipeTasksGenAI' 
+-  s.dependency 'MediaPipeTasksGenAIC'
++  # MediaPipe LLM dependencies - DISABLED FOR iOS (Android-only for Gemma models)
++  # iOS uses llama.rn and whisper.rn instead
++  # s.dependency 'MediaPipeTasksGenAI'
++  # s.dependency 'MediaPipeTasksGenAIC'
+ 
+   s.source_files = "*.{swift}"
+ end
+\ No newline at end of file
+diff --git a/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipeModule.swift b/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipeModule.swift
+index f1e2a08..238387c 100644
+--- a/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipeModule.swift
++++ b/node_modules/expo-llm-mediapipe/ios/ExpoLlmMediapipeModule.swift
+@@ -1,5 +1,5 @@
+ import ExpoModulesCore
+-import MediaPipeTasksGenAI
++// import MediaPipeTasksGenAI // DISABLED ON iOS - Android only (use llama.rn for iOS)
+ 
+ public class ExpoLlmMediapipeModule: Module {
+   private var modelMap = [Int: LlmInferenceModel]()
+diff --git a/node_modules/expo-llm-mediapipe/ios/LlmInferenceModel.swift b/node_modules/expo-llm-mediapipe/ios/LlmInferenceModel.swift
+index c9bab89..eca29ff 100644
+--- a/node_modules/expo-llm-mediapipe/ios/LlmInferenceModel.swift
++++ b/node_modules/expo-llm-mediapipe/ios/LlmInferenceModel.swift
+@@ -1,24 +1,20 @@
+ import Foundation
+-import MediaPipeTasksGenAI
++// import MediaPipeTasksGenAI // DISABLED ON iOS - Android only (use llama.rn for iOS)
+ 
+ enum LlmError: Error {
+   case modelLoadError(String)
+   case inferenceError(String)
+   case sessionError(String)
++  case unsupportedPlatform(String)
+ }
+ 
++// STUB IMPLEMENTATION FOR iOS
++// MediaPipe is only available on Android for Gemma models
++// On iOS, use llama.rn or whisper.rn instead
+ class LlmInferenceModel {
+-  // The LlmInference instance and session
+-  private var inference: LlmInference
+-  private var session: LlmInference.Session?
+-  
+-  // Model configuration
+   private let maxTokens: Int
+   private let modelHandle: Int
+   private let eventEmitter: (String, [String: Any]) -> Void
+-  private var currentResponse: String = ""
+-  
+-  // Store parameters for later use in session creation
+   private let temperature: Float
+   private let topK: Int
+   private let randomSeed: Int
+@@ -33,172 +29,34 @@ class LlmInferenceModel {
+     self.temperature = temperature
+     self.randomSeed = randomSeed
+ 
+-    // Log model loading
++    // MediaPipe is not available on iOS - throw clear error
++    let errorMessage = "MediaPipe is not available on iOS. Use llama.rn for iOS devices. MediaPipe is only supported on Android for Gemma models with Tensor TPU."
++
+     self.eventEmitter("logging", [
+       "handle": modelHandle,
+-      "message": "Loading model from \(modelPath)"
++      "message": errorMessage
+     ])
+ 
+-    do {
+-      // Create options for model loading
+-      let options = LlmInference.Options(modelPath: modelPath)
+-      options.maxTokens = maxTokens
+-      options.maxTopk = topK
+-
+-      // Create the LlmInference instance
+-      inference = try LlmInference(options: options)
+-      
+-      // Create a session immediately
+-      try createSession()
+-      
+-      // Log success
+-      self.eventEmitter("logging", [
+-        "handle": modelHandle,
+-        "message": "Model loaded successfully"
+-      ])
+-    } catch {
+-      self.eventEmitter("logging", [
+-        "handle": modelHandle,
+-        "message": "Failed to load model: \(error)"
+-      ])
+-      throw LlmError.modelLoadError("Failed to load model: \(error)")
+-    }
+-  }
+-
+-  private func createSession() throws {
+-    // Based on the sample code, we create a session without additional options
+-    do {
+-      session = try LlmInference.Session(llmInference: inference)
+-      
+-      // Log success
+-      self.eventEmitter("logging", [
+-        "handle": modelHandle,
+-        "message": "Session created successfully"
+-      ])
+-    } catch {
+-      throw LlmError.sessionError("Failed to create LLM session: \(error.localizedDescription)")
+-    }
+-  }
+-  
+-  private func formatPrompt(text: String) -> String {
+-    // Format prompt similar to the sample code for best results
+-    let startTurn = "<start_of_turn>"
+-    let endTurn = "<end_of_turn>"
+-    let userPrefix = "user"
+-    let modelPrefix = "model"
+-    
+-    return "\(startTurn)\(userPrefix)\n\(text)\(endTurn)\(startTurn)\(modelPrefix)"
++    throw LlmError.unsupportedPlatform(errorMessage)
+   }
+ 
+   func generateResponse(requestId: Int, prompt: String, completion: @escaping (Result<String, Error>) -> Void) throws {
+-    guard let session = session else {
+-      throw LlmError.sessionError("Session not initialized")
+-    }
+-    
+-    self.currentResponse = ""
+-    
+-    // Log generation start
+-    self.eventEmitter("logging", [
+-      "handle": modelHandle,
++    let error = LlmError.unsupportedPlatform("MediaPipe is not available on iOS")
++    self.eventEmitter("onErrorResponse", [
++      "handle": self.modelHandle,
+       "requestId": requestId,
+-      "message": "Starting generation for prompt: \(String(prompt.prefix(30)))..."
++      "error": error.localizedDescription
+     ])
+-    
+-    Task {
+-      do {
+-        let formattedPrompt = formatPrompt(text: prompt)
+-        try session.addQueryChunk(inputText: formattedPrompt)
+-        
+-        var fullResponse = ""
+-        let responseStream = session.generateResponseAsync()
+-        
+-        do {
+-          for try await partialResult in responseStream {
+-            // Emit partial response events
+-            self.eventEmitter("onPartialResponse", [
+-              "handle": self.modelHandle,
+-              "requestId": requestId,
+-              "response": partialResult
+-            ])
+-            
+-            // Accumulate response
+-            fullResponse += partialResult
+-          }
+-          
+-          // Complete successfully
+-          completion(.success(fullResponse))
+-        } catch {
+-          self.eventEmitter("onErrorResponse", [
+-            "handle": self.modelHandle,
+-            "requestId": requestId,
+-            "error": error.localizedDescription
+-          ])
+-          
+-          completion(.failure(LlmError.inferenceError(error.localizedDescription)))
+-        }
+-      } catch {
+-        self.eventEmitter("onErrorResponse", [
+-          "handle": self.modelHandle,
+-          "requestId": requestId,
+-          "error": error.localizedDescription
+-        ])
+-        
+-        completion(.failure(error))
+-      }
+-    }
++    throw error
+   }
+ 
+   func generateStreamingResponse(requestId: Int, prompt: String, completion: @escaping (Bool) -> Void) throws {
+-    guard let session = session else {
+-      throw LlmError.sessionError("Session not initialized")
+-    }
+-    
+-    self.currentResponse = ""
+-    
+-    // Log generation start
+-    self.eventEmitter("logging", [
+-      "handle": modelHandle,
++    let error = LlmError.unsupportedPlatform("MediaPipe is not available on iOS")
++    self.eventEmitter("onErrorResponse", [
++      "handle": self.modelHandle,
+       "requestId": requestId,
+-      "message": "Starting streaming generation for prompt: \(String(prompt.prefix(30)))..."
++      "error": error.localizedDescription
+     ])
+-    
+-    Task {
+-      do {
+-        let formattedPrompt = formatPrompt(text: prompt)
+-        try session.addQueryChunk(inputText: formattedPrompt)
+-        
+-        let responseStream = session.generateResponseAsync()
+-        
+-        do {
+-          for try await partialResult in responseStream {
+-            // Emit partial response events
+-            self.eventEmitter("onPartialResponse", [
+-              "handle": self.modelHandle,
+-              "requestId": requestId,
+-              "response": partialResult
+-            ])
+-          }
+-          
+-          // Complete successfully
+-          completion(true)
+-        } catch {
+-          self.eventEmitter("onErrorResponse", [
+-            "handle": self.modelHandle,
+-            "requestId": requestId,
+-            "error": error.localizedDescription
+-          ])
+-          
+-          completion(false)
+-        }
+-      } catch {
+-        self.eventEmitter("onErrorResponse", [
+-          "handle": self.modelHandle,
+-          "requestId": requestId,
+-          "error": error.localizedDescription
+-        ])
+-        
+-        completion(false)
+-      }
+-    }
++    throw error
+   }
+ }

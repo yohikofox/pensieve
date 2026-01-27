@@ -14,6 +14,7 @@
 
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
+import { Platform } from 'react-native';
 import {
   type IPostProcessingBackend,
   type PostProcessingResult,
@@ -52,6 +53,14 @@ let cachedModule: ExpoLlmMediapipeModule | null = null;
 let moduleCheckFailed = false;
 
 function getExpoLlmMediapipeModule(): ExpoLlmMediapipeModule | null {
+  // MediaPipe is only available on Android (for Gemma models)
+  // iOS uses llama.rn and whisper.rn instead
+  if (Platform.OS === 'ios') {
+    console.log('[MediaPipeBackend] MediaPipe not available on iOS (Android-only for Gemma models)');
+    moduleCheckFailed = true;
+    return null;
+  }
+
   if (moduleCheckFailed) {
     return null;
   }
@@ -225,7 +234,11 @@ export class MediaPipeBackend implements IPostProcessingBackend {
     // Build the prompt
     const prompt = this.buildPrompt(text);
 
-    console.log('[MediaPipeBackend] Processing text:', text.substring(0, 50) + '...');
+    console.log('[MediaPipeBackend] Processing text:', {
+      modelPath: this.modelPath,
+      textPreview: text.substring(0, 50) + '...',
+      timestamp: new Date().toISOString(),
+    });
     console.log('[MediaPipeBackend] Full prompt:', prompt);
 
     try {

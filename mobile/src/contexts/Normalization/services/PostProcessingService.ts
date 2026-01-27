@@ -93,8 +93,20 @@ export class PostProcessingService {
    * @returns true if ready to process
    */
   async initialize(): Promise<boolean> {
-    if (this.isReady) {
-      return true;
+    // Check if the model has changed
+    const modelChanged = await this.hasModelChanged();
+
+    if (this.isReady && !modelChanged) {
+      console.log('[PostProcessingService] ✓ Already ready, no model change');
+      return true; // OK - same model
+    }
+
+    if (modelChanged && this.isReady) {
+      console.log('[PostProcessingService] 🔄 Model changed, reloading...');
+      await this.dispose(); // CRITICAL: Cleanup old backend
+      this.isReady = false;
+      this.backend = null;
+      this.currentModelId = null;
     }
 
     try {
@@ -126,10 +138,15 @@ export class PostProcessingService {
         return false;
       }
 
-      console.log('[PostProcessingService] Initializing backend:', targetBackend, {
+      let modelConfig = this.modelService.getModelConfig(targetModelId);
+      console.log('[PostProcessingService] 🚀 Initializing:', {
+        modelId: targetModelId,
+        modelName: modelConfig.name,
+        backend: targetBackend,
+        npuType: npuInfo.type,
         manufacturer: npuInfo.manufacturer,
-        type: npuInfo.type,
         generation: npuInfo.generation,
+        timestamp: new Date().toISOString(),
       });
 
       // Initialize the appropriate backend for the selected model
@@ -148,6 +165,8 @@ export class PostProcessingService {
             return false;
           }
           console.log('[PostProcessingService] Fallback to llama.rn model:', targetModelId);
+          // Update modelConfig for the new fallback model
+          modelConfig = this.modelService.getModelConfig(targetModelId);
         }
       }
 
@@ -172,7 +191,6 @@ export class PostProcessingService {
       }
 
       // Load the model
-      const modelConfig = this.modelService.getModelConfig(targetModelId);
       const modelPath = this.modelService.getModelPath(targetModelId);
       const loaded = await this.backend.loadModel(modelPath, modelConfig.promptTemplate);
 
@@ -203,6 +221,25 @@ export class PostProcessingService {
   }
 
   /**
+   * Get the human-readable name of the current model
+   */
+  private getModelName(): string {
+    if (!this.currentModelId) {
+      return 'unknown';
+    }
+    const config = this.modelService.getModelConfig(this.currentModelId);
+    return config?.name || this.currentModelId;
+  }
+
+  /**
+   * Check if the selected model has changed
+   */
+  private async hasModelChanged(): Promise<boolean> {
+    const selectedModel = await this.modelService.getSelectedModel();
+    return selectedModel !== this.currentModelId;
+  }
+
+  /**
    * Process text to improve quality
    *
    * @param text - Raw transcription text from Whisper
@@ -226,11 +263,14 @@ export class PostProcessingService {
     try {
       const result = await this.backend!.process(text);
 
-      console.log('[PostProcessingService] Processing completed:', {
+      console.log('[PostProcessingService] ✨ Processing:', {
+        modelId: this.currentModelId,
+        modelName: this.getModelName(),
         backend: result.backend,
         duration: result.processingDuration,
         inputLen: text.length,
         outputLen: result.text.length,
+        timestamp: new Date().toISOString(),
       });
 
       return result.text;
@@ -269,35 +309,20 @@ export class PostProcessingService {
 
   /**
    * Reload the model (useful when user changes model selection)
+   * Does a complete cleanup and reinitialization
    */
   async reloadModel(): Promise<boolean> {
-    if (!this.backend) {
-      return false;
-    }
+    console.log('[PostProcessingService] 🔄 Reloading model...');
 
     try {
-      // Unload current model
-      await this.backend.unloadModel();
-      this.currentModelId = null;
+      // Complete cleanup
+      await this.dispose();
       this.isReady = false;
+      this.backend = null;
+      this.currentModelId = null;
 
-      // Load new model
-      const modelId = await this.getBestModelForBackend();
-      if (!modelId) {
-        return false;
-      }
-
-      const modelConfig = this.modelService.getModelConfig(modelId);
-      const modelPath = this.modelService.getModelPath(modelId);
-      const loaded = await this.backend.loadModel(modelPath, modelConfig.promptTemplate);
-
-      if (loaded) {
-        this.currentModelId = modelId;
-        this.isReady = true;
-        return true;
-      }
-
-      return false;
+      // Complete reinitialization
+      return await this.initialize();
     } catch (error) {
       console.error('[PostProcessingService] Model reload failed:', error);
       return false;
@@ -329,12 +354,21 @@ export class PostProcessingService {
    * Release all resources
    */
   async dispose(): Promise<void> {
+    console.log('[PostProcessingService] 🧹 Disposing resources...');
+
     if (this.backend) {
-      await this.backend.dispose();
+      try {
+        await this.backend.dispose(); // Release native resources
+        console.log('[PostProcessingService] ✓ Backend disposed');
+      } catch (error) {
+        console.error('[PostProcessingService] Error disposing backend:', error);
+      }
       this.backend = null;
     }
+
     this.currentModelId = null;
     this.isReady = false;
-    console.log('[PostProcessingService] Disposed');
+
+    console.log('[PostProcessingService] ✓ Disposed successfully');
   }
 }

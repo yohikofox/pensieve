@@ -34,6 +34,7 @@ import {
   type LLMTask,
 } from '../../contexts/Normalization/services/LLMModelService';
 import { NPUDetectionService, type NPUInfo } from '../../contexts/Normalization/services/NPUDetectionService';
+import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import { type HuggingFaceUser } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { debugPromptManager } from '../../contexts/Normalization/services/postprocessing/IPostProcessingBackend';
 import { useSettingsStore } from '../../stores/settingsStore';
@@ -297,22 +298,32 @@ export function LLMSettingsScreen() {
    * Handle model selection for a specific task
    */
   const handleUseModelForTask = useCallback(async (modelId: LLMModelId, task: LLMTask) => {
-    await modelService.setModelForTask(task, modelId);
+    try {
+      await modelService.setModelForTask(task, modelId);
 
-    if (task === 'postProcessing') {
-      setSelectedPostProcessingModel(modelId);
-    } else {
-      setSelectedAnalysisModel(modelId);
+      if (task === 'postProcessing') {
+        setSelectedPostProcessingModel(modelId);
+
+        // Force reload of PostProcessingService to apply new model
+        const postProcessingService = container.resolve(PostProcessingService);
+        await postProcessingService.reloadModel();
+        console.log('[LLMSettings] ✓ PostProcessing model reloaded:', modelId);
+      } else {
+        setSelectedAnalysisModel(modelId);
+      }
+
+      // Enable post-processing if not already
+      if (!isEnabled) {
+        setIsEnabled(true);
+        await modelService.setPostProcessingEnabled(true);
+      }
+
+      const taskLabel = TASK_LABELS[task];
+      toast.success(`${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.name.toLowerCase()}.`);
+    } catch (error) {
+      console.error('[LLMSettings] Failed to set model:', error);
+      toast.error('Erreur lors de la configuration du modèle');
     }
-
-    // Enable post-processing if not already
-    if (!isEnabled) {
-      setIsEnabled(true);
-      await modelService.setPostProcessingEnabled(true);
-    }
-
-    const taskLabel = TASK_LABELS[task];
-    toast.success(`${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.name.toLowerCase()}.`);
   }, [isEnabled, modelService, toast]);
 
   /**

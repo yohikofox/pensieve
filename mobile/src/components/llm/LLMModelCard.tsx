@@ -165,7 +165,7 @@ export function LLMModelCard({
     try {
       await modelService.downloadModelWithRetry(modelId, (prog) => {
         setProgress(prog);
-      }, { verifyChecksum: true });
+      });
       setStatus('ready');
       setProgress(null);
       setIsPaused(false);
@@ -497,6 +497,7 @@ export function LLMModelCard({
               <Text style={[styles.deleteButtonText, { color: themeColors.deleteButtonText }]}>Supprimer</Text>
             </TouchableOpacity>
           </View>
+
         </View>
       )}
 

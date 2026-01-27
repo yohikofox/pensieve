@@ -74,7 +74,19 @@
       "react-native-audio-api",
       "@react-native-community/datetimepicker",
       "expo-speech-recognition",
-      "@kesha-antonov/react-native-background-downloader"
+      "@kesha-antonov/react-native-background-downloader",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "excludedPods": [
+              "ExpoLlmMediapipe",
+              "MediaPipeTasksGenAI",
+              "MediaPipeTasksGenAIC"
+            ]
+          }
+        }
+      ]
     ]
   }
 }

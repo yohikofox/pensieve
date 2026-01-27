@@ -179,9 +179,11 @@ export class LlamaRnBackend implements IPostProcessingBackend {
     const prompt = this.buildPrompt(text);
 
     console.log('[LlamaRnBackend] Processing text:', {
+      modelPath: this.modelPath,
       inputLength: text.length,
       inputPreview: text.substring(0, 50) + '...',
       promptLength: prompt.length,
+      timestamp: new Date().toISOString(),
     });
 
     try {
