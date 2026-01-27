@@ -27,8 +27,32 @@ import {
   type CorrectionEntry,
 } from '../../contexts/Normalization/services/CorrectionLearningService';
 import { AlertDialog, useToast } from '../../design-system/components';
+import { useTheme } from '../../hooks/useTheme';
+import { colors } from '../../design-system/tokens';
+
+// Theme-aware colors
+const getThemeColors = (isDark: boolean) => ({
+  screenBg: isDark ? colors.neutral[900] : '#F2F2F7',
+  textPrimary: isDark ? colors.neutral[50] : '#000',
+  textSecondary: isDark ? colors.neutral[400] : '#666',
+  textTertiary: isDark ? colors.neutral[500] : '#8E8E93',
+  suggestionBg: isDark ? colors.warning[900] : '#FFF8E1',
+  suggestionBorder: isDark ? colors.warning[700] : '#FFE082',
+  suggestionText: isDark ? colors.warning[200] : '#5D4037',
+  suggestionDetailText: isDark ? colors.warning[300] : '#8D6E63',
+  addButtonBg: isDark ? colors.success[700] : '#4CAF50',
+  dismissButtonBg: isDark ? colors.neutral[700] : '#EFEBE9',
+  dismissButtonText: isDark ? colors.neutral[300] : '#8D6E63',
+  inputBg: isDark ? colors.neutral[800] : '#FFFFFF',
+  inputBorder: isDark ? colors.neutral[700] : '#E5E5EA',
+  inputText: isDark ? colors.neutral[50] : '#000',
+  saveButtonBg: isDark ? colors.primary[600] : '#007AFF',
+  saveButtonDisabledBg: isDark ? colors.neutral[700] : '#A8A8A8',
+});
 
 export function WhisperSettingsScreen() {
+  const { isDark } = useTheme();
+  const themeColors = getThemeColors(isDark);
   const [selectedModel, setSelectedModel] = useState<WhisperModelSize | null>(null);
   const [vocabularyText, setVocabularyText] = useState<string>('');
   const [isSavingVocabulary, setIsSavingVocabulary] = useState(false);
@@ -176,10 +200,10 @@ export function WhisperSettingsScreen() {
   }, []);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Modèle de transcription</Text>
-        <Text style={styles.headerDescription}>
+        <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Modèle de transcription</Text>
+        <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
           Choisissez le modèle Whisper pour convertir vos enregistrements audio en texte.
           Un modèle plus gros offre une meilleure qualité mais nécessite plus d'espace de stockage.
         </Text>
@@ -214,30 +238,33 @@ export function WhisperSettingsScreen() {
       {/* Suggestions from correction learning */}
       {suggestions.length > 0 && (
         <View style={styles.suggestionsSection}>
-          <Text style={styles.sectionTitle}>Suggestions de vocabulaire</Text>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Suggestions de vocabulaire</Text>
+          <Text style={[styles.sectionDescription, { color: themeColors.textSecondary }]}>
             Ces mots ont été détectés lors de vos corrections de transcription.
           </Text>
           {suggestions.map((suggestion) => (
-            <View key={suggestion.id} style={styles.suggestionCard}>
+            <View key={suggestion.id} style={[styles.suggestionCard, {
+              backgroundColor: themeColors.suggestionBg,
+              borderColor: themeColors.suggestionBorder,
+            }]}>
               <View style={styles.suggestionContent}>
-                <Text style={styles.suggestionPhrase}>"{suggestion.suggestedPhrase}"</Text>
-                <Text style={styles.suggestionDetail}>
+                <Text style={[styles.suggestionPhrase, { color: themeColors.suggestionText }]}>"{suggestion.suggestedPhrase}"</Text>
+                <Text style={[styles.suggestionDetail, { color: themeColors.suggestionDetailText }]}>
                   {suggestion.originalWord} → {suggestion.correctedWord} (corrigé {suggestion.count}x)
                 </Text>
               </View>
               <View style={styles.suggestionActions}>
                 <TouchableOpacity
-                  style={styles.addButton}
+                  style={[styles.addButton, { backgroundColor: themeColors.addButtonBg }]}
                   onPress={() => handleAddSuggestion(suggestion)}
                 >
                   <Text style={styles.addButtonText}>+ Ajouter</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.dismissButton}
+                  style={[styles.dismissButton, { backgroundColor: themeColors.dismissButtonBg }]}
                   onPress={() => handleDismissSuggestion(suggestion)}
                 >
-                  <Text style={styles.dismissButtonText}>✕</Text>
+                  <Text style={[styles.dismissButtonText, { color: themeColors.dismissButtonText }]}>✕</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -246,22 +273,31 @@ export function WhisperSettingsScreen() {
       )}
 
       <View style={styles.vocabularySection}>
-        <Text style={styles.sectionTitle}>Vocabulaire personnalisé</Text>
-        <Text style={styles.sectionDescription}>
+        <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Vocabulaire personnalisé</Text>
+        <Text style={[styles.sectionDescription, { color: themeColors.textSecondary }]}>
           Ajoutez les mots que vous utilisez souvent pour améliorer la transcription
           (termes techniques, noms propres, mots anglais...).
         </Text>
         <TextInput
-          style={styles.vocabularyInput}
+          style={[styles.vocabularyInput, {
+            backgroundColor: themeColors.inputBg,
+            borderColor: themeColors.inputBorder,
+            color: themeColors.inputText,
+          }]}
           multiline
           placeholder="workflow, sprint, meeting, feedback, Small, Medium..."
-          placeholderTextColor="#999"
+          placeholderTextColor={isDark ? colors.neutral[500] : '#999'}
           value={vocabularyText}
           onChangeText={setVocabularyText}
           textAlignVertical="top"
         />
         <TouchableOpacity
-          style={[styles.saveButton, isSavingVocabulary && styles.saveButtonDisabled]}
+          style={[
+            styles.saveButton,
+            {
+              backgroundColor: isSavingVocabulary ? themeColors.saveButtonDisabledBg : themeColors.saveButtonBg
+            }
+          ]}
           onPress={handleSaveVocabulary}
           disabled={isSavingVocabulary}
         >
@@ -272,7 +308,7 @@ export function WhisperSettingsScreen() {
       </View>
 
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
+        <Text style={[styles.footerText, { color: themeColors.textTertiary }]}>
           Les modèles Whisper sont fournis par OpenAI et exécutés localement sur votre appareil.
           Vos enregistrements ne quittent jamais votre téléphone.
         </Text>

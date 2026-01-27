@@ -26,8 +26,36 @@ import {
 } from '../../contexts/Normalization/services/WhisperModelService';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
+import { useTheme } from '../../hooks/useTheme';
 
 type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready';
+
+// Theme-aware colors
+const getThemeColors = (isDark: boolean) => ({
+  cardBg: isDark ? colors.neutral[800] : '#FFFFFF',
+  cardSelectedBg: isDark ? '#1A3A52' : '#F0F7FF',
+  borderDefault: isDark ? colors.neutral[700] : 'transparent',
+  borderSelected: isDark ? colors.primary[500] : '#007AFF',
+  textPrimary: isDark ? colors.neutral[50] : '#000',
+  textSecondary: isDark ? colors.neutral[400] : '#666',
+  textTertiary: isDark ? colors.neutral[500] : '#8E8E93',
+  iconPrimary: isDark ? colors.primary[400] : colors.primary[600],
+  activeBadgeBg: isDark ? colors.primary[600] : '#007AFF',
+  statusNotDownloadedBg: isDark ? colors.warning[900] : '#FFF3E0',
+  statusDownloadingBg: isDark ? colors.info[900] : '#E3F2FD',
+  statusReadyBg: isDark ? colors.success[900] : '#E8F5E9',
+  statusBadgeText: isDark ? colors.neutral[200] : '#333',
+  errorText: isDark ? colors.error[400] : '#D32F2F',
+  progressBarBg: isDark ? colors.neutral[700] : '#E5E5EA',
+  progressFillBg: isDark ? colors.primary[500] : '#007AFF',
+  progressText: isDark ? colors.primary[400] : '#007AFF',
+  warningText: isDark ? colors.warning[400] : '#FF9800',
+  downloadButtonBg: isDark ? colors.neutral[700] : '#F2F2F7',
+  downloadButtonText: isDark ? colors.primary[400] : '#007AFF',
+  useButtonBg: isDark ? colors.success[700] : '#34C759',
+  deleteButtonBg: isDark ? colors.neutral[700] : '#F2F2F7',
+  deleteButtonText: isDark ? colors.error[400] : '#FF3B30',
+});
 
 interface WhisperModelCardProps {
   modelSize?: WhisperModelSize;
@@ -40,6 +68,8 @@ export function WhisperModelCard({
   isSelected = false,
   onUseModel,
 }: WhisperModelCardProps) {
+  const { isDark } = useTheme();
+  const themeColors = getThemeColors(isDark);
   const [status, setStatus] = useState<ModelStatus>('checking');
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [downloadSpeed, setDownloadSpeed] = useState<number>(0);
@@ -219,13 +249,19 @@ export function WhisperModelCard({
   const advice = getModelAdvice();
 
   return (
-    <View style={[styles.card, isSelected && styles.cardSelected]}>
+    <View style={[
+      styles.card,
+      {
+        backgroundColor: isSelected ? themeColors.cardSelectedBg : themeColors.cardBg,
+        borderColor: isSelected ? themeColors.borderSelected : themeColors.borderDefault,
+      }
+    ]}>
       <View style={styles.header}>
         <View style={styles.headerRow}>
           <View style={styles.titleRow}>
             <View style={styles.titleWithIcon}>
-              <Feather name={advice.icon as any} size={18} color={colors.primary[600]} />
-              <Text style={styles.title}>{getModelLabel()}</Text>
+              <Feather name={advice.icon as any} size={18} color={themeColors.iconPrimary} />
+              <Text style={[styles.title, { color: themeColors.textPrimary }]}>{getModelLabel()}</Text>
             </View>
             {advice.badge && !isSelected && (
               <View style={[
@@ -239,19 +275,19 @@ export function WhisperModelCard({
             )}
           </View>
           {isSelected && (
-            <View style={styles.activeBadge}>
+            <View style={[styles.activeBadge, { backgroundColor: themeColors.activeBadgeBg }]}>
               <Text style={styles.activeBadgeText}>✓ Actif</Text>
             </View>
           )}
         </View>
-        <Text style={styles.adviceText}>{advice.text}</Text>
+        <Text style={[styles.adviceText, { color: themeColors.textSecondary }]}>{advice.text}</Text>
       </View>
 
       {/* Status: Checking */}
       {status === 'checking' && (
         <View style={styles.statusContainer}>
-          <ActivityIndicator size="small" color="#8E8E93" />
-          <Text style={styles.statusText}>Vérification...</Text>
+          <ActivityIndicator size="small" color={themeColors.textTertiary} />
+          <Text style={[styles.statusText, { color: themeColors.textTertiary }]}>Vérification...</Text>
         </View>
       )}
 
@@ -259,26 +295,26 @@ export function WhisperModelCard({
       {status === 'not_downloaded' && (
         <View style={styles.content}>
           <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, styles.statusNotDownloaded]}>
-              <Feather name="download" size={14} color={colors.neutral[600]} />
-              <Text style={styles.statusBadgeText}>Non téléchargé</Text>
+            <View style={[styles.statusBadge, { backgroundColor: themeColors.statusNotDownloadedBg }]}>
+              <Feather name="download" size={14} color={isDark ? colors.warning[400] : colors.neutral[600]} />
+              <Text style={[styles.statusBadgeText, { color: themeColors.statusBadgeText }]}>Non téléchargé</Text>
             </View>
           </View>
 
-          <Text style={styles.description}>
+          <Text style={[styles.description, { color: themeColors.textSecondary }]}>
             Taille: ~{formatBytes(expectedSize)}
           </Text>
 
-          {error && <Text style={styles.errorText}>{error}</Text>}
+          {error && <Text style={[styles.errorText, { color: themeColors.errorText }]}>{error}</Text>}
 
           <View style={styles.buttonRow}>
-            <TouchableOpacity style={styles.downloadButton} onPress={handleDownload}>
-              <Text style={styles.downloadButtonText}>Télécharger</Text>
+            <TouchableOpacity style={[styles.downloadButton, { backgroundColor: themeColors.downloadButtonBg }]} onPress={handleDownload}>
+              <Text style={[styles.downloadButtonText, { color: themeColors.downloadButtonText }]}>Télécharger</Text>
             </TouchableOpacity>
 
             {onUseModel && (
               <TouchableOpacity
-                style={[styles.useButton, isSelecting && styles.useButtonDisabled]}
+                style={[styles.useButton, { backgroundColor: themeColors.useButtonBg }, isSelecting && styles.useButtonDisabled]}
                 onPress={handleUseModel}
                 disabled={isSelecting}
               >
@@ -297,9 +333,9 @@ export function WhisperModelCard({
       {status === 'downloading' && progress && (
         <View style={styles.content}>
           <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, styles.statusDownloading]}>
-              <ActivityIndicator size="small" color="#007AFF" />
-              <Text style={[styles.statusBadgeText, { marginLeft: 8 }]}>
+            <View style={[styles.statusBadge, { backgroundColor: themeColors.statusDownloadingBg }]}>
+              <ActivityIndicator size="small" color={themeColors.progressFillBg} />
+              <Text style={[styles.statusBadgeText, { marginLeft: 8, color: themeColors.statusBadgeText }]}>
                 Téléchargement...
               </Text>
             </View>
@@ -307,27 +343,27 @@ export function WhisperModelCard({
 
           {/* Progress Bar */}
           <View style={styles.progressContainer}>
-            <View style={styles.progressBar}>
+            <View style={[styles.progressBar, { backgroundColor: themeColors.progressBarBg }]}>
               <View
-                style={[styles.progressFill, { width: `${progress.progress * 100}%` }]}
+                style={[styles.progressFill, { backgroundColor: themeColors.progressFillBg, width: `${progress.progress * 100}%` }]}
               />
             </View>
-            <Text style={styles.progressText}>
+            <Text style={[styles.progressText, { color: themeColors.progressText }]}>
               {Math.round(progress.progress * 100)}%
             </Text>
           </View>
 
           {/* Download Stats */}
           <View style={styles.statsRow}>
-            <Text style={styles.statsText}>
+            <Text style={[styles.statsText, { color: themeColors.textTertiary }]}>
               {formatBytes(progress.totalBytesWritten)} / {formatBytes(progress.totalBytesExpectedToWrite)}
             </Text>
-            <Text style={styles.statsText}>{formatSpeed(downloadSpeed)}</Text>
+            <Text style={[styles.statsText, { color: themeColors.textTertiary }]}>{formatSpeed(downloadSpeed)}</Text>
           </View>
 
           <View style={styles.warningContainer}>
-            <Feather name="alert-triangle" size={14} color={colors.warning[600]} />
-            <Text style={styles.warningText}>
+            <Feather name="alert-triangle" size={14} color={isDark ? colors.warning[400] : colors.warning[600]} />
+            <Text style={[styles.warningText, { color: themeColors.warningText }]}>
               Gardez l'application ouverte pendant le téléchargement
             </Text>
           </View>
@@ -338,8 +374,8 @@ export function WhisperModelCard({
       {status === 'downloading' && !progress && (
         <View style={styles.content}>
           <View style={styles.statusContainer}>
-            <ActivityIndicator size="small" color="#007AFF" />
-            <Text style={styles.statusText}>Démarrage du téléchargement...</Text>
+            <ActivityIndicator size="small" color={themeColors.progressFillBg} />
+            <Text style={[styles.statusText, { color: themeColors.textTertiary }]}>Démarrage du téléchargement...</Text>
           </View>
         </View>
       )}
@@ -348,16 +384,16 @@ export function WhisperModelCard({
       {status === 'ready' && (
         <View style={styles.content}>
           <View style={styles.statusContainer}>
-            <View style={[styles.statusBadge, styles.statusReady]}>
-              <Feather name="check-circle" size={14} color={colors.success[600]} />
-              <Text style={styles.statusBadgeText}>Téléchargé</Text>
+            <View style={[styles.statusBadge, { backgroundColor: themeColors.statusReadyBg }]}>
+              <Feather name="check-circle" size={14} color={isDark ? colors.success[400] : colors.success[600]} />
+              <Text style={[styles.statusBadgeText, { color: themeColors.statusBadgeText }]}>Téléchargé</Text>
             </View>
           </View>
 
           <View style={styles.buttonRow}>
             {onUseModel && !isSelected && (
               <TouchableOpacity
-                style={[styles.useButton, isSelecting && styles.useButtonDisabled]}
+                style={[styles.useButton, { backgroundColor: themeColors.useButtonBg }, isSelecting && styles.useButtonDisabled]}
                 onPress={handleUseModel}
                 disabled={isSelecting}
               >
@@ -369,8 +405,8 @@ export function WhisperModelCard({
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-              <Text style={styles.deleteButtonText}>Supprimer</Text>
+            <TouchableOpacity style={[styles.deleteButton, { backgroundColor: themeColors.deleteButtonBg }]} onPress={handleDelete}>
+              <Text style={[styles.deleteButtonText, { color: themeColors.deleteButtonText }]}>Supprimer</Text>
             </TouchableOpacity>
           </View>
         </View>

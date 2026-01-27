@@ -240,6 +240,8 @@ const getThemeColors = (isDark: boolean) => ({
   reprocessStatusLabel: isDark ? colors.neutral[100] : '#333',
   reprocessStatusValue: isDark ? colors.neutral[400] : '#666',
   reprocessStatusError: isDark ? colors.error[400] : '#EF4444',
+  reprocessButtonTranscribe: isDark ? '#1565C0' : '#2196F3',
+  reprocessButtonPostProcess: isDark ? '#6A1B9A' : '#9C27B0',
   // Contact picker
   contactBg: isDark ? colors.neutral[900] : '#F2F2F7',
   contactHeaderBg: isDark ? colors.neutral[800] : colors.neutral[0],
@@ -1375,60 +1377,60 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
         {/* Reprocess Section - Debug tools for audio captures (debug mode only) */}
         {debugMode && isAudio && capture.state === 'ready' && (
-          <View style={styles.reprocessCard}>
+          <View style={[styles.reprocessCard, { backgroundColor: themeColors.reprocessBg, borderColor: themeColors.reprocessBorder }]}>
             <Pressable
               style={styles.reprocessHeader}
               onPress={() => setShowReprocess(!showReprocess)}
             >
               <View style={styles.reprocessTitleRow}>
-                <Feather name="tool" size={18} color={colors.warning[700]} />
-                <Text style={styles.reprocessTitle}>Retraitement</Text>
+                <Feather name="tool" size={18} color={isDark ? colors.warning[500] : colors.warning[700]} />
+                <Text style={[styles.reprocessTitle, { color: themeColors.reprocessTitle }]}>Retraitement</Text>
               </View>
               <Feather
                 name={showReprocess ? NavigationIcons.down : NavigationIcons.forward}
                 size={16}
-                color={colors.warning[600]}
+                color={isDark ? colors.warning[500] : colors.warning[600]}
               />
             </Pressable>
             {showReprocess && (
-              <View style={styles.reprocessContent}>
-                <Text style={styles.reprocessInfo}>
+              <View style={[styles.reprocessContent, { backgroundColor: themeColors.reprocessContentBg, borderTopColor: themeColors.reprocessBorder }]}>
+                <Text style={[styles.reprocessInfo, { color: themeColors.reprocessText }]}>
                   Outils de debug pour relancer le pipeline de traitement.
                 </Text>
 
                 {/* Status info */}
-                <View style={styles.reprocessStatus}>
-                  <Text style={styles.reprocessStatusLabel}>État actuel:</Text>
+                <View style={[styles.reprocessStatus, { backgroundColor: themeColors.reprocessStatusBg, borderColor: themeColors.reprocessStatusBorder }]}>
+                  <Text style={[styles.reprocessStatusLabel, { color: themeColors.reprocessStatusLabel }]}>État actuel:</Text>
                   <View style={styles.reprocessStatusRow}>
-                    <Text style={styles.reprocessStatusValue}>• raw_transcript: </Text>
+                    <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>• raw_transcript: </Text>
                     {metadata[METADATA_KEYS.RAW_TRANSCRIPT] ? (
-                      <Text style={styles.reprocessStatusValue}>{metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars</Text>
+                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars</Text>
                     ) : (
                       <View style={styles.reprocessStatusMissing}>
                         <Feather name="x-circle" size={12} color={colors.error[500]} />
-                        <Text style={styles.reprocessStatusMissingText}>absent</Text>
+                        <Text style={[styles.reprocessStatusMissingText, { color: themeColors.reprocessStatusError }]}>absent</Text>
                       </View>
                     )}
                   </View>
                   <View style={styles.reprocessStatusRow}>
-                    <Text style={styles.reprocessStatusValue}>• normalizedText: </Text>
+                    <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>• normalizedText: </Text>
                     {capture.normalizedText ? (
-                      <Text style={styles.reprocessStatusValue}>{capture.normalizedText.length} chars</Text>
+                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{capture.normalizedText.length} chars</Text>
                     ) : (
                       <View style={styles.reprocessStatusMissing}>
                         <Feather name="x-circle" size={12} color={colors.error[500]} />
-                        <Text style={styles.reprocessStatusMissingText}>absent</Text>
+                        <Text style={[styles.reprocessStatusMissingText, { color: themeColors.reprocessStatusError }]}>absent</Text>
                       </View>
                     )}
                   </View>
                   <View style={styles.reprocessStatusRow}>
-                    <Text style={styles.reprocessStatusValue}>• LLM model: </Text>
+                    <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>• LLM model: </Text>
                     {metadata[METADATA_KEYS.LLM_MODEL] ? (
-                      <Text style={styles.reprocessStatusValue}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
                     ) : (
                       <View style={styles.reprocessStatusMissing}>
                         <Feather name="x-circle" size={12} color={colors.error[500]} />
-                        <Text style={styles.reprocessStatusMissingText}>non appliqué</Text>
+                        <Text style={[styles.reprocessStatusMissingText, { color: themeColors.reprocessStatusError }]}>non appliqué</Text>
                       </View>
                     )}
                   </View>
@@ -1436,7 +1438,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
                 {/* Re-transcribe button */}
                 <TouchableOpacity
-                  style={[styles.reprocessButton, styles.reprocessButtonTranscribe]}
+                  style={[styles.reprocessButton, { backgroundColor: themeColors.reprocessButtonTranscribe }]}
                   onPress={handleReTranscribe}
                   disabled={reprocessing.transcribe}
                 >
@@ -1455,7 +1457,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
                 {/* Re-post-process button */}
                 <TouchableOpacity
-                  style={[styles.reprocessButton, styles.reprocessButtonPostProcess]}
+                  style={[styles.reprocessButton, { backgroundColor: themeColors.reprocessButtonPostProcess }]}
                   onPress={handleRePostProcess}
                   disabled={reprocessing.postProcess || !metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
                 >
@@ -1478,8 +1480,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
                 {/* Info about analysis */}
                 <View style={styles.reprocessNoteContainer}>
-                  <Feather name="info" size={14} color={colors.neutral[500]} />
-                  <Text style={styles.reprocessNote}>
+                  <Feather name="info" size={14} color={isDark ? colors.neutral[400] : colors.neutral[500]} />
+                  <Text style={[styles.reprocessNote, { color: themeColors.reprocessText }]}>
                     Pour relancer l'analyse IA, utilisez la section "Analyse IA" ci-dessus.
                   </Text>
                 </View>

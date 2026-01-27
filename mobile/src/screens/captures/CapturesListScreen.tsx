@@ -36,6 +36,7 @@ import { WhisperModelService } from '../../contexts/Normalization/services/Whisp
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useTheme } from '../../hooks/useTheme';
 import { colors, shadows } from '../../design-system/tokens';
 import { Card, Badge, Button, IconButton, LoadingView, EmptyState, AlertDialog, useToast } from '../../design-system/components';
 import { CaptureIcons, StatusIcons, MediaIcons, ActionIcons } from '../../design-system/icons';
@@ -55,6 +56,7 @@ type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 
 export function CapturesListScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
+  const { isDark } = useTheme();
   const [captures, setCaptures] = useState<CaptureWithTranscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -78,15 +80,39 @@ export function CapturesListScreen() {
 
   // Auto-play when source is loaded and shouldAutoPlay is true
   useEffect(() => {
+    console.log('[CapturesListScreen] Auto-play effect triggered', {
+      shouldAutoPlay,
+      isLoaded: playerStatus.isLoaded,
+      playing: playerStatus.playing,
+      currentAudioPath
+    });
     if (shouldAutoPlay && playerStatus.isLoaded && !playerStatus.playing) {
+      console.log('[CapturesListScreen] Starting auto-play');
       player.play();
       setShouldAutoPlay(false);
     }
-  }, [shouldAutoPlay, playerStatus.isLoaded, playerStatus.playing, player]);
+  }, [shouldAutoPlay, playerStatus.isLoaded, playerStatus.playing, player, currentAudioPath]);
+
+  // Log player status changes for debugging
+  useEffect(() => {
+    console.log('[CapturesListScreen] Player status changed:', {
+      isLoaded: playerStatus.isLoaded,
+      playing: playerStatus.playing,
+      duration: playerStatus.duration,
+      error: playerStatus.error,
+      currentAudioPath
+    });
+
+    if (playerStatus.error) {
+      console.error('[CapturesListScreen] Player error:', playerStatus.error);
+      toast.error(`Erreur de lecture: ${playerStatus.error}`);
+    }
+  }, [playerStatus.isLoaded, playerStatus.playing, playerStatus.error, currentAudioPath, toast]);
 
   // Reset playing state and seek to beginning when audio finishes
   useEffect(() => {
     if (playerStatus.didJustFinish && playingCaptureId) {
+      console.log('[CapturesListScreen] Audio finished, resetting');
       player.pause();
       setTimeout(() => {
         player.seekTo(0);
@@ -137,6 +163,35 @@ export function CapturesListScreen() {
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
       const allCaptures = await repository.findAll();
 
+      // Clean up wavPath entries for files that no longer exist (debug mode only)
+      if (debugMode) {
+        console.log('[CapturesListScreen] Checking WAV files existence...');
+        let cleanedCount = 0;
+
+        for (const capture of allCaptures) {
+          if (capture.wavPath) {
+            try {
+              const fileInfo = await FileSystemLegacy.getInfoAsync(capture.wavPath);
+              if (!fileInfo.exists) {
+                console.log('[CapturesListScreen] WAV file missing for capture', capture.id, '- cleaning DB');
+                await repository.update(capture.id, { wavPath: null });
+                capture.wavPath = null; // Update in-memory object
+                cleanedCount++;
+              }
+            } catch (error) {
+              console.error('[CapturesListScreen] Error checking WAV file for', capture.id, error);
+              await repository.update(capture.id, { wavPath: null });
+              capture.wavPath = null;
+              cleanedCount++;
+            }
+          }
+        }
+
+        if (cleanedCount > 0) {
+          console.log(`[CapturesListScreen] Cleaned up ${cleanedCount} missing WAV references`);
+        }
+      }
+
       // Sort by createdAt descending (newest first)
       const sorted = allCaptures.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
@@ -147,7 +202,7 @@ export function CapturesListScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [debugMode]);
 
   useEffect(() => {
     loadCaptures();
@@ -240,28 +295,47 @@ export function CapturesListScreen() {
 
   /**
    * Handle WAV playback (debug feature)
+   * Note: File existence is already verified in loadCaptures(), so button only shows if file exists
    */
   const handlePlayWav = useCallback(
     (capture: Capture) => {
+      console.log('[CapturesListScreen] handlePlayWav called', {
+        captureId: capture.id,
+        wavPath: capture.wavPath,
+        currentAudioPath,
+        playingWavCaptureId,
+        playerStatus: { playing: playerStatus.playing, isLoaded: playerStatus.isLoaded }
+      });
+
       if (!capture.wavPath) {
+        console.log('[CapturesListScreen] No wavPath, showing error toast');
         toast.error(t('capture.alerts.noAudioFile'));
         return;
       }
 
       if (playingWavCaptureId === capture.id && currentAudioPath === capture.wavPath) {
+        console.log('[CapturesListScreen] Same WAV already loaded, toggling play/pause');
         if (playerStatus.playing) {
           player.pause();
         } else {
           player.play();
         }
       } else {
+        console.log('[CapturesListScreen] Loading new WAV file:', capture.wavPath);
+
+        // Stop any current playback first
+        if (playingCaptureId || playingWavCaptureId) {
+          console.log('[CapturesListScreen] Stopping current playback before loading WAV');
+          player.pause();
+        }
+
         setCurrentAudioPath(capture.wavPath);
         setPlayingCaptureId(null);
         setPlayingWavCaptureId(capture.id);
         setShouldAutoPlay(true);
       }
     },
-    [playingWavCaptureId, currentAudioPath, playerStatus.playing, player, t]
+    [playingWavCaptureId, playingCaptureId, currentAudioPath, playerStatus.playing, playerStatus.isLoaded, player, t, toast]
   );
 
   /**
@@ -471,7 +545,11 @@ export function CapturesListScreen() {
                 {debugMode && item.wavPath && (
                   <View className="flex-row items-center gap-2 mb-2">
                     <TouchableOpacity
-                      className="flex-row items-center px-2 py-1.5 bg-success-50 rounded-lg border border-success-200"
+                      className="flex-row items-center px-2 py-1.5 rounded-lg border"
+                      style={{
+                        backgroundColor: isDark ? colors.success[900] : colors.success[50],
+                        borderColor: isDark ? colors.success[700] : colors.success[200],
+                      }}
                       onPress={(e) => {
                         e.stopPropagation();
                         handlePlayWav(item);
@@ -480,16 +558,25 @@ export function CapturesListScreen() {
                       <Feather
                         name={isPlayingWav ? MediaIcons.pause : MediaIcons.volume}
                         size={14}
-                        color={colors.success[700]}
+                        color={isDark ? colors.success[400] : colors.success[700]}
                       />
-                      <Text className="ml-1 text-xs font-medium text-success-700">WAV</Text>
+                      <Text
+                        className="ml-1 text-xs font-medium"
+                        style={{ color: isDark ? colors.success[400] : colors.success[700] }}
+                      >
+                        WAV
+                      </Text>
                     </TouchableOpacity>
                     <IconButton
                       icon={ActionIcons.delete}
                       size="sm"
                       variant="ghost"
-                      color={colors.error[600]}
-                      className="bg-error-50 border border-error-200"
+                      color={isDark ? colors.error[400] : colors.error[600]}
+                      className="border"
+                      style={{
+                        backgroundColor: isDark ? colors.error[900] : colors.error[50],
+                        borderColor: isDark ? colors.error[700] : colors.error[200],
+                      }}
                       onPress={(e) => {
                         e.stopPropagation();
                         handleDeleteWav(item);

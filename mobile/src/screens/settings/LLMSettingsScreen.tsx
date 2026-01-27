@@ -17,10 +17,10 @@ import {
   Text,
   StyleSheet,
   Switch,
-  Alert,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
@@ -37,6 +37,55 @@ import { NPUDetectionService, type NPUInfo } from '../../contexts/Normalization/
 import { type HuggingFaceUser } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { debugPromptManager } from '../../contexts/Normalization/services/postprocessing/IPostProcessingBackend';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useTheme } from '../../hooks/useTheme';
+
+// Theme-aware colors
+const getThemeColors = (isDark: boolean) => ({
+  screenBg: isDark ? colors.neutral[900] : '#F2F2F7',
+  cardBg: isDark ? colors.neutral[800] : '#FFFFFF',
+  textPrimary: isDark ? colors.neutral[50] : '#000',
+  textSecondary: isDark ? colors.neutral[400] : '#666',
+  textTertiary: isDark ? colors.neutral[500] : '#8E8E93',
+  borderDefault: isDark ? colors.neutral[700] : '#E5E5EA',
+  iconPrimary: isDark ? colors.primary[400] : colors.primary[600],
+  toggleRowIndentedBg: isDark ? colors.neutral[850] : '#FAFAFA',
+  // TPU Card colors
+  tpuCardActiveBg: isDark ? '#2D1B3C' : '#F3E5F5',
+  tpuCardActiveBorder: isDark ? '#7B1FA2' : '#CE93D8',
+  tpuCardInactiveBg: isDark ? '#0D2847' : '#E3F2FD',
+  tpuCardInactiveBorder: isDark ? '#1976D2' : '#90CAF9',
+  tpuCardAppleBg: isDark ? colors.neutral[850] : '#F5F5F5',
+  tpuCardAppleBorder: isDark ? colors.neutral[600] : '#A1A1A6',
+  tpuCardSamsungBg: isDark ? '#0D2847' : '#E8F0FE',
+  tpuCardSamsungBorder: isDark ? '#1976D2' : '#1A73E8',
+  tpuTitle: isDark ? colors.neutral[50] : '#333',
+  tpuDescription: isDark ? colors.neutral[400] : '#666',
+  tpuRecommendation: isDark ? colors.primary[300] : '#7B1FA2',
+  // HuggingFace Auth
+  authNotConnectedText: isDark ? colors.neutral[400] : '#666',
+  authUserName: isDark ? colors.neutral[50] : '#000',
+  authUserHandle: isDark ? colors.neutral[500] : '#8E8E93',
+  authLogoutButtonBg: isDark ? colors.neutral[700] : '#F2F2F7',
+  authLogoutText: isDark ? colors.error[400] : '#FF3B30',
+  authLoginButtonBg: isDark ? '#D68400' : '#FF9D00',
+  // Task assignments
+  taskName: isDark ? colors.neutral[50] : '#000',
+  taskDescription: isDark ? colors.neutral[500] : '#8E8E93',
+  taskModel: isDark ? colors.primary[400] : '#007AFF',
+  taskDivider: isDark ? colors.neutral[700] : '#E5E5EA',
+  // Debug section
+  debugSectionBg: isDark ? colors.warning[900] : '#FFF3E0',
+  debugSectionBorder: isDark ? colors.warning[700] : '#FFB74D',
+  debugTitle: isDark ? colors.warning[300] : '#E65100',
+  debugDescription: isDark ? colors.warning[200] : '#795548',
+  debugInputBg: isDark ? colors.neutral[800] : '#FFF',
+  debugInputBorder: isDark ? colors.warning[700] : '#FFCC80',
+  debugInputText: isDark ? colors.neutral[50] : '#333',
+  debugButtonPrimaryBg: isDark ? colors.warning[700] : '#FF9800',
+  debugButtonSecondaryBg: isDark ? colors.neutral[800] : '#FFF',
+  debugButtonSecondaryBorder: isDark ? colors.warning[700] : '#FFB74D',
+  debugButtonSecondaryText: isDark ? colors.warning[300] : '#E65100',
+});
 
 /** Task labels for display */
 const TASK_LABELS: Record<LLMTask, { name: string; icon: string; description: string }> = {
@@ -53,6 +102,9 @@ const TASK_LABELS: Record<LLMTask, { name: string; icon: string; description: st
 };
 
 export function LLMSettingsScreen() {
+  const { isDark } = useTheme();
+  const themeColors = getThemeColors(isDark);
+
   // Task-specific model selections
   const [selectedPostProcessingModel, setSelectedPostProcessingModel] = useState<LLMModelId | null>(null);
   const [selectedAnalysisModel, setSelectedAnalysisModel] = useState<LLMModelId | null>(null);
@@ -74,6 +126,8 @@ export function LLMSettingsScreen() {
 
   // AlertDialog state
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [showTaskSelectionDialog, setShowTaskSelectionDialog] = useState(false);
+  const [selectedModelForTask, setSelectedModelForTask] = useState<LLMModelId | null>(null);
   const toast = useToast();
 
   // Get services from DI container (singleton instances)
@@ -244,31 +298,25 @@ export function LLMSettingsScreen() {
    * Show task selection menu for a model
    */
   const handleSelectTask = useCallback((modelId: LLMModelId) => {
-    const modelConfig = modelService.getModelConfig(modelId);
+    setSelectedModelForTask(modelId);
+    setShowTaskSelectionDialog(true);
+  }, []);
 
-    Alert.alert(
-      `Utiliser ${modelConfig.name}`,
-      'Pour quelle tâche voulez-vous utiliser ce modèle ?',
-      [
-        {
-          text: 'Post-traitement',
-          onPress: () => handleUseModelForTask(modelId, 'postProcessing'),
-        },
-        {
-          text: 'Analyse',
-          onPress: () => handleUseModelForTask(modelId, 'analysis'),
-        },
-        {
-          text: 'Les deux',
-          onPress: async () => {
-            await handleUseModelForTask(modelId, 'postProcessing');
-            await handleUseModelForTask(modelId, 'analysis');
-          },
-        },
-        { text: 'Annuler', style: 'cancel' },
-      ]
-    );
-  }, [handleUseModelForTask, modelService]);
+  /**
+   * Handle task selection from dialog
+   */
+  const handleTaskSelection = useCallback(async (task: LLMTask | 'both') => {
+    setShowTaskSelectionDialog(false);
+    if (!selectedModelForTask) return;
+
+    if (task === 'both') {
+      await handleUseModelForTask(selectedModelForTask, 'postProcessing');
+      await handleUseModelForTask(selectedModelForTask, 'analysis');
+    } else {
+      await handleUseModelForTask(selectedModelForTask, task);
+    }
+    setSelectedModelForTask(null);
+  }, [selectedModelForTask, handleUseModelForTask]);
 
   /**
    * Legacy handler for LLMModelCard compatibility
@@ -297,39 +345,46 @@ export function LLMSettingsScreen() {
   }, [toast]);
 
   return (
-    <ScrollView style={styles.container}>
+    <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Amélioration IA</Text>
-        <Text style={styles.headerDescription}>
+        <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Amélioration IA</Text>
+        <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
           Utilisez un modèle d'intelligence artificielle local pour améliorer automatiquement
           la qualité des transcriptions (ponctuation, grammaire, capitalisation).
         </Text>
       </View>
 
       {/* Enable Toggle */}
-      <View style={styles.toggleSection}>
+      <View style={[styles.toggleSection, { backgroundColor: themeColors.cardBg }]}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleContent}>
-            <Text style={styles.toggleLabel}>Activer l'amélioration IA</Text>
-            <Text style={styles.toggleDescription}>
+            <Text style={[styles.toggleLabel, { color: themeColors.textPrimary }]}>Activer l'amélioration IA</Text>
+            <Text style={[styles.toggleDescription, { color: themeColors.textTertiary }]}>
               Active les fonctionnalités IA (analyses, résumés)
             </Text>
           </View>
           <Switch
             value={isEnabled}
             onValueChange={handleToggleEnabled}
-            trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+            trackColor={{ false: isDark ? colors.neutral[700] : '#E5E5EA', true: '#34C759' }}
             thumbColor="#FFFFFF"
           />
         </View>
 
         {/* Auto post-process toggle - only show when IA is enabled */}
         {isEnabled && (
-          <View style={[styles.toggleRow, styles.toggleRowIndented]}>
+          <View style={[
+            styles.toggleRow,
+            styles.toggleRowIndented,
+            {
+              borderTopColor: themeColors.borderDefault,
+              backgroundColor: themeColors.toggleRowIndentedBg,
+            }
+          ]}>
             <View style={styles.toggleContent}>
-              <Text style={styles.toggleLabel}>Post-traitement automatique</Text>
-              <Text style={styles.toggleDescription}>
+              <Text style={[styles.toggleLabel, { color: themeColors.textPrimary }]}>Post-traitement automatique</Text>
+              <Text style={[styles.toggleDescription, { color: themeColors.textTertiary }]}>
                 Améliorer automatiquement les transcriptions après Whisper.
                 Désactivé = transcription brute, modèles déchargés plus vite.
               </Text>
@@ -337,7 +392,7 @@ export function LLMSettingsScreen() {
             <Switch
               value={isAutoPostProcess}
               onValueChange={handleToggleAutoPostProcess}
-              trackColor={{ false: '#E5E5EA', true: '#34C759' }}
+              trackColor={{ false: isDark ? colors.neutral[700] : '#E5E5EA', true: '#34C759' }}
               thumbColor="#FFFFFF"
             />
           </View>
@@ -349,21 +404,26 @@ export function LLMSettingsScreen() {
         <View style={styles.tpuSection}>
           <View style={[
             styles.tpuCard,
-            npuInfo.hasNPU ? styles.tpuCardActive : styles.tpuCardInactive,
-            npuInfo.type === 'neural-engine' && styles.tpuCardApple,
-            npuInfo.type === 'samsung-npu' && styles.tpuCardSamsung,
+            {
+              backgroundColor: npuInfo.hasNPU
+                ? (npuInfo.type === 'neural-engine' ? themeColors.tpuCardAppleBg : npuInfo.type === 'samsung-npu' ? themeColors.tpuCardSamsungBg : themeColors.tpuCardActiveBg)
+                : themeColors.tpuCardInactiveBg,
+              borderColor: npuInfo.hasNPU
+                ? (npuInfo.type === 'neural-engine' ? themeColors.tpuCardAppleBorder : npuInfo.type === 'samsung-npu' ? themeColors.tpuCardSamsungBorder : themeColors.tpuCardActiveBorder)
+                : themeColors.tpuCardInactiveBorder,
+            }
           ]}>
             <View style={styles.tpuTitleRow}>
-              <Feather name={getNPUTitle(npuInfo).icon as any} size={20} color={colors.primary[600]} />
-              <Text style={styles.tpuTitle}>{getNPUTitle(npuInfo).text}</Text>
+              <Feather name={getNPUTitle(npuInfo).icon as any} size={20} color={themeColors.iconPrimary} />
+              <Text style={[styles.tpuTitle, { color: themeColors.tpuTitle }]}>{getNPUTitle(npuInfo).text}</Text>
             </View>
-            <Text style={styles.tpuDescription}>
+            <Text style={[styles.tpuDescription, { color: themeColors.tpuDescription }]}>
               {getNPUDescription(npuInfo)}
             </Text>
             {npuInfo.isRecommendedForLLM && (
               <View style={styles.tpuRecommendationRow}>
-                <Feather name="zap" size={14} color={colors.success[600]} />
-                <Text style={styles.tpuRecommendation}>
+                <Feather name="zap" size={14} color={isDark ? colors.success[400] : colors.success[600]} />
+                <Text style={[styles.tpuRecommendation, { color: themeColors.tpuRecommendation }]}>
                   Accélération matérielle optimisée pour l'IA
                 </Text>
               </View>
@@ -375,40 +435,40 @@ export function LLMSettingsScreen() {
       {/* HuggingFace Authentication (for gated models) */}
       {tpuModels.length > 0 && (
         <View style={styles.authSection}>
-          <Text style={styles.sectionTitle}>Compte HuggingFace</Text>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Compte HuggingFace</Text>
+          <Text style={[styles.sectionDescription, { color: themeColors.textSecondary }]}>
             Certains modèles optimisés (Gemma MediaPipe) nécessitent une connexion HuggingFace
             pour accepter la licence d'utilisation.
           </Text>
-          <View style={styles.authCard}>
+          <View style={[styles.authCard, { backgroundColor: themeColors.cardBg, borderColor: themeColors.borderDefault }]}>
             {isHfAuthenticated ? (
               <>
                 <View style={styles.authUserInfo}>
-                  <Feather name="check-circle" size={24} color={colors.success[500]} style={styles.authConnectedIcon} />
+                  <Feather name="check-circle" size={24} color={isDark ? colors.success[400] : colors.success[500]} style={styles.authConnectedIcon} />
                   <View style={styles.authUserDetails}>
-                    <Text style={styles.authUserName}>
+                    <Text style={[styles.authUserName, { color: themeColors.authUserName }]}>
                       {hfUser?.fullname || hfUser?.name || 'Utilisateur'}
                     </Text>
-                    <Text style={styles.authUserHandle}>@{hfUser?.name}</Text>
+                    <Text style={[styles.authUserHandle, { color: themeColors.authUserHandle }]}>@{hfUser?.name}</Text>
                   </View>
                 </View>
                 <TouchableOpacity
-                  style={styles.authLogoutButton}
+                  style={[styles.authLogoutButton, { backgroundColor: themeColors.authLogoutButtonBg }]}
                   onPress={handleHfLogout}
                 >
-                  <Text style={styles.authLogoutText}>Déconnecter</Text>
+                  <Text style={[styles.authLogoutText, { color: themeColors.authLogoutText }]}>Déconnecter</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
                 <View style={styles.authNotConnected}>
-                  <Feather name="lock" size={20} color={colors.neutral[500]} style={styles.authNotConnectedIcon} />
-                  <Text style={styles.authNotConnectedText}>
+                  <Feather name="lock" size={20} color={themeColors.textTertiary} style={styles.authNotConnectedIcon} />
+                  <Text style={[styles.authNotConnectedText, { color: themeColors.authNotConnectedText }]}>
                     Non connecté - Connectez-vous pour télécharger les modèles Gemma optimisés TPU
                   </Text>
                 </View>
                 <TouchableOpacity
-                  style={[styles.authLoginButton, isAuthLoading && styles.authButtonDisabled]}
+                  style={[styles.authLoginButton, { backgroundColor: themeColors.authLoginButtonBg }, isAuthLoading && styles.authButtonDisabled]}
                   onPress={handleHfLogin}
                   disabled={isAuthLoading}
                 >
@@ -427,34 +487,34 @@ export function LLMSettingsScreen() {
       {/* Task Assignments Summary */}
       {isEnabled && (selectedPostProcessingModel || selectedAnalysisModel) && (
         <View style={styles.taskAssignmentsSection}>
-          <Text style={styles.sectionTitle}>Configuration par tâche</Text>
-          <View style={styles.taskAssignmentsCard}>
+          <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Configuration par tâche</Text>
+          <View style={[styles.taskAssignmentsCard, { backgroundColor: themeColors.cardBg, borderColor: themeColors.borderDefault }]}>
             {/* Post-processing task */}
             <View style={styles.taskAssignmentRow}>
               <View style={styles.taskInfo}>
-                <Feather name={TASK_LABELS.postProcessing.icon as any} size={20} color={colors.primary[600]} style={styles.taskIcon} />
+                <Feather name={TASK_LABELS.postProcessing.icon as any} size={20} color={themeColors.iconPrimary} style={styles.taskIcon} />
                 <View style={styles.taskDetails}>
-                  <Text style={styles.taskName}>{TASK_LABELS.postProcessing.name}</Text>
-                  <Text style={styles.taskDescription}>{TASK_LABELS.postProcessing.description}</Text>
+                  <Text style={[styles.taskName, { color: themeColors.taskName }]}>{TASK_LABELS.postProcessing.name}</Text>
+                  <Text style={[styles.taskDescription, { color: themeColors.taskDescription }]}>{TASK_LABELS.postProcessing.description}</Text>
                 </View>
               </View>
-              <Text style={styles.taskModel}>
+              <Text style={[styles.taskModel, { color: themeColors.taskModel }]}>
                 {selectedPostProcessingModel
                   ? modelService.getModelConfig(selectedPostProcessingModel).name
                   : 'Non défini'}
               </Text>
             </View>
-            <View style={styles.taskDivider} />
+            <View style={[styles.taskDivider, { backgroundColor: themeColors.taskDivider }]} />
             {/* Analysis task */}
             <View style={styles.taskAssignmentRow}>
               <View style={styles.taskInfo}>
-                <Feather name={TASK_LABELS.analysis.icon as any} size={20} color={colors.primary[600]} style={styles.taskIcon} />
+                <Feather name={TASK_LABELS.analysis.icon as any} size={20} color={themeColors.iconPrimary} style={styles.taskIcon} />
                 <View style={styles.taskDetails}>
-                  <Text style={styles.taskName}>{TASK_LABELS.analysis.name}</Text>
-                  <Text style={styles.taskDescription}>{TASK_LABELS.analysis.description}</Text>
+                  <Text style={[styles.taskName, { color: themeColors.taskName }]}>{TASK_LABELS.analysis.name}</Text>
+                  <Text style={[styles.taskDescription, { color: themeColors.taskDescription }]}>{TASK_LABELS.analysis.description}</Text>
                 </View>
               </View>
-              <Text style={styles.taskModel}>
+              <Text style={[styles.taskModel, { color: themeColors.taskModel }]}>
                 {selectedAnalysisModel
                   ? modelService.getModelConfig(selectedAnalysisModel).name
                   : 'Non défini'}
@@ -467,8 +527,8 @@ export function LLMSettingsScreen() {
       {/* TPU Models (only show on Google Pixel devices) */}
       {npuInfo?.type === 'tensor-tpu' && tpuModels.length > 0 && (
         <View style={styles.modelsSection}>
-          <Text style={styles.sectionTitle}>Modèles optimisés TPU</Text>
-          <Text style={styles.sectionDescription}>
+          <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Modèles optimisés TPU</Text>
+          <Text style={[styles.sectionDescription, { color: themeColors.textSecondary }]}>
             Ces modèles sont optimisés pour la puce Tensor de votre Pixel.
           </Text>
           {tpuModels.map((model) => (
@@ -485,8 +545,8 @@ export function LLMSettingsScreen() {
 
       {/* Standard Models */}
       <View style={styles.modelsSection}>
-        <Text style={styles.sectionTitle}>Modèles standards</Text>
-        <Text style={styles.sectionDescription}>
+        <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Modèles standards</Text>
+        <Text style={[styles.sectionDescription, { color: themeColors.textSecondary }]}>
           {npuInfo?.type === 'tensor-tpu'
             ? 'Modèles compatibles avec tous les appareils.'
             : 'Choisissez un modèle selon votre espace de stockage et vos besoins.'}
@@ -503,11 +563,14 @@ export function LLMSettingsScreen() {
 
       {/* Debug: Custom Prompt Editor (only in debug mode) */}
       {debugMode && (
-        <View style={styles.debugSection}>
+        <View style={[styles.debugSection, {
+          backgroundColor: themeColors.debugSectionBg,
+          borderColor: themeColors.debugSectionBorder,
+        }]}>
           <View style={styles.debugHeader}>
             <View style={styles.debugTitleRow}>
-              <Feather name="tool" size={16} color={colors.warning[600]} />
-              <Text style={styles.debugTitle}>Debug: Prompt Système</Text>
+              <Feather name="tool" size={16} color={isDark ? colors.warning[400] : colors.warning[600]} />
+              <Text style={[styles.debugTitle, { color: themeColors.debugTitle }]}>Debug: Prompt Système</Text>
             </View>
             {isPromptModified && (
               <View style={styles.debugBadge}>
@@ -515,32 +578,41 @@ export function LLMSettingsScreen() {
               </View>
             )}
           </View>
-          <Text style={styles.debugDescription}>
+          <Text style={[styles.debugDescription, { color: themeColors.debugDescription }]}>
             Modifiez le prompt système pour tester différentes instructions.
             Ce changement est temporaire (perdu au redémarrage).
           </Text>
           <TextInput
-            style={styles.debugPromptInput}
+            style={[styles.debugPromptInput, {
+              backgroundColor: themeColors.debugInputBg,
+              borderColor: themeColors.debugInputBorder,
+              color: themeColors.debugInputText,
+            }]}
             value={customPrompt}
             onChangeText={setCustomPrompt}
             multiline
             numberOfLines={10}
             textAlignVertical="top"
             placeholder="Entrez le prompt système..."
-            placeholderTextColor="#999"
+            placeholderTextColor={isDark ? colors.neutral[500] : '#999'}
           />
           <View style={styles.debugButtonRow}>
             <TouchableOpacity
-              style={[styles.debugButton, styles.debugButtonSecondary]}
+              style={[styles.debugButton, styles.debugButtonSecondary, {
+                backgroundColor: themeColors.debugButtonSecondaryBg,
+                borderColor: themeColors.debugButtonSecondaryBorder,
+              }]}
               onPress={handleResetPrompt}
             >
               <View style={styles.debugButtonContent}>
-                <Feather name="rotate-ccw" size={14} color={colors.warning[700]} />
-                <Text style={styles.debugButtonSecondaryText}>Restaurer</Text>
+                <Feather name="rotate-ccw" size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
+                <Text style={[styles.debugButtonSecondaryText, { color: themeColors.debugButtonSecondaryText }]}>Restaurer</Text>
               </View>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.debugButton, styles.debugButtonPrimary]}
+              style={[styles.debugButton, styles.debugButtonPrimary, {
+                backgroundColor: themeColors.debugButtonPrimaryBg,
+              }]}
               onPress={handleApplyPrompt}
             >
               <View style={styles.debugButtonContent}>
@@ -554,11 +626,11 @@ export function LLMSettingsScreen() {
 
       {/* Footer */}
       <View style={styles.footer}>
-        <Text style={styles.footerText}>
+        <Text style={[styles.footerText, { color: themeColors.textTertiary }]}>
           Les modèles sont exécutés 100% localement sur votre appareil.
           Vos données ne quittent jamais votre téléphone.
         </Text>
-        <Text style={styles.footerText}>
+        <Text style={[styles.footerText, { color: themeColors.textTertiary }]}>
           Temps de traitement estimé : 1-5 secondes par transcription selon le modèle.
         </Text>
       </View>
@@ -575,6 +647,69 @@ export function LLMSettingsScreen() {
           onPress: confirmHfLogout,
         }}
       />
+
+      {/* Task Selection Modal */}
+      <Modal
+        visible={showTaskSelectionDialog}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTaskSelectionDialog(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: themeColors.cardBg }]}>
+            <Text style={[styles.modalTitle, { color: themeColors.textPrimary }]}>
+              {selectedModelForTask && `Utiliser ${modelService.getModelConfig(selectedModelForTask).name}`}
+            </Text>
+            <Text style={[styles.modalMessage, { color: themeColors.textSecondary }]}>
+              Pour quelle tâche voulez-vous utiliser ce modèle ?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.taskButton, { backgroundColor: isDark ? colors.primary[700] : colors.primary[50], borderColor: isDark ? colors.primary[600] : colors.primary[200] }]}
+                onPress={() => handleTaskSelection('postProcessing')}
+              >
+                <Feather name="edit-3" size={20} color={isDark ? colors.primary[300] : colors.primary[600]} />
+                <Text style={[styles.taskButtonText, { color: isDark ? colors.primary[300] : colors.primary[600] }]}>
+                  Post-traitement
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.taskButton, { backgroundColor: isDark ? colors.success[900] : colors.success[50], borderColor: isDark ? colors.success[700] : colors.success[200] }]}
+                onPress={() => handleTaskSelection('analysis')}
+              >
+                <Feather name="search" size={20} color={isDark ? colors.success[400] : colors.success[600]} />
+                <Text style={[styles.taskButtonText, { color: isDark ? colors.success[400] : colors.success[600] }]}>
+                  Analyse
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.taskButton, { backgroundColor: isDark ? colors.warning[900] : colors.warning[50], borderColor: isDark ? colors.warning[700] : colors.warning[200] }]}
+                onPress={() => handleTaskSelection('both')}
+              >
+                <Feather name="layers" size={20} color={isDark ? colors.warning[400] : colors.warning[600]} />
+                <Text style={[styles.taskButtonText, { color: isDark ? colors.warning[400] : colors.warning[600] }]}>
+                  Les deux
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.taskButtonCancel, { backgroundColor: themeColors.borderDefault }]}
+                onPress={() => {
+                  setShowTaskSelectionDialog(false);
+                  setSelectedModelForTask(null);
+                }}
+              >
+                <Text style={[styles.taskButtonCancelText, { color: themeColors.textSecondary }]}>
+                  Annuler
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -927,5 +1062,60 @@ const styles = StyleSheet.create({
   },
   authButtonDisabled: {
     opacity: 0.6,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalMessage: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 24,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+  modalButtons: {
+    gap: 12,
+  },
+  taskButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    gap: 12,
+  },
+  taskButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  taskButtonCancel: {
+    padding: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  taskButtonCancelText: {
+    fontSize: 15,
+    fontWeight: '500',
   },
 });

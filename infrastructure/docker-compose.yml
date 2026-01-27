@@ -111,6 +111,10 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI}
+
+      # HuggingFace OAuth (for gated models like Gemma)
+      HF_CLIENT_ID: ${HF_CLIENT_ID}
+      HF_CLIENT_SECRET: ${HF_CLIENT_SECRET}
     depends_on:
       postgres:
         condition: service_healthy
