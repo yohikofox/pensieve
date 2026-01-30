@@ -39,6 +39,7 @@ import { TranscriptionEngineService } from '../services/TranscriptionEngineServi
 import { NativeTranscriptionEngine } from '../services/NativeTranscriptionEngine';
 import { WhisperModelService, type WhisperModelSize } from '../services/WhisperModelService';
 import { PostProcessingService } from '../services/PostProcessingService';
+import { DeviceCapabilitiesService } from '../services/DeviceCapabilitiesService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { ICaptureMetadataRepository } from '../../capture/domain/ICaptureMetadataRepository';
@@ -68,6 +69,11 @@ export class TranscriptionWorker {
   private eventSubscription: Subscription | null = null;
   private currentWhisperModel: WhisperModelSize | null = null;
 
+  // Task 6.3: Auto-retry with exponential backoff
+  private retryTimers: Map<string, NodeJS.Timeout> = new Map(); // captureId → timer
+  private readonly MAX_AUTO_RETRIES = 3; // Stop after 3 failed attempts
+  private readonly RETRY_DELAYS = [5000, 30000, 300000]; // 5s, 30s, 5min
+
   constructor(
     private queueService: TranscriptionQueueService,
     private transcriptionService: TranscriptionService,
@@ -76,12 +82,96 @@ export class TranscriptionWorker {
     @inject('EventBus') private eventBus: EventBus,
     postProcessingService: PostProcessingService,
     engineService: TranscriptionEngineService,
-    nativeEngine: NativeTranscriptionEngine
+    nativeEngine: NativeTranscriptionEngine,
+    private deviceCapabilities: DeviceCapabilitiesService // Task 7.3
   ) {
     this.whisperModelService = new WhisperModelService();
     this.postProcessingService = postProcessingService;
     this.engineService = engineService;
     this.nativeEngine = nativeEngine;
+  }
+
+  /**
+   * Task 6.3: Calculate retry delay based on retry count
+   * Exponential backoff: 5s, 30s, 5min
+   *
+   * @param retryCount - Number of retries so far (1, 2, 3)
+   * @returns Delay in milliseconds, or null if no more retries allowed
+   */
+  private getRetryDelay(retryCount: number): number | null {
+    if (retryCount <= 0 || retryCount > this.MAX_AUTO_RETRIES) {
+      return null; // No retry
+    }
+    // Map retryCount to delay index (retryCount 1 → index 0)
+    return this.RETRY_DELAYS[retryCount - 1] || null;
+  }
+
+  /**
+   * Task 6.3: Check if auto-retry is allowed for this retry count
+   *
+   * @param retryCount - Number of retries so far
+   * @returns true if auto-retry allowed, false if max retries reached
+   */
+  private shouldAutoRetry(retryCount: number): boolean {
+    return retryCount <= this.MAX_AUTO_RETRIES;
+  }
+
+  /**
+   * Task 6.3: Schedule automatic retry for a failed transcription
+   *
+   * @param queueId - Queue ID of the item to retry
+   * @param captureId - Capture ID (for logging)
+   * @param retryCount - Current retry count (after failure)
+   */
+  private scheduleRetry(queueId: string, captureId: string, retryCount: number): void {
+    // Cancel any existing retry timer for this capture
+    this.cancelRetry(captureId);
+
+    const delay = this.getRetryDelay(retryCount); // Delay for this retry attempt
+    if (!delay) {
+      console.log(`[TranscriptionWorker] ❌ Max retries (${this.MAX_AUTO_RETRIES}) reached for ${captureId}, no auto-retry`);
+      return;
+    }
+
+    console.log(`[TranscriptionWorker] ⏰ Scheduling retry #${retryCount} for ${captureId} in ${delay}ms`);
+
+    const timer = setTimeout(async () => {
+      this.retryTimers.delete(captureId);
+      console.log(`[TranscriptionWorker] 🔄 Auto-retry #${retryCount} triggered for ${captureId}`);
+
+      // Reset item to 'pending' status in queue (without incrementing retry_count again)
+      await this.queueService.retryFailed(queueId);
+
+      // Trigger queue processing to pick up the retried item
+      this.triggerProcessing();
+    }, delay);
+
+    this.retryTimers.set(captureId, timer);
+  }
+
+  /**
+   * Task 6.3: Cancel scheduled retry for a capture
+   *
+   * @param captureId - Capture ID
+   */
+  private cancelRetry(captureId: string): void {
+    const timer = this.retryTimers.get(captureId);
+    if (timer) {
+      clearTimeout(timer);
+      this.retryTimers.delete(captureId);
+      console.log(`[TranscriptionWorker] 🚫 Cancelled scheduled retry for ${captureId}`);
+    }
+  }
+
+  /**
+   * Task 6.3: Cancel all scheduled retries (worker stop/pause)
+   */
+  private cancelAllRetries(): void {
+    this.retryTimers.forEach((timer, captureId) => {
+      clearTimeout(timer);
+      console.log(`[TranscriptionWorker] 🚫 Cancelled retry for ${captureId}`);
+    });
+    this.retryTimers.clear();
   }
 
   /**
@@ -173,6 +263,23 @@ export class TranscriptionWorker {
       console.log(`[TranscriptionWorker] 🔄 Reset ${resetCount} stuck items on startup`);
     }
 
+    // Task 7.3: Check device capabilities and warn if low-end
+    try {
+      const capabilities = await this.deviceCapabilities.detectCapabilities();
+      console.log(`[TranscriptionWorker] 📱 Device tier: ${capabilities.tier}`, {
+        recommended: capabilities.recommendedWhisperModel,
+        hasAcceleration: capabilities.hasAcceleration,
+        device: capabilities.deviceInfo,
+      });
+
+      if (capabilities.shouldWarnPerformance && capabilities.performanceWarning) {
+        console.warn(`[TranscriptionWorker] ⚠️ ${capabilities.performanceWarning}`);
+        // TODO: Show UI alert/toast to user (requires UI integration)
+      }
+    } catch (error) {
+      console.warn('[TranscriptionWorker] Failed to detect device capabilities:', error);
+    }
+
     this.state = 'running';
 
     // Subscribe to queue events (event-driven processing)
@@ -203,6 +310,9 @@ export class TranscriptionWorker {
 
     this.state = 'stopped';
 
+    // Task 6.3: Cancel all pending retries
+    this.cancelAllRetries();
+
     // Unsubscribe from events
     if (this.eventSubscription) {
       this.eventSubscription.unsubscribe();
@@ -225,6 +335,9 @@ export class TranscriptionWorker {
     }
 
     this.state = 'paused';
+
+    // Task 6.3: Cancel all pending retries
+    this.cancelAllRetries();
 
     // Update pause flag in DB (checked by background task)
     await this.queueService.pause();
@@ -511,23 +624,41 @@ export class TranscriptionWorker {
         // Send notification (if app backgrounded)
         await showTranscriptionCompleteNotification(queuedCapture.captureId, finalText);
       } catch (transcriptionError) {
+        // Task 6.3: Exponential backoff retry logic
+        const currentRetryCount = queuedCapture.retryCount;
+        const errorMessage = transcriptionError instanceof Error
+          ? transcriptionError.message
+          : String(transcriptionError);
+
+        console.error(
+          `[TranscriptionWorker] ❌ Transcription failed for ${queuedCapture.captureId} (attempt ${currentRetryCount + 1}):`,
+          transcriptionError
+        );
+
         // Update capture state to 'failed'
         await this.captureRepository.update(queuedCapture.captureId, {
           state: 'failed',
         });
 
-        // Mark as failed in queue
-        const errorMessage = transcriptionError instanceof Error
-          ? transcriptionError.message
-          : String(transcriptionError);
-        console.error(
-          `[TranscriptionWorker] ❌ Transcription failed for ${queuedCapture.captureId}:`,
-          transcriptionError
-        );
+        // Mark as failed in queue (increments retry_count)
         await this.queueService.markFailed(queuedCapture.captureId, errorMessage);
 
-        // Send failure notification (if app backgrounded)
-        await showTranscriptionFailedNotification(queuedCapture.captureId, errorMessage);
+        const newRetryCount = currentRetryCount + 1; // After markFailed() increments
+
+        // Check if auto-retry is allowed
+        if (this.shouldAutoRetry(newRetryCount)) {
+          // Schedule automatic retry with exponential backoff
+          console.log(
+            `[TranscriptionWorker] 🔄 Will auto-retry ${queuedCapture.captureId} (${newRetryCount}/${this.MAX_AUTO_RETRIES})`
+          );
+          this.scheduleRetry(queuedCapture.id, queuedCapture.captureId, newRetryCount);
+        } else {
+          // Max retries reached, send failure notification
+          console.log(
+            `[TranscriptionWorker] ❌ Max retries reached for ${queuedCapture.captureId}, giving up`
+          );
+          await showTranscriptionFailedNotification(queuedCapture.captureId, errorMessage);
+        }
       }
 
       // Item was processed (success or failure)
