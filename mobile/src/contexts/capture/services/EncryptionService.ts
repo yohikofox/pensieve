@@ -19,7 +19,6 @@
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import { Platform } from 'react-native';
-import * as FileSystem from 'expo-file-system/legacy';
 import type { IEncryptionService, EncryptionStatus } from '../domain/IEncryptionService';
 
 @injectable()

@@ -9,13 +9,18 @@
  * - Attempt recovery of partial audio files
  * - Notify user of recovered captures
  *
+ * Tech Stack:
+ * - Node.js: 22.x
+ * - Expo SDK: 54
+ * - expo-file-system: 19.x (Modern API - File, Directory, Paths)
+ *
  * NFR8: Récupération après crash automatique
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Directory, Paths } from 'expo-file-system';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import {
@@ -126,7 +131,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
   /**
    * Check if audio file exists on disk
    *
-   * Uses expo-file-system to verify file existence
+   * Uses modern expo-file-system File API
    */
   private async checkFileExists(filePath: string): Promise<boolean> {
     // Empty path = no file
@@ -135,7 +140,8 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     }
 
     try {
-      const fileInfo = await FileSystem.getInfoAsync(filePath);
+      const file = new File(filePath);
+      const fileInfo = file.info();
       return fileInfo.exists;
     } catch (error) {
       console.error('[CrashRecovery] Error checking file existence:', error);
@@ -184,11 +190,12 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     const orphans: OrphanedFile[] = [];
 
     try {
-      // Get audio directory path
-      const audioDir = `${FileSystem.documentDirectory}audio/`;
+      // Get audio directory path (using modern API)
+      const audioDir = `${Paths.document}/audio/`;
+      const audioDirObj = new Directory(audioDir);
 
       // Read all files in audio directory
-      const files = await FileSystem.readDirectoryAsync(audioDir);
+      const files = await audioDirObj.list();
 
       if (files.length === 0) {
         return orphans;
@@ -211,7 +218,8 @@ export class CrashRecoveryService implements ICrashRecoveryService {
 
         // File not in DB - it's orphaned
         try {
-          const fileInfo = await FileSystem.getInfoAsync(filePath);
+          const file = new File(filePath);
+          const fileInfo = file.info();
 
           if (fileInfo.exists) {
             orphans.push({
@@ -257,14 +265,20 @@ export class CrashRecoveryService implements ICrashRecoveryService {
 
     for (const orphan of orphans) {
       try {
-        await FileSystem.deleteAsync(orphan.filePath, { idempotent: true });
-        deletedCount++;
+        const file = new File(orphan.filePath);
+        const fileInfo = file.info();
 
-        console.log('[CrashRecovery] Deleted orphaned file:', {
-          path: orphan.filePath,
-          size: orphan.sizeBytes,
-          createdAt: orphan.createdAt.toISOString(),
-        });
+        // Only delete if file exists (idempotent behavior)
+        if (fileInfo.exists) {
+          await file.delete();
+          deletedCount++;
+
+          console.log('[CrashRecovery] Deleted orphaned file:', {
+            path: orphan.filePath,
+            size: orphan.sizeBytes,
+            createdAt: orphan.createdAt.toISOString(),
+          });
+        }
       } catch (error) {
         console.error('[CrashRecovery] Failed to delete orphaned file:', orphan.filePath, error);
       }

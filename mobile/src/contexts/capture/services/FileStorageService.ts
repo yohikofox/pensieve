@@ -10,16 +10,20 @@
  * Story: 2.1 - Capture Audio 1-Tap
  * Task 3: Audio File Storage Management
  *
+ * Tech Stack:
+ * - Node.js: 22.x
+ * - Expo SDK: 54
+ * - expo-file-system: 19.x (Modern API - File, Directory, Paths)
+ *
  * NFR6: Zero data loss tolerance - files must be persisted reliably
  * NFR7: 100% offline availability - local storage only
  *
- * Note: Using legacy API from expo-file-system for compatibility
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Directory, Paths } from 'expo-file-system';
 import {
   type FileStorageResult,
   FileStorageResultType,
@@ -54,7 +58,7 @@ import {
  */
 @injectable()
 export class FileStorageService implements IFileStorageService {
-  private readonly AUDIO_DIR = `${FileSystem.documentDirectory}audio/`;
+  private readonly AUDIO_DIR = `${Paths.document}/audio/`;
 
   constructor() {
     this.ensureAudioDirectoryExists();
@@ -68,9 +72,11 @@ export class FileStorageService implements IFileStorageService {
    */
   private async ensureAudioDirectoryExists(): Promise<void> {
     try {
-      const dirInfo = await FileSystem.getInfoAsync(this.AUDIO_DIR);
+      const audioDir = new Directory(this.AUDIO_DIR);
+      const dirInfo = audioDir.info();
+
       if (!dirInfo.exists) {
-        await FileSystem.makeDirectoryAsync(this.AUDIO_DIR, { intermediates: true });
+        await audioDir.create({ intermediates: true });
         console.log('[FileStorage] Created audio directory:', this.AUDIO_DIR);
       }
     } catch (error) {
@@ -111,16 +117,17 @@ export class FileStorageService implements IFileStorageService {
     const permanentPath = this.generateFilePath(captureId);
 
     // Check if temp file exists
-    const tempFileInfo = await FileSystem.getInfoAsync(tempUri);
+    const tempFile = new File(tempUri);
+    const tempFileInfo = tempFile.info();
+
     if (!tempFileInfo.exists) {
       return fileNotFound(`Temporary file does not exist: ${tempUri}`);
     }
 
-    // Move file to permanent storage
-    await FileSystem.moveAsync({
-      from: tempUri,
-      to: permanentPath,
-    });
+    // Move file to permanent storage (copy + delete in modern API)
+    const permanentFile = new File(permanentPath);
+    await tempFile.copy(permanentFile);
+    await tempFile.delete();
 
     console.log(`[FileStorage] Moved file: ${tempUri} → ${permanentPath}`);
 
@@ -148,7 +155,9 @@ export class FileStorageService implements IFileStorageService {
     fileUri: string,
     durationMillis: number
   ): Promise<FileStorageResult<FileMetadata>> {
-    const fileInfo = await FileSystem.getInfoAsync(fileUri);
+    const file = new File(fileUri);
+    const fileInfo = file.info();
+
     if (!fileInfo.exists) {
       return fileNotFound(`File does not exist: ${fileUri}`);
     }
@@ -170,9 +179,11 @@ export class FileStorageService implements IFileStorageService {
    * @returns Result indicating success or failure
    */
   async deleteFile(permanentPath: string): Promise<FileStorageResult<void>> {
-    const fileInfo = await FileSystem.getInfoAsync(permanentPath);
+    const file = new File(permanentPath);
+    const fileInfo = file.info();
+
     if (fileInfo.exists) {
-      await FileSystem.deleteAsync(permanentPath);
+      await file.delete();
       console.log(`[FileStorage] Deleted file: ${permanentPath}`);
     }
 
@@ -187,7 +198,8 @@ export class FileStorageService implements IFileStorageService {
    */
   async fileExists(permanentPath: string): Promise<boolean> {
     try {
-      const fileInfo = await FileSystem.getInfoAsync(permanentPath);
+      const file = new File(permanentPath);
+      const fileInfo = file.info();
       return fileInfo.exists;
     } catch (error) {
       console.error('[FileStorage] Failed to check file existence:', error);

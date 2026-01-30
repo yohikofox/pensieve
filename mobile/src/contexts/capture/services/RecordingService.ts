@@ -21,9 +21,9 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import * as FileSystem from 'expo-file-system/legacy';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import { type IFileSystem } from '../domain/IFileSystem';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
 
 export interface RecordingResult {
@@ -51,7 +51,8 @@ export class RecordingService {
   private recordingStartTime: number | null = null;
 
   constructor(
-    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
+    @inject(TOKENS.IFileSystem) private fileSystem: IFileSystem
   ) {}
 
   /**
@@ -170,17 +171,20 @@ export class RecordingService {
       const capture = await this.repository.findById(captureId);
 
       // AC1: Delete partial audio file if it exists
-      if (capture && capture.rawContent) {
-        try {
-          const fileInfo = await FileSystem.getInfoAsync(capture.rawContent);
-          if (fileInfo.exists) {
-            await FileSystem.deleteAsync(capture.rawContent, { idempotent: true });
+      if (capture && capture.rawContent && this.fileSystem.fileExists && this.fileSystem.deleteFile) {
+        // Check if file exists using injected filesystem
+        const existsResult = await this.fileSystem.fileExists(capture.rawContent);
+
+        if (existsResult.type === RepositoryResultType.SUCCESS && existsResult.data) {
+          // File exists, delete it
+          const deleteResult = await this.fileSystem.deleteFile(capture.rawContent);
+
+          if (deleteResult.type !== RepositoryResultType.SUCCESS) {
+            // AC5: Log file deletion errors but don't fail the cancel operation
+            // Offline: File system operations work identically
+            console.warn('[RecordingService] File deletion warning (non-critical):', deleteResult.error);
+            // Continue with DB cleanup even if file deletion failed
           }
-        } catch (fileError) {
-          // AC5: Log file deletion errors but don't fail the cancel operation
-          // Offline: File system operations work identically
-          console.warn('[RecordingService] File deletion warning (non-critical):', fileError);
-          // Continue with DB cleanup even if file deletion failed
         }
       }
 

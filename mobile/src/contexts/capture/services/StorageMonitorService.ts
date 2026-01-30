@@ -15,7 +15,7 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import * as FileSystem from 'expo-file-system/legacy';
+import { StorageVolume } from 'expo-file-system';
 import { database } from '../../../database';
 import {
   type IStorageMonitorService,
@@ -37,7 +37,7 @@ export class StorageMonitorService implements IStorageMonitorService {
   async getStorageInfo(): Promise<StorageInfo> {
     try {
       // Get free disk space (returns bytes)
-      const freeBytes = await FileSystem.getFreeDiskStorageAsync();
+      const freeBytes = await StorageVolume.getAvailableSpaceAsync();
 
       // Note: expo-file-system doesn't provide total storage directly
       // We estimate total = free + used (calculated from captures)
@@ -78,7 +78,7 @@ export class StorageMonitorService implements IStorageMonitorService {
    */
   async isStorageCriticallyLow(): Promise<boolean> {
     try {
-      const freeBytes = await FileSystem.getFreeDiskStorageAsync();
+      const freeBytes = await StorageVolume.getAvailableSpaceAsync();
       return freeBytes < this.criticalThresholdBytes;
     } catch (error) {
       console.error('[StorageMonitor] Failed to check storage:', error);
@@ -135,7 +135,7 @@ export class StorageMonitorService implements IStorageMonitorService {
    */
   async hasSufficientStorage(estimatedDurationMinutes: number): Promise<boolean> {
     try {
-      const freeBytes = await FileSystem.getFreeDiskStorageAsync();
+      const freeBytes = await StorageVolume.getAvailableSpaceAsync();
 
       // Estimate: 5MB per minute for m4a audio
       const estimatedBytes = estimatedDurationMinutes * 5 * 1024 * 1024;

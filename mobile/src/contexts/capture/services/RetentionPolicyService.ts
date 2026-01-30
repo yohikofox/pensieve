@@ -13,10 +13,11 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
-import * as FileSystem from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import { type IFileSystem } from '../domain/IFileSystem';
+import { RepositoryResultType } from '../domain/Result';
 import {
   type IRetentionPolicyService,
   type RetentionConfig,
@@ -53,7 +54,8 @@ export class RetentionPolicyService implements IRetentionPolicyService {
   private config: RetentionConfig = DEFAULT_CONFIG;
 
   constructor(
-    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
+    @inject(TOKENS.IFileSystem) private fileSystem: IFileSystem
   ) {
     // Load config from AsyncStorage on initialization
     this.loadConfig();
@@ -167,8 +169,15 @@ export class RetentionPolicyService implements IRetentionPolicyService {
 
     for (const candidate of candidates) {
       try {
-        // Delete audio file from filesystem
-        await FileSystem.deleteAsync(candidate.filePath, { idempotent: true });
+        // Delete audio file from filesystem (using injected IFileSystem)
+        if (this.fileSystem.deleteFile) {
+          const deleteResult = await this.fileSystem.deleteFile(candidate.filePath);
+
+          if (deleteResult.type !== RepositoryResultType.SUCCESS) {
+            console.warn('[RetentionPolicy] File deletion warning (non-critical):', deleteResult.error);
+            // Continue with DB update even if file deletion failed
+          }
+        }
 
         // Update Capture record to mark audio as deleted
         const updateResult = await this.repository.update(candidate.captureId, {
