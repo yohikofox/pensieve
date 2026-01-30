@@ -21,11 +21,11 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Afficher transcription complète avec métadonnées', ({ given, when, then, and }) => {
-    given(/qu'une capture audio "([^"]+)" a été transcrite/, async (capId) => {
+    given(/^une capture audio "([^"]+)" a été transcrite$/, async (capId) => {
       const capture = await testContext.db.create({
         id: capId,
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -36,16 +36,16 @@ defineFeature(feature, (test) => {
       await testContext.fileSystem.writeFile('/audio/capture-123.m4a', 'fake-audio-data');
     });
 
-    given(/que la transcription est "([^"]+)"/, async (text) => {
+    and(/^la transcription est "([^"]+)"$/, async (text) => {
       transcriptionText = text;
       await testContext.db.update(captureId, { normalizedText: text });
     });
 
-    given(/que le timestamp de transcription est "([^"]+)"/, async (timestamp) => {
+    and(/^le timestamp de transcription est "([^"]+)"$/, async (timestamp) => {
       await testContext.db.update(captureId, { transcribedAt: new Date(timestamp) });
     });
 
-    given(/que la durée audio est (\d+) secondes/, async (duration) => {
+    and(/^la durée audio est (\d+) secondes$/, async (duration) => {
       await testContext.audioPlayer.loadAudio('/audio/capture-123.m4a', parseInt(duration, 10) * 1000);
     });
 
@@ -76,10 +76,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Afficher timestamp de transcription', ({ given, when, then, and }) => {
-    given(/qu'une capture audio a été transcrite le "([^"]+)"/, async (timestamp) => {
+    given(/^une capture audio a été transcrite le "([^"]+)"$/, async (timestamp) => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: 'Sample transcription',
@@ -106,10 +106,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Afficher durée audio', ({ given, when, then, and }) => {
-    given(/qu'une capture audio de (\d+) secondes a été transcrite/, async (duration) => {
+    given(/^une capture audio de (\d+) secondes a été transcrite$/, async (duration) => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-90s.m4a',
         filePath: '/audio/capture-90s.m4a',
         state: 'TRANSCRIBED',
@@ -143,10 +143,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Rendre fichier audio disponible', ({ given, when, then, and }) => {
-    given("qu'une capture audio transcrite existe", async () => {
+    given("une capture audio transcrite existe", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -156,7 +156,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given(/que le fichier audio est "([^"]+)"/, async (filePath) => {
+    and(/^le fichier audio est "([^"]+)"$/, async (filePath) => {
       await testContext.fileSystem.writeFile(filePath, 'fake-audio-data');
     });
 
@@ -179,10 +179,10 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Lire audio avec contrôles de lecture', ({ given, when, then, and }) => {
-    given("qu'une capture audio transcrite est ouverte", async () => {
+    given("une capture audio transcrite est ouverte", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -193,7 +193,7 @@ defineFeature(feature, (test) => {
       await testContext.fileSystem.writeFile('/audio/capture-123.m4a', 'fake-audio-data');
     });
 
-    given('que le fichier audio est chargé', async () => {
+    and('le fichier audio est chargé', async () => {
       await testContext.audioPlayer.loadAudio('/audio/capture-123.m4a', 60000);
     });
 
@@ -220,10 +220,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Pause audio en lecture', ({ given, when, then, and }) => {
-    given("que l'audio d'une capture est en cours de lecture", async () => {
+    given("l'audio d'une capture est en cours de lecture", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -253,10 +253,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Afficher barre de progression', ({ given, when, then, and }) => {
-    given("qu'une capture audio est en cours de lecture", async () => {
+    given("une capture audio est en cours de lecture", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -267,11 +267,11 @@ defineFeature(feature, (test) => {
       await testContext.audioPlayer.play();
     });
 
-    given(/que la durée totale est (\d+) secondes/, (duration) => {
+    and(/^la durée totale est (\d+) secondes$/, (duration) => {
       expect(testContext.audioPlayer.getDuration()).toBe(parseInt(duration, 10) * 1000);
     });
 
-    given(/que la position actuelle est (\d+) secondes/, (position) => {
+    and(/^la position actuelle est (\d+) secondes$/, (position) => {
       testContext.audioPlayer.setCurrentTime(parseInt(position, 10) * 1000);
     });
 
@@ -305,10 +305,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Écouter en lisant la transcription', ({ given, when, then, and }) => {
-    given("qu'une capture audio transcrite est ouverte", async () => {
+    given("une capture audio transcrite est ouverte", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -319,7 +319,7 @@ defineFeature(feature, (test) => {
       await testContext.audioPlayer.loadAudio('/audio/capture-123.m4a', 60000);
     });
 
-    given("que l'audio est en cours de lecture", async () => {
+    and("l'audio est en cours de lecture", async () => {
       await testContext.audioPlayer.play();
     });
 
@@ -345,10 +345,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Reprendre lecture après navigation', ({ given, when, then, and }) => {
-    given(/qu'une capture audio est en pause à (\d+) secondes/, async (position) => {
+    given(/^une capture audio est en pause à (\d+) secondes$/, async (position) => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -390,10 +390,10 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Afficher indicateur transcription en cours', ({ given, when, then, and }) => {
-    given("qu'une capture audio est en cours de transcription", async () => {
+    given("une capture audio est en cours de transcription", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBING',
@@ -402,7 +402,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given(/que le statut est "([^"]+)"/, async (status) => {
+    and(/^le statut est "([^"]+)"$/, async (status) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.state).toBe(status);
     });
@@ -424,15 +424,15 @@ defineFeature(feature, (test) => {
 
     and("aucun texte de transcription n'est affiché", async () => {
       const capture = await testContext.db.findById(captureId);
-      expect(capture?.normalizedText).toBeUndefined();
+      expect(capture?.normalizedText).toBeNull();
     });
   });
 
   test('Audio disponible pendant transcription', ({ given, when, then, and }) => {
-    given("qu'une capture audio est en cours de transcription", async () => {
+    given("une capture audio est en cours de transcription", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBING',
@@ -462,10 +462,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Live update quand transcription prête', ({ given, when, then, and }) => {
-    given("qu'une capture audio est en cours de transcription", async () => {
+    given("une capture audio est en cours de transcription", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBING',
         capturedAt: new Date(),
@@ -473,7 +473,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given("que l'utilisateur a ouvert la vue détail", async () => {
+    and("l'utilisateur a ouvert la vue détail", async () => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.state).toBe('TRANSCRIBING');
     });
@@ -485,7 +485,7 @@ defineFeature(feature, (test) => {
       });
     });
 
-    and(/que le statut passe à "([^"]+)"/, async (status) => {
+    and(/^le statut passe à "([^"]+)"$/, async (status) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.state).toBe(status);
     });
@@ -507,10 +507,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Polling state change', ({ given, when, then, and }) => {
-    given("qu'une capture est en cours de transcription", async () => {
+    given("une capture est en cours de transcription", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBING',
         capturedAt: new Date(),
@@ -518,7 +518,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given('que la vue détail observe les changements de statut', () => {
+    and('la vue détail observe les changements de statut', () => {
       // Polling or observe mechanism set up
       expect(true).toBe(true);
     });
@@ -543,11 +543,11 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Afficher erreur transcription échouée', ({ given, when, then, and }) => {
-    given(/qu'une transcription a échoué pour la capture "([^"]+)"/, async (capId) => {
+    given(/^une transcription a échoué pour la capture "([^"]+)"$/, async (capId) => {
       const capture = await testContext.db.create({
         id: capId,
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-456.m4a',
         filePath: '/audio/capture-456.m4a',
         state: 'TRANSCRIPTION_FAILED',
@@ -557,7 +557,7 @@ defineFeature(feature, (test) => {
       await testContext.fileSystem.writeFile('/audio/capture-456.m4a', 'fake-audio-data');
     });
 
-    given(/que le statut est "([^"]+)"/, async (status) => {
+    and(/^le statut est "([^"]+)"$/, async (status) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.state).toBe(status);
     });
@@ -573,7 +573,7 @@ defineFeature(feature, (test) => {
 
     and("aucun texte de transcription n'est visible", async () => {
       const capture = await testContext.db.findById(captureId);
-      expect(capture?.normalizedText).toBeUndefined();
+      expect(capture?.normalizedText).toBeNull();
     });
 
     and('le fichier audio reste disponible', () => {
@@ -582,10 +582,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Bouton retry disponible', ({ given, when, then, and }) => {
-    given("qu'une transcription a échoué", async () => {
+    given("une transcription a échoué", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-456.m4a',
         state: 'TRANSCRIPTION_FAILED',
         capturedAt: new Date(),
@@ -609,11 +609,11 @@ defineFeature(feature, (test) => {
   });
 
   test('Retry redémarre transcription', ({ given, when, then, and }) => {
-    given(/qu'une transcription a échoué pour "([^"]+)"/, async (capId) => {
+    given(/^une transcription a échoué pour "([^"]+)"$/, async (capId) => {
       const capture = await testContext.db.create({
         id: capId,
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-456.m4a',
         filePath: '/audio/capture-456.m4a',
         state: 'TRANSCRIPTION_FAILED',
@@ -622,12 +622,12 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given("que l'utilisateur ouvre la vue détail", async () => {
+    and("l'utilisateur ouvre la vue détail", async () => {
       const capture = await testContext.db.findById(captureId);
       expect(capture).toBeDefined();
     });
 
-    when(/l'utilisateur tape sur le bouton "([^"]+)"/, async (buttonText) => {
+    when(/^l'utilisateur tape sur le bouton "([^"]+)"$/, async (buttonText) => {
       expect(buttonText).toBe('Retry');
       // Retry action
       testContext.transcriptionQueue.addJob(captureId, '/audio/capture-456.m4a', 60000);
@@ -650,10 +650,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Audio lisible après échec', ({ given, when, then, and }) => {
-    given("qu'une transcription a échoué", async () => {
+    given("une transcription a échoué", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-456.m4a',
         filePath: '/audio/capture-456.m4a',
         state: 'TRANSCRIPTION_FAILED',
@@ -663,7 +663,7 @@ defineFeature(feature, (test) => {
       await testContext.fileSystem.writeFile('/audio/capture-456.m4a', 'fake-audio-data');
     });
 
-    given(/que le fichier audio est "([^"]+)"/, (filePath) => {
+    and(/^le fichier audio est "([^"]+)"$/, (filePath) => {
       expect(testContext.fileSystem.fileExists(filePath)).toBe(true);
     });
 
@@ -691,15 +691,15 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Consulter transcription offline', ({ given, when, then, and }) => {
-    given("que l'appareil est hors ligne", () => {
+    given("l'appareil est hors ligne", () => {
       testContext.setOffline(true);
       expect(testContext.isOffline()).toBe(true);
     });
 
-    given("qu'une capture audio transcrite existe en cache local", async () => {
+    given("une capture audio transcrite existe en cache local", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -737,14 +737,14 @@ defineFeature(feature, (test) => {
   });
 
   test('Aucune erreur réseau offline', ({ given, when, then, and }) => {
-    given("que l'appareil est hors ligne", () => {
+    given("l'appareil est hors ligne", () => {
       testContext.setOffline(true);
     });
 
-    given("qu'une capture transcrite est ouverte", async () => {
+    given("une capture transcrite est ouverte", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: 'Transcription',
@@ -775,14 +775,14 @@ defineFeature(feature, (test) => {
   });
 
   test('Audio playback offline', ({ given, when, then, and }) => {
-    given("que l'appareil est hors ligne", () => {
+    given("l'appareil est hors ligne", () => {
       testContext.setOffline(true);
     });
 
-    given("qu'une capture audio transcrite est ouverte", async () => {
+    given("une capture audio transcrite est ouverte", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         filePath: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
@@ -818,10 +818,10 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Afficher capture texte (non-audio)', ({ given, when, then, and }) => {
-    given(/qu'une capture de type "([^"]+)" existe/, async (captureType) => {
+    given(/^une capture de type "([^"]+)" existe$/, async (captureType) => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: captureType as any,
+        type: captureType as any,
         rawContent: 'Ma pensée rapide',
         state: 'CAPTURED',
         capturedAt: new Date(),
@@ -829,7 +829,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given(/que le contenu texte est "([^"]+)"/, async (textContent) => {
+    and(/^le contenu texte est "([^"]+)"$/, async (textContent) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.rawContent).toBe(textContent);
     });
@@ -846,21 +846,21 @@ defineFeature(feature, (test) => {
 
     and("aucune section transcription n'est visible", async () => {
       const capture = await testContext.db.findById(captureId);
-      expect(capture?.normalizedText).toBeUndefined();
+      expect(capture?.normalizedText).toBeNull();
     });
 
     and("aucun bouton audio play n'est affiché", async () => {
       const capture = await testContext.db.findById(captureId);
-      expect(capture?.captureType).toBe('TEXT');
+      expect(capture?.type).toBe('TEXT');
       expect(capture?.filePath).toBeUndefined();
     });
   });
 
   test('Différencier type capture dans UI', ({ given, when, then, and }) => {
-    given(/qu'une capture de type "([^"]+)" est ouverte/, async (captureType) => {
+    given(/^une capture de type "([^"]+)" est ouverte$/, async (captureType) => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: captureType as any,
+        type: captureType as any,
         rawContent: 'Ma pensée',
         state: 'CAPTURED',
         capturedAt: new Date(),
@@ -879,7 +879,7 @@ defineFeature(feature, (test) => {
 
     and('le type de capture est clairement indiqué', async () => {
       const capture = await testContext.db.findById(captureId);
-      expect(capture?.captureType).toBe('TEXT');
+      expect(capture?.type).toBe('TEXT');
     });
   });
 
@@ -888,10 +888,10 @@ defineFeature(feature, (test) => {
   // ============================================================================
 
   test('Préserver sauts de ligne', ({ given, when, then, and }) => {
-    given("qu'une transcription contient des sauts de ligne", async () => {
+    given("une transcription contient des sauts de ligne", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: 'Première ligne\nDeuxième ligne\nTroisième ligne',
@@ -900,7 +900,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given(/que le texte est "([^"]+)"/, async (text) => {
+    and(/^le texte est "([^"]+)"$/, async (text) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.normalizedText).toContain('\n');
     });
@@ -910,7 +910,7 @@ defineFeature(feature, (test) => {
       expect(capture).toBeDefined();
     });
 
-    then(/le texte est affiché sur (\d+) lignes distinctes/, async (lineCount) => {
+    then(/^le texte est affiché sur (\d+) lignes distinctes$/, async (lineCount) => {
       const capture = await testContext.db.findById(captureId);
       const lines = capture!.normalizedText!.split('\n');
       expect(lines.length).toBe(parseInt(lineCount, 10));
@@ -923,10 +923,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Afficher caractères spéciaux', ({ given, when, then, and }) => {
-    given("qu'une transcription contient des accents et ponctuation", async () => {
+    given("une transcription contient des accents et ponctuation", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: 'Café, élève, à côté! Vraiment?',
@@ -935,7 +935,7 @@ defineFeature(feature, (test) => {
       captureId = capture.id;
     });
 
-    given(/que le texte est "([^"]+)"/, async (text) => {
+    and(/^le texte est "([^"]+)"$/, async (text) => {
       const capture = await testContext.db.findById(captureId);
       expect(capture?.normalizedText).toBe(text);
     });
@@ -965,11 +965,11 @@ defineFeature(feature, (test) => {
   });
 
   test('Gérer texte long avec scroll', ({ given, when, then, and }) => {
-    given(/qu'une transcription contient (\d+) mots/, async (wordCount) => {
+    given(/^une transcription contient (\d+) mots$/, async (wordCount) => {
       const longText = Array(parseInt(wordCount, 10)).fill('mot').join(' ');
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: longText,
@@ -1000,10 +1000,10 @@ defineFeature(feature, (test) => {
   });
 
   test('Optimiser lisibilité', ({ given, when, then, and }) => {
-    given("qu'une transcription est affichée", async () => {
+    given("une transcription est affichée", async () => {
       const capture = await testContext.db.create({
         userId: 'user-123',
-        captureType: 'AUDIO',
+        type: 'AUDIO',
         rawContent: '/audio/capture-123.m4a',
         state: 'TRANSCRIBED',
         normalizedText: 'Sample transcription text',

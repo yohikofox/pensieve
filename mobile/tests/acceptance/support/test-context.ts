@@ -21,6 +21,7 @@ export interface Capture {
   rawContent: string;
   normalizedText: string | null;
   capturedAt: Date;
+  transcribedAt?: Date;
   duration?: number;
   fileSize?: number;
   filePath?: string;
@@ -150,8 +151,8 @@ export class MockFileSystem {
     return success(file.content);
   }
 
-  async fileExists(path: string): Promise<RepositoryResult<boolean>> {
-    return success(this._files.has(path));
+  fileExists(path: string): boolean {
+    return this._files.has(path);
   }
 
   async deleteFile(path: string): Promise<RepositoryResult<void>> {
@@ -202,6 +203,7 @@ export class InMemoryDatabase {
       rawContent: data.rawContent || '',
       normalizedText: data.normalizedText || null,
       capturedAt: data.capturedAt || new Date(),
+      transcribedAt: data.transcribedAt,
       duration: data.duration,
       fileSize: data.fileSize,
       filePath: data.filePath,
@@ -1439,6 +1441,122 @@ export class MockTranscriptionQueue {
 }
 
 // ============================================================================
+// Mock Audio Player (Story 2.6)
+// ============================================================================
+
+export class MockAudioPlayer {
+  private _audioFilePath: string | null = null;
+  private _audioDuration: number = 0;
+  private _isPlaying: boolean = false;
+  private _isPaused: boolean = false;
+  private _currentPosition: number = 0;
+  private _playbackSpeed: number = 1.0;
+
+  async loadAudio(filePath: string, durationMs: number): Promise<void> {
+    this._audioFilePath = filePath;
+    this._audioDuration = durationMs;
+    this._currentPosition = 0;
+    this._isPlaying = false;
+    this._isPaused = false;
+  }
+
+  async play(): Promise<void> {
+    if (!this._audioFilePath) {
+      throw new Error('No audio file loaded');
+    }
+    this._isPlaying = true;
+    this._isPaused = false;
+  }
+
+  async pause(): Promise<void> {
+    if (!this._isPlaying) {
+      throw new Error('Audio not playing');
+    }
+    this._isPlaying = false;
+    this._isPaused = true;
+  }
+
+  async stop(): Promise<void> {
+    this._isPlaying = false;
+    this._isPaused = false;
+    this._currentPosition = 0;
+  }
+
+  async seekTo(positionMs: number): Promise<void> {
+    if (positionMs < 0 || positionMs > this._audioDuration) {
+      throw new Error('Invalid seek position');
+    }
+    this._currentPosition = positionMs;
+  }
+
+  setPlaybackSpeed(speed: number): void {
+    if (speed <= 0 || speed > 2.0) {
+      throw new Error('Invalid playback speed');
+    }
+    this._playbackSpeed = speed;
+  }
+
+  getAudioFilePath(): string | null {
+    return this._audioFilePath;
+  }
+
+  getAudioDuration(): number {
+    return this._audioDuration;
+  }
+
+  isPlaying(): boolean {
+    return this._isPlaying;
+  }
+
+  isPaused(): boolean {
+    return this._isPaused;
+  }
+
+  getCurrentPosition(): number {
+    return this._currentPosition;
+  }
+
+  getPlaybackSpeed(): number {
+    return this._playbackSpeed;
+  }
+
+  setCurrentTime(timeMs: number): void {
+    if (timeMs < 0 || timeMs > this._audioDuration) {
+      throw new Error('Invalid time position');
+    }
+    this._currentPosition = timeMs;
+  }
+
+  canPlay(): boolean {
+    return this._audioFilePath !== null;
+  }
+
+  getDuration(): number {
+    return this._audioDuration;
+  }
+
+  getCurrentTime(): number {
+    return this._currentPosition;
+  }
+
+  setPosition(positionMs: number): void {
+    if (positionMs < 0 || positionMs > this._audioDuration) {
+      throw new Error('Invalid position');
+    }
+    this._currentPosition = positionMs;
+  }
+
+  reset(): void {
+    this._audioFilePath = null;
+    this._audioDuration = 0;
+    this._isPlaying = false;
+    this._isPaused = false;
+    this._currentPosition = 0;
+    this._playbackSpeed = 1.0;
+  }
+}
+
+// ============================================================================
 // Test Context (aggregates all mocks)
 // ============================================================================
 
@@ -1462,6 +1580,9 @@ export class TestContext {
   public whisper: MockWhisperService;
   public transcriptionQueue: MockTranscriptionQueue;
 
+  // Story 2.6 - Audio Player mock
+  public audioPlayer: MockAudioPlayer;
+
   private _userId: string = 'test-user';
   private _isOffline: boolean = false;
 
@@ -1484,6 +1605,9 @@ export class TestContext {
     // Story 2.5 mocks
     this.whisper = new MockWhisperService();
     this.transcriptionQueue = new MockTranscriptionQueue();
+
+    // Story 2.6 mocks
+    this.audioPlayer = new MockAudioPlayer();
   }
 
   setUserId(userId: string): void {
@@ -1521,6 +1645,9 @@ export class TestContext {
     // Story 2.5 resets
     this.whisper.reset();
     this.transcriptionQueue.reset();
+
+    // Story 2.6 resets
+    this.audioPlayer.reset();
 
     this._userId = 'test-user';
     this._isOffline = false;

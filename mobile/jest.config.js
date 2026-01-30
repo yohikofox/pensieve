@@ -36,5 +36,8 @@ module.exports = {
       '<rootDir>/__mocks__/@preeternal/react-native-file-hash/index.js',
   },
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
-  testMatch: ['**/__tests__/**/*.(test|spec).(ts|tsx|js)'],
+  testMatch: [
+    '**/__tests__/**/*.(test|spec).(ts|tsx|js)',
+    '**/tests/acceptance/**/*.(test|spec).(ts|tsx|js)',
+  ],
 };
