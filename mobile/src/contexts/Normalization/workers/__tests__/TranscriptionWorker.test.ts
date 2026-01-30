@@ -6,6 +6,24 @@ import { TranscriptionService } from '../../services/TranscriptionService';
 import { database } from '../../../../database';
 import type { ICaptureRepository } from '../../../capture/domain/ICaptureRepository';
 import type { EventBus } from '../../../shared/events/EventBus';
+import { File, Paths } from 'expo-file-system';
+
+// Mock notification utilities
+jest.mock('../../../../shared/utils/notificationUtils', () => ({
+  showTranscriptionCompleteNotification: jest.fn().mockResolvedValue(undefined),
+  showTranscriptionFailedNotification: jest.fn().mockResolvedValue(undefined),
+}));
+
+// Mock WhisperModelService
+jest.mock('../../services/WhisperModelService', () => {
+  return {
+    WhisperModelService: jest.fn().mockImplementation(() => ({
+      getBestAvailableModel: jest.fn().mockResolvedValue('tiny'),
+      getModelPath: jest.fn().mockImplementation((model) => `/mock/path/to/${model}.bin`),
+      isModelDownloaded: jest.fn().mockResolvedValue(true),
+    })),
+  };
+});
 
 describe('TranscriptionWorker', () => {
   let worker: TranscriptionWorker;
@@ -35,6 +53,11 @@ describe('TranscriptionWorker', () => {
     const db = database.getDatabase();
     db.executeSync('DELETE FROM captures');
 
+    // Create mock Whisper model file for tests
+    const modelPath = `${Paths.document}/whisper-models/ggml-tiny.bin`;
+    const modelFile = new File(modelPath);
+    await modelFile.write(new Uint8Array(1024 * 1024)); // 1MB mock model
+
     // Create mock EventBus
     mockEventBus = {
       publish: jest.fn(),
@@ -61,9 +84,19 @@ describe('TranscriptionWorker', () => {
       hasConflict: jest.fn().mockResolvedValue(false),
     } as unknown as ICaptureRepository;
 
+    // Create mock CaptureMetadataRepository
+    const mockMetadataRepository = {
+      create: jest.fn().mockResolvedValue({ success: true }),
+      update: jest.fn().mockResolvedValue({ success: true }),
+      findByCaptureId: jest.fn().mockResolvedValue([]),
+      delete: jest.fn().mockResolvedValue({ success: true }),
+      setMany: jest.fn().mockResolvedValue({ success: true }),
+      set: jest.fn().mockResolvedValue({ success: true }),
+    } as any;
+
     // Create mock TranscriptionService
     transcriptionService = {
-      transcribe: jest.fn().mockResolvedValue('Mocked transcription result'),
+      transcribe: jest.fn().mockResolvedValue({ text: 'Mocked transcription result', wavPath: null, transcriptPrompt: null }),
       loadModel: jest.fn().mockResolvedValue(undefined),
       releaseModel: jest.fn().mockResolvedValue(undefined),
       isModelLoaded: jest.fn().mockReturnValue(true), // Model is always loaded in tests
@@ -76,9 +109,45 @@ describe('TranscriptionWorker', () => {
       }),
     } as unknown as TranscriptionService;
 
+    // Create mock PostProcessingService
+    const mockPostProcessingService = {
+      postProcess: jest.fn().mockImplementation((text) => Promise.resolve(text)),
+      process: jest.fn().mockImplementation((text) => Promise.resolve(text)),
+      isEnabled: jest.fn().mockResolvedValue(false), // LLM post-processing disabled by default
+      getCurrentModelId: jest.fn().mockReturnValue(null),
+    } as any;
+
+    // Create mock TranscriptionEngineService
+    const mockEngineService = {
+      getActiveEngine: jest.fn().mockReturnValue('whisper'),
+    } as any;
+
+    // Create mock NativeTranscriptionEngine
+    const mockNativeEngine = {
+      transcribe: jest.fn().mockResolvedValue({ text: 'Native transcription', wavPath: null }),
+      isAvailable: jest.fn().mockReturnValue(false),
+    } as any;
+
+    // Create mock DeviceCapabilitiesService
+    const mockDeviceCapabilities = {
+      getTier: jest.fn().mockReturnValue('mid-range'),
+      getRecommendedModel: jest.fn().mockReturnValue('tiny'),
+      shouldWarnLowEnd: jest.fn().mockReturnValue(false),
+    } as any;
+
     // Create fresh instances using container for proper DI
     queueService = container.resolve(TranscriptionQueueService);
-    worker = new TranscriptionWorker(queueService, transcriptionService, mockCaptureRepository);
+    worker = new TranscriptionWorker(
+      queueService,
+      transcriptionService,
+      mockCaptureRepository,
+      mockMetadataRepository,
+      mockEventBus,
+      mockPostProcessingService,
+      mockEngineService,
+      mockNativeEngine,
+      mockDeviceCapabilities
+    );
   });
 
   afterEach(async () => {
@@ -179,11 +248,15 @@ describe('TranscriptionWorker', () => {
 
   describe('processOneItem (background task)', () => {
     it('should process one item from queue', async () => {
-      // Arrange
-      createCapture('capture-1', '/audio1.m4a', 30000);
+      // Arrange - Create audio file
+      const audioPath = `${Paths.document}/audio1.m4a`;
+      const audioFile = new File(audioPath);
+      await audioFile.write(new Uint8Array(1024)); // 1KB mock audio
+
+      createCapture('capture-1', audioPath, 30000);
       await queueService.enqueue({
         captureId: 'capture-1',
-        audioPath: '/audio1.m4a',
+        audioPath: audioPath,
         audioDuration: 30000,
       });
 

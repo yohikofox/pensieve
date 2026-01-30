@@ -22,67 +22,6 @@ jest.mock('expo-haptics', () => ({
   },
 }));
 
-// Mock React Native
-jest.mock('react-native', () => {
-  const React = require('react');
-
-  const RN = {
-    View: (props: any) => React.createElement('View', props, props.children),
-    Text: (props: any) => React.createElement('Text', props, props.children),
-    TextInput: (props: any) =>
-      React.createElement('TextInput', {
-        ...props,
-        testID: props.testID,
-        onChangeText: props.onChangeText,
-        onSubmitEditing: props.onSubmitEditing,
-      }),
-    TouchableOpacity: (props: any) =>
-      React.createElement(
-        'TouchableOpacity',
-        {
-          ...props,
-          onPress: props.onPress,
-          testID: props.testID,
-          disabled: props.disabled,
-          accessibilityState: props.accessibilityState,
-        },
-        props.children
-      ),
-    StyleSheet: {
-      create: (styles: any) => styles,
-      flatten: (styles: any) => styles,
-    },
-    Keyboard: {
-      dismiss: jest.fn(),
-      addListener: jest.fn(() => ({ remove: jest.fn() })),
-    },
-    Platform: {
-      OS: 'ios',
-      select: jest.fn((obj) => obj.ios),
-    },
-    Alert: {
-      alert: jest.fn(),
-    },
-    Animated: {
-      View: (props: any) => React.createElement('Animated.View', props, props.children),
-      Value: jest.fn(function(initialValue: number) {
-        this.setValue = jest.fn();
-        return this;
-      }),
-      timing: jest.fn(() => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-      spring: jest.fn(() => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-      parallel: jest.fn((animations: any[]) => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-    },
-  };
-  return RN;
-});
-
 describe('TextCaptureInput Component', () => {
   const mockOnSave = jest.fn().mockResolvedValue(undefined);
   const mockOnCancel = jest.fn();
@@ -231,12 +170,12 @@ describe('TextCaptureInput Component', () => {
     });
 
     it('should clear text after successful save', async () => {
-      const { getByPlaceholderText, getByText } = render(
+      const { getByPlaceholderText, getByTestId } = render(
         <TextCaptureInput onSave={mockOnSave} onCancel={mockOnCancel} />
       );
 
       const textInput = getByPlaceholderText('Notez votre pensée...');
-      const saveButton = getByText('Sauvegarder');
+      const saveButton = getByTestId('save-button');
 
       fireEvent.changeText(textInput, 'Ma pensée');
       fireEvent.press(saveButton);

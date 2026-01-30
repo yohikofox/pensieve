@@ -12,7 +12,6 @@
 
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { Alert } from 'react-native';
 import { TextCaptureInput } from '../../components/capture/TextCaptureInput';
 
 // Mock expo-haptics
@@ -22,60 +21,6 @@ jest.mock('expo-haptics', () => ({
     Medium: 'medium',
   },
 }));
-
-// Mock React Native
-jest.mock('react-native', () => {
-  const React = require('react');
-  const RN = {
-    View: (props: any) => React.createElement('View', props, props.children),
-    Text: (props: any) => React.createElement('Text', props, props.children),
-    TextInput: (props: any) =>
-      React.createElement('TextInput', {
-        ...props,
-        testID: props.testID,
-        onChangeText: props.onChangeText,
-        onSubmitEditing: props.onSubmitEditing,
-      }),
-    TouchableOpacity: (props: any) =>
-      React.createElement(
-        'TouchableOpacity',
-        {
-          ...props,
-          onPress: props.onPress,
-          testID: props.testID,
-          disabled: props.disabled,
-        },
-        props.children
-      ),
-    StyleSheet: {
-      create: (styles: any) => styles,
-      flatten: (styles: any) => styles,
-    },
-    Keyboard: {
-      dismiss: jest.fn(),
-    },
-    Alert: {
-      alert: jest.fn(),
-    },
-    Animated: {
-      View: (props: any) => React.createElement('Animated.View', props, props.children),
-      Value: jest.fn(function(initialValue: number) {
-        this.setValue = jest.fn();
-        return this;
-      }),
-      timing: jest.fn(() => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-      spring: jest.fn(() => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-      parallel: jest.fn((animations: any[]) => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-    },
-  };
-  return RN;
-});
 
 describe('Text Capture Flow Integration Tests', () => {
   const mockOnSave = jest.fn().mockResolvedValue(undefined);
@@ -130,7 +75,7 @@ describe('Text Capture Flow Integration Tests', () => {
 
   describe('AC3: Cancel flow with confirmation', () => {
     it('should show confirmation dialog when canceling with unsaved text', () => {
-      const { getByPlaceholderText, getByTestId } = render(
+      const { getByPlaceholderText, getByTestId, getByText } = render(
         <TextCaptureInput onSave={mockOnSave} onCancel={mockOnCancel} />
       );
 
@@ -140,15 +85,11 @@ describe('Text Capture Flow Integration Tests', () => {
       const cancelButton = getByTestId('cancel-button');
       fireEvent.press(cancelButton);
 
-      // Alert should be shown
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Rejeter la capture?',
-        'Le texte non sauvegardé sera perdu.',
-        expect.arrayContaining([
-          expect.objectContaining({ text: 'Continuer l\'édition' }),
-          expect.objectContaining({ text: 'Rejeter' }),
-        ])
-      );
+      // AlertDialog should be shown with confirmation message
+      expect(getByText('Rejeter la capture?')).toBeTruthy();
+      expect(getByText('Le texte non sauvegardé sera perdu.')).toBeTruthy();
+      expect(getByText("Continuer l'édition")).toBeTruthy();
+      expect(getByText('Rejeter')).toBeTruthy();
 
       // onCancel should NOT be called yet (waiting for user choice)
       expect(mockOnCancel).not.toHaveBeenCalled();
@@ -162,26 +103,12 @@ describe('Text Capture Flow Integration Tests', () => {
       const cancelButton = getByTestId('cancel-button');
       fireEvent.press(cancelButton);
 
-      // No alert shown
-      expect(Alert.alert).not.toHaveBeenCalled();
-
-      // onCancel called immediately
+      // onCancel called immediately (no confirmation dialog shown)
       expect(mockOnCancel).toHaveBeenCalled();
     });
 
     it('should discard text when user confirms', () => {
-      // Mock Alert.alert to simulate user clicking "Rejeter"
-      (Alert.alert as jest.Mock).mockImplementation(
-        (title, message, buttons) => {
-          // Find and call the "Rejeter" button's onPress
-          const rejectButton = buttons?.find((b: any) => b.text === 'Rejeter');
-          if (rejectButton?.onPress) {
-            rejectButton.onPress();
-          }
-        }
-      );
-
-      const { getByPlaceholderText, getByTestId } = render(
+      const { getByPlaceholderText, getByTestId, getByText } = render(
         <TextCaptureInput onSave={mockOnSave} onCancel={mockOnCancel} />
       );
 
@@ -190,6 +117,13 @@ describe('Text Capture Flow Integration Tests', () => {
 
       const cancelButton = getByTestId('cancel-button');
       fireEvent.press(cancelButton);
+
+      // AlertDialog should appear
+      expect(getByText('Rejeter la capture?')).toBeTruthy();
+
+      // Click "Rejeter" button in AlertDialog
+      const rejectButton = getByText('Rejeter');
+      fireEvent.press(rejectButton);
 
       // onCancel should be called after user confirms
       expect(mockOnCancel).toHaveBeenCalled();

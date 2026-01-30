@@ -18,66 +18,6 @@ import { RecordingService } from '../../services/RecordingService';
 import { RepositoryResultType } from '../../domain/Result';
 import * as Haptics from 'expo-haptics';
 
-// Mock React Native - don't use string mocks, use actual mock components
-jest.mock('react-native', () => {
-  const React = require('react');
-
-  // Create a proper Animated.Value mock class
-  class AnimatedValueMock {
-    private _value: number;
-    constructor(initialValue: number) {
-      this._value = initialValue;
-    }
-    setValue(value: number) {
-      this._value = value;
-    }
-    getValue() {
-      return this._value;
-    }
-  }
-
-  const RN = {
-    View: (props: any) => React.createElement('View', props, props.children),
-    Text: (props: any) => React.createElement('Text', props, props.children),
-    TouchableOpacity: (props: any) =>
-      React.createElement(
-        'TouchableOpacity',
-        {
-          ...props,
-          onPress: props.onPress,
-          testID: props.testID,
-        },
-        props.children
-      ),
-    StyleSheet: {
-      create: (styles: any) => styles,
-      flatten: (styles: any) => styles,
-    },
-    Animated: {
-      Value: AnimatedValueMock,
-      View: (props: any) =>
-        React.createElement('Animated.View', props, props.children),
-      timing: jest.fn(() => ({
-        start: jest.fn((callback?: any) => callback && callback()),
-      })),
-      sequence: jest.fn(() => ({
-        start: jest.fn(),
-      })),
-      loop: jest.fn(() => ({
-        start: jest.fn(),
-      })),
-    },
-    Platform: {
-      OS: 'ios',
-      select: jest.fn((obj) => obj.ios),
-    },
-    Alert: {
-      alert: jest.fn(),
-    },
-  };
-  return RN;
-});
-
 // Mock expo-haptics
 jest.mock('expo-haptics', () => ({
   impactAsync: jest.fn().mockResolvedValue(undefined),
@@ -86,12 +26,6 @@ jest.mock('expo-haptics', () => ({
     Medium: 'medium',
     Heavy: 'heavy',
   },
-}));
-
-// Mock expo-file-system
-jest.mock('expo-file-system/legacy', () => ({
-  getInfoAsync: jest.fn(),
-  deleteAsync: jest.fn(),
 }));
 
 // Mock tsyringe container
@@ -260,14 +194,13 @@ describe('RecordButton', () => {
     });
 
     it('should call cancelRecording and show confirmation on cancel button press', async () => {
-      const { Alert } = require('react-native');
       mockRecordingService.startRecording.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { captureId: 'test-capture-1' },
       });
       mockRecordingService.cancelRecording.mockResolvedValue(undefined);
 
-      const { getByTestId } = render(<RecordButton />);
+      const { getByTestId, getByText } = render(<RecordButton />);
 
       // Start recording
       await act(async () => {
@@ -281,34 +214,21 @@ describe('RecordButton', () => {
         await flushPromises();
       });
 
-      // Should show confirmation dialog
-      expect(Alert.alert).toHaveBeenCalledWith(
-        'Discard this recording?',
-        'This recording will be permanently deleted.',
-        expect.arrayContaining([
-          expect.objectContaining({ text: 'Keep Recording' }),
-          expect.objectContaining({ text: 'Discard' }),
-        ])
-      );
+      // Should show AlertDialog with confirmation message
+      await waitFor(() => {
+        expect(getByText('Discard this recording?')).toBeTruthy();
+        expect(getByText('This recording will be permanently deleted.')).toBeTruthy();
+      });
     });
 
     it('should trigger haptic feedback on cancel with "Heavy" impact', async () => {
-      const { Alert } = require('react-native');
       mockRecordingService.startRecording.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: { captureId: 'test-capture-1' },
       });
       mockRecordingService.cancelRecording.mockResolvedValue(undefined);
 
-      // Mock Alert to simulate user clicking "Discard"
-      Alert.alert.mockImplementation((title, message, buttons) => {
-        const discardButton = buttons?.find((b: any) => b.text === 'Discard');
-        if (discardButton?.onPress) {
-          discardButton.onPress();
-        }
-      });
-
-      const { getByTestId } = render(<RecordButton />);
+      const { getByTestId, getByText } = render(<RecordButton />);
 
       // Start recording
       await act(async () => {
@@ -319,20 +239,31 @@ describe('RecordButton', () => {
       // Clear previous haptic calls
       (Haptics.impactAsync as jest.Mock).mockClear();
 
-      // Press cancel button and confirm
+      // Press cancel button
       await act(async () => {
         fireEvent.press(getByTestId('cancel-button'));
         await flushPromises();
       });
 
+      // Wait for dialog to appear and click Discard
+      await waitFor(() => {
+        expect(getByText('Discard this recording?')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('Discard'));
+        await flushPromises();
+      });
+
       // Should trigger Heavy haptic feedback for cancel
-      expect(Haptics.impactAsync).toHaveBeenCalledWith(
-        Haptics.ImpactFeedbackStyle.Heavy
-      );
+      await waitFor(() => {
+        expect(Haptics.impactAsync).toHaveBeenCalledWith(
+          Haptics.ImpactFeedbackStyle.Heavy
+        );
+      });
     });
 
     it('should call onRecordingCancel callback when discarded', async () => {
-      const { Alert } = require('react-native');
       const onRecordingCancel = jest.fn();
 
       mockRecordingService.startRecording.mockResolvedValue({
@@ -341,15 +272,7 @@ describe('RecordButton', () => {
       });
       mockRecordingService.cancelRecording.mockResolvedValue(undefined);
 
-      // Mock Alert to simulate user clicking "Discard"
-      Alert.alert.mockImplementation((title, message, buttons) => {
-        const discardButton = buttons?.find((b: any) => b.text === 'Discard');
-        if (discardButton?.onPress) {
-          discardButton.onPress();
-        }
-      });
-
-      const { getByTestId } = render(<RecordButton onRecordingCancel={onRecordingCancel} />);
+      const { getByTestId, getByText } = render(<RecordButton onRecordingCancel={onRecordingCancel} />);
 
       // Start recording
       await act(async () => {
@@ -357,9 +280,19 @@ describe('RecordButton', () => {
         await flushPromises();
       });
 
-      // Press cancel button and confirm
+      // Press cancel button
       await act(async () => {
         fireEvent.press(getByTestId('cancel-button'));
+        await flushPromises();
+      });
+
+      // Wait for dialog to appear and click Discard
+      await waitFor(() => {
+        expect(getByText('Discard this recording?')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(getByText('Discard'));
         await flushPromises();
       });
 

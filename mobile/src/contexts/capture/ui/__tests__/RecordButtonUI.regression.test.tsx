@@ -17,7 +17,7 @@ import { RecordButtonUI } from '../RecordButtonUI';
 
 describe('RecordButtonUI Regression Tests', () => {
   describe('Bug Fix: Timer Alignment', () => {
-    it('should have container with 100% width for proper timer centering', () => {
+    it('should have container with center alignment for proper timer centering', () => {
       const { getByTestId } = render(
         <RecordButtonUI
           onRecordPress={jest.fn()}
@@ -28,22 +28,26 @@ describe('RecordButtonUI Regression Tests', () => {
         />
       );
 
-      // Get container styles
-      const container = getByTestId('record-button').parent?.parent;
+      // Get container - it's the parent of the Pressable
+      const pressable = getByTestId('record-button');
+      const container = pressable.parent;
+
       expect(container).toBeTruthy();
 
-      // Verify container has width: '100%' for proper alignment
-      // This ensures timer doesn't shift left of button
-      const containerStyles = container?.props.style;
+      // Container uses center alignment for proper timer positioning
+      const containerStyles = Array.isArray(container?.props.style)
+        ? container?.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+        : container?.props.style || {};
+
       expect(containerStyles).toMatchObject(
         expect.objectContaining({
-          width: '100%',
           alignItems: 'center',
+          justifyContent: 'center',
         })
       );
     });
 
-    it('should center timer below button when recording', () => {
+    it('should show timer in absolute positioned block below button when recording', () => {
       const { getByText } = render(
         <RecordButtonUI
           onRecordPress={jest.fn()}
@@ -57,11 +61,18 @@ describe('RecordButtonUI Regression Tests', () => {
       const timer = getByText('00:05');
       expect(timer).toBeTruthy();
 
-      // Timer should have marginTop to separate from button
-      const timerStyles = timer.props.style;
-      expect(timerStyles).toMatchObject(
+      // Timer is inside timerBlock which is absolute positioned below button
+      // Parent of timer should be the timerBlock with position: absolute
+      const timerBlock = timer.parent;
+      const timerBlockStyles = Array.isArray(timerBlock?.props.style)
+        ? timerBlock?.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+        : timerBlock?.props.style;
+
+      expect(timerBlockStyles).toMatchObject(
         expect.objectContaining({
-          marginTop: 12,
+          position: 'absolute',
+          top: 110, // Below button (80px + gap)
+          alignItems: 'center',
         })
       );
     });
@@ -69,7 +80,7 @@ describe('RecordButtonUI Regression Tests', () => {
 
   describe('Bug Fix: RecordingDot Sizing', () => {
     it('should have small round dot (12x12, borderRadius: 6) not square', () => {
-      const { UNSAFE_getByType } = render(
+      const { getByTestId } = render(
         <RecordButtonUI
           onRecordPress={jest.fn()}
           onStopPress={jest.fn()}
@@ -79,14 +90,42 @@ describe('RecordButtonUI Regression Tests', () => {
         />
       );
 
-      // Find the recordingDot View
-      const buttonContainer = UNSAFE_getByType('RCTView');
-      const recordingDot = buttonContainer.findByProps({
-        style: expect.objectContaining({ backgroundColor: '#FFFFFF' })
-      });
+      // Navigate structure: Pressable(testID) → children (Animated.View) → children (View with white bg)
+      const pressable = getByTestId('record-button');
+      const animatedView = pressable.props.children;
+
+      // Find the white dot inside Animated.View
+      const findWhiteDot = (children: any): any => {
+        if (!children) return null;
+
+        if (Array.isArray(children)) {
+          for (const child of children) {
+            const result = findWhiteDot(child);
+            if (result) return result;
+          }
+        } else if (children.props) {
+          const style = Array.isArray(children.props.style)
+            ? children.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+            : children.props.style || {};
+
+          if (style.backgroundColor === '#FFFFFF') {
+            return children;
+          }
+
+          return findWhiteDot(children.props.children);
+        }
+
+        return null;
+      };
+
+      const recordingDot = findWhiteDot(animatedView);
+      expect(recordingDot).toBeTruthy();
 
       if (recordingDot) {
-        const dotStyles = recordingDot.props.style;
+        const dotStyles = Array.isArray(recordingDot.props.style)
+          ? recordingDot.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+          : recordingDot.props.style;
+
         // Should be small round dot, not large square
         expect(dotStyles).toMatchObject({
           width: 12,
@@ -249,15 +288,20 @@ describe('RecordButtonUI Regression Tests', () => {
         />
       );
 
-      const button = getByTestId('record-button').findByProps({
-        style: expect.arrayContaining([
-          expect.objectContaining({
-            elevation: 5, // Android
-          }),
-        ]),
-      });
+      // The button is Pressable → Animated.View (the actual button with styles)
+      const pressable = getByTestId('record-button');
+      const animatedView = pressable.props.children;
 
-      expect(button).toBeTruthy();
+      expect(animatedView).toBeTruthy();
+
+      const buttonStyles = Array.isArray(animatedView.props.style)
+        ? animatedView.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+        : animatedView.props.style;
+
+      // Verify shadow styling exists
+      expect(buttonStyles.elevation).toBe(5); // Android
+      expect(buttonStyles.shadowColor).toBe('#000'); // iOS
+      expect(buttonStyles.shadowOpacity).toBe(0.25);
     });
 
     it('should maintain button size (80x80) during recording', () => {
@@ -271,9 +315,18 @@ describe('RecordButtonUI Regression Tests', () => {
         />
       );
 
-      // Button size should remain consistent
-      const button = getByTestId('record-button').parent;
-      expect(button?.props.style).toMatchObject(
+      // The button is Pressable → Animated.View (the actual button with dimensions)
+      const pressable = getByTestId('record-button');
+      const animatedView = pressable.props.children;
+
+      expect(animatedView).toBeTruthy();
+
+      const buttonStyles = Array.isArray(animatedView.props.style)
+        ? animatedView.props.style.reduce((acc: any, s: any) => ({ ...acc, ...s }), {})
+        : animatedView.props.style;
+
+      // Button size should remain consistent (80x80)
+      expect(buttonStyles).toMatchObject(
         expect.objectContaining({
           width: 80,
           height: 80,
