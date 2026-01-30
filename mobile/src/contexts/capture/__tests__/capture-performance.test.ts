@@ -46,9 +46,6 @@ describe('Audio Capture Performance Tests', () => {
     } as any;
 
     recordingService = new RecordingService(repository);
-
-    // Mock permission granted
-    (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
   });
 
   describe('NFR1: Start Recording Latency < 500ms', () => {
@@ -63,7 +60,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -81,9 +77,12 @@ describe('Audio Capture Performance Tests', () => {
     });
 
     it('should handle permission check without adding significant latency', async () => {
+      const permissionService = new PermissionService();
+      jest.spyOn(permissionService, 'hasMicrophonePermission').mockResolvedValue(true);
+
       const startTime = performance.now();
 
-      const hasPermission = await PermissionService.hasMicrophonePermission();
+      const hasPermission = await permissionService.hasMicrophonePermission();
 
       const endTime = performance.now();
       const latency = endTime - startTime;
@@ -104,7 +103,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -118,7 +116,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -151,7 +148,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -165,7 +161,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -291,14 +286,13 @@ describe('Audio Capture Performance Tests', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         capturedAt: new Date(),
-        syncStatus: 'pending',
       }));
 
-      repository.findBySyncStatus = jest.fn().mockResolvedValue(mockCaptures as any);
+      repository.findPendingSync = jest.fn().mockResolvedValue(mockCaptures as any);
 
       const startTime = performance.now();
 
-      const results = await repository.findBySyncStatus('pending');
+      const results = await repository.findPendingSync();
 
       const endTime = performance.now();
       const queryTime = endTime - startTime;
@@ -317,7 +311,6 @@ describe('Audio Capture Performance Tests', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         capturedAt: new Date(),
-        syncStatus: 'pending',
       } as any);
 
       const concurrentQueries = Array.from({ length: 20 }, (_, i) =>
@@ -348,7 +341,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -362,7 +354,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -391,7 +382,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -405,7 +395,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -433,7 +422,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -447,7 +435,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -483,7 +470,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -497,7 +483,6 @@ describe('Audio Capture Performance Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -510,10 +495,13 @@ describe('Audio Capture Performance Tests', () => {
         },
       });
 
+      const permissionService = new PermissionService();
+      jest.spyOn(permissionService, 'hasMicrophonePermission').mockResolvedValue(true);
+
       const startTime = performance.now();
 
       // Typical workflow: check permission, start, wait, stop, save
-      await PermissionService.hasMicrophonePermission();
+      await permissionService.hasMicrophonePermission();
       await recordingService.startRecording('/temp/workflow.m4a');
       // (user speaks for ~1 minute - simulated)
       await recordingService.stopRecording();

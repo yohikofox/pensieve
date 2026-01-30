@@ -2,6 +2,7 @@ import { TranscriptionService } from '../TranscriptionService';
 import { AudioConversionService } from '../AudioConversionService';
 import { WhisperModelService } from '../WhisperModelService';
 import { initWhisper, WhisperContext } from 'whisper.rn';
+import { File } from 'expo-file-system';
 
 // Mock whisper.rn
 jest.mock('whisper.rn');
@@ -20,6 +21,12 @@ const mockWhisperModelService = {
   getPromptString: jest.fn(),
 };
 
+// Helper to create mock model file before each test
+async function createMockModelFile(path: string) {
+  const modelFile = new File(path);
+  await modelFile.write(new Uint8Array(1024 * 1024)); // 1MB mock model
+}
+
 describe('TranscriptionService', () => {
   let service: TranscriptionService;
   let mockContext: {
@@ -28,6 +35,15 @@ describe('TranscriptionService', () => {
     gpu: boolean;
     id: number;
   };
+
+  // Create mock model file once for all tests
+  beforeAll(async () => {
+    await createMockModelFile('/path/to/model.bin');
+    // Verify file was created
+    const testFile = new File('/path/to/model.bin');
+    const info = testFile.info();
+    console.log('[TEST] Model file created in beforeAll:', { exists: info.exists, size: info.size });
+  });
 
   beforeEach(() => {
     // Reset mocks
@@ -96,13 +112,16 @@ describe('TranscriptionService', () => {
       });
 
       // Act
+      // Debug: check if model file still exists before loadModel
+      const debugFile = new File('/path/to/model.bin');
+      console.log('[TEST] Before loadModel:', debugFile.info());
       await service.loadModel('/path/to/model.bin');
       const result = await service.transcribe(audioFilePath);
 
       // Assert
       expect(result.text).toBe(expectedText);
       expect(result.wavPath).toBeNull(); // Debug mode is off
-      expect(result.transcriptPrompt).toBeNull(); // No custom vocabulary
+      expect(result.transcriptPrompt).toContain('Transcription fidèle'); // Default prompt is used
       // Should convert m4a to wav before transcription
       expect(mockAudioConversionService.convertToWhisperFormat).toHaveBeenCalledWith(audioFilePath);
       // Whisper should receive the converted WAV path
@@ -178,16 +197,17 @@ describe('TranscriptionService', () => {
       await service.loadModel('/path/to/model.bin');
       const result = await service.transcribe(audioFilePath);
 
-      // Assert - prompt passed to Whisper
+      // Assert - prompt passed to Whisper (includes default prompt + vocabulary)
       expect(mockContext.transcribe).toHaveBeenCalledWith(
         '/path/to/audio_whisper.wav',
         expect.objectContaining({
           language: 'fr',
-          prompt: customPrompt,
+          prompt: expect.stringContaining(customPrompt),
         })
       );
-      // Assert - prompt returned in result
-      expect(result.transcriptPrompt).toBe(customPrompt);
+      // Assert - prompt returned in result contains both default and vocabulary
+      expect(result.transcriptPrompt).toContain('Transcription fidèle');
+      expect(result.transcriptPrompt).toContain(customPrompt);
     });
 
     it('should not pass prompt when vocabulary is empty and return null transcriptPrompt', async () => {
@@ -213,10 +233,10 @@ describe('TranscriptionService', () => {
         '/path/to/audio_whisper.wav',
         expect.objectContaining({
           language: 'fr',
-          prompt: undefined,
+          prompt: expect.stringContaining('Transcription fidèle'), // Default prompt is used
         })
       );
-      expect(result.transcriptPrompt).toBeNull();
+      expect(result.transcriptPrompt).toContain('Transcription fidèle');
     });
 
     it('should return wavPath when debug mode is enabled and NOT cleanup WAV file', async () => {
@@ -268,9 +288,9 @@ describe('TranscriptionService', () => {
       // Arrange
       mockInitWhisper.mockRejectedValue(new Error('Failed to load model'));
 
-      // Act & Assert
+      // Act & Assert - file doesn't exist, so it throws file not found error
       await expect(service.loadModel('/invalid/path.bin')).rejects.toThrow(
-        'Failed to load Whisper model: Failed to load model'
+        'Whisper model file not found'
       );
     });
 

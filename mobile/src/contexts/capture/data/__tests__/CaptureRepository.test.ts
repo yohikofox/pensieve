@@ -10,6 +10,28 @@
 
 import { CaptureRepository } from '../CaptureRepository';
 import { database } from '../../../../database';
+import { ISyncQueueService } from '../../domain/ISyncQueueService';
+import { EventBus } from '../../../shared/events/EventBus';
+
+// Mock ISyncQueueService
+const mockSyncQueueService: jest.Mocked<ISyncQueueService> = {
+  enqueue: jest.fn().mockResolvedValue(1),
+  getPendingOperations: jest.fn(),
+  getPendingOperationsForEntity: jest.fn(),
+  markAsSynced: jest.fn(),
+  markAsFailed: jest.fn(),
+  getQueueSize: jest.fn(),
+  getQueueSizeByType: jest.fn(),
+  removeFailedOperation: jest.fn(),
+  clearQueue: jest.fn(),
+};
+
+// Mock EventBus
+const mockEventBus: jest.Mocked<EventBus> = {
+  publish: jest.fn(),
+  subscribe: jest.fn(),
+  unsubscribe: jest.fn(),
+} as any;
 
 // Mock OP-SQLite database
 jest.mock('../../../../database', () => {
@@ -49,7 +71,8 @@ describe('CaptureRepository', () => {
   let mockStore: Map<string, any>;
 
   beforeEach(() => {
-    repository = new CaptureRepository();
+    jest.clearAllMocks();
+    repository = new CaptureRepository(mockSyncQueueService, mockEventBus);
     mockStore = (database as any)._getStore();
     mockStore.clear();
 
@@ -57,7 +80,7 @@ describe('CaptureRepository', () => {
     (database as any)._setExecuteImpl((sql: string, params?: any[]) => {
       // INSERT
       if (sql.includes('INSERT INTO captures')) {
-        const [id, type, state, raw_content, duration, file_size, created_at, updated_at, sync_status, sync_version] = params || [];
+        const [id, type, state, raw_content, duration, file_size, created_at, updated_at, sync_version] = params || [];
         mockStore.set(id, {
           id,
           type,
@@ -67,7 +90,6 @@ describe('CaptureRepository', () => {
           file_size,
           created_at,
           updated_at,
-          sync_status,
           sync_version,
           last_sync_at: null,
           server_id: null,
@@ -104,14 +126,6 @@ describe('CaptureRepository', () => {
           if (sql.includes('duration = ?')) idx++;
           updates.file_size = params?.[idx];
         }
-        if (sql.includes('sync_status = ?')) {
-          let idx = 0;
-          if (sql.includes('state = ?')) idx++;
-          if (sql.includes('raw_content = ?')) idx++;
-          if (sql.includes('duration = ?')) idx++;
-          if (sql.includes('file_size = ?')) idx++;
-          updates.sync_status = params?.[idx];
-        }
 
         // Always update timestamp and version
         const updatedAtIdx = params!.length - 2;
@@ -140,15 +154,6 @@ describe('CaptureRepository', () => {
         const state = params?.[0];
         const rows = Array.from(mockStore.values())
           .filter((r) => r.state === state)
-          .sort((a, b) => b.created_at - a.created_at);
-        return { rows: rows };
-      }
-
-      // SELECT by sync_status
-      if (sql.includes('WHERE sync_status = ?')) {
-        const syncStatus = params?.[0];
-        const rows = Array.from(mockStore.values())
-          .filter((r) => r.sync_status === syncStatus)
           .sort((a, b) => b.created_at - a.created_at);
         return { rows: rows };
       }
@@ -184,7 +189,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/audio.m4a',
-        syncStatus: 'pending',
       });
 
       expect(result.type).toBe('success');
@@ -192,7 +196,6 @@ describe('CaptureRepository', () => {
       expect(result.data!.type).toBe('audio');
       expect(result.data!.state).toBe('recording');
       expect(result.data!.rawContent).toBe('/path/to/audio.m4a');
-      expect(result.data!.syncStatus).toBe('pending');
       expect(result.data!.createdAt).toBeInstanceOf(Date);
     });
 
@@ -201,7 +204,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'captured',
         rawContent: '/path/to/audio.m4a',
-        syncStatus: 'pending',
         duration: 5000,
         fileSize: 1024000,
       });
@@ -219,7 +221,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'captured',
         rawContent: '/path/to/audio.m4a',
-        syncStatus: 'pending',
       });
 
       expect(createResult.type).toBe('success');
@@ -243,7 +244,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/audio.m4a',
-        syncStatus: 'pending',
       });
 
       expect(createResult.type).toBe('success');
@@ -264,7 +264,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'recording',
         rawContent: '/path/to/temp.m4a',
-        syncStatus: 'pending',
       });
 
       expect(createResult.type).toBe('success');
@@ -274,7 +273,6 @@ describe('CaptureRepository', () => {
         rawContent: '/path/to/final.m4a',
         duration: 10000,
         fileSize: 2048000,
-        syncStatus: 'synced',
       });
 
       expect(updateResult.type).toBe('success');
@@ -283,7 +281,6 @@ describe('CaptureRepository', () => {
       expect(updateResult.data!.rawContent).toBe('/path/to/final.m4a');
       expect(updateResult.data!.duration).toBe(10000);
       expect(updateResult.data!.fileSize).toBe(2048000);
-      expect(updateResult.data!.syncStatus).toBe('synced');
     });
   });
 
@@ -299,14 +296,12 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'captured',
         rawContent: '/audio1.m4a',
-        syncStatus: 'pending',
       });
 
       await repository.create({
         type: 'text',
         state: 'captured',
         rawContent: 'Quick note',
-        syncStatus: 'synced',
       });
 
       const captures = await repository.findAll();
@@ -321,21 +316,18 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'recording',
         rawContent: '/audio1.m4a',
-        syncStatus: 'pending',
       });
 
       await repository.create({
         type: 'audio',
         state: 'captured',
         rawContent: '/audio2.m4a',
-        syncStatus: 'pending',
       });
 
       await repository.create({
         type: 'audio',
         state: 'recording',
         rawContent: '/audio3.m4a',
-        syncStatus: 'pending',
       });
 
       const recording = await repository.findByState('recording');
@@ -345,43 +337,18 @@ describe('CaptureRepository', () => {
     });
   });
 
-  describe('findBySyncStatus', () => {
-    it('should find captures by sync status', async () => {
-      await repository.create({
-        type: 'audio',
-        state: 'captured',
-        rawContent: '/audio1.m4a',
-        syncStatus: 'pending',
-      });
-
-      await repository.create({
-        type: 'audio',
-        state: 'captured',
-        rawContent: '/audio2.m4a',
-        syncStatus: 'synced',
-      });
-
-      const pending = await repository.findBySyncStatus('pending');
-
-      expect(pending).toHaveLength(1);
-      expect(pending[0].syncStatus).toBe('pending');
-    });
-  });
-
   describe('findByType', () => {
     it('should find captures by type', async () => {
       await repository.create({
         type: 'audio',
         state: 'captured',
         rawContent: '/audio.m4a',
-        syncStatus: 'pending',
       });
 
       await repository.create({
         type: 'text',
         state: 'captured',
         rawContent: 'Quick note',
-        syncStatus: 'pending',
       });
 
       const audioCaptures = await repository.findByType('audio');
@@ -397,7 +364,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'captured',
         rawContent: '/audio.m4a',
-        syncStatus: 'pending',
       });
 
       const id = capture.id;
@@ -414,7 +380,6 @@ describe('CaptureRepository', () => {
         type: 'audio',
         state: 'captured',
         rawContent: '/audio.m4a',
-        syncStatus: 'pending',
       });
 
       await repository.destroyPermanently(capture.id);

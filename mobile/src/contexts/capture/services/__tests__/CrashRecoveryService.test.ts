@@ -13,18 +13,17 @@
 import { CrashRecoveryService } from '../CrashRecoveryService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
+import { File, __clearMockFiles } from 'expo-file-system';
 
 // Mock CaptureRepository
 jest.mock('../../data/CaptureRepository');
 
-// Mock expo-file-system/legacy
-jest.mock('expo-file-system/legacy', () => ({
-  getInfoAsync: jest.fn(),
-  readDirectoryAsync: jest.fn(),
-  deleteAsync: jest.fn(),
-  cacheDirectory: '/mock/cache/',
-  documentDirectory: '/mock/document/',
-}));
+// Helper to create a mock file
+async function createMockFile(path: string, size: number = 1024000): Promise<void> {
+  const file = new File(path);
+  const content = new Uint8Array(size);
+  await file.write(content);
+}
 
 describe('CrashRecoveryService', () => {
   let service: CrashRecoveryService;
@@ -32,6 +31,7 @@ describe('CrashRecoveryService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    __clearMockFiles();
 
     mockRepository = {
       findByState: jest.fn(),
@@ -64,9 +64,8 @@ describe('CrashRecoveryService', () => {
         syncStatus: 'pending',
       };
 
-      // Mock file exists
-      const FileSystem = require('expo-file-system/legacy');
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      // Create the audio file
+      await createMockFile('/path/to/audio.m4a');
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({
@@ -149,7 +148,7 @@ describe('CrashRecoveryService', () => {
           id: 'capture-3',
           type: 'audio',
           state: 'recording',
-          rawContent: '', // Will fail
+          rawContent: '', // Will fail - empty path
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
@@ -157,14 +156,10 @@ describe('CrashRecoveryService', () => {
         },
       ];
 
-      // Mock file exists for capture-1 and capture-2
-      const FileSystem = require('expo-file-system/legacy');
-      (FileSystem.getInfoAsync as jest.Mock).mockImplementation((path: string) => {
-        if (path === '/path/1.m4a' || path === '/path/2.m4a') {
-          return Promise.resolve({ exists: true });
-        }
-        return Promise.resolve({ exists: false });
-      });
+      // Create files for capture-1 and capture-2 only
+      await createMockFile('/path/1.m4a');
+      await createMockFile('/path/2.m4a');
+      // Don't create file for capture-3 (empty path)
 
       mockRepository.findByState.mockResolvedValue(incompleteCaptures);
       mockRepository.update.mockResolvedValue({
@@ -191,9 +186,8 @@ describe('CrashRecoveryService', () => {
         syncStatus: 'pending',
       };
 
-      // Mock file exists
-      const FileSystem = require('expo-file-system/legacy');
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      // Create the file so it exists
+      await createMockFile('/path/error.m4a');
 
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({

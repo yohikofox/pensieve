@@ -2,6 +2,7 @@ import { TranscriptionService } from '../TranscriptionService';
 import { AudioConversionService } from '../AudioConversionService';
 import { WhisperModelService } from '../WhisperModelService';
 import { initWhisper, WhisperContext } from 'whisper.rn';
+import { File } from 'expo-file-system';
 
 jest.mock('whisper.rn');
 
@@ -19,6 +20,12 @@ const mockWhisperModelService = {
   getPromptString: jest.fn(),
 };
 
+// Helper to create mock model file
+async function createMockModelFile(path: string) {
+  const modelFile = new File(path);
+  await modelFile.write(new Uint8Array(1024 * 1024)); // 1MB mock model
+}
+
 describe('TranscriptionService - Performance Monitoring', () => {
   let service: TranscriptionService;
   let consoleWarnSpy: jest.SpyInstance;
@@ -28,6 +35,11 @@ describe('TranscriptionService - Performance Monitoring', () => {
     gpu: boolean;
     id: number;
   };
+
+  // Create mock model file once for all tests
+  beforeAll(async () => {
+    await createMockModelFile('/path/to/model.bin');
+  });
 
   beforeEach(() => {
     // Reset mocks

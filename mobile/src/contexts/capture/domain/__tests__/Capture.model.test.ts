@@ -49,11 +49,12 @@ describe('Capture Model', () => {
         type: 'audio',
         state: 'captured',
         raw_content: '/path/to/audio.m4a',
+        normalized_text: null,
         duration: 5000,
         file_size: 1024000,
+        wav_path: null,
         created_at: 1640000000000,
         updated_at: 1640000001000,
-        sync_status: 'pending',
         sync_version: 0,
         last_sync_at: null,
         server_id: null,
@@ -71,7 +72,7 @@ describe('Capture Model', () => {
       expect(capture.createdAt).toEqual(new Date(1640000000000));
       expect(capture.updatedAt).toEqual(new Date(1640000001000));
       expect(capture.capturedAt).toEqual(new Date(1640000000000));
-      expect(capture.syncStatus).toBe('pending');
+      // Note: syncStatus is now managed via sync_queue table (v2 architecture)
       expect(capture.syncVersion).toBe(0);
       expect(capture.lastSyncAt).toBeNull();
       expect(capture.serverId).toBeNull();
@@ -84,11 +85,12 @@ describe('Capture Model', () => {
         type: 'text',
         state: 'captured',
         raw_content: 'Quick note',
+        normalized_text: 'Quick note',
         duration: null,
         file_size: null,
+        wav_path: null,
         created_at: 1640000000000,
         updated_at: 1640000002000,
-        sync_status: 'synced',
         sync_version: 5,
         last_sync_at: 1640000001500,
         server_id: 'server-uuid',
@@ -97,7 +99,7 @@ describe('Capture Model', () => {
 
       const capture = mapRowToCapture(row);
 
-      expect(capture.syncStatus).toBe('synced');
+      // Note: syncStatus is now managed via sync_queue table (v2 architecture)
       expect(capture.syncVersion).toBe(5);
       expect(capture.lastSyncAt).toEqual(new Date(1640000001500));
       expect(capture.serverId).toBe('server-uuid');
@@ -110,11 +112,12 @@ describe('Capture Model', () => {
         type: 'audio',
         state: 'captured',
         raw_content: '/path/to/audio.m4a',
+        normalized_text: null,
         duration: 3000,
         file_size: 512000,
+        wav_path: null,
         created_at: 1640000000000,
         updated_at: 1640000003000,
-        sync_status: 'conflict',
         sync_version: 8,
         last_sync_at: 1640000002000,
         server_id: 'server-uuid',
@@ -123,7 +126,7 @@ describe('Capture Model', () => {
 
       const capture = mapRowToCapture(row);
 
-      expect(capture.syncStatus).toBe('conflict');
+      // Note: syncStatus is now managed via sync_queue table (v2 architecture)
       expect(capture.conflictData).toBe(conflictPayload);
       expect(JSON.parse(capture.conflictData!)).toEqual({ serverVersion: 10 });
     });

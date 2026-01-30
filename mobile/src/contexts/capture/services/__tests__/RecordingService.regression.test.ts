@@ -12,18 +12,15 @@
 import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
-import * as FileSystem from 'expo-file-system/legacy';
+import { MockFileSystem } from '../../__tests__/helpers/MockFileSystem';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
-jest.mock('expo-file-system/legacy', () => ({
-  getInfoAsync: jest.fn(),
-  deleteAsync: jest.fn(),
-}));
 
 describe('RecordingService Regression Tests', () => {
   let service: RecordingService;
   let mockRepository: jest.Mocked<CaptureRepository>;
+  let mockFileSystem: MockFileSystem;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -37,7 +34,9 @@ describe('RecordingService Regression Tests', () => {
       findByState: jest.fn(),
     } as any;
 
-    service = new RecordingService(mockRepository);
+    mockFileSystem = new MockFileSystem();
+
+    service = new RecordingService(mockRepository, mockFileSystem);
   });
 
   describe('Bug Fix: getById is not a function', () => {
@@ -59,8 +58,7 @@ describe('RecordingService Regression Tests', () => {
       } as any);
 
       // Mock file system
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       // Cancel should use findById, not getById
       const result = await service.cancelRecording();
@@ -110,8 +108,7 @@ describe('RecordingService Regression Tests', () => {
         id: 'test-capture',
         rawContent: 'file:///test.m4a',
       } as any);
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       // Cancel should work without "is not a function" error
       await expect(service.cancelRecording()).resolves.not.toThrow();
@@ -144,8 +141,7 @@ describe('RecordingService Regression Tests', () => {
         id: 'test',
         rawContent: 'file:///test.m4a',
       } as any);
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       await service.startRecording('file:///test.m4a');
       await service.cancelRecording();
@@ -188,8 +184,7 @@ describe('RecordingService Regression Tests', () => {
         capturedAt: new Date(),
         syncStatus: 'pending',
       } as any);
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       // 3. Confirm discard
       const result = await service.cancelRecording();
@@ -249,8 +244,7 @@ describe('RecordingService Regression Tests', () => {
       } as any);
 
       // Mock file system
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       // Cancel should now work correctly
       const result = await service.cancelRecording();

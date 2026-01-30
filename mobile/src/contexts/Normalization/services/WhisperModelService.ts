@@ -187,7 +187,8 @@ export class WhisperModelService {
    */
   async isModelDownloaded(modelSize: WhisperModelSize): Promise<boolean> {
     const modelFile = this.getModelFile(modelSize);
-    return modelFile.exists;
+    const info = modelFile.info();
+    return info.exists;
   }
 
   /**

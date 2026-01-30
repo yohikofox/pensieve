@@ -9,30 +9,32 @@
 import { RetentionPolicyService } from '../RetentionPolicyService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
-import * as FileSystem from 'expo-file-system/legacy';
+import { MockFileSystem } from '../../__tests__/helpers/MockFileSystem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
-jest.mock('expo-file-system/legacy');
 jest.mock('@react-native-async-storage/async-storage');
 
 describe('RetentionPolicyService', () => {
   let service: RetentionPolicyService;
   let mockRepository: jest.Mocked<CaptureRepository>;
+  let mockFileSystem: MockFileSystem;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     mockRepository = {
-      findBySyncStatus: jest.fn(),
+      findSynced: jest.fn(),
       update: jest.fn(),
     } as any;
+
+    mockFileSystem = new MockFileSystem();
 
     // Mock AsyncStorage.getItem to return null (no saved config)
     (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
-    service = new RetentionPolicyService(mockRepository);
+    service = new RetentionPolicyService(mockRepository, mockFileSystem);
   });
 
   describe('getRetentionConfig', () => {
@@ -73,7 +75,7 @@ describe('RetentionPolicyService', () => {
 
   describe('previewCleanup', () => {
     it('should return empty preview when no eligible files', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findSynced.mockResolvedValue([]);
 
       const preview = await service.previewCleanup();
 
@@ -115,7 +117,7 @@ describe('RetentionPolicyService', () => {
         },
       ];
 
-      mockRepository.findBySyncStatus.mockResolvedValue(oldCaptures as any);
+      mockRepository.findSynced.mockResolvedValue(oldCaptures as any);
 
       const preview = await service.previewCleanup();
 
@@ -144,7 +146,7 @@ describe('RetentionPolicyService', () => {
         },
       ];
 
-      mockRepository.findBySyncStatus.mockResolvedValue(recentCaptures as any);
+      mockRepository.findSynced.mockResolvedValue(recentCaptures as any);
 
       const preview = await service.previewCleanup();
 
@@ -156,12 +158,12 @@ describe('RetentionPolicyService', () => {
 
       // findBySyncStatus('synced') won't return pending captures
       // So mock returns empty array when querying for 'synced'
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findSynced.mockResolvedValue([]);
 
       const preview = await service.previewCleanup();
 
-      // Verify it queried only for 'synced' status
-      expect(mockRepository.findBySyncStatus).toHaveBeenCalledWith('synced');
+      // Verify it queried only for synced captures
+      expect(mockRepository.findSynced).toHaveBeenCalled();
       // No eligible files because pending syncs are never included
       expect(preview.eligibleFiles).toBe(0);
     });
@@ -185,8 +187,8 @@ describe('RetentionPolicyService', () => {
         },
       ];
 
-      mockRepository.findBySyncStatus.mockResolvedValue(oldCaptures as any);
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockRepository.findSynced.mockResolvedValue(oldCaptures as any);
+      // FileSystem now injected via IFileSystem - no need to mock
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: {} as any,
@@ -200,9 +202,7 @@ describe('RetentionPolicyService', () => {
       expect(result.deletedCaptureIds).toEqual(['cap-1']);
 
       // Verify file deleted
-      expect(FileSystem.deleteAsync).toHaveBeenCalledWith('/path/to/audio1.m4a', {
-        idempotent: true,
-      });
+      expect(mockFileSystem.deleteFileSpy).toHaveBeenCalledWith('/path/to/audio1.m4a');
 
       // Verify DB updated to clear audio file
       expect(mockRepository.update).toHaveBeenCalledWith('cap-1', {
@@ -214,7 +214,7 @@ describe('RetentionPolicyService', () => {
     it('should preserve metadata and transcriptions', async () => {
       const old = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
 
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
           type: 'audio',
@@ -231,7 +231,7 @@ describe('RetentionPolicyService', () => {
         },
       ] as any);
 
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      // FileSystem now injected via IFileSystem - no need to mock
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: {} as any,
@@ -251,7 +251,7 @@ describe('RetentionPolicyService', () => {
     it('should handle file deletion failures gracefully', async () => {
       const old = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
 
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
           rawContent: '/path/to/audio.m4a',
@@ -265,7 +265,11 @@ describe('RetentionPolicyService', () => {
         },
       ] as any);
 
-      (FileSystem.deleteAsync as jest.Mock).mockRejectedValue(new Error('File not found'));
+      // Mock file deletion failure
+      mockFileSystem.deleteFile = jest.fn().mockResolvedValue({
+        type: RepositoryResultType.DATABASE_ERROR,
+        error: 'File not found',
+      });
 
       const result = await service.executeCleanup();
 
@@ -278,7 +282,7 @@ describe('RetentionPolicyService', () => {
     it('should handle database update failures gracefully', async () => {
       const old = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
 
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
           rawContent: '/path/to/audio.m4a',
@@ -292,7 +296,7 @@ describe('RetentionPolicyService', () => {
         },
       ] as any);
 
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      // FileSystem now injected via IFileSystem - no need to mock
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.ERROR,
         error: 'Database error',
@@ -306,7 +310,7 @@ describe('RetentionPolicyService', () => {
     });
 
     it('should update last cleanup date after execution', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findSynced.mockResolvedValue([]);
 
       await service.executeCleanup();
 
@@ -327,7 +331,7 @@ describe('RetentionPolicyService', () => {
     });
 
     it('should return false when no eligible files', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findSynced.mockResolvedValue([]);
 
       const shouldRun = await service.shouldRunCleanup();
 
@@ -337,7 +341,7 @@ describe('RetentionPolicyService', () => {
     it('should return true when eligible files exist', async () => {
       const old = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
 
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
           rawContent: '/path/to/audio.m4a',
@@ -398,19 +402,19 @@ describe('RetentionPolicyService', () => {
       const old = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000); // 60 days old
 
       // Service only queries synced captures
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findSynced.mockResolvedValue([]);
 
       const result = await service.executeCleanup();
 
-      // Verify findBySyncStatus called with 'synced' only
-      expect(mockRepository.findBySyncStatus).toHaveBeenCalledWith('synced');
+      // Verify findSynced called (no params)
+      expect(mockRepository.findSynced).toHaveBeenCalled();
       expect(result.filesDeleted).toBe(0);
     });
 
     it('should always preserve transcriptions and metadata', async () => {
       const old = new Date(Date.now() - 35 * 24 * 60 * 60 * 1000);
 
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
           rawContent: '/path/to/audio.m4a',
@@ -426,7 +430,7 @@ describe('RetentionPolicyService', () => {
         },
       ] as any);
 
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      // FileSystem now injected via IFileSystem - no need to mock
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
         data: {} as any,

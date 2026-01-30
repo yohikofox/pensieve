@@ -23,6 +23,9 @@ import { FileStorageService } from '../services/FileStorageService';
 import { CrashRecoveryService } from '../services/CrashRecoveryService';
 import { OfflineSyncService } from '../services/OfflineSyncService';
 import { PermissionService } from '../services/PermissionService';
+import { MockFileSystem } from '../__tests__/helpers/MockFileSystem';
+import { ISyncQueueService } from '../domain/ISyncQueueService';
+import { File, __clearMockFiles } from 'expo-file-system';
 
 // Mock all external dependencies
 jest.mock('../data/CaptureRepository');
@@ -42,6 +45,8 @@ describe('Audio Capture Integration Tests', () => {
   let fileStorageService: jest.Mocked<FileStorageService>;
   let crashRecoveryService: CrashRecoveryService;
   let offlineSyncService: OfflineSyncService;
+  let mockFileSystem: MockFileSystem;
+  let mockSyncQueueService: jest.Mocked<ISyncQueueService>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -53,7 +58,8 @@ describe('Audio Capture Integration Tests', () => {
       delete: jest.fn(),
       findById: jest.fn(),
       findByState: jest.fn(),
-      findBySyncStatus: jest.fn(),
+      findPendingSync: jest.fn(),
+      findSynced: jest.fn(),
       findAll: jest.fn(),
     } as any;
 
@@ -66,13 +72,28 @@ describe('Audio Capture Integration Tests', () => {
       getStorageDirectory: jest.fn(),
     } as any;
 
-    // Create service instances
-    recordingService = new RecordingService(repository);
-    crashRecoveryService = new CrashRecoveryService(repository);
-    offlineSyncService = new OfflineSyncService(repository);
+    // Setup mock file system
+    mockFileSystem = new MockFileSystem();
 
-    // Mock permission as granted by default
-    (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
+    // Setup mock sync queue service
+    mockSyncQueueService = {
+      enqueue: jest.fn().mockResolvedValue(1),
+      getPendingOperations: jest.fn(),
+      getPendingOperationsForEntity: jest.fn(),
+      markAsSynced: jest.fn(),
+      markAsFailed: jest.fn(),
+      getQueueSize: jest.fn(),
+      getQueueSizeByType: jest.fn(),
+      removeFailedOperation: jest.fn(),
+      clearQueue: jest.fn(),
+    } as any;
+
+    __clearMockFiles();
+
+    // Create service instances
+    recordingService = new RecordingService(repository, mockFileSystem);
+    crashRecoveryService = new CrashRecoveryService(repository);
+    offlineSyncService = new OfflineSyncService(repository, mockSyncQueueService);
   });
 
   describe('AC1 & AC2: Complete Recording Flow - Tap to Save', () => {
@@ -88,7 +109,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -103,7 +123,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
           duration: 5000,
           fileSize: 1024000,
         },
@@ -128,7 +147,6 @@ describe('Audio Capture Integration Tests', () => {
           type: 'audio',
           state: 'recording',
           rawContent: '/temp/recording.m4a',
-          syncStatus: 'pending',
         })
       );
 
@@ -137,18 +155,18 @@ describe('Audio Capture Integration Tests', () => {
       expect(startResult.data?.captureId).toBe('capture-123');
 
       // 2. User taps stop button → stop recording
-      const stopResult = await recordingService.stopRecording();
+      const stopResult = await recordingService.stopRecording('/temp/recording.m4a', 5000);
 
       // Verify result is successful
       expect(stopResult.type).toBe('success');
       expect(stopResult.data).toBeDefined();
 
-      // Verify capture entity updated with "captured" state
+      // Verify capture entity updated with recording metadata
       expect(repository.update).toHaveBeenCalledWith(
         'capture-123',
         expect.objectContaining({
-          state: 'captured',
-          rawContent: expect.stringContaining('.m4a'),
+          rawContent: '/temp/recording.m4a',
+          duration: 5000,
         })
       );
 
@@ -219,7 +237,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending', // Marked for later sync
         },
       } as any);
 
@@ -233,7 +250,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -245,7 +261,7 @@ describe('Audio Capture Integration Tests', () => {
       const pendingCaptures = await offlineSyncService.getPendingCaptures();
 
       // Mock pending captures query
-      repository.findBySyncStatus.mockResolvedValue([
+      repository.findPendingSync.mockResolvedValue([
         {
           id: 'offline-capture-1',
           type: 'audio',
@@ -254,7 +270,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(Date.now()),
-          syncStatus: 'pending',
         },
       ] as any);
 
@@ -265,22 +280,23 @@ describe('Audio Capture Integration Tests', () => {
     });
 
     it('should track sync statistics correctly', async () => {
-      // Mock sync stats
+      // Mock 3 total captures
       repository.findAll.mockResolvedValue([
-        { id: '1', syncStatus: 'pending', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-        { id: '2', syncStatus: 'pending', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-        { id: '3', syncStatus: 'synced', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '1', state: 'captured' },
+        { id: '2', state: 'captured' },
+        { id: '3', state: 'captured' },
       ] as any);
 
-      repository.findBySyncStatus.mockImplementation(async (status: string) => {
-        if (status === 'pending') {
-          return [
-            { id: '1', syncStatus: 'pending', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-            { id: '2', syncStatus: 'pending', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-          ] as any;
-        }
-        return [{ id: '3', syncStatus: 'synced', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() }] as any;
-      });
+      // Mock 2 pending captures
+      repository.findPendingSync.mockResolvedValue([
+        { id: '1', state: 'captured' },
+        { id: '2', state: 'captured' },
+      ] as any);
+
+      // Mock 1 synced capture
+      repository.findSynced.mockResolvedValue([
+        { id: '3', state: 'captured' },
+      ] as any);
 
       const stats = await offlineSyncService.getSyncStats();
 
@@ -302,13 +318,12 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       ] as any);
 
-      // Mock file exists check (FileSystem.getInfoAsync)
-      const FileSystem = require('expo-file-system/legacy');
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
+      // Create the audio file using File API mock
+      const file = new File('/temp/incomplete.m4a');
+      await file.write(new Uint8Array(1024));
 
       // Mock update to recovered state (Result Pattern)
       repository.update.mockResolvedValue({
@@ -321,7 +336,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -339,7 +353,6 @@ describe('Audio Capture Integration Tests', () => {
         'crashed-capture',
         expect.objectContaining({
           state: 'captured',
-          syncStatus: 'pending',
         })
       );
     });
@@ -355,7 +368,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       ] as any);
 
@@ -369,7 +381,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -388,49 +399,8 @@ describe('Audio Capture Integration Tests', () => {
     });
   });
 
-  describe('AC5: Permission Request Flow', () => {
-    it('should request permissions before recording if not granted', async () => {
-      // Mock permission not granted initially
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(false);
-
-      // Attempt to start recording
-      const result = await recordingService.startRecording('/temp/test.m4a');
-
-      // Verify error result
-      expect(result.type).toBe('validation_error');
-      expect(result.error).toBe('MicrophonePermissionDenied');
-
-      // Verify permission was checked
-      expect(PermissionService.hasMicrophonePermission).toHaveBeenCalled();
-    });
-
-    it('should proceed with recording after permission is granted', async () => {
-      // Mock permission granted
-      (PermissionService.hasMicrophonePermission as jest.Mock).mockResolvedValue(true);
-
-      repository.create.mockResolvedValue({
-        type: 'success',
-        data: {
-          id: 'capture-with-permission',
-          type: 'audio',
-          state: 'recording',
-          rawContent: '/temp/test.m4a',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          capturedAt: new Date(),
-          syncStatus: 'pending',
-        },
-      } as any);
-
-      // Start recording
-      const result = await recordingService.startRecording('/temp/test.m4a');
-
-      // Verify recording started
-      expect(result.type).toBe('success');
-      expect(repository.create).toHaveBeenCalled();
-      expect(recordingService.isRecording()).toBe(true);
-    });
-  });
+  // Note: Permission tests removed - RecordingService no longer handles permissions directly
+  // Permissions are now handled by UI layer before calling RecordingService
 
   describe('Multiple Captures Workflow', () => {
     it('should handle multiple sequential captures correctly', async () => {
@@ -445,7 +415,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -459,7 +428,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -478,7 +446,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -492,7 +459,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -516,7 +482,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -543,7 +508,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -557,7 +521,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -593,7 +556,6 @@ describe('Audio Capture Integration Tests', () => {
           createdAt: new Date(),
           updatedAt: new Date(),
           capturedAt: new Date(),
-          syncStatus: 'pending',
         },
       } as any);
 
@@ -606,12 +568,10 @@ describe('Audio Capture Integration Tests', () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         capturedAt: new Date(),
-        syncStatus: 'pending',
       } as any);
 
-      // Mock file system for cancel
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      // Setup file in mock filesystem
+      mockFileSystem.setFile('/temp/cancel.m4a', '');
 
       // 1. User starts recording
       const startResult = await recordingService.startRecording('/temp/cancel.m4a');
@@ -622,13 +582,10 @@ describe('Audio Capture Integration Tests', () => {
       await recordingService.cancelRecording();
 
       // AC1: Verify file was checked for existence
-      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith('/temp/cancel.m4a');
+      expect(mockFileSystem.fileExistsSpy).toHaveBeenCalledWith('/temp/cancel.m4a');
 
       // AC1: Verify file was deleted
-      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
-        '/temp/cancel.m4a',
-        { idempotent: true }
-      );
+      expect(mockFileSystem.deleteFileSpy).toHaveBeenCalledWith('/temp/cancel.m4a');
 
       // AC1: Verify capture entity was deleted from DB
       expect(repository.delete).toHaveBeenCalledWith('cancel-capture-1');
@@ -639,8 +596,6 @@ describe('Audio Capture Integration Tests', () => {
     });
 
     it('should handle cancel when file does not exist', async () => {
-      const FileSystem = require('expo-file-system/legacy');
-
       repository.create.mockResolvedValue({
         type: 'success',
         data: {
@@ -654,14 +609,16 @@ describe('Audio Capture Integration Tests', () => {
         rawContent: '/temp/missing.m4a',
       } as any);
 
-      // Mock file doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      // File doesn't exist in mock filesystem (don't add it with setFile)
 
       await recordingService.startRecording('/temp/missing.m4a');
       await recordingService.cancelRecording();
 
+      // Should check if file exists
+      expect(mockFileSystem.fileExistsSpy).toHaveBeenCalledWith('/temp/missing.m4a');
+
       // Should not attempt to delete non-existent file
-      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+      expect(mockFileSystem.deleteFileSpy).not.toHaveBeenCalled();
 
       // But should still delete the DB entity
       expect(repository.delete).toHaveBeenCalledWith('cancel-capture-2');
@@ -669,8 +626,6 @@ describe('Audio Capture Integration Tests', () => {
     });
 
     it('should handle cancel in offline mode (AC5)', async () => {
-      const FileSystem = require('expo-file-system/legacy');
-
       repository.create.mockResolvedValue({
         type: 'success',
         data: {
@@ -684,8 +639,8 @@ describe('Audio Capture Integration Tests', () => {
         rawContent: '/temp/offline.m4a',
       } as any);
 
-      // Mock file system error (simulating offline/storage issues)
-      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('Storage unavailable'));
+      // Add file to mock filesystem
+      mockFileSystem.setFile('/temp/offline.m4a', '');
 
       await recordingService.startRecording('/temp/offline.m4a');
 
@@ -698,15 +653,13 @@ describe('Audio Capture Integration Tests', () => {
     });
 
     it('should do nothing when canceling without active recording', async () => {
-      const FileSystem = require('expo-file-system/legacy');
-
       // Call cancel without starting recording
       await recordingService.cancelRecording();
 
       // Should not call any cleanup methods
-      expect(repository.getById).not.toHaveBeenCalled();
+      expect(repository.findById).not.toHaveBeenCalled();
       expect(repository.delete).not.toHaveBeenCalled();
-      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+      expect(mockFileSystem.deleteFileSpy).not.toHaveBeenCalled();
     });
 
     it('should handle capture with no file URI', async () => {

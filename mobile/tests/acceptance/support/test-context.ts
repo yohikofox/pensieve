@@ -17,7 +17,7 @@ import { type RepositoryResult, RepositoryResultType, success, validationError }
 export interface Capture {
   id: string;
   type: 'AUDIO' | 'TEXT';
-  state: 'RECORDING' | 'CAPTURED' | 'RECOVERED';
+  state: string; // 'recording' | 'captured' | 'recovered' | 'processing' | 'ready' | 'failed' | 'transcribing' | 'transcribed' | 'transcription_failed'
   rawContent: string;
   normalizedText: string | null;
   capturedAt: Date;
@@ -28,6 +28,8 @@ export interface Capture {
   location: string | null;
   tags: string[];
   recoveredFromCrash?: boolean;
+  // Note: syncStatus is managed via sync_queue (not part of Capture model)
+  // Note: userId doesn't exist in Capture model
 }
 
 export interface SyncQueueItem {
@@ -196,7 +198,7 @@ export class InMemoryDatabase {
     const capture: Capture = {
       id: data.id || uuidv4(),
       type: data.type || 'AUDIO',
-      state: data.state || 'RECORDING',
+      state: data.state || 'recording',
       rawContent: data.rawContent || '',
       normalizedText: data.normalizedText || null,
       capturedAt: data.capturedAt || new Date(),
@@ -250,7 +252,7 @@ export class InMemoryDatabase {
     return Array.from(this._captures.values());
   }
 
-  async findByState(state: Capture['state']): Promise<Capture[]> {
+  async findByState(state: string): Promise<Capture[]> {
     return Array.from(this._captures.values()).filter((c) => c.state === state);
   }
 
@@ -1295,6 +1297,148 @@ export class MockApp {
 }
 
 // ============================================================================
+// Mock Whisper Service (Story 2.5)
+// ============================================================================
+
+export class MockWhisperService {
+  private _modelInstalled: boolean = true;
+  private _transcriptionResults: Map<string, string> = new Map();
+  private _failNextTranscription: boolean = false;
+  private _transcriptionDuration: number = 1000; // Default 1s
+
+  setModelInstalled(installed: boolean): void {
+    this._modelInstalled = installed;
+  }
+
+  isModelInstalled(): boolean {
+    return this._modelInstalled;
+  }
+
+  setTranscriptionDuration(ms: number): void {
+    this._transcriptionDuration = ms;
+  }
+
+  async transcribe(audioFilePath: string, audioDuration: number): Promise<string> {
+    if (!this._modelInstalled) {
+      throw new Error('WhisperModelNotInstalled');
+    }
+
+    if (this._failNextTranscription) {
+      this._failNextTranscription = false;
+      throw new Error('TranscriptionFailed: Corrupted audio');
+    }
+
+    // Simulate transcription time (should be < 2x audio duration for NFR2)
+    await this._simulateDelay(this._transcriptionDuration);
+
+    // Check NFR2 compliance
+    if (this._transcriptionDuration > audioDuration * 2) {
+      throw new Error(`NFR2 violation: Transcription took ${this._transcriptionDuration}ms but audio was ${audioDuration}ms`);
+    }
+
+    const transcription = `Transcription of ${audioFilePath}`;
+    this._transcriptionResults.set(audioFilePath, transcription);
+    return transcription;
+  }
+
+  triggerError(): void {
+    this._failNextTranscription = true;
+  }
+
+  getTranscriptionResult(audioFilePath: string): string | undefined {
+    return this._transcriptionResults.get(audioFilePath);
+  }
+
+  private async _simulateDelay(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  reset(): void {
+    this._modelInstalled = true;
+    this._transcriptionResults.clear();
+    this._failNextTranscription = false;
+    this._transcriptionDuration = 1000;
+  }
+}
+
+// ============================================================================
+// Mock Transcription Queue (Story 2.5)
+// ============================================================================
+
+export interface TranscriptionJob {
+  captureId: string;
+  audioFilePath: string;
+  audioDuration: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+}
+
+export class MockTranscriptionQueue {
+  private _queue: TranscriptionJob[] = [];
+  private _processing: boolean = false;
+
+  addJob(captureId: string, audioFilePath: string, audioDuration: number): void {
+    this._queue.push({
+      captureId,
+      audioFilePath,
+      audioDuration,
+      status: 'pending',
+    });
+  }
+
+  getJobsCount(): number {
+    return this._queue.length;
+  }
+
+  getPendingJobsCount(): number {
+    return this._queue.filter(job => job.status === 'pending').length;
+  }
+
+  getNextJob(): TranscriptionJob | null {
+    const pendingJob = this._queue.find(job => job.status === 'pending');
+    if (pendingJob) {
+      pendingJob.status = 'processing';
+      return pendingJob;
+    }
+    return null;
+  }
+
+  markJobCompleted(captureId: string): void {
+    const job = this._queue.find(job => job.captureId === captureId);
+    if (job) {
+      job.status = 'completed';
+    }
+  }
+
+  markJobFailed(captureId: string): void {
+    const job = this._queue.find(job => job.captureId === captureId);
+    if (job) {
+      job.status = 'failed';
+    }
+  }
+
+  isProcessing(): boolean {
+    return this._processing;
+  }
+
+  setProcessing(processing: boolean): void {
+    this._processing = processing;
+  }
+
+  getJobs(): TranscriptionJob[] {
+    return [...this._queue];
+  }
+
+  clear(): void {
+    this._queue = [];
+    this._processing = false;
+  }
+
+  reset(): void {
+    this.clear();
+  }
+}
+
+// ============================================================================
 // Test Context (aggregates all mocks)
 // ============================================================================
 
@@ -1314,6 +1458,10 @@ export class TestContext {
   public draftStorage: MockDraftStorage;
   public app: MockApp;
 
+  // Story 2.5 - Transcription mocks
+  public whisper: MockWhisperService;
+  public transcriptionQueue: MockTranscriptionQueue;
+
   private _userId: string = 'test-user';
   private _isOffline: boolean = false;
 
@@ -1332,6 +1480,10 @@ export class TestContext {
     this.dialog = new MockDialog();
     this.draftStorage = new MockDraftStorage();
     this.app = new MockApp();
+
+    // Story 2.5 mocks
+    this.whisper = new MockWhisperService();
+    this.transcriptionQueue = new MockTranscriptionQueue();
   }
 
   setUserId(userId: string): void {
@@ -1365,6 +1517,10 @@ export class TestContext {
     this.dialog.reset();
     this.draftStorage.reset();
     this.app.reset();
+
+    // Story 2.5 resets
+    this.whisper.reset();
+    this.transcriptionQueue.reset();
 
     this._userId = 'test-user';
     this._isOffline = false;

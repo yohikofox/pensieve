@@ -1,6 +1,7 @@
 import { WhisperModelService } from '../WhisperModelService';
 import { fetch } from 'expo/fetch';
 import { Paths } from 'expo-file-system';
+import * as FileSystem from 'expo-file-system';
 
 // Mocks are set up in jest-setup.js
 const mockFetch = fetch as jest.Mock;
@@ -64,6 +65,8 @@ describe('WhisperModelService', () => {
   beforeEach(() => {
     service = new WhisperModelService();
     jest.clearAllMocks();
+    // Clear mock files between tests
+    (FileSystem as any).__clearMockFiles?.();
   });
 
   describe('downloadModel', () => {

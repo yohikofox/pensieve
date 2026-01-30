@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { Platform } from "react-native";
-import { File } from "expo-file-system/next";
+import { File } from "expo-file-system";
 import { initWhisper, WhisperContext } from "whisper.rn";
 import { AudioConversionService } from "./AudioConversionService";
 import { WhisperModelService } from "./WhisperModelService";
@@ -210,8 +210,9 @@ ${vocabulary}
 
     // Check if model file exists (Expo 54+ File API)
     const modelFile = new File(modelPath);
-    const exists = modelFile.exists;
-    const size = exists ? modelFile.size : null;
+    const info = modelFile.info();
+    const exists = info.exists;
+    const size = exists ? info.size : null;
 
     console.log("[TranscriptionService] Model file info:", {
       exists,

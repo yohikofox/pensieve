@@ -20,18 +20,15 @@
 import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
-import * as FileSystem from 'expo-file-system/legacy';
+import { MockFileSystem } from '../../__tests__/helpers/MockFileSystem';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
-jest.mock('expo-file-system/legacy', () => ({
-  getInfoAsync: jest.fn(),
-  deleteAsync: jest.fn(),
-}));
 
 describe('RecordingService', () => {
   let service: RecordingService;
   let mockRepository: jest.Mocked<CaptureRepository>;
+  let mockFileSystem: MockFileSystem;
 
   beforeEach(() => {
     // Reset mocks
@@ -46,7 +43,9 @@ describe('RecordingService', () => {
       findByState: jest.fn(),
     } as any;
 
-    service = new RecordingService(mockRepository);
+    mockFileSystem = new MockFileSystem();
+
+    service = new RecordingService(mockRepository, mockFileSystem);
   });
 
   describe('startRecording', () => {
@@ -235,9 +234,8 @@ describe('RecordingService', () => {
         syncStatus: 'pending',
       } as any);
 
-      // Mock FileSystem
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      // Mock filesystem - file exists
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
 
       // Cancel recording
       const result = await service.cancelRecording();
@@ -245,14 +243,9 @@ describe('RecordingService', () => {
       // Should return success
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
-      // Should check if file exists
-      expect(FileSystem.getInfoAsync).toHaveBeenCalledWith('file:///path/to/audio.m4a');
-
-      // Should delete the file
-      expect(FileSystem.deleteAsync).toHaveBeenCalledWith(
-        'file:///path/to/audio.m4a',
-        { idempotent: true }
-      );
+      // Should check if file exists and delete it
+      expect(mockFileSystem.fileExistsSpy).toHaveBeenCalledWith('file:///path/to/audio.m4a');
+      expect(mockFileSystem.deleteFileSpy).toHaveBeenCalledWith('file:///path/to/audio.m4a');
 
       // Should delete the capture entity
       expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
@@ -278,8 +271,8 @@ describe('RecordingService', () => {
         rawContent: 'file:///path/to/audio.m4a',
       } as any);
 
-      // Mock file doesn't exist
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: false });
+      // Mock file doesn't exist (don't set it in mockFileSystem)
+      // mockFileSystem is empty by default
 
       // Cancel should return success
       const result = await service.cancelRecording();
@@ -305,8 +298,11 @@ describe('RecordingService', () => {
         rawContent: 'file:///path/to/audio.m4a',
       } as any);
 
-      // Mock file system error
-      (FileSystem.getInfoAsync as jest.Mock).mockRejectedValue(new Error('File system error'));
+      // Mock file system error (fileExists returns error)
+      mockFileSystem.fileExists = jest.fn().mockResolvedValue({
+        type: RepositoryResultType.DATABASE_ERROR,
+        error: 'File system error',
+      });
 
       // Cancel should return success (file errors are non-critical)
       const result = await service.cancelRecording();
@@ -326,7 +322,7 @@ describe('RecordingService', () => {
       // Should not call any repository methods
       expect(mockRepository.findById).not.toHaveBeenCalled();
       expect(mockRepository.delete).not.toHaveBeenCalled();
-      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+      expect(mockFileSystem.deleteFileSpy).not.toHaveBeenCalled();
     });
 
     it('should handle capture with no file URI', async () => {
@@ -350,7 +346,7 @@ describe('RecordingService', () => {
       const result = await service.cancelRecording();
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
-      expect(FileSystem.deleteAsync).not.toHaveBeenCalled();
+      expect(mockFileSystem.deleteFileSpy).not.toHaveBeenCalled();
       expect(mockRepository.delete).toHaveBeenCalledWith('capture-123');
     });
 
@@ -371,8 +367,7 @@ describe('RecordingService', () => {
       } as any);
 
       // Mock file operations succeed but DB deletion fails
-      (FileSystem.getInfoAsync as jest.Mock).mockResolvedValue({ exists: true });
-      (FileSystem.deleteAsync as jest.Mock).mockResolvedValue(undefined);
+      mockFileSystem.setFile('file:///path/to/audio.m4a', '');
       mockRepository.delete.mockRejectedValue(new Error('Database connection lost'));
 
       // Cancel should return error

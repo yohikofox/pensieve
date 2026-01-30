@@ -11,24 +11,35 @@
 
 import { OfflineSyncService } from '../OfflineSyncService';
 import { CaptureRepository } from '../../data/CaptureRepository';
+import { SyncQueueService } from '../SyncQueueService';
 
-// Mock CaptureRepository
+// Mock dependencies
 jest.mock('../../data/CaptureRepository');
+jest.mock('../SyncQueueService');
 
 describe('OfflineSyncService', () => {
   let service: OfflineSyncService;
   let mockRepository: jest.Mocked<CaptureRepository>;
+  let mockSyncQueueService: jest.Mocked<SyncQueueService>;
 
   beforeEach(() => {
     jest.clearAllMocks();
 
     mockRepository = {
-      findBySyncStatus: jest.fn(),
+      findPendingSync: jest.fn(),
       findAll: jest.fn(),
+      findById: jest.fn(),
+      findSynced: jest.fn(),
       update: jest.fn(),
     } as any;
 
-    service = new OfflineSyncService(mockRepository);
+    mockSyncQueueService = {
+      getPendingOperationsForEntity: jest.fn(),
+      markAsSynced: jest.fn(),
+      enqueue: jest.fn(),
+    } as any;
+
+    service = new OfflineSyncService(mockRepository, mockSyncQueueService);
   });
 
   describe('getPendingCaptures', () => {
@@ -42,7 +53,6 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567890000),
           updatedAt: new Date(1234567890000),
           capturedAt: new Date(1234567890000),
-          syncStatus: 'pending',
         },
         {
           id: 'capture-2',
@@ -52,11 +62,10 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567891000),
           updatedAt: new Date(1234567891000),
           capturedAt: new Date(1234567891000),
-          syncStatus: 'pending',
         },
       ];
 
-      mockRepository.findBySyncStatus.mockResolvedValue(pendingCaptures);
+      mockRepository.findPendingSync.mockResolvedValue(pendingCaptures);
 
       const result = await service.getPendingCaptures();
 
@@ -68,11 +77,11 @@ describe('OfflineSyncService', () => {
         rawContent: '/audio1.m4a',
         capturedAt: new Date(1234567890000),
       });
-      expect(mockRepository.findBySyncStatus).toHaveBeenCalledWith('pending');
+      expect(mockRepository.findPendingSync).toHaveBeenCalled();
     });
 
     it('should return empty array when no pending captures exist', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findPendingSync.mockResolvedValue([]);
 
       const result = await service.getPendingCaptures();
 
@@ -80,7 +89,7 @@ describe('OfflineSyncService', () => {
     });
 
     it('should handle errors gracefully', async () => {
-      mockRepository.findBySyncStatus.mockRejectedValue(new Error('DB error'));
+      mockRepository.findPendingSync.mockRejectedValue(new Error('DB error'));
 
       const result = await service.getPendingCaptures();
 
@@ -89,60 +98,88 @@ describe('OfflineSyncService', () => {
   });
 
   describe('markAsSynced', () => {
-    it('should update capture sync status to synced', async () => {
-      mockRepository.update.mockResolvedValue({} as any);
+    it('should remove capture from sync queue', async () => {
+      const queueItems = [
+        { id: 'queue-1', entityType: 'capture', entityId: 'capture-123' },
+        { id: 'queue-2', entityType: 'capture', entityId: 'capture-123' },
+      ];
+      mockSyncQueueService.getPendingOperationsForEntity.mockResolvedValue(queueItems);
+      mockSyncQueueService.markAsSynced.mockResolvedValue();
 
       await service.markAsSynced('capture-123');
 
-      expect(mockRepository.update).toHaveBeenCalledWith('capture-123', {
-        syncStatus: 'synced',
-      });
+      expect(mockSyncQueueService.getPendingOperationsForEntity).toHaveBeenCalledWith('capture', 'capture-123');
+      expect(mockSyncQueueService.markAsSynced).toHaveBeenCalledTimes(2);
+      expect(mockSyncQueueService.markAsSynced).toHaveBeenCalledWith('queue-1');
+      expect(mockSyncQueueService.markAsSynced).toHaveBeenCalledWith('queue-2');
     });
 
-    it('should throw error if update fails', async () => {
-      mockRepository.update.mockRejectedValue(new Error('Update failed'));
+    it('should handle errors gracefully', async () => {
+      mockSyncQueueService.getPendingOperationsForEntity.mockRejectedValue(new Error('Queue error'));
 
-      await expect(service.markAsSynced('capture-123')).rejects.toThrow('Update failed');
+      await expect(service.markAsSynced('capture-123')).resolves.not.toThrow();
     });
   });
 
   describe('markAsPending', () => {
-    it('should update capture sync status to pending', async () => {
-      mockRepository.update.mockResolvedValue({} as any);
+    it('should add capture to sync queue', async () => {
+      const capture = {
+        id: 'capture-456',
+        type: 'audio',
+        state: 'captured',
+        rawContent: '/path/audio.m4a',
+        duration: 5000,
+        fileSize: 1024000,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        capturedAt: new Date(),
+      };
+      mockRepository.findById.mockResolvedValue(capture);
+      mockSyncQueueService.enqueue.mockResolvedValue();
 
       await service.markAsPending('capture-456');
 
-      expect(mockRepository.update).toHaveBeenCalledWith('capture-456', {
-        syncStatus: 'pending',
-      });
+      expect(mockRepository.findById).toHaveBeenCalledWith('capture-456');
+      expect(mockSyncQueueService.enqueue).toHaveBeenCalledWith(
+        'capture',
+        'capture-456',
+        'update',
+        expect.objectContaining({
+          type: 'audio',
+          state: 'captured',
+          rawContent: '/path/audio.m4a',
+        })
+      );
     });
 
-    it('should throw error if update fails', async () => {
-      mockRepository.update.mockRejectedValue(new Error('Update failed'));
+    it('should handle capture not found', async () => {
+      mockRepository.findById.mockResolvedValue(null);
 
-      await expect(service.markAsPending('capture-456')).rejects.toThrow('Update failed');
+      await expect(service.markAsPending('capture-456')).resolves.not.toThrow();
+      expect(mockSyncQueueService.enqueue).not.toHaveBeenCalled();
     });
   });
 
   describe('getSyncStats', () => {
     it('should return correct sync statistics', async () => {
       const allCaptures = [
-        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'synced' },
+        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
       ];
 
       const pendingCaptures = [
-        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
       ];
 
-      const syncedCaptures = [{ id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'synced' }];
+      const syncedCaptures = [
+        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+      ];
 
       mockRepository.findAll.mockResolvedValue(allCaptures);
-      mockRepository.findBySyncStatus
-        .mockResolvedValueOnce(pendingCaptures) // First call for pending
-        .mockResolvedValueOnce(syncedCaptures); // Second call for synced
+      mockRepository.findPendingSync.mockResolvedValue(pendingCaptures);
+      mockRepository.findSynced.mockResolvedValue(syncedCaptures);
 
       const stats = await service.getSyncStats();
 
@@ -177,7 +214,6 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567890000),
           updatedAt: new Date(1234567890000),
           capturedAt: new Date(1234567890000),
-          syncStatus: 'pending',
         },
         {
           id: 'capture-2',
@@ -187,7 +223,6 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567891000),
           updatedAt: new Date(1234567891000),
           capturedAt: new Date(1234567891000),
-          syncStatus: 'pending',
         },
         {
           id: 'capture-3',
@@ -197,7 +232,6 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567892000),
           updatedAt: new Date(1234567892000),
           capturedAt: new Date(1234567892000),
-          syncStatus: 'pending',
         },
         {
           id: 'capture-4',
@@ -207,11 +241,10 @@ describe('OfflineSyncService', () => {
           createdAt: new Date(1234567893000),
           updatedAt: new Date(1234567893000),
           capturedAt: new Date(1234567893000),
-          syncStatus: 'pending',
         },
       ];
 
-      mockRepository.findBySyncStatus.mockResolvedValue(pendingCaptures);
+      mockRepository.findPendingSync.mockResolvedValue(pendingCaptures);
 
       const result = await service.getReadyForSync();
 
@@ -221,7 +254,7 @@ describe('OfflineSyncService', () => {
     });
 
     it('should return empty array when no ready captures exist', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findPendingSync.mockResolvedValue([]);
 
       const result = await service.getReadyForSync();
 
@@ -231,7 +264,7 @@ describe('OfflineSyncService', () => {
 
   describe('hasPendingSync', () => {
     it('should return true when pending captures exist', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([
+      mockRepository.findPendingSync.mockResolvedValue([
         { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ]);
 
@@ -241,7 +274,7 @@ describe('OfflineSyncService', () => {
     });
 
     it('should return false when no pending captures exist', async () => {
-      mockRepository.findBySyncStatus.mockResolvedValue([]);
+      mockRepository.findPendingSync.mockResolvedValue([]);
 
       const result = await service.hasPendingSync();
 
@@ -249,7 +282,7 @@ describe('OfflineSyncService', () => {
     });
 
     it('should return false on error', async () => {
-      mockRepository.findBySyncStatus.mockRejectedValue(new Error('DB error'));
+      mockRepository.findPendingSync.mockRejectedValue(new Error('DB error'));
 
       const result = await service.hasPendingSync();
 

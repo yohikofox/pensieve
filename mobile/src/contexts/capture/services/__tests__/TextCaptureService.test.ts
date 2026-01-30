@@ -73,6 +73,7 @@ describe('TextCaptureService', () => {
         type: 'text',
         state: 'captured',
         rawContent: 'Ma pensée',
+        normalizedText: 'Ma pensée',
         syncStatus: 'pending',
       });
     });

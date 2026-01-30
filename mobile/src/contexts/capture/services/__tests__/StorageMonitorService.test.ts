@@ -8,18 +8,13 @@
 
 import { StorageMonitorService } from '../StorageMonitorService';
 import { database } from '../../../../database';
-import * as FileSystem from 'expo-file-system/legacy';
+import { StorageVolume } from 'expo-file-system';
 
 // Mock database
 jest.mock('../../../../database', () => ({
   database: {
     execute: jest.fn(),
   },
-}));
-
-// Mock expo-file-system/legacy
-jest.mock('expo-file-system/legacy', () => ({
-  getFreeDiskStorageAsync: jest.fn(),
 }));
 
 describe('StorageMonitorService', () => {
@@ -35,7 +30,7 @@ describe('StorageMonitorService', () => {
   describe('getStorageInfo', () => {
     it('should return storage information with free space', async () => {
       // Mock 500MB free space
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(500 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(500 * 1024 * 1024);
 
       // Mock 100MB used by captures
       mockDatabase.execute.mockReturnValueOnce({
@@ -57,7 +52,7 @@ describe('StorageMonitorService', () => {
 
     it('should mark storage as critically low when < 100MB', async () => {
       // Mock 50MB free space (below 100MB threshold)
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
       mockDatabase.execute.mockReturnValueOnce({ rows: [] } as any);
 
       const info = await service.getStorageInfo();
@@ -67,7 +62,7 @@ describe('StorageMonitorService', () => {
     });
 
     it('should return safe defaults on error', async () => {
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockRejectedValue(
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockRejectedValue(
         new Error('Filesystem error')
       );
 
@@ -83,7 +78,7 @@ describe('StorageMonitorService', () => {
 
   describe('isStorageCriticallyLow', () => {
     it('should return false when storage is sufficient', async () => {
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(200 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(200 * 1024 * 1024);
 
       const isCritical = await service.isStorageCriticallyLow();
 
@@ -91,7 +86,7 @@ describe('StorageMonitorService', () => {
     });
 
     it('should return true when storage is below threshold', async () => {
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
 
       const isCritical = await service.isStorageCriticallyLow();
 
@@ -99,7 +94,7 @@ describe('StorageMonitorService', () => {
     });
 
     it('should return true on error for safety', async () => {
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockRejectedValue(new Error('Error'));
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockRejectedValue(new Error('Error'));
 
       const isCritical = await service.isStorageCriticallyLow();
 
@@ -161,7 +156,7 @@ describe('StorageMonitorService', () => {
   describe('hasSufficientStorage', () => {
     it('should return true when sufficient space for estimated duration', async () => {
       // 200MB free, need ~15MB for 3 minutes (5MB/min * 3)
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(200 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(200 * 1024 * 1024);
 
       const hasSufficient = await service.hasSufficientStorage(3); // 3 minutes
 
@@ -170,7 +165,7 @@ describe('StorageMonitorService', () => {
 
     it('should return false when insufficient space', async () => {
       // 50MB free, need ~125MB for 5 minutes (5MB/min * 5 + 100MB buffer)
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(50 * 1024 * 1024);
 
       const hasSufficient = await service.hasSufficientStorage(5);
 
@@ -179,7 +174,7 @@ describe('StorageMonitorService', () => {
 
     it('should include critical threshold buffer in calculation', async () => {
       // 105MB free, need 5MB for 1 minute + 100MB buffer = 105MB
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(105 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(105 * 1024 * 1024);
 
       const hasSufficient = await service.hasSufficientStorage(1);
 
@@ -187,7 +182,7 @@ describe('StorageMonitorService', () => {
     });
 
     it('should return false on error for safety', async () => {
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockRejectedValue(new Error('Error'));
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockRejectedValue(new Error('Error'));
 
       const hasSufficient = await service.hasSufficientStorage(5);
 
@@ -215,7 +210,7 @@ describe('StorageMonitorService', () => {
     it('should update critical threshold', async () => {
       service.setCriticalThreshold(200 * 1024 * 1024); // 200MB
 
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(150 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(150 * 1024 * 1024);
 
       const isCritical = await service.isStorageCriticallyLow();
 
@@ -250,14 +245,14 @@ describe('StorageMonitorService', () => {
   describe('NFR6: Zero Data Loss - Storage Overflow Prevention', () => {
     it('should warn before storage critically low', async () => {
       // 110MB free - just above threshold
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(110 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(110 * 1024 * 1024);
 
       const isCritical = await service.isStorageCriticallyLow();
 
       expect(isCritical).toBe(false);
 
       // 90MB free - below threshold
-      (FileSystem.getFreeDiskStorageAsync as jest.Mock).mockResolvedValue(90 * 1024 * 1024);
+      (StorageVolume.getAvailableSpaceAsync as jest.Mock).mockResolvedValue(90 * 1024 * 1024);
 
       const isCritical2 = await service.isStorageCriticallyLow();
 
