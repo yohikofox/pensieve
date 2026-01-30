@@ -1183,6 +1183,98 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v11 completed');
     },
   },
+  {
+    version: 12,
+    name: "Add 'ideas' analysis type to capture_analysis CHECK constraint",
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v12: Adding ideas analysis type');
+
+      // Step 1: Create new table with updated CHECK constraint
+      db.executeSync(`
+        CREATE TABLE capture_analysis_new (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          analysis_type TEXT NOT NULL CHECK(
+            analysis_type IN ('summary', 'highlights', 'action_items', 'ideas')
+          ),
+          content TEXT NOT NULL,
+          model_id TEXT,
+          processing_duration_ms INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Step 2: Copy existing data
+      db.executeSync(`
+        INSERT INTO capture_analysis_new
+        SELECT * FROM capture_analysis
+      `);
+
+      // Step 3: Drop old table
+      db.executeSync('DROP TABLE capture_analysis');
+
+      // Step 4: Rename new table
+      db.executeSync('ALTER TABLE capture_analysis_new RENAME TO capture_analysis');
+
+      // Step 5: Recreate indexes
+      db.executeSync(`
+        CREATE INDEX idx_capture_analysis_capture_id
+        ON capture_analysis(capture_id)
+      `);
+
+      db.executeSync(`
+        CREATE UNIQUE INDEX idx_capture_analysis_capture_type
+        ON capture_analysis(capture_id, analysis_type)
+      `);
+
+      console.log('[DB] ✅ Migration v12: Added ideas analysis type');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v12');
+
+      // Create old table schema without 'ideas'
+      db.executeSync(`
+        CREATE TABLE capture_analysis_v11 (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          analysis_type TEXT NOT NULL CHECK(analysis_type IN ('summary', 'highlights', 'action_items')),
+          content TEXT NOT NULL,
+          model_id TEXT,
+          processing_duration_ms INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Copy data back (excluding 'ideas' type)
+      db.executeSync(`
+        INSERT INTO capture_analysis_v11
+        SELECT * FROM capture_analysis
+        WHERE analysis_type != 'ideas'
+      `);
+
+      db.executeSync('DROP TABLE capture_analysis');
+      db.executeSync('ALTER TABLE capture_analysis_v11 RENAME TO capture_analysis');
+
+      // Recreate indexes
+      db.executeSync(`
+        CREATE INDEX idx_capture_analysis_capture_id
+        ON capture_analysis(capture_id)
+      `);
+
+      db.executeSync(`
+        CREATE UNIQUE INDEX idx_capture_analysis_capture_type
+        ON capture_analysis(capture_id, analysis_type)
+      `);
+
+      console.log('[DB] ✅ Rollback v12 completed');
+    },
+  },
 ];
 
 /**

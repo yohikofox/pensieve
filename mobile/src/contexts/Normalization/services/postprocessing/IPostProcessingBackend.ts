@@ -139,6 +139,51 @@ Sortie :
 - Aucune explication
 - Aucun commentaire
 `;
+
+/**
+ * Model-Specific Prompt Overrides
+ *
+ * Permet d'optimiser les prompts système pour des modèles spécifiques.
+ * Si un override existe pour un modèle, il remplace le prompt système par défaut.
+ *
+ * Format de la clé: nom du modèle (ex: "llama-3.2-1b-instruct", "qwen2.5-0.5b")
+ *
+ * Exemple d'utilisation:
+ * 'llama-3.2-1b-instruct': `Instructions courtes et directes pour Llama 3.2 1B...`
+ */
+export const MODEL_PROMPT_OVERRIDES: Record<string, string | undefined> = {
+  // Llama 3.2 1B - Petit modèle, nécessite instructions ULTRA concises + exemple
+  'llama-3.2-1b-instruct': `Tu corriges la ponctuation et l'orthographe. Tu retournes SEULEMENT le texte corrigé, sans explication.
+
+Exemple:
+Entrée: "bonjour ça va bien et toi"
+Sortie: "Bonjour, ça va bien et toi ?"
+
+Maintenant, corrige le texte suivant:`,
+
+  // Qwen 2.5 0.5B - Utilise prompt par défaut
+  // 'qwen2.5-0.5b-instruct': undefined,
+
+  // Gemma 3 1B - Utilise prompt par défaut
+  // 'gemma-3-1b-it': undefined,
+
+  // Ajouter d'autres modèles au besoin
+};
+
+/**
+ * Extraire l'ID du modèle depuis le chemin de fichier
+ * Ex: "/path/to/llama-3.2-1b-instruct-q4_k_m.gguf" -> "llama-3.2-1b-instruct"
+ *
+ * @param modelPath - Chemin complet vers le fichier GGUF
+ * @returns Nom de base du modèle sans quantization suffix
+ */
+export function extractModelIdFromPath(modelPath: string): string {
+  const filename = modelPath.split('/').pop() || '';
+  // Remove extension and quantization suffix (ex: -q4_k_m.gguf)
+  const baseName = filename.replace(/(-q\d_[kfm](_[ms])?)?\.gguf$/i, '');
+  return baseName;
+}
+
 /**
  * Debug Prompt Manager - In-memory storage for custom prompts (debug mode only)
  *
@@ -180,14 +225,10 @@ class DebugPromptManager {
 
   /**
    * Get the original default prompt (for display/comparison)
+   * Returns ONLY the system prompt (instructions), not the user template
    */
   getDefaultPrompt(): string {
-    return POSTPROCESSING_SYSTEM_PROMPT + POSTPROCESSING_USER_PROMPT;
-  }
-
-  getEnrichedPrompt(text: string): string {
-    const promptTemplate = this.getPrompt();
-    return promptTemplate.replace("{{TRANSCRIPT}}", text);
+    return POSTPROCESSING_SYSTEM_PROMPT;
   }
 }
 

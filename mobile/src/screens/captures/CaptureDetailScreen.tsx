@@ -52,7 +52,7 @@ import { TranscriptionQueueService } from '../../contexts/Normalization/services
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
-import { ANALYSIS_LABELS } from '../../contexts/Normalization/services/analysisPrompts';
+import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
 import { GoogleCalendarService } from '../../services/GoogleCalendarService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -279,11 +279,13 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     [ANALYSIS_TYPES.SUMMARY]: null,
     [ANALYSIS_TYPES.HIGHLIGHTS]: null,
     [ANALYSIS_TYPES.ACTION_ITEMS]: null,
+    [ANALYSIS_TYPES.IDEAS]: null,
   });
   const [analysisLoading, setAnalysisLoading] = useState<Record<AnalysisType, boolean>>({
     [ANALYSIS_TYPES.SUMMARY]: false,
     [ANALYSIS_TYPES.HIGHLIGHTS]: false,
     [ANALYSIS_TYPES.ACTION_ITEMS]: false,
+    [ANALYSIS_TYPES.IDEAS]: false,
   });
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
@@ -457,6 +459,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       [ANALYSIS_TYPES.SUMMARY]: true,
       [ANALYSIS_TYPES.HIGHLIGHTS]: true,
       [ANALYSIS_TYPES.ACTION_ITEMS]: true,
+      [ANALYSIS_TYPES.IDEAS]: true,
     });
     setAnalysisError(null);
 
@@ -472,6 +475,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         [ANALYSIS_TYPES.SUMMARY]: null,
         [ANALYSIS_TYPES.HIGHLIGHTS]: null,
         [ANALYSIS_TYPES.ACTION_ITEMS]: null,
+        [ANALYSIS_TYPES.IDEAS]: null,
       };
 
       let hasError = false;
@@ -499,6 +503,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         [ANALYSIS_TYPES.SUMMARY]: false,
         [ANALYSIS_TYPES.HIGHLIGHTS]: false,
         [ANALYSIS_TYPES.ACTION_ITEMS]: false,
+        [ANALYSIS_TYPES.IDEAS]: false,
       });
     }
   };
@@ -1347,7 +1352,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     {(() => {
                       const allGenerated = analyses[ANALYSIS_TYPES.SUMMARY] &&
                         analyses[ANALYSIS_TYPES.HIGHLIGHTS] &&
-                        analyses[ANALYSIS_TYPES.ACTION_ITEMS];
+                        analyses[ANALYSIS_TYPES.ACTION_ITEMS] &&
+                        analyses[ANALYSIS_TYPES.IDEAS];
                       if (!allGenerated || debugMode) {
                         return (
                           <TouchableOpacity
@@ -1557,6 +1563,37 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       </Text>
                     );
                   })()}
+                </View>
+
+                {/* Ideas Section */}
+                <View style={[styles.analysisSection, { borderBottomColor: themeColors.borderDefault }]}>
+                  <View style={styles.analysisSectionHeader}>
+                    <View style={styles.analysisSectionTitleRow}>
+                      <Text style={{ fontSize: 16 }}>{ANALYSIS_ICONS[ANALYSIS_TYPES.IDEAS]}</Text>
+                      <Text style={[styles.analysisSectionTitle, { color: themeColors.textPrimary }]}>{ANALYSIS_LABELS[ANALYSIS_TYPES.IDEAS]}</Text>
+                    </View>
+                    {/* Show button: loading, or no data, or debug mode for regeneration */}
+                    {(analysisLoading[ANALYSIS_TYPES.IDEAS] || !analyses[ANALYSIS_TYPES.IDEAS] || debugMode) && (
+                      <TouchableOpacity
+                        style={[styles.generateButton, { backgroundColor: themeColors.actionItemTagBg, borderColor: themeColors.analysisBorder }]}
+                        onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
+                        disabled={analysisLoading[ANALYSIS_TYPES.IDEAS]}
+                      >
+                        {analysisLoading[ANALYSIS_TYPES.IDEAS] ? (
+                          <ActivityIndicator size="small" color={colors.primary[500]} />
+                        ) : analyses[ANALYSIS_TYPES.IDEAS] ? (
+                          <Feather name={ActionIcons.refresh} size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
+                        ) : (
+                          <Text style={[styles.generateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>Générer</Text>
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                  {analyses[ANALYSIS_TYPES.IDEAS] && (
+                    <Text style={[styles.analysisResult, { color: themeColors.textPrimary }]} selectable>
+                      {analyses[ANALYSIS_TYPES.IDEAS].content}
+                    </Text>
+                  )}
                 </View>
                   </>
                 )}

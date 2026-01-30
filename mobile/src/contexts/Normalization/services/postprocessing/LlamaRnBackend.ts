@@ -16,6 +16,9 @@ import {
   type IPostProcessingBackend,
   type PostProcessingResult,
   debugPromptManager,
+  MODEL_PROMPT_OVERRIDES,
+  extractModelIdFromPath,
+  POSTPROCESSING_USER_PROMPT,
 } from './IPostProcessingBackend';
 import { type PromptTemplate } from '../LLMModelService';
 
@@ -204,7 +207,7 @@ export class LlamaRnBackend implements IPostProcessingBackend {
         stopTokens: this.getStopTokens(),
       });
 
-      // Clean up the result
+      // Clean up the result FIRST (before leak detection)
       let processedText = result.text.trim();
 
       // Remove any leading/trailing quotes that models sometimes add
@@ -248,11 +251,43 @@ export class LlamaRnBackend implements IPostProcessingBackend {
         /^le\s+texte\s+(corrigé|amélioré)\s+(est\s*)?:?\s*/i,
         /^here'?s?\s+(the\s+)?(corrected|improved)\s+text\s*:?\s*/i,
         /^(bien\s+sûr|d'accord|ok)\s*[,!.]?\s*/i,
+        // Nouveaux patterns français
+        /^voici\s+la\s+correction\s+(de\s+la\s+transcription\s+vocale)?\s*:?\s*/i,
+        /^corrections?\s+effectuées?\s*:?\s*/i,
+        /^corrections?\s*:\s*/i,  // NOUVEAU: Juste "Corrections :" au début
+        /^texte\s+à\s+corriger\s*:?\s*/i,
+        /^(voici|voilà)\s+le\s+résultat\s*:?\s*/i,
       ];
       for (const pattern of preamblePatterns) {
         processedText = processedText.replace(pattern, '');
       }
       processedText = processedText.trim();
+
+      // Remove explanatory sections that models sometimes add
+      // These patterns remove everything after the corrected text
+      // IMPORTANT: Use \s+ instead of \n\n+ to catch single newlines too
+      const explanatorySectionPatterns = [
+        /\s+j'ai\s+(corrigé|effectué).*/is,
+        /\s+corrections?\s*(effectuées?)?\s*:.*/is,  // Catch "Corrections :" or "Corrections effectuées :"
+        /\s+la\s+correction\s+finale.*/is,
+        /\s+erreurs?\s+suivantes?\s*:.*/is,
+        /\s+modifications?\s+suivantes?\s*:.*/is,
+        /\s+voici\s+les?\s+(corrections?|modifications?).*/is,
+        /\s+liste\s+des?\s+(corrections?|modifications?).*/is,
+      ];
+      for (const pattern of explanatorySectionPatterns) {
+        processedText = processedText.replace(pattern, '');
+      }
+      processedText = processedText.trim();
+
+      // NOW detect prompt leak after cleaning (to avoid false positives on benign preambles)
+      if (this.detectPromptLeak(processedText)) {
+        console.error('[LlamaRnBackend] ❌ System prompt detected in output after cleaning! Aborting.');
+        throw new Error(
+          'Le modèle a généré une sortie invalide contenant les instructions système. ' +
+          'Veuillez réessayer ou choisir un autre modèle.'
+        );
+      }
 
       console.log('[LlamaRnBackend] Processing completed:', {
         duration: processingDuration,
@@ -278,43 +313,39 @@ export class LlamaRnBackend implements IPostProcessingBackend {
 
   /**
    * Build the prompt for the LLM based on the model's template format
+   * Properly separates system instructions from user message
    */
   private buildPrompt(text: string): string {
-    // Get the enriched prompt with {{TRANSCRIPT}} replaced by actual text
-    const enrichedPrompt = debugPromptManager.getEnrichedPrompt(text);
+    // Get system prompt (with model-specific override if exists)
+    const systemPrompt = this.getSystemPromptForModel();
 
-    switch (this.promptTemplate) {
-      case 'gemma':
-        // Gemma format - no explicit system role, user/model turns
-        return `<start_of_turn>user
-${enrichedPrompt}<end_of_turn>
-<start_of_turn>model
-`;
+    // Build user message separately
+    const userMessage = `Texte à corriger :
+"""${text}"""`;
 
-      case 'phi':
-        // Phi-3 format
-        return `<|system|>
-${enrichedPrompt}<|end|>
-<|assistant|>
-`;
+    // Use the same logic as buildPromptWithCustomSystem
+    return this.buildPromptWithCustomSystem(systemPrompt, userMessage);
+  }
 
-      case 'llama':
-        // Llama 3.x format (Llama 3, 3.1, 3.2)
-        return `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
-${enrichedPrompt}<|eot_id|><|start_header_id|>assistant<|end_header_id|>
-
-`;
-
-      case 'chatml':
-      default:
-        // ChatML format (Qwen, SmolLM2, etc.)
-        return `<|im_start|>system
-${enrichedPrompt}
-<|im_end|>
-<|im_start|>assistant
-`;
+  /**
+   * Get system prompt with model-specific override support
+   */
+  private getSystemPromptForModel(): string {
+    if (!this.modelPath) {
+      return debugPromptManager.getPrompt();
     }
+
+    // Check for model-specific override
+    const modelId = extractModelIdFromPath(this.modelPath);
+    const override = MODEL_PROMPT_OVERRIDES[modelId];
+
+    if (override) {
+      console.log('[LlamaRnBackend] Using model-specific prompt for:', modelId);
+      return override;
+    }
+
+    // Fallback to default (or custom debug prompt)
+    return debugPromptManager.getPrompt();
   }
 
   /**
@@ -333,6 +364,46 @@ ${enrichedPrompt}
       default:
         return ['\n\n', '<|end|>', '<|im_end|>', '</s>'];
     }
+  }
+
+  /**
+   * Detect if the LLM output contains leaked system prompt instructions
+   * This indicates a prompt construction bug
+   */
+  private detectPromptLeak(output: string): boolean {
+    const leakIndicators = [
+      'Tu es un assistant spécialisé',
+      'assistant spécialisé dans la correction',
+      'Règles strictes',
+      'POSTPROCESSING_SYSTEM_PROMPT',
+      'POSTPROCESSING_USER_PROMPT',
+      'Corrections effectuées :',
+      "J'ai corrigé",
+      "J'ai effectué",
+      'Instructions :',
+      'Objectif :',
+      'La correction finale',
+      'erreurs suivantes',
+      'modifications suivantes',
+    ];
+
+    const outputLower = output.toLowerCase();
+
+    for (const indicator of leakIndicators) {
+      if (outputLower.includes(indicator.toLowerCase())) {
+        console.warn('[LlamaRnBackend] Prompt leak detected:', indicator);
+        return true;
+      }
+    }
+
+    // Vérifier si la sortie est anormalement longue (>5000 chars)
+    // Ce qui peut indiquer que le prompt a été inclus
+    if (output.length > 5000) {
+      console.warn('[LlamaRnBackend] Suspiciously long output detected:', output.length);
+      return true;
+    }
+
+    return false;
   }
 
   /**
@@ -384,6 +455,12 @@ ${enrichedPrompt}
 
       // Clean up the result
       let processedText = result.text.trim();
+
+      // Detect prompt leak for analyses too
+      if (this.detectPromptLeak(processedText)) {
+        console.error('[LlamaRnBackend] ❌ System prompt leaked in analysis output');
+        throw new Error('Sortie invalide détectée. Veuillez réessayer.');
+      }
 
       // Remove any leading/trailing quotes
       if (processedText.startsWith('"') && processedText.endsWith('"')) {

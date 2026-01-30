@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 11;
+export const SCHEMA_VERSION = 12;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -132,7 +132,7 @@ export const CREATE_CAPTURE_ANALYSIS_TABLE = `
   CREATE TABLE IF NOT EXISTS capture_analysis (
     id TEXT PRIMARY KEY NOT NULL,
     capture_id TEXT NOT NULL,
-    analysis_type TEXT NOT NULL CHECK(analysis_type IN ('summary', 'highlights', 'action_items')),
+    analysis_type TEXT NOT NULL CHECK(analysis_type IN ('summary', 'highlights', 'action_items', 'ideas')),
     content TEXT NOT NULL,
     model_id TEXT,
     processing_duration_ms INTEGER,

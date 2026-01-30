@@ -224,6 +224,7 @@ export class CaptureAnalysisService {
       }
 
       // Determine the text to use based on analysis type
+      // For summary and ideas, use the full normalizedText
       // For highlights and action_items, use the summary as base (generate if needed)
       let textToAnalyze = normalizedText;
 
@@ -340,6 +341,7 @@ export class CaptureAnalysisService {
       [ANALYSIS_TYPES.SUMMARY]: { success: false, error: 'Not started' },
       [ANALYSIS_TYPES.HIGHLIGHTS]: { success: false, error: 'Not started' },
       [ANALYSIS_TYPES.ACTION_ITEMS]: { success: false, error: 'Not started' },
+      [ANALYSIS_TYPES.IDEAS]: { success: false, error: 'Not started' },
     };
 
     for (const type of Object.values(ANALYSIS_TYPES)) {

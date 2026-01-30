@@ -14,6 +14,7 @@ export const ANALYSIS_TYPES = {
   SUMMARY: 'summary',
   HIGHLIGHTS: 'highlights',
   ACTION_ITEMS: 'action_items',
+  IDEAS: 'ideas',
 } as const;
 
 export type AnalysisType = (typeof ANALYSIS_TYPES)[keyof typeof ANALYSIS_TYPES];

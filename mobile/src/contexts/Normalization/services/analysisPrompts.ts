@@ -101,6 +101,26 @@ Sorties incorrectes (à NE PAS faire):
 
 RÉSUMÉ À ANALYSER :
 `,
+
+  ideas: `Tu es un assistant spécialisé dans l'extraction d'idées créatives et novatrices.
+
+Ton rôle est d'analyser le texte suivant et d'identifier toutes les idées, concepts, propositions ou réflexions intéressantes qui y sont exprimées.
+
+Instructions :
+- Extrais UNIQUEMENT les idées présentes dans le texte (pas d'interprétation excessive)
+- Identifie les idées explicites ET implicites
+- Garde les formulations originales autant que possible
+- Organise les idées de manière claire et structurée
+- Une idée = une ligne/bullet point
+- Si aucune idée n'est présente, réponds : "Aucune idée identifiable."
+
+Format de sortie :
+- Liste à puces (markdown)
+- Une idée par ligne
+- Courte et concise
+
+Texte à analyser :
+`,
 };
 
 /**
@@ -197,6 +217,7 @@ export const ANALYSIS_LABELS: Record<AnalysisType, string> = {
   summary: "Resume",
   highlights: "Points cles",
   action_items: "Actions",
+  ideas: "Idees",
 };
 
 /**
@@ -206,4 +227,5 @@ export const ANALYSIS_ICONS: Record<AnalysisType, string> = {
   summary: "\uD83D\uDCDD",
   highlights: "\uD83D\uDCA1",
   action_items: "\u2705",
+  ideas: "\uD83E\uDDE0",
 };

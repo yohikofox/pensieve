@@ -60,6 +60,7 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
       [ANALYSIS_TYPES.SUMMARY]: null,
       [ANALYSIS_TYPES.HIGHLIGHTS]: null,
       [ANALYSIS_TYPES.ACTION_ITEMS]: null,
+      [ANALYSIS_TYPES.IDEAS]: null,
     };
 
     for (const analysis of analyses) {
