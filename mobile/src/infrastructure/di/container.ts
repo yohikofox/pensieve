@@ -29,6 +29,7 @@ import { RetentionPolicyService } from '../../contexts/capture/services/Retentio
 import { EncryptionService } from '../../contexts/capture/services/EncryptionService';
 
 // Normalization Services (Story 2.5)
+import { ExpoFileSystem } from '../../contexts/Normalization/adapters/ExpoFileSystem';
 import { AudioConversionService } from '../../contexts/Normalization/services/AudioConversionService';
 import { TranscriptionService } from '../../contexts/Normalization/services/TranscriptionService';
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
@@ -38,6 +39,7 @@ import { WhisperModelService } from '../../contexts/Normalization/services/Whisp
 
 // Post-processing Services (LLM enhancement)
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
+import { DeviceCapabilitiesService } from '../../contexts/Normalization/services/DeviceCapabilitiesService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import { HuggingFaceAuthService } from '../../contexts/Normalization/services/HuggingFaceAuthService';
@@ -98,6 +100,7 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IEncryptionService, EncryptionService);
 
   // Normalization Services (Story 2.5 - Transcription)
+  container.registerSingleton('IFileSystem', ExpoFileSystem); // Filesystem abstraction for AudioConversionService
   container.registerSingleton(AudioConversionService);
   container.registerSingleton(WhisperModelService);
   container.registerSingleton(TranscriptionService);
@@ -107,6 +110,7 @@ export function registerServices() {
   // Post-processing Services (LLM enhancement)
   container.registerSingleton(HuggingFaceAuthService);
   container.registerSingleton(NPUDetectionService);
+  container.registerSingleton(DeviceCapabilitiesService); // Task 7.3
   container.registerSingleton(LLMModelService);
   container.registerSingleton(PostProcessingService);
   container.registerSingleton(CaptureAnalysisService);

@@ -15,13 +15,15 @@
  */
 
 import "reflect-metadata";
-import { injectable } from "tsyringe";
+import { injectable, inject } from "tsyringe";
+import { FilePath } from "../domain/FilePath";
+import type { IFileSystem } from "../ports/IFileSystem";
 import {
   decodeAudioData,
   OfflineAudioContext,
   type AudioBuffer as RNAudioBuffer,
 } from "react-native-audio-api";
-import * as FileSystemLegacy from "expo-file-system/legacy";
+// FileSystem now injected via IFileSystem interface (DIP)
 import { useSettingsStore } from "../../../stores/settingsStore";
 
 // Whisper.rn requirements
@@ -29,10 +31,16 @@ const WHISPER_SAMPLE_RATE = 16000;
 const WHISPER_NUM_CHANNELS = 1;
 const WHISPER_BIT_DEPTH = 16;
 
+// Task 7.2: Audio preprocessing constants
+const SILENCE_THRESHOLD = 0.01; // RMS threshold for silence detection (1% of max amplitude)
+const MAX_AUDIO_DURATION_MS = 10 * 60 * 1000; // 10 minutes max per segment
+
 @injectable()
 export class AudioConversionService {
   // Debug: Track last converted WAV file for playback testing
   private lastConvertedWavPath: string | null = null;
+
+  constructor(@inject("IFileSystem") private fileSystem: IFileSystem) {}
 
   /**
    * Get the path of the last converted WAV file (for debug purposes)
@@ -54,16 +62,24 @@ export class AudioConversionService {
    */
   async deleteLastConvertedWav(): Promise<void> {
     if (!this.lastConvertedWavPath) {
-      console.log('[AudioConversionService] 🔧 No WAV file to delete');
+      console.log("[AudioConversionService] 🔧 No WAV file to delete");
       return;
     }
 
     try {
-      await FileSystemLegacy.deleteAsync(this.lastConvertedWavPath, { idempotent: true });
-      console.log('[AudioConversionService] 🗑️ Deleted debug WAV file:', this.lastConvertedWavPath);
+      await this.fileSystem.deleteFile(this.lastConvertedWavPath, {
+        idempotent: true,
+      });
+      console.log(
+        "[AudioConversionService] 🗑️ Deleted debug WAV file:",
+        this.lastConvertedWavPath,
+      );
       this.lastConvertedWavPath = null;
     } catch (error) {
-      console.warn('[AudioConversionService] ⚠️ Failed to delete debug WAV:', error);
+      console.warn(
+        "[AudioConversionService] ⚠️ Failed to delete debug WAV:",
+        error,
+      );
     }
   }
 
@@ -77,7 +93,10 @@ export class AudioConversionService {
    * @throws Error if conversion fails or file doesn't exist
    */
   async convertToWhisperFormat(inputPath: string): Promise<string> {
-    console.log("[AudioConversionService] 🎵 Converting audio to Whisper format:", inputPath);
+    console.log(
+      "[AudioConversionService] 🎵 Converting audio to Whisper format:",
+      inputPath,
+    );
 
     // Normalize path - remove file:// prefix for react-native-audio-api
     const normalizedInputPath = inputPath.startsWith("file://")
@@ -85,14 +104,26 @@ export class AudioConversionService {
       : inputPath;
 
     // Step 0: Verify input file exists
-    const fileInfo = await FileSystemLegacy.getInfoAsync(inputPath);
+    const fileInfo = await this.fileSystem.getFileInfo(inputPath);
     if (!fileInfo.exists) {
-      console.error("[AudioConversionService] ❌ Input file does not exist:", inputPath);
+      console.error(
+        "[AudioConversionService] ❌ Input file does not exist:",
+        inputPath,
+      );
       throw new Error(`Audio file not found: ${inputPath}`);
     }
-    console.log("[AudioConversionService] 📁 Input file exists, size:", fileInfo.size, "bytes");
+    console.log(
+      "[AudioConversionService] 📁 Input file exists, size:",
+      fileInfo.size,
+      "bytes",
+    );
 
-    const outputPath = this.generateOutputPath(inputPath);
+    const outputFilePath = this.generateOutputPath(inputPath);
+    const outputPath = outputFilePath.toAbsolutePath();
+    console.log(
+      "🚀 ~ AudioConversionService ~ convertToWhisperFormat ~ outputPath:",
+      outputPath,
+    );
 
     try {
       // Step 1: Decode audio file and resample to 16kHz
@@ -111,8 +142,14 @@ export class AudioConversionService {
       // Step 2: Mix to mono if stereo using OfflineAudioContext
       const monoBuffer = await this.mixToMono(audioBuffer);
 
+      // Step 2.5: Task 7.2 - Trim silence from beginning and end
+      const trimmedBuffer = this.trimSilence(monoBuffer);
+
+      // Step 2.6: Task 7.2 - Check for long audio (>10min)
+      this.checkLongAudio(trimmedBuffer);
+
       // Step 3: Build WAV file from AudioBuffer
-      const wavData = this.buildWavFile(monoBuffer);
+      const wavData = this.buildWavFile(trimmedBuffer);
 
       // Step 4: Write to file
       await this.writeWavFile(outputPath, wavData);
@@ -120,7 +157,10 @@ export class AudioConversionService {
       // Track for debug playback
       this.lastConvertedWavPath = outputPath;
 
-      console.log("[AudioConversionService] ✅ Conversion successful:", outputPath);
+      console.log(
+        "[AudioConversionService] ✅ Conversion successful:",
+        outputPath,
+      );
       return outputPath;
     } catch (error) {
       console.error("[AudioConversionService] ❌ Conversion failed:", error);
@@ -139,12 +179,15 @@ export class AudioConversionService {
   async cleanupTempFile(wavPath: string): Promise<void> {
     // Skip cleanup in debug mode to allow WAV playback
     if (this.isDebugModeEnabled()) {
-      console.log("[AudioConversionService] 🔧 Debug mode - keeping WAV file:", wavPath);
+      console.log(
+        "[AudioConversionService] 🔧 Debug mode - keeping WAV file:",
+        wavPath,
+      );
       return;
     }
 
     try {
-      await FileSystemLegacy.deleteAsync(wavPath, { idempotent: true });
+      await this.fileSystem.deleteFile(wavPath, { idempotent: true });
       console.log("[AudioConversionService] 🗑️ Cleaned up temp file:", wavPath);
     } catch (error) {
       // Log but don't throw - cleanup failure is non-critical
@@ -187,6 +230,136 @@ export class AudioConversionService {
     });
 
     return monoBuffer;
+  }
+
+  /**
+   * Task 7.2: Trim silence from beginning and end of audio
+   *
+   * Detects silence using RMS (root mean square) threshold.
+   * Removes silent sections to reduce transcription time.
+   *
+   * @param audioBuffer - Input audio buffer
+   * @returns Trimmed audio buffer (or original if no silence detected)
+   */
+  private trimSilence(audioBuffer: RNAudioBuffer): RNAudioBuffer {
+    const channelData = audioBuffer.getChannelData(0);
+    const sampleRate = audioBuffer.sampleRate;
+
+    // Window size for RMS calculation (100ms)
+    const windowSize = Math.floor(sampleRate * 0.1);
+
+    // Find first non-silent sample
+    let startIndex = 0;
+    for (let i = 0; i < channelData.length; i += windowSize) {
+      const rms = this.calculateRMS(
+        channelData,
+        i,
+        Math.min(i + windowSize, channelData.length),
+      );
+      if (rms > SILENCE_THRESHOLD) {
+        startIndex = i;
+        break;
+      }
+    }
+
+    // Find last non-silent sample
+    let endIndex = channelData.length;
+    for (let i = channelData.length - windowSize; i >= 0; i -= windowSize) {
+      const rms = this.calculateRMS(channelData, i, i + windowSize);
+      if (rms > SILENCE_THRESHOLD) {
+        endIndex = i + windowSize;
+        break;
+      }
+    }
+
+    // If no silence detected, return original
+    if (startIndex === 0 && endIndex === channelData.length) {
+      console.log(
+        "[AudioConversionService] 🔇 No silence detected, skipping trim",
+      );
+      return audioBuffer;
+    }
+
+    // Calculate trimmed duration
+    const trimmedLength = endIndex - startIndex;
+    const trimmedDuration = trimmedLength / sampleRate;
+    const originalDuration = audioBuffer.duration;
+    const savings = originalDuration - trimmedDuration;
+
+    console.log("[AudioConversionService] ✂️  Trimmed silence:", {
+      originalDuration: `${originalDuration.toFixed(2)}s`,
+      trimmedDuration: `${trimmedDuration.toFixed(2)}s`,
+      savings: `${savings.toFixed(2)}s (${((savings / originalDuration) * 100).toFixed(1)}%)`,
+    });
+
+    // Create trimmed buffer (use OfflineAudioContext to create a new AudioBuffer)
+    const offlineCtx = new OfflineAudioContext({
+      numberOfChannels: 1,
+      length: trimmedLength,
+      sampleRate,
+    });
+
+    // Create new buffer with trimmed data
+    const trimmedBuffer = offlineCtx.createBuffer(1, trimmedLength, sampleRate);
+    const trimmedChannelData = trimmedBuffer.getChannelData(0);
+
+    // Copy trimmed samples
+    for (let i = 0; i < trimmedLength; i++) {
+      trimmedChannelData[i] = channelData[startIndex + i];
+    }
+
+    return trimmedBuffer;
+  }
+
+  /**
+   * Calculate RMS (root mean square) of audio samples
+   *
+   * @param samples - Audio sample array
+   * @param start - Start index
+   * @param end - End index (exclusive)
+   * @returns RMS value (0.0 to 1.0)
+   */
+  private calculateRMS(
+    samples: Float32Array,
+    start: number,
+    end: number,
+  ): number {
+    let sum = 0;
+    let count = 0;
+
+    for (let i = start; i < end; i++) {
+      sum += samples[i] * samples[i];
+      count++;
+    }
+
+    return count > 0 ? Math.sqrt(sum / count) : 0;
+  }
+
+  /**
+   * Task 7.2: Check for long audio (>10min) and log warning
+   *
+   * Long audio may cause performance issues or exceed Whisper limits.
+   * Future enhancement: automatically split into segments.
+   *
+   * @param audioBuffer - Audio buffer to check
+   */
+  private checkLongAudio(audioBuffer: RNAudioBuffer): void {
+    const durationMs = audioBuffer.duration * 1000;
+
+    if (durationMs > MAX_AUDIO_DURATION_MS) {
+      const durationMin = (durationMs / 1000 / 60).toFixed(1);
+      const maxMin = (MAX_AUDIO_DURATION_MS / 1000 / 60).toFixed(0);
+
+      console.warn(
+        `[AudioConversionService] ⚠️  Long audio detected: ${durationMin}min (max recommended: ${maxMin}min)\n` +
+          "This may cause slower transcription or memory issues.\n" +
+          "Consider splitting long recordings into shorter segments.",
+      );
+
+      // TODO: Future enhancement - automatically split into segments
+      // const segments = this.splitAudio(audioBuffer, MAX_AUDIO_DURATION_MS);
+      // return segments.map(segment => this.buildWavFile(segment));
+    }
   }
 
   /**
@@ -258,20 +431,20 @@ export class AudioConversionService {
    */
   private async writeWavFile(path: string, data: Uint8Array): Promise<void> {
     // Ensure parent directory exists
-    const parentDir = path.substring(0, path.lastIndexOf('/'));
-    const dirInfo = await FileSystemLegacy.getInfoAsync(parentDir);
+    const parentDir = path.substring(0, path.lastIndexOf("/"));
+    const dirInfo = await this.fileSystem.getFileInfo(parentDir);
     if (!dirInfo.exists) {
       console.log("[AudioConversionService] 📁 Creating directory:", parentDir);
-      await FileSystemLegacy.makeDirectoryAsync(parentDir, { intermediates: true });
+      await this.fileSystem.makeDirectory(parentDir, {
+        intermediates: true,
+      });
     }
 
     // Convert Uint8Array to base64
     const base64 = this.uint8ArrayToBase64(data);
 
     // Write to file
-    await FileSystemLegacy.writeAsStringAsync(path, base64, {
-      encoding: FileSystemLegacy.EncodingType.Base64,
-    });
+    await this.fileSystem.writeFile(path, base64, 'base64');
   }
 
   /**
@@ -291,31 +464,29 @@ export class AudioConversionService {
    *
    * Uses cache directory for temporary WAV files (always writable)
    * Input: /path/to/capture_xxx_timestamp.m4a
-   * Output: {cacheDir}/capture_xxx_timestamp_whisper.wav
+   * Output: FilePath wrapping {cacheDir}/capture_xxx_timestamp_whisper.wav
    */
-  private generateOutputPath(inputPath: string): string {
-    // Remove file:// prefix if present (normalize path)
-    let normalizedPath = inputPath;
-    if (normalizedPath.startsWith("file://")) {
-      normalizedPath = normalizedPath.replace("file://", "");
-    }
-
-    // Extract filename without extension
-    const lastSlashIndex = normalizedPath.lastIndexOf("/");
-    const filename = lastSlashIndex === -1 ? normalizedPath : normalizedPath.substring(lastSlashIndex + 1);
-    const lastDotIndex = filename.lastIndexOf(".");
-    const basename = lastDotIndex === -1 ? filename : filename.substring(0, lastDotIndex);
+  private generateOutputPath(inputPath: string): FilePath {
+    const inputFilePath = FilePath.from(inputPath);
+    const basename = inputFilePath.getBasename();
 
     // Use cache directory (always writable) for temporary WAV files
-    const cacheDir = FileSystemLegacy.cacheDirectory;
+    const cacheDir = this.fileSystem.getCacheDirectory();
     if (!cacheDir) {
       // Fallback to same directory if cache not available
-      const inputDir = normalizedPath.substring(0, lastSlashIndex);
-      return `${inputDir}/${basename}_whisper.wav`;
+      const inputDir = inputFilePath.getDirectory();
+      return FilePath.from(`${inputDir}/${basename}_whisper.wav`);
     }
 
+    // cacheDir may have file:// prefix (Node 22+)
+    const cacheDirPath = FilePath.from(cacheDir);
+    const cacheDirAbsolute = cacheDirPath.toAbsolutePath();
+
     // Remove trailing slash from cacheDir if present
-    const cleanCacheDir = cacheDir.endsWith("/") ? cacheDir.slice(0, -1) : cacheDir;
-    return `${cleanCacheDir}/${basename}_whisper.wav`;
+    const cleanCacheDir = cacheDirAbsolute.endsWith("/")
+      ? cacheDirAbsolute.slice(0, -1)
+      : cacheDirAbsolute;
+
+    return FilePath.from(`${cleanCacheDir}/${basename}_whisper.wav`);
   }
 }
