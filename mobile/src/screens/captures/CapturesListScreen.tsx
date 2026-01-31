@@ -35,6 +35,7 @@ import { TranscriptionQueueService } from '../../contexts/Normalization/services
 import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
+import { RetryLimitService } from '../../contexts/Normalization/services/RetryLimitService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useCapturesStore } from '../../stores/capturesStore';
 import { useCapturesListener } from '../../hooks/useCapturesListener';
@@ -210,6 +211,25 @@ export function CapturesListScreen() {
 
   const handleRetry = async (captureId: string) => {
     try {
+      // Find the capture to check retry limit
+      const capture = captures.find((c) => c.id === captureId);
+      if (!capture) {
+        toast.error('Capture introuvable');
+        return;
+      }
+
+      // Check retry rate limit (Story 2.8 - Task 3)
+      const retryService = new RetryLimitService();
+      const retryCheck = retryService.canRetry(capture);
+
+      if (!retryCheck.allowed) {
+        // Retry limit reached - show countdown message
+        const message = retryService.getRetryStatusMessage(capture);
+        toast.error(message);
+        return;
+      }
+
+      // Proceed with retry
       const queueService = container.resolve(TranscriptionQueueService);
       const result = await queueService.retryFailedByCaptureId(captureId);
 
@@ -390,6 +410,12 @@ export function CapturesListScreen() {
     const isPlaying = playingCaptureId === item.id && playerStatus.playing;
     const isPlayingWav = playingWavCaptureId === item.id && playerStatus.playing;
 
+    // Check retry rate limit (Story 2.8 - Task 4)
+    const retryService = new RetryLimitService();
+    const retryCheck = retryService.canRetry(item);
+    const canRetry = retryCheck.allowed;
+    const retryMessage = retryService.getRetryStatusMessage(item);
+
     return (
       <TouchableOpacity onPress={() => handleCapturePress(item.id)} activeOpacity={0.7}>
         <Card variant="elevated" className="mb-3">
@@ -536,18 +562,38 @@ export function CapturesListScreen() {
                   </TouchableOpacity>
                 )}
 
-                {/* Retry button (failed only) */}
+                {/* Retry button (failed only) - Story 2.8 */}
                 {isFailed && (
-                  <TouchableOpacity
-                    className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
-                    activeOpacity={0.7}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleRetry(item.id);
-                    }}
-                  >
-                    <Feather name="refresh-cw" size={22} color={colors.neutral[0]} />
-                  </TouchableOpacity>
+                  <View>
+                    <TouchableOpacity
+                      className={`w-10 h-10 rounded-lg items-center justify-center ${
+                        canRetry ? 'bg-warning-500' : 'bg-neutral-300'
+                      }`}
+                      activeOpacity={canRetry ? 0.7 : 1}
+                      disabled={!canRetry}
+                      onPress={(e) => {
+                        e.stopPropagation();
+                        if (canRetry) {
+                          handleRetry(item.id);
+                        }
+                      }}
+                    >
+                      <Feather
+                        name="refresh-cw"
+                        size={22}
+                        color={canRetry ? colors.neutral[0] : colors.neutral[500]}
+                      />
+                    </TouchableOpacity>
+                    {/* Countdown message when disabled (AC3) */}
+                    {!canRetry && retryCheck.remainingTime && (
+                      <Text
+                        className="text-xs text-error-600 mt-1 text-center"
+                        style={{ maxWidth: 120 }}
+                      >
+                        {`Limite atteinte. ${retryCheck.remainingTime} min`}
+                      </Text>
+                    )}
+                  </View>
                 )}
               </View>
             </View>
