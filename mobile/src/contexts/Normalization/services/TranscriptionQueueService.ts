@@ -415,10 +415,17 @@ export class TranscriptionQueueService {
     const success = (result.rowsAffected ?? 0) > 0;
 
     if (success) {
-      // Also reset capture state back to 'captured' for re-processing
+      // Update capture state and retry metadata (Story 2.8 - Task 7)
+      // Set state back to 'captured' for re-processing
+      // Update retry tracking: increment count, update timestamp, set window start if first retry
       this.db.executeSync(
-        `UPDATE captures SET state = 'captured' WHERE id = ?`,
-        [captureId],
+        `UPDATE captures
+         SET state = 'captured',
+             retry_count = ?,
+             retry_window_start_at = ?,
+             last_retry_at = ?
+         WHERE id = ?`,
+        [newRetryCount, newFirstRetryAt, now, captureId],
       );
 
       console.log(

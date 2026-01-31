@@ -586,10 +586,12 @@ export class TranscriptionWorker {
           rawTranscriptLength: rawTranscript?.length || 0,
           engine: effectiveEngine,
         });
+        // Update capture to 'ready' state and clear error (Story 2.8 - Task 6)
         await this.captureRepository.update(queuedCapture.captureId, {
           normalizedText: finalText,
           state: 'ready',
           wavPath: wavPath,
+          transcriptionError: null, // Clear error on success
         });
 
         // Save metadata to capture_metadata table
@@ -635,15 +637,24 @@ export class TranscriptionWorker {
           transcriptionError
         );
 
-        // Update capture state to 'failed'
-        await this.captureRepository.update(queuedCapture.captureId, {
-          state: 'failed',
-        });
-
         // Mark as failed in queue (increments retry_count)
         await this.queueService.markFailed(queuedCapture.captureId, errorMessage);
 
         const newRetryCount = currentRetryCount + 1; // After markFailed() increments
+        const now = Date.now();
+
+        // Get current retry window start from capture
+        const capture = await this.captureRepository.findById(queuedCapture.captureId);
+        const existingWindowStart = capture?.retryWindowStartAt?.getTime() || null;
+
+        // Update capture state to 'failed' with retry metadata (Story 2.8 - Task 7)
+        await this.captureRepository.update(queuedCapture.captureId, {
+          state: 'failed',
+          retryCount: newRetryCount,
+          lastRetryAt: new Date(now),
+          retryWindowStartAt: existingWindowStart ? new Date(existingWindowStart) : new Date(now),
+          transcriptionError: errorMessage,
+        });
 
         // Check if auto-retry is allowed
         if (this.shouldAutoRetry(newRetryCount)) {
@@ -749,10 +760,12 @@ export class TranscriptionWorker {
           finalTextPreview: finalText?.substring(0, 50) || '(empty)',
           rawTranscriptLength: rawTranscript?.length || 0,
         });
+        // Update capture to 'ready' state and clear error (Story 2.8 - Task 6)
         await this.captureRepository.update(queuedCapture.captureId, {
           normalizedText: finalText,
           state: 'ready',
           wavPath: transcriptionResult.wavPath,
+          transcriptionError: null, // Clear error on success
         });
 
         // Save metadata to capture_metadata table
@@ -783,15 +796,27 @@ export class TranscriptionWorker {
 
         return true;
       } catch (transcriptionError) {
-        // Update capture state to 'failed'
-        await this.captureRepository.update(queuedCapture.captureId, {
-          state: 'failed',
-        });
-
         const errorMessage = transcriptionError instanceof Error
           ? transcriptionError.message
           : String(transcriptionError);
         await this.queueService.markFailed(queuedCapture.captureId, errorMessage);
+
+        // Get current retry count after markFailed
+        const newRetryCount = queuedCapture.retryCount + 1;
+        const now = Date.now();
+
+        // Get current retry window start from capture
+        const capture = await this.captureRepository.findById(queuedCapture.captureId);
+        const existingWindowStart = capture?.retryWindowStartAt?.getTime() || null;
+
+        // Update capture state to 'failed' with retry metadata (Story 2.8 - Task 7)
+        await this.captureRepository.update(queuedCapture.captureId, {
+          state: 'failed',
+          retryCount: newRetryCount,
+          lastRetryAt: new Date(now),
+          retryWindowStartAt: existingWindowStart ? new Date(existingWindowStart) : new Date(now),
+          transcriptionError: errorMessage,
+        });
 
         console.error(
           `[TranscriptionWorker] ❌ Background transcription failed for ${queuedCapture.captureId}:`,
