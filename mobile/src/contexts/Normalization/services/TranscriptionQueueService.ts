@@ -384,8 +384,10 @@ export class TranscriptionQueueService {
     }
 
     // Determine new values
-    const newRetryCount = firstRetryAt && now - firstRetryAt >= RETRY_WINDOW_MS ? 1 : retryCount + 1;
-    const newFirstRetryAt = !firstRetryAt || (now - firstRetryAt >= RETRY_WINDOW_MS) ? now : firstRetryAt;
+    // Reset counter if: (1) no first_retry_at yet and at limit, OR (2) window expired
+    const shouldReset = (!firstRetryAt && retryCount >= MAX_RETRIES) || (firstRetryAt && now - firstRetryAt >= RETRY_WINDOW_MS);
+    const newRetryCount = shouldReset ? 1 : retryCount + 1;
+    const newFirstRetryAt = shouldReset || !firstRetryAt ? now : firstRetryAt;
 
     // Update queue entry
     const result = this.db.executeSync(
