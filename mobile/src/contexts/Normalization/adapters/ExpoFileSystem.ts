@@ -29,11 +29,23 @@ import type { IFileSystem, FileInfo } from '../ports/IFileSystem';
 export class ExpoFileSystem implements IFileSystem {
   getCacheDirectory(): string | null {
     const cache = Paths.cache;
-    if (cache && typeof cache !== 'string') {
-      console.error('[ExpoFileSystem] ❌ Paths.cache is not a string:', { cache, type: typeof cache });
+
+    // Paths.cache can be either a string or an object with .uri property
+    if (!cache) {
       return null;
     }
-    return cache ?? null;
+
+    if (typeof cache === 'string') {
+      return cache;
+    }
+
+    // If it's an object, extract the .uri property
+    if (typeof cache === 'object' && 'uri' in cache && typeof cache.uri === 'string') {
+      return cache.uri;
+    }
+
+    console.error('[ExpoFileSystem] ❌ Paths.cache has unexpected format:', { cache, type: typeof cache });
+    return null;
   }
 
   async getFileInfo(path: string): Promise<FileInfo> {
