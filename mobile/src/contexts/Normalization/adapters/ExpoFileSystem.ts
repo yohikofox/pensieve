@@ -28,7 +28,12 @@ import type { IFileSystem, FileInfo } from '../ports/IFileSystem';
 @injectable()
 export class ExpoFileSystem implements IFileSystem {
   getCacheDirectory(): string | null {
-    return Paths.cache ?? null;
+    const cache = Paths.cache;
+    if (cache && typeof cache !== 'string') {
+      console.error('[ExpoFileSystem] ❌ Paths.cache is not a string:', { cache, type: typeof cache });
+      return null;
+    }
+    return cache ?? null;
   }
 
   async getFileInfo(path: string): Promise<FileInfo> {

@@ -18,8 +18,10 @@ export class FilePath {
    * Create FilePath from any string (with or without file:// prefix)
    */
   static from(path: string): FilePath {
-    if (!path) {
-      throw new Error('FilePath cannot be created from empty string');
+    if (!path || typeof path !== 'string') {
+      console.error('[FilePath.from] ❌ Invalid path value:', { path, type: typeof path, stack: new Error().stack });
+      // Return empty path as fallback to avoid crash
+      return new FilePath('');
     }
     return new FilePath(path);
   }
@@ -49,6 +51,10 @@ export class FilePath {
    * Example: /path/to/file.wav
    */
   toAbsolutePath(): string {
+    if (!this.path || typeof this.path !== 'string') {
+      console.error('[FilePath.toAbsolutePath] ❌ Invalid internal state:', { path: this.path, type: typeof this.path });
+      return ''; // Return empty string as fallback
+    }
     if (this.path.startsWith('file://')) {
       return this.path.replace('file://', '');
     }
