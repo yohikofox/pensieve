@@ -49,6 +49,10 @@ export const SettingsScreen = () => {
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
 
+  // Calibration grid visibility from global settings store
+  const showCalibrationGrid = useSettingsStore((state) => state.showCalibrationGrid);
+  const setShowCalibrationGrid = useSettingsStore((state) => state.setShowCalibrationGrid);
+
   // Auto-transcription from global settings store
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const setAutoTranscription = useSettingsStore((state) => state.setAutoTranscription);
@@ -579,6 +583,26 @@ export const SettingsScreen = () => {
               thumbColor={colors.neutral[0]}
             />
           </View>
+
+          {/* Calibration Grid toggle - only visible when debug mode is enabled */}
+          {debugMode && (
+            <View className="flex-row items-center py-3 px-4 border-t border-border-subtle">
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  {t('settings.development.calibrationGrid', 'Calibration Grid')}
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  {t('settings.development.calibrationGridSubtitle', 'Show screen calibration overlay')}
+                </Text>
+              </View>
+              <Switch
+                value={showCalibrationGrid}
+                onValueChange={setShowCalibrationGrid}
+                trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+                thumbColor={colors.neutral[0]}
+              />
+            </View>
+          )}
         </Card>
       </ScrollView>
 

@@ -20,7 +20,9 @@ import {
   TouchableOpacity,
   RefreshControl,
   Platform,
+  Share,
 } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -47,7 +49,6 @@ import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureC
 import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
-import { CalibrationGrid } from '../../components/debug';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -757,95 +758,99 @@ export function CapturesListScreen() {
   // Story 3.1 AC7: Skeleton loading cards (Liquid Glass design)
   if (isLoading) {
     return (
-      <View className="flex-1 bg-bg-screen" style={{ padding: 16 }}>
-        <SkeletonCaptureCard delay={0} />
-        <SkeletonCaptureCard delay={100} />
-        <SkeletonCaptureCard delay={200} />
-        <SkeletonCaptureCard delay={300} />
-        <SkeletonCaptureCard delay={400} />
-      </View>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View className="flex-1 bg-bg-screen" style={{ padding: 16 }}>
+          <SkeletonCaptureCard delay={0} />
+          <SkeletonCaptureCard delay={100} />
+          <SkeletonCaptureCard delay={200} />
+          <SkeletonCaptureCard delay={300} />
+          <SkeletonCaptureCard delay={400} />
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   if (captures.length === 0) {
     return (
-      <View className="flex-1 bg-bg-screen">
-        <EmptyState
-          icon="inbox"
-          title={t('captures.empty')}
-          description={t('captures.emptyHint')}
-        />
-      </View>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <View className="flex-1 bg-bg-screen">
+          <EmptyState
+            icon="inbox"
+            title={t('captures.empty')}
+            description={t('captures.emptyHint')}
+          />
+        </View>
+      </GestureHandlerRootView>
     );
   }
 
   return (
-    <View className="flex-1 bg-bg-screen">
-      <FlatList
-        data={captures}
-        keyExtractor={(item) => item.id}
-        renderItem={renderCaptureItem}
-        contentContainerStyle={{ padding: 16 }}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor={colors.primary[500]}
-          />
-        }
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={renderFooter}
-      />
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <View className="flex-1 bg-bg-screen">
+        <FlatList
+          data={captures}
+          keyExtractor={(item) => item.id}
+          renderItem={renderCaptureItem}
+          contentContainerStyle={{ padding: 16 }}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary[500]}
+            />
+          }
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={renderFooter}
+        />
 
-      {/* Model not available dialog */}
-      <AlertDialog
-        visible={showModelDialog}
-        onClose={() => setShowModelDialog(false)}
-        title={t('settings.transcription.whisperModel')}
-        message={t('capture.alerts.serviceNotInitialized')}
-        icon="alert-triangle"
-        variant="warning"
-        confirmAction={{
-          label: t('navigation.tabs.settings'),
-          onPress: () => {
-            setShowModelDialog(false);
-            // @ts-ignore - Tab navigation
-            navigation.getParent()?.navigate('Settings');
-          },
-        }}
-        cancelAction={{
-          label: t('common.cancel'),
-          onPress: () => setShowModelDialog(false),
-        }}
-      />
+        {/* Model not available dialog */}
+        <AlertDialog
+          visible={showModelDialog}
+          onClose={() => setShowModelDialog(false)}
+          title={t('settings.transcription.whisperModel')}
+          message={t('capture.alerts.serviceNotInitialized')}
+          icon="alert-triangle"
+          variant="warning"
+          confirmAction={{
+            label: t('navigation.tabs.settings'),
+            onPress: () => {
+              setShowModelDialog(false);
+              // @ts-ignore - Tab navigation
+              navigation.getParent()?.navigate('Settings');
+            },
+          }}
+          cancelAction={{
+            label: t('common.cancel'),
+            onPress: () => setShowModelDialog(false),
+          }}
+        />
 
-      {/* Delete WAV confirmation dialog */}
-      <AlertDialog
-        visible={showDeleteWavDialog}
-        onClose={() => {
-          setShowDeleteWavDialog(false);
-          setCaptureToDeleteWav(null);
-        }}
-        title={t('common.delete')}
-        message={t('captures.deleteConfirm.message')}
-        icon="trash-2"
-        variant="danger"
-        confirmAction={{
-          label: t('common.delete'),
-          onPress: confirmDeleteWav,
-        }}
-        cancelAction={{
-          label: t('common.cancel'),
-          onPress: () => {
+        {/* Delete WAV confirmation dialog */}
+        <AlertDialog
+          visible={showDeleteWavDialog}
+          onClose={() => {
             setShowDeleteWavDialog(false);
             setCaptureToDeleteWav(null);
-          },
-        }}
-      />
+          }}
+          title={t('common.delete')}
+          message={t('captures.deleteConfirm.message')}
+          icon="trash-2"
+          variant="danger"
+          confirmAction={{
+            label: t('common.delete'),
+            onPress: confirmDeleteWav,
+          }}
+          cancelAction={{
+            label: t('common.cancel'),
+            onPress: () => {
+              setShowDeleteWavDialog(false);
+              setCaptureToDeleteWav(null);
+            },
+          }}
+        />
 
-      {/* Calibration Grid for testing */}
-      {__DEV__ && <CalibrationGrid />}
-    </View>
+      </View>
+    </GestureHandlerRootView>
   );
 }

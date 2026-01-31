@@ -44,6 +44,10 @@ interface SettingsState {
   // Can be enabled by user permissions in production
   debugMode: boolean;
 
+  // Show calibration grid - override to hide grid even when debugMode is on
+  // Allows disabling grid independently from other debug features
+  showCalibrationGrid: boolean;
+
   // Debug button position (draggable, anchored to edge)
   debugButtonPosition: DebugButtonPosition;
 
@@ -58,6 +62,7 @@ interface SettingsState {
   setThemePreference: (preference: ThemePreference) => void;
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
+  setShowCalibrationGrid: (show: boolean) => void;
   setDebugButtonPosition: (position: DebugButtonPosition) => void;
   setAutoTranscription: (enabled: boolean) => void;
 
@@ -76,6 +81,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Initial state - debug mode off by default
         debugMode: false,
+
+        // Initial state - show calibration grid enabled by default (when debugMode is on)
+        showCalibrationGrid: true,
 
         // Default button position: bottom right
         debugButtonPosition: {
@@ -109,6 +117,11 @@ export const useSettingsStore = create<SettingsState>()(
           const current = get().debugMode;
           set({ debugMode: !current });
           console.log('[SettingsStore] Debug mode toggled:', !current ? 'ON' : 'OFF');
+        },
+
+        setShowCalibrationGrid: (show: boolean) => {
+          set({ showCalibrationGrid: show });
+          console.log('[SettingsStore] Show calibration grid:', show ? 'ON' : 'OFF');
         },
 
         setDebugButtonPosition: (position: DebugButtonPosition) => {
