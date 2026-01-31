@@ -43,6 +43,9 @@ import { useTheme } from '../../hooks/useTheme';
 import { colors, shadows } from '../../design-system/tokens';
 import { Card, Badge, Button, IconButton, LoadingView, EmptyState, AlertDialog, useToast } from '../../design-system/components';
 import { CaptureIcons, StatusIcons, MediaIcons, ActionIcons } from '../../design-system/icons';
+import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureCard';
+import { PulsingBadge } from '../../components/animations/PulsingBadge';
+import { GerminationBadge } from '../../components/animations/GerminationBadge';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -64,7 +67,10 @@ export function CapturesListScreen() {
   // Zustand store pour les captures (remplace useState)
   const captures = useCapturesStore(state => state.captures);
   const isLoading = useCapturesStore(state => state.isLoading);
+  const isLoadingMore = useCapturesStore(state => state.isLoadingMore);
+  const hasMoreCaptures = useCapturesStore(state => state.hasMoreCaptures);
   const loadCaptures = useCapturesStore(state => state.loadCaptures);
+  const loadMoreCaptures = useCapturesStore(state => state.loadMoreCaptures);
 
   // Active l'écoute des événements
   useCapturesListener();
@@ -392,6 +398,26 @@ export function CapturesListScreen() {
     setCaptureToDeleteWav(null);
   }, [captureToDeleteWav, playingWavCaptureId, player, t, toast]);
 
+  // Handler pour infinite scroll (Story 3.1 AC4)
+  const handleEndReached = useCallback(() => {
+    if (!isLoadingMore && hasMoreCaptures) {
+      console.log('[CapturesListScreen] End reached, loading more captures...');
+      loadMoreCaptures();
+    }
+  }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
+
+  // Footer component pour pagination loading
+  const renderFooter = useCallback(() => {
+    if (!isLoadingMore) return null;
+
+    return (
+      <View className="py-4 items-center">
+        <ActivityIndicator size="small" color={colors.primary[500]} />
+        <Text className="text-sm text-text-tertiary mt-2">{t('common.loading')}</Text>
+      </View>
+    );
+  }, [isLoadingMore, t]);
+
   const renderCaptureItem = ({ item }: { item: CaptureWithTranscription }) => {
     const isAudio = item.type === 'audio';
     const isProcessing = item.state === 'processing';
@@ -461,49 +487,55 @@ export function CapturesListScreen() {
                 )}
                 {/* Show normal status badges when model is available or unknown */}
                 {isCaptured && (hasModelAvailable === true || hasModelAvailable === null || item.normalizedText) && (
-                  <Badge variant={item.isInQueue ? "processing" : "pending"}>
-                    <View className="flex-row items-center">
-                      {item.isInQueue ? (
-                        <>
-                          <ActivityIndicator size="small" color={colors.info[600]} />
-                          <Text className="ml-2 text-xs font-medium text-info-700">
-                            {t('capture.status.queued')}
-                          </Text>
-                        </>
-                      ) : (
-                        <>
-                          <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
-                          <Text className="ml-1 text-xs font-medium text-warning-700">
-                            {autoTranscriptionEnabled
-                              ? t('capture.status.pending')
-                              : t('capture.status.manual')}
-                          </Text>
-                        </>
-                      )}
-                    </View>
-                  </Badge>
+                  <PulsingBadge enabled={item.isInQueue}>
+                    <Badge variant={item.isInQueue ? "processing" : "pending"}>
+                      <View className="flex-row items-center">
+                        {item.isInQueue ? (
+                          <>
+                            <ActivityIndicator size="small" color={colors.info[600]} />
+                            <Text className="ml-2 text-xs font-medium text-info-700">
+                              {t('capture.status.queued')}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
+                            <Text className="ml-1 text-xs font-medium text-warning-700">
+                              {autoTranscriptionEnabled
+                                ? t('capture.status.pending')
+                                : t('capture.status.manual')}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </Badge>
+                  </PulsingBadge>
                 )}
 
                 {isProcessing && (
-                  <Badge variant="processing">
-                    <View className="flex-row items-center">
-                      <ActivityIndicator size="small" color={colors.info[600]} />
-                      <Text className="ml-2 text-xs font-medium text-info-700">
-                        {t('capture.status.processing')}
-                      </Text>
-                    </View>
-                  </Badge>
+                  <PulsingBadge enabled={true}>
+                    <Badge variant="processing">
+                      <View className="flex-row items-center">
+                        <ActivityIndicator size="small" color={colors.info[600]} />
+                        <Text className="ml-2 text-xs font-medium text-info-700">
+                          {t('capture.status.processing')}
+                        </Text>
+                      </View>
+                    </Badge>
+                  </PulsingBadge>
                 )}
 
                 {isReady && (
-                  <Badge variant="ready">
-                    <View className="flex-row items-center">
-                      <Feather name={StatusIcons.success} size={12} color={colors.success[700]} />
-                      <Text className="ml-1 text-xs font-medium text-success-700">
-                        {t('capture.status.ready')}
-                      </Text>
-                    </View>
-                  </Badge>
+                  <GerminationBadge enabled={true}>
+                    <Badge variant="ready">
+                      <View className="flex-row items-center">
+                        <Feather name={StatusIcons.success} size={12} color={colors.success[700]} />
+                        <Text className="ml-1 text-xs font-medium text-success-700">
+                          {t('capture.status.ready')}
+                        </Text>
+                      </View>
+                    </Badge>
+                  </GerminationBadge>
                 )}
 
                 {isFailed && (
@@ -687,8 +719,17 @@ export function CapturesListScreen() {
     );
   };
 
+  // Story 3.1 AC7: Skeleton loading cards (Liquid Glass design)
   if (isLoading) {
-    return <LoadingView fullScreen message={t('common.loading')} />;
+    return (
+      <View className="flex-1 bg-bg-screen" style={{ padding: 16 }}>
+        <SkeletonCaptureCard delay={0} />
+        <SkeletonCaptureCard delay={100} />
+        <SkeletonCaptureCard delay={200} />
+        <SkeletonCaptureCard delay={300} />
+        <SkeletonCaptureCard delay={400} />
+      </View>
+    );
   }
 
   if (captures.length === 0) {
@@ -717,6 +758,9 @@ export function CapturesListScreen() {
             tintColor={colors.primary[500]}
           />
         }
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
       />
 
       {/* Model not available dialog */}
