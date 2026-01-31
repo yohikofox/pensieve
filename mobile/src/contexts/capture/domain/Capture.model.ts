@@ -87,6 +87,15 @@ export interface Capture {
   wavPath?: string | null;
 
   /**
+   * Retry tracking fields (Story 2.8 - Migration v14)
+   * Used for transcription retry rate limiting (3 retries per 20-minute window)
+   */
+  retryCount?: number;
+  retryWindowStartAt?: Date | null;
+  lastRetryAt?: Date | null;
+  transcriptionError?: string | null;
+
+  /**
    * Auto-managed timestamps
    *
    * Note: Transcript prompt is now stored in capture_metadata table (key: 'transcript_prompt')
@@ -123,6 +132,11 @@ export interface CaptureRow {
   last_sync_at: number | null;
   server_id: string | null;
   conflict_data: string | null;
+  // Retry tracking columns (Migration v14)
+  retry_count: number;
+  retry_window_start_at: number | null;
+  last_retry_at: number | null;
+  transcription_error: string | null;
 }
 
 /**
@@ -147,5 +161,10 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     lastSyncAt: row.last_sync_at ? new Date(row.last_sync_at) : null,
     serverId: row.server_id,
     conflictData: row.conflict_data,
+    // Retry tracking fields (Migration v14)
+    retryCount: row.retry_count,
+    retryWindowStartAt: row.retry_window_start_at ? new Date(row.retry_window_start_at) : null,
+    lastRetryAt: row.last_retry_at ? new Date(row.last_retry_at) : null,
+    transcriptionError: row.transcription_error,
   };
 }

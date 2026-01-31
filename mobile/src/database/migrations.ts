@@ -1337,6 +1337,108 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v13 completed');
     },
   },
+  {
+    version: 14,
+    name: 'Add retry tracking columns to captures for transcription retry management',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v14: Adding retry tracking columns to captures');
+
+      // Add retry_count column with default value 0
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN retry_count INTEGER NOT NULL DEFAULT 0
+      `);
+
+      // Add retry_window_start_at column (nullable)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN retry_window_start_at INTEGER
+      `);
+
+      // Add last_retry_at column (nullable)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN last_retry_at INTEGER
+      `);
+
+      // Add transcription_error column (nullable)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN transcription_error TEXT
+      `);
+
+      console.log('[DB] ✅ Migration v14: Retry tracking columns added to captures');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v14');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE captures_v13 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          wav_path TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT
+        )
+      `);
+
+      // Copy data back (excluding retry columns)
+      db.executeSync(`
+        INSERT INTO captures_v13 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data
+        FROM captures
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v13 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Recreate sync_queue FK constraint
+      db.executeSync(`
+        CREATE TABLE sync_queue_v13 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v13 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v13 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      console.log('[DB] ✅ Rollback v14 completed');
+    },
+  },
 ];
 
 /**
