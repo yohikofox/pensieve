@@ -22,7 +22,7 @@ describe("AudioConversionService", () => {
     it("should convert m4a to wav 16kHz mono", async () => {
       // Arrange
       const inputPath = "/path/to/recording.m4a";
-      const expectedOutputPath = "/test/cache/recording_whisper.wav";
+      const expectedOutputPath = "file:///test/cache/recording_whisper.wav"; // URI format for File constructor
 
       // Act
       const result = await service.convertToWhisperFormat(inputPath);
@@ -40,7 +40,7 @@ describe("AudioConversionService", () => {
     it("should handle file:// URI prefix", async () => {
       // Arrange
       const inputPath = "file:///path/to/recording.m4a";
-      const expectedOutputPath = "/test/cache/recording_whisper.wav";
+      const expectedOutputPath = "file:///test/cache/recording_whisper.wav";
 
       // Act
       const result = await service.convertToWhisperFormat(inputPath);
@@ -77,13 +77,44 @@ describe("AudioConversionService", () => {
     it("should handle files without extension", async () => {
       // Arrange
       const inputPath = "/path/to/recording";
-      const expectedOutputPath = "/test/cache/recording_whisper.wav";
+      const expectedOutputPath = "file:///test/cache/recording_whisper.wav";
 
       // Act
       const result = await service.convertToWhisperFormat(inputPath);
 
       // Assert
       expect(result).toBe(expectedOutputPath);
+    });
+
+    it("should return URI format (file://) for outputPath to work with expo-file-system File constructor", async () => {
+      // Arrange: Bug reproduction - outputPath must have file:// prefix
+      const inputPath = "/path/to/recording.m4a";
+
+      // Act
+      const result = await service.convertToWhisperFormat(inputPath);
+
+      // Assert: outputPath MUST start with file:// for File constructor
+      expect(result).toMatch(/^file:\/\//);
+
+      // Verify writeFile was called with URI format
+      expect(mockFileSystem.writeFileSpy).toHaveBeenCalledWith(
+        expect.stringMatching(/^file:\/\//),
+        expect.any(String),
+        'base64',
+      );
+    });
+
+    it("should handle cache directory with file:// prefix", async () => {
+      // Arrange: Simulate cache dir with file:// prefix
+      mockFileSystem.setCacheDirectory("file:///test/cache");
+      const inputPath = "/path/to/recording.m4a";
+
+      // Act
+      const result = await service.convertToWhisperFormat(inputPath);
+
+      // Assert: output should have file:// prefix
+      expect(result).toMatch(/^file:\/\//);
+      expect(result).toContain("recording_whisper.wav");
     });
   });
 
@@ -141,7 +172,7 @@ describe("AudioConversionService", () => {
 
       // Assert
       expect(service.getLastConvertedWavPath()).toBe(
-        "/test/cache/recording_whisper.wav",
+        "file:///test/cache/recording_whisper.wav",
       );
     });
 
@@ -155,7 +186,7 @@ describe("AudioConversionService", () => {
 
       // Assert
       expect(mockFileSystem.deleteFileSpy).toHaveBeenCalledWith(
-        "/test/cache/recording_whisper.wav",
+        "file:///test/cache/recording_whisper.wav",
         { idempotent: true },
       );
       expect(service.getLastConvertedWavPath()).toBeNull();

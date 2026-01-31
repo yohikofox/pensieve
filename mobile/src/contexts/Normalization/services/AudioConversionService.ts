@@ -119,7 +119,7 @@ export class AudioConversionService {
     );
 
     const outputFilePath = this.generateOutputPath(inputPath);
-    const outputPath = outputFilePath.toAbsolutePath();
+    const outputPath = outputFilePath.toUri(); // Use URI format for expo-file-system File constructor
     console.log(
       "🚀 ~ AudioConversionService ~ convertToWhisperFormat ~ outputPath:",
       outputPath,
