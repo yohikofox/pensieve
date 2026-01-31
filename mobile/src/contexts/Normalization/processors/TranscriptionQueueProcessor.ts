@@ -28,6 +28,7 @@ import type { Subscription } from 'rxjs';
 import type { EventBus } from '../../shared/events/EventBus';
 import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../Capture/events/CaptureEvents';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
+import { useSettingsStore } from '../../../stores/settingsStore';
 
 @injectable()
 export class TranscriptionQueueProcessor {
@@ -109,6 +110,15 @@ export class TranscriptionQueueProcessor {
     if (captureType !== 'audio') {
       console.log(
         `[TranscriptionQueueProcessor] ⏭️  Skipping text capture ${captureId} (no transcription needed)`
+      );
+      return;
+    }
+
+    // Check if auto-transcription is enabled
+    const autoEnabled = useSettingsStore.getState().autoTranscriptionEnabled;
+    if (!autoEnabled) {
+      console.log(
+        `[TranscriptionQueueProcessor] ⏭️  Skipping capture ${captureId} (auto-transcription disabled)`
       );
       return;
     }

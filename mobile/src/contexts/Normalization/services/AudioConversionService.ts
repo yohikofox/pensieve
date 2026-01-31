@@ -32,7 +32,9 @@ const WHISPER_NUM_CHANNELS = 1;
 const WHISPER_BIT_DEPTH = 16;
 
 // Task 7.2: Audio preprocessing constants
-const SILENCE_THRESHOLD = 0.01; // RMS threshold for silence detection (1% of max amplitude)
+const SILENCE_THRESHOLD = 0.001; // RMS threshold for silence detection (0.1% of max amplitude) - very low to avoid cutting soft speech
+const SILENCE_MARGIN_MS = 500; // Safety margin at end (ms) to avoid cutting last word
+const SILENCE_MIN_DURATION_MS = 1000; // Minimum silence duration to trim (1 second) - avoids cutting short pauses
 const MAX_AUDIO_DURATION_MS = 10 * 60 * 1000; // 10 minutes max per segment
 
 @injectable()
@@ -143,6 +145,7 @@ export class AudioConversionService {
       const monoBuffer = await this.mixToMono(audioBuffer);
 
       // Step 2.5: Task 7.2 - Trim silence from beginning and end
+      // Fixed: Only trim silence if >= 1 second of consecutive silence, with 500ms safety margin
       const trimmedBuffer = this.trimSilence(monoBuffer);
 
       // Step 2.6: Task 7.2 - Check for long audio (>10min)
@@ -249,25 +252,53 @@ export class AudioConversionService {
     const windowSize = Math.floor(sampleRate * 0.1);
 
     // Find first non-silent sample
+    // We need at least SILENCE_MIN_DURATION_MS of consecutive silence to trim
+    const minSilenceSamples = Math.floor((SILENCE_MIN_DURATION_MS / 1000) * sampleRate);
     let startIndex = 0;
+    let consecutiveSilentSamplesStart = 0;
+
     for (let i = 0; i < channelData.length; i += windowSize) {
       const rms = this.calculateRMS(
         channelData,
         i,
         Math.min(i + windowSize, channelData.length),
       );
-      if (rms > SILENCE_THRESHOLD) {
-        startIndex = i;
+
+      if (rms <= SILENCE_THRESHOLD) {
+        consecutiveSilentSamplesStart += windowSize;
+      } else {
+        // Found non-silent audio
+        if (consecutiveSilentSamplesStart >= minSilenceSamples) {
+          // We have enough silence to trim
+          startIndex = i;
+        } else {
+          // Not enough silence, keep from beginning
+          startIndex = 0;
+        }
         break;
       }
     }
 
     // Find last non-silent sample
+    // Use the same minSilenceSamples from above
     let endIndex = channelData.length;
+    let consecutiveSilentSamples = 0;
+
     for (let i = channelData.length - windowSize; i >= 0; i -= windowSize) {
       const rms = this.calculateRMS(channelData, i, i + windowSize);
-      if (rms > SILENCE_THRESHOLD) {
-        endIndex = i + windowSize;
+
+      if (rms <= SILENCE_THRESHOLD) {
+        consecutiveSilentSamples += windowSize;
+      } else {
+        // Found non-silent audio
+        if (consecutiveSilentSamples >= minSilenceSamples) {
+          // We have enough silence to trim, add safety margin
+          const marginSamples = Math.floor((SILENCE_MARGIN_MS / 1000) * sampleRate);
+          endIndex = Math.min(i + windowSize + marginSamples, channelData.length);
+        } else {
+          // Not enough silence, keep everything
+          endIndex = channelData.length;
+        }
         break;
       }
     }

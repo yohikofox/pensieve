@@ -22,9 +22,14 @@ import type { Capture } from '../contexts/capture/domain/Capture.model';
 import type { ICaptureRepository } from '../contexts/capture/domain/ICaptureRepository';
 import { TOKENS } from '../infrastructure/di/tokens';
 
+// Extend Capture with queue status (event-driven)
+export type CaptureWithQueue = Capture & {
+  isInQueue?: boolean;
+};
+
 interface CapturesState {
   // State
-  captures: Capture[];
+  captures: CaptureWithQueue[];
   isLoading: boolean;
   error: Error | null;
 
@@ -34,6 +39,7 @@ interface CapturesState {
   addCapture: (capture: Capture) => void;
   removeCapture: (captureId: string) => void;
   setCaptures: (captures: Capture[]) => void;
+  setIsInQueue: (captureId: string, isInQueue: boolean) => void;
 }
 
 export const useCapturesStore = create<CapturesState>()(
@@ -109,6 +115,16 @@ export const useCapturesStore = create<CapturesState>()(
       // Set direct (utilitaire)
       setCaptures: (captures) => {
         set({ captures });
+      },
+
+      // Set queue status for a capture (event-driven)
+      setIsInQueue: (captureId, isInQueue) => {
+        set(state => ({
+          captures: state.captures.map(c =>
+            c.id === captureId ? { ...c, isInQueue } : c
+          )
+        }));
+        console.log('[CapturesStore] ✓ Set isInQueue:', captureId, isInQueue);
       },
     }),
     {

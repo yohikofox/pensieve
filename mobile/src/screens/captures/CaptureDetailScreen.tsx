@@ -31,7 +31,7 @@ import * as Contacts from 'expo-contacts';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import { container } from 'tsyringe';
 import { colors } from '../../design-system/tokens';
-import { AlertDialog, useToast } from '../../design-system/components';
+import { AlertDialog, useToast, Button } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
 import {
   CaptureIcons,
@@ -259,6 +259,7 @@ const getThemeColors = (isDark: boolean) => ({
 export function CaptureDetailScreen({ route, navigation }: Props) {
   const { captureId, startAnalysis } = route.params;
   const debugMode = useSettingsStore((state) => state.debugMode);
+  const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
   const [capture, setCapture] = useState<Capture | null>(null);
@@ -1019,7 +1020,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
               {capture.state === 'captured' && (
                 <View style={[styles.statusBadge, { backgroundColor: themeColors.statusPendingBg }]}>
                   <Feather name={StatusIcons.pending} size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
-                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>En attente de transcription</Text>
+                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>
+                    {autoTranscriptionEnabled ? 'En attente de transcription' : 'Transcription manuelle'}
+                  </Text>
                 </View>
               )}
               {capture.state === 'processing' && (
@@ -1040,6 +1043,33 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                   <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.error[300] : colors.error[700] }]}>Transcription échouée</Text>
                 </View>
               )}
+            </View>
+          )}
+
+          {/* Manual transcription button (when auto-transcription disabled) */}
+          {isAudio && capture.state === 'captured' && !autoTranscriptionEnabled && (
+            <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
+              <Button
+                variant="primary"
+                size="md"
+                onPress={async () => {
+                  try {
+                    const queueService = container.resolve(TranscriptionQueueService);
+                    await queueService.enqueue({
+                      captureId: capture.id,
+                      audioPath: capture.rawContent || '',
+                      audioDuration: capture.duration,
+                    });
+                    toast.success('Transcription lancée');
+                  } catch (error) {
+                    console.error('[CaptureDetail] Failed to enqueue:', error);
+                    toast.error('Échec du lancement de la transcription');
+                  }
+                }}
+              >
+                <Feather name="file-text" size={18} color={colors.neutral[0]} style={{ marginRight: 8 }} />
+                Transcrire maintenant
+              </Button>
             </View>
           )}
         </View>

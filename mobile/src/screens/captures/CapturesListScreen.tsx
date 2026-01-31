@@ -76,6 +76,7 @@ export function CapturesListScreen() {
 
   // Debug mode from settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
+  const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const toast = useToast();
 
   // Error messages for failed captures (debug mode only)
@@ -242,24 +243,27 @@ export function CapturesListScreen() {
           return;
         }
       } else if (selectedEngine === 'native') {
-        // Check if native transcription is available
-        const nativeEngine = container.resolve(NativeTranscriptionEngine);
-        const isAvailable = await nativeEngine.isAvailable();
-
-        if (!isAvailable) {
-          setShowModelDialog(true);
-          return;
-        }
-
         // Check if native file transcription is supported (Android 13+ only)
         const isNativeFileSupported =
           Platform.OS === 'android' && typeof Platform.Version === 'number' && Platform.Version >= 33;
 
         if (!isNativeFileSupported) {
+          // Native file transcription not supported, will fallback to Whisper
+          // Check if Whisper model is available for fallback
           const modelService = new WhisperModelService();
           const bestModel = await modelService.getBestAvailableModel();
 
           if (!bestModel) {
+            setShowModelDialog(true);
+            return;
+          }
+        } else {
+          // Native file transcription supported on this device
+          // Check if native transcription is available (permissions)
+          const nativeEngine = container.resolve(NativeTranscriptionEngine);
+          const isAvailable = await nativeEngine.isAvailable();
+
+          if (!isAvailable) {
             setShowModelDialog(true);
             return;
           }
@@ -428,12 +432,25 @@ export function CapturesListScreen() {
               {/* Badge */}
               <View>
                 {isCaptured && (
-                  <Badge variant="pending">
+                  <Badge variant={item.isInQueue ? "processing" : "pending"}>
                     <View className="flex-row items-center">
-                      <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
-                      <Text className="ml-1 text-xs font-medium text-warning-700">
-                        {t('capture.status.pending')}
-                      </Text>
+                      {item.isInQueue ? (
+                        <>
+                          <ActivityIndicator size="small" color={colors.info[600]} />
+                          <Text className="ml-2 text-xs font-medium text-info-700">
+                            {t('capture.status.queued')}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
+                          <Text className="ml-1 text-xs font-medium text-warning-700">
+                            {autoTranscriptionEnabled
+                              ? t('capture.status.pending')
+                              : t('capture.status.manual')}
+                          </Text>
+                        </>
+                      )}
                     </View>
                   </Badge>
                 )}
@@ -515,7 +532,7 @@ export function CapturesListScreen() {
                       handleTranscribe(item);
                     }}
                   >
-                    <Feather name={ActionIcons.edit} size={22} color={colors.neutral[0]} />
+                    <Feather name="file-text" size={22} color={colors.neutral[0]} />
                   </TouchableOpacity>
                 )}
 
@@ -595,7 +612,9 @@ export function CapturesListScreen() {
                   </Text>
                 ) : isCaptured ? (
                   <Text className="text-sm text-text-tertiary italic">
-                    {t('capture.status.pending')}
+                    {autoTranscriptionEnabled
+                      ? t('capture.status.pending')
+                      : t('capture.status.manual')}
                   </Text>
                 ) : isFailed ? (
                   <View>

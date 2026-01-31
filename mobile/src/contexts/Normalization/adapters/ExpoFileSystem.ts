@@ -49,15 +49,45 @@ export class ExpoFileSystem implements IFileSystem {
   }
 
   async getFileInfo(path: string): Promise<FileInfo> {
-    const file = new File(path);
-    const info = file.info();
+    // Try File first
+    try {
+      const file = new File(path);
+      const info = file.info();
 
-    return {
-      exists: info.exists,
-      isDirectory: info.type === 'directory',
-      size: info.size,
-      uri: path,
-    };
+      return {
+        exists: info.exists,
+        isDirectory: info.type === 'directory',
+        size: info.size,
+        uri: path,
+      };
+    } catch (fileError) {
+      // If File fails (e.g., path is a directory), try Directory
+      try {
+        const dir = new Directory(path);
+        const info = dir.info();
+
+        return {
+          exists: info.exists,
+          isDirectory: info.exists, // Only true if directory exists
+          size: info.size,
+          uri: path,
+        };
+      } catch (dirError) {
+        // Both failed - log and return safe fallback (exists: false)
+        console.error('[ExpoFileSystem] ❌ Failed to get file info:', {
+          path,
+          fileError: fileError instanceof Error ? fileError.message : fileError,
+          dirError: dirError instanceof Error ? dirError.message : dirError
+        });
+
+        return {
+          exists: false,
+          isDirectory: false,
+          size: 0,
+          uri: path,
+        };
+      }
+    }
   }
 
   async writeFile(path: string, content: string, encoding: 'base64' | 'utf8'): Promise<void> {

@@ -46,24 +46,27 @@ export function useCapturesListener() {
 
     // Résoudre l'instance singleton d'EventBus (enregistrée avec clé string)
     const eventBus = container.resolve<EventBus>('EventBus');
-    const { updateCapture, addCapture, removeCapture } = useCapturesStore.getState();
+    const { updateCapture, addCapture, removeCapture, setIsInQueue } = useCapturesStore.getState();
 
     // Nouvelle capture enfilée pour transcription (= capture audio créée)
     const handleAdded = (event: QueueItemAddedEvent) => {
       console.log('[CapturesListener] 🎤 New capture added to queue:', event.payload.captureId);
       updateCapture(event.payload.captureId);
+      setIsInQueue(event.payload.captureId, true);
     };
 
     // Transcription terminée avec succès
     const handleCompleted = (event: QueueItemCompletedEvent) => {
       console.log('[CapturesListener] 📝 Transcription completed:', event.payload.captureId);
       updateCapture(event.payload.captureId);
+      setIsInQueue(event.payload.captureId, false);
     };
 
     // Transcription échouée
     const handleFailed = (event: QueueItemFailedEvent) => {
       console.log('[CapturesListener] ❌ Transcription failed:', event.payload.captureId);
       updateCapture(event.payload.captureId);
+      setIsInQueue(event.payload.captureId, false);
     };
 
     // Transcription démarrée (optionnel - pour afficher "processing")

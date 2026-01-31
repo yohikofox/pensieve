@@ -199,14 +199,25 @@ export class LLMModelService {
 
   /**
    * Get models for a specific backend, filtered for current device
+   * Models are enriched with download status
    */
   async getModelsForBackendAndDevice(backend: LLMBackendType): Promise<LLMModelConfig[]> {
     const deviceType = await this.getDeviceType();
-    return this.getAllModels().filter(
+    const filteredModels = this.getAllModels().filter(
       (m) =>
         m.backend === backend &&
         (m.deviceCompatibility === "all" || m.deviceCompatibility === deviceType)
     );
+
+    // Enrich models with download status
+    const enrichedModels = await Promise.all(
+      filteredModels.map(async (model) => ({
+        ...model,
+        downloaded: await this.isModelDownloaded(model.id),
+      }))
+    );
+
+    return enrichedModels;
   }
 
   /**
@@ -475,13 +486,20 @@ export class LLMModelService {
    * Set the selected model for a specific task
    *
    * @param task - The task type ('postProcessing' or 'analysis')
-   * @param modelId - The model ID to select
+   * @param modelId - The model ID to select, or null to clear selection
    */
-  async setModelForTask(task: LLMTask, modelId: LLMModelId): Promise<void> {
+  async setModelForTask(task: LLMTask, modelId: LLMModelId | null): Promise<void> {
     try {
       const storageKey = TASK_MODEL_KEYS[task];
-      await AsyncStorage.setItem(storageKey, modelId);
-      console.log(`[LLMModelService] Model for ${task} set to:`, modelId);
+
+      if (modelId === null) {
+        // Use removeItem instead of setItem(null) - AsyncStorage doesn't support null values
+        await AsyncStorage.removeItem(storageKey);
+        console.log(`[LLMModelService] Model for ${task} cleared`);
+      } else {
+        await AsyncStorage.setItem(storageKey, modelId);
+        console.log(`[LLMModelService] Model for ${task} set to:`, modelId);
+      }
     } catch (error) {
       console.error(`[LLMModelService] Failed to set model for ${task}:`, error);
       throw error;

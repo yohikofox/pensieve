@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react
 import { useTranslation } from 'react-i18next';
 import { formatDuration } from '../../design-system/utils';
 import { Button } from '../../design-system/components';
+import { DebugClickTarget } from '../debug';
 
 interface RecordingOverlayProps {
   duration: number;
@@ -105,6 +106,9 @@ export const RecordingOverlay = ({
           )}
         </View>
       </View>
+
+      {/* Debug: Click target visualization */}
+      <DebugClickTarget x={366} y={725} color="yellow" size={10} />
     </View>
   );
 };

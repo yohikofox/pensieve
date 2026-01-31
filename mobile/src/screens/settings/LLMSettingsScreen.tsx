@@ -38,6 +38,7 @@ import { PostProcessingService } from '../../contexts/Normalization/services/Pos
 import { type HuggingFaceUser } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { debugPromptManager } from '../../contexts/Normalization/services/postprocessing/IPostProcessingBackend';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useLLMSettingsScreenStore, hasDownloadedModels } from '../../stores/llmSettingsScreenStore';
 import { useTheme } from '../../hooks/useTheme';
 
 // Theme-aware colors
@@ -106,18 +107,22 @@ export function LLMSettingsScreen() {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
 
-  // Task-specific model selections
-  const [selectedPostProcessingModel, setSelectedPostProcessingModel] = useState<LLMModelId | null>(null);
-  const [selectedAnalysisModel, setSelectedAnalysisModel] = useState<LLMModelId | null>(null);
-  const [isEnabled, setIsEnabled] = useState(false);
-  const [isAutoPostProcess, setIsAutoPostProcess] = useState(false);
-  const [npuInfo, setNpuInfo] = useState<NPUInfo | null>(null);
-  const [tpuModels, setTpuModels] = useState<LLMModelConfig[]>([]);
-  const [standardModels, setStandardModels] = useState<LLMModelConfig[]>([]);
+  // Global LLM settings (from settingsStore)
+  const isEnabled = useSettingsStore((state) => state.llm.isEnabled);
+  const isAutoPostProcess = useSettingsStore((state) => state.llm.isAutoPostProcess);
+  const selectedPostProcessingModel = useSettingsStore((state) => state.llm.selectedPostProcessingModel);
+  const selectedAnalysisModel = useSettingsStore((state) => state.llm.selectedAnalysisModel);
+  const { setLLMEnabled, setLLMAutoPostProcess, setLLMModelForTask } = useSettingsStore();
 
-  // HuggingFace auth state
-  const [isHfAuthenticated, setIsHfAuthenticated] = useState(false);
-  const [hfUser, setHfUser] = useState<HuggingFaceUser | null>(null);
+  // Screen-specific UI state (from llmSettingsScreenStore)
+  const tpuModels = useLLMSettingsScreenStore((state) => state.tpuModels);
+  const standardModels = useLLMSettingsScreenStore((state) => state.standardModels);
+  const isHfAuthenticated = useLLMSettingsScreenStore((state) => state.isHfAuthenticated);
+  const hfUser = useLLMSettingsScreenStore((state) => state.hfUser);
+  const npuInfo = useLLMSettingsScreenStore((state) => state.npuInfo);
+  const { setModels, setHfAuth, setNpuInfo } = useLLMSettingsScreenStore();
+
+  // Local UI state (dialogs, loading)
   const [isAuthLoading, setIsAuthLoading] = useState(false);
 
   // Debug mode state
@@ -176,27 +181,46 @@ export function LLMSettingsScreen() {
     }
   };
 
+  // Update settings when models change
+  useEffect(() => {
+    const checkDownloadedModels = async () => {
+      const downloaded = await modelService.getDownloadedModels();
+      const hasModels = downloaded.length > 0;
+
+      // Auto-disable post-processing if no models are available
+      if (!hasModels && isEnabled) {
+        console.log('[LLMSettings] No models available, disabling post-processing');
+        setLLMEnabled(false);
+        await modelService.setPostProcessingEnabled(false);
+      }
+
+      // Clear selected models if they are no longer downloaded
+      const downloadedIds = downloaded.map(m => m.id);
+
+      if (selectedPostProcessingModel && !downloadedIds.includes(selectedPostProcessingModel)) {
+        console.log('[LLMSettings] Post-processing model deleted, clearing selection');
+        setLLMModelForTask('postProcessing', null);
+        await modelService.setModelForTask('postProcessing', null);
+      }
+
+      if (selectedAnalysisModel && !downloadedIds.includes(selectedAnalysisModel)) {
+        console.log('[LLMSettings] Analysis model deleted, clearing selection');
+        setLLMModelForTask('analysis', null);
+        await modelService.setModelForTask('analysis', null);
+      }
+    };
+    checkDownloadedModels();
+  }, [tpuModels, standardModels, modelService, isEnabled, selectedPostProcessingModel, selectedAnalysisModel, setLLMEnabled, setLLMModelForTask]);
+
   // Load settings on mount
   useEffect(() => {
     const loadSettings = async () => {
       // Initialize auth service
       await authService.initialize();
-      setIsHfAuthenticated(authService.isAuthenticated());
-      setHfUser(authService.getUser());
+      setHfAuth(authService.isAuthenticated(), authService.getUser());
 
-      // Load enabled state
-      const enabled = await modelService.isPostProcessingEnabled();
-      setIsEnabled(enabled);
-
-      // Load auto post-process setting
-      const autoPostProcess = await modelService.isAutoPostProcessEnabled();
-      setIsAutoPostProcess(autoPostProcess);
-
-      // Load task-specific model selections
-      const postProcessingModel = await modelService.getModelForTask('postProcessing');
-      const analysisModel = await modelService.getModelForTask('analysis');
-      setSelectedPostProcessingModel(postProcessingModel);
-      setSelectedAnalysisModel(analysisModel);
+      // Settings are already loaded by useLLMSettingsListener
+      // We just need to load screen-specific state
 
       // Detect NPU capabilities
       const info = await npuDetection.detectNPU();
@@ -209,15 +233,14 @@ export function LLMSettingsScreen() {
         : [];
       // Get llamarn models filtered for current device (Apple->Llama, Google->Gemma, Others->generic)
       const standard = await modelService.getModelsForBackendAndDevice('llamarn');
-      setTpuModels(tpu);
-      setStandardModels(standard);
+      setModels(tpu, standard);
     };
 
     loadSettings();
-  }, []);
+  }, [authService, modelService, npuDetection, setHfAuth, setNpuInfo, setModels]);
 
   /**
-   * Refresh models list (e.g., after HuggingFace auth changes)
+   * Refresh models list (e.g., after HuggingFace auth changes or model deletion)
    */
   const refreshModels = useCallback(async () => {
     if (!npuInfo) return;
@@ -227,9 +250,17 @@ export function LLMSettingsScreen() {
       ? await modelService.getModelsForBackendAndDevice('mediapipe')
       : [];
     const standard = await modelService.getModelsForBackendAndDevice('llamarn');
-    setTpuModels(tpu);
-    setStandardModels(standard);
-  }, [npuInfo, modelService]);
+    setModels(tpu, standard);
+  }, [npuInfo, modelService, setModels]);
+
+  /**
+   * Handle model deletion - refresh list and check if we need to disable post-processing
+   */
+  const handleModelDeleted = useCallback(async (modelId: LLMModelId) => {
+    console.log('[LLMSettings] Model deleted:', modelId);
+    // Refresh models list to update UI
+    await refreshModels();
+  }, [refreshModels]);
 
   /**
    * Handle HuggingFace login
@@ -239,8 +270,7 @@ export function LLMSettingsScreen() {
     try {
       const success = await authService.login();
       if (success) {
-        setIsHfAuthenticated(true);
-        setHfUser(authService.getUser());
+        setHfAuth(true, authService.getUser());
         toast.success(`Bienvenue ${authService.getUser()?.name || 'utilisateur'} !`);
 
         // Refresh models to update gated models availability
@@ -251,7 +281,7 @@ export function LLMSettingsScreen() {
     } finally {
       setIsAuthLoading(false);
     }
-  }, [authService, toast, refreshModels]);
+  }, [authService, toast, refreshModels, setHfAuth]);
 
   /**
    * Handle HuggingFace logout
@@ -263,18 +293,17 @@ export function LLMSettingsScreen() {
   const confirmHfLogout = useCallback(async () => {
     setShowDisconnectDialog(false);
     await authService.logout();
-    setIsHfAuthenticated(false);
-    setHfUser(null);
+    setHfAuth(false, null);
 
     // Refresh models to update gated models availability
     await refreshModels();
-  }, [authService, refreshModels]);
+  }, [authService, refreshModels, setHfAuth]);
 
   /**
    * Toggle post-processing enabled state
    */
   const handleToggleEnabled = async (value: boolean) => {
-    setIsEnabled(value);
+    setLLMEnabled(value);
     await modelService.setPostProcessingEnabled(value);
 
     if (value && !selectedPostProcessingModel) {
@@ -290,7 +319,7 @@ export function LLMSettingsScreen() {
    * Toggle automatic post-processing after transcription
    */
   const handleToggleAutoPostProcess = async (value: boolean) => {
-    setIsAutoPostProcess(value);
+    setLLMAutoPostProcess(value);
     await modelService.setAutoPostProcessEnabled(value);
   };
 
@@ -299,24 +328,25 @@ export function LLMSettingsScreen() {
    */
   const handleUseModelForTask = useCallback(async (modelId: LLMModelId, task: LLMTask) => {
     try {
+      // Update both store and service
+      setLLMModelForTask(task, modelId);
       await modelService.setModelForTask(task, modelId);
 
       if (task === 'postProcessing') {
-        setSelectedPostProcessingModel(modelId);
-
         // Force reload of PostProcessingService to apply new model
         const postProcessingService = container.resolve(PostProcessingService);
         await postProcessingService.reloadModel();
         console.log('[LLMSettings] ✓ PostProcessing model reloaded:', modelId);
-      } else {
-        setSelectedAnalysisModel(modelId);
       }
 
       // Enable post-processing if not already
       if (!isEnabled) {
-        setIsEnabled(true);
+        setLLMEnabled(true);
         await modelService.setPostProcessingEnabled(true);
       }
+
+      // Refresh models to update downloaded status and enable toggle
+      await refreshModels();
 
       const taskLabel = TASK_LABELS[task];
       toast.success(`${modelService.getModelConfig(modelId).name} sera utilisé pour ${taskLabel.name.toLowerCase()}.`);
@@ -324,7 +354,7 @@ export function LLMSettingsScreen() {
       console.error('[LLMSettings] Failed to set model:', error);
       toast.error('Erreur lors de la configuration du modèle');
     }
-  }, [isEnabled, modelService, toast]);
+  }, [isEnabled, modelService, toast, setLLMModelForTask, setLLMEnabled, refreshModels]);
 
   /**
    * Show task selection menu for a model
@@ -391,14 +421,19 @@ export function LLMSettingsScreen() {
       <View style={[styles.toggleSection, { backgroundColor: themeColors.cardBg }]}>
         <View style={styles.toggleRow}>
           <View style={styles.toggleContent}>
-            <Text style={[styles.toggleLabel, { color: themeColors.textPrimary }]}>Activer l'amélioration IA</Text>
+            <Text style={[styles.toggleLabel, { color: hasDownloadedModels() ? themeColors.textPrimary : themeColors.textTertiary }]}>
+              Activer l'amélioration IA
+            </Text>
             <Text style={[styles.toggleDescription, { color: themeColors.textTertiary }]}>
-              Active les fonctionnalités IA (analyses, résumés)
+              {hasDownloadedModels()
+                ? 'Active les fonctionnalités IA (analyses, résumés)'
+                : 'Téléchargez d\'abord un modèle LLM ci-dessous'}
             </Text>
           </View>
           <Switch
-            value={isEnabled}
+            value={isEnabled && hasDownloadedModels()}
             onValueChange={handleToggleEnabled}
+            disabled={!hasDownloadedModels()}
             trackColor={{ false: isDark ? colors.neutral[700] : '#E5E5EA', true: '#34C759' }}
             thumbColor="#FFFFFF"
           />
@@ -571,6 +606,7 @@ export function LLMSettingsScreen() {
               showTpuBadge
               onUseModel={handleUseModel}
               isHfAuthenticated={isHfAuthenticated}
+              onModelDeleted={handleModelDeleted}
             />
           ))}
         </View>
@@ -591,6 +627,7 @@ export function LLMSettingsScreen() {
             isSelected={selectedPostProcessingModel === model.id || selectedAnalysisModel === model.id}
             onUseModel={handleUseModel}
             isHfAuthenticated={isHfAuthenticated}
+            onModelDeleted={handleModelDeleted}
           />
         ))}
       </View>

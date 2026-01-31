@@ -28,7 +28,9 @@ export type LLMModelId =
   | "llama3.2-3b"
   | "phi3-mini"
   | "gemma3-1b-mediapipe"
-  | "gemma3n-2b";
+  | "gemma3n-2b"
+  | "smollm-135m-q4"
+  | "smollm-135m-q2";
 
 export type PromptTemplate = "chatml" | "gemma" | "phi" | "llama";
 
@@ -69,6 +71,8 @@ export interface LLMModelConfig {
   strengths?: string[];
   /** Known limitations or weaknesses */
   weaknesses?: string[];
+  /** Whether this model is downloaded (enriched by service) */
+  downloaded?: boolean;
 }
 
 /**
@@ -196,6 +200,43 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
   // ==========================================
   // AUTRES - Modèles variés
   // ==========================================
+  "smollm-135m-q4": {
+    id: "smollm-135m-q4",
+    name: "SmolLM 135M (Q4)",
+    filename: "SmolLM-135M-Instruct.Q4_K_M.gguf",
+    // SmolLM-135M from mradermacher - public, ultra-compact for testing
+    downloadUrl:
+      "https://huggingface.co/mradermacher/SmolLM-135M-Instruct-GGUF/resolve/main/SmolLM-135M-Instruct.Q4_K_M.gguf",
+    expectedSize: 105 * 1024 * 1024, // ~105MB
+    backend: "llamarn",
+    description: "Ultra-compact pour tests rapides",
+    category: "other",
+    recommended: true,
+    promptTemplate: "chatml",
+    deviceCompatibility: "all",
+    languages: ["Anglais", "Français (basique)"],
+    specializations: ["Tests", "Prototypage", "Tâches simples"],
+    strengths: ["Ultra-léger (105MB)", "Téléchargement instantané", "Parfait pour tests", "Très rapide"],
+    weaknesses: ["Qualité limitée", "Vocabulaire réduit", "Anglais principalement"],
+  },
+  "smollm-135m-q2": {
+    id: "smollm-135m-q2",
+    name: "SmolLM 135M (Q2)",
+    filename: "SmolLM-135M-Instruct.Q2_K.gguf",
+    // SmolLM-135M Q2 from mradermacher - public, minimum size
+    downloadUrl:
+      "https://huggingface.co/mradermacher/SmolLM-135M-Instruct-GGUF/resolve/main/SmolLM-135M-Instruct.Q2_K.gguf",
+    expectedSize: 88 * 1024 * 1024, // ~88MB
+    backend: "llamarn",
+    description: "Le plus petit modèle disponible",
+    category: "other",
+    promptTemplate: "chatml",
+    deviceCompatibility: "all",
+    languages: ["Anglais"],
+    specializations: ["Tests rapides", "Développement"],
+    strengths: ["Plus petit modèle (88MB)", "Téléchargement ultra-rapide", "Idéal prototypage"],
+    weaknesses: ["Qualité très limitée", "Anglais uniquement", "Erreurs fréquentes"],
+  },
   "gemma3-1b": {
     id: "gemma3-1b",
     name: "SmolLM2 1.7B",

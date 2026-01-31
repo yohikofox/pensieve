@@ -111,6 +111,8 @@ export default {
       ready: 'Prêt',
       captured: 'Capturé',
       failed: 'Échec',
+      manual: 'Transcription manuelle',
+      queued: 'En attente',
     },
   },
 
@@ -162,6 +164,8 @@ export default {
       whisperModelSubtitle: 'Configurer le modèle de transcription',
       aiEnhancement: 'Amélioration IA',
       aiEnhancementSubtitle: 'Améliorer automatiquement les transcriptions',
+      autoTranscription: 'Transcription automatique',
+      autoTranscriptionSubtitle: 'Transcrire automatiquement après enregistrement',
       engineOptions: {
         whisper: 'Whisper',
         native: 'Reconnaissance native',

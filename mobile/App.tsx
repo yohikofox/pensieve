@@ -8,6 +8,7 @@ import { Appearance } from 'react-native';
 import { colorScheme as nwColorScheme } from 'nativewind';
 import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
+import { useLLMSettingsListener } from './src/hooks/useLLMSettingsListener';
 import { AuthNavigator } from './src/navigation/AuthNavigator';
 import { MainNavigator } from './src/navigation/MainNavigator';
 import { lightNavigationTheme, darkNavigationTheme } from './src/navigation/theme';
@@ -64,6 +65,7 @@ function AppContent() {
   const { user, loading } = useAuthListener();
   const { colorScheme, isDark } = useThemeContext();
   useDeepLinkAuth(); // Handle deep link authentication (requires ToastProvider)
+  useLLMSettingsListener(); // Sync LLM settings from service to store
 
   // Select navigation theme based on current color scheme
   const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;

@@ -49,6 +49,10 @@ export const SettingsScreen = () => {
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
 
+  // Auto-transcription from global settings store
+  const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
+  const setAutoTranscription = useSettingsStore((state) => state.setAutoTranscription);
+
   // Get theme label for display
   const getThemeLabel = (preference: ThemePreference): string => {
     const labels: Record<ThemePreference, string> = {
@@ -439,7 +443,7 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4"
+            className="flex-row items-center py-3 px-4 border-b border-border-default"
             onPress={() => navigation.navigate('LLMSettings')}
           >
             <View className="flex-1">
@@ -455,6 +459,23 @@ export const SettingsScreen = () => {
               <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
           </TouchableOpacity>
+
+          <View className="flex-row items-center py-3 px-4">
+            <View className="flex-1">
+              <Text className="text-lg text-text-primary">
+                {t('settings.transcription.autoTranscription')}
+              </Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
+                {t('settings.transcription.autoTranscriptionSubtitle')}
+              </Text>
+            </View>
+            <Switch
+              value={autoTranscriptionEnabled}
+              onValueChange={setAutoTranscription}
+              trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+              thumbColor={colors.neutral[0]}
+            />
+          </View>
         </Card>
 
         {/* Integrations Section */}

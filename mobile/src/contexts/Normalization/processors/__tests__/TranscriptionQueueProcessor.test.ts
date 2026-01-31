@@ -5,6 +5,7 @@ import { TranscriptionQueueService } from '../../services/TranscriptionQueueServ
 import { EventBus } from '../../../shared/events/EventBus';
 import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../../Capture/events/CaptureEvents';
 import { database } from '../../../../database';
+import { useSettingsStore } from '../../../../stores/settingsStore';
 
 describe('TranscriptionQueueProcessor', () => {
   let processor: TranscriptionQueueProcessor;
@@ -326,6 +327,94 @@ describe('TranscriptionQueueProcessor', () => {
 
       // Assert - All captures should be enqueued
       expect(await queueService.getQueueLength()).toBe(3);
+    });
+  });
+
+  describe('auto-transcription setting', () => {
+    it('should skip auto-enqueue when auto-transcription is disabled', async () => {
+      // Arrange - Create mock queue service to verify enqueue was NOT called
+      const mockEnqueue = jest.fn();
+      const mockQueueService = {
+        enqueue: mockEnqueue,
+        remove: jest.fn(),
+      } as any;
+
+      const testProcessor = new TranscriptionQueueProcessor(mockQueueService, eventBus);
+
+      // Disable auto-transcription
+      useSettingsStore.getState().setAutoTranscription(false);
+
+      testProcessor.start();
+
+      const event: CaptureRecordedEvent = {
+        type: 'CaptureRecorded',
+        timestamp: Date.now(),
+        payload: {
+          captureId: 'capture-1',
+          captureType: 'audio',
+          audioPath: '/audio1.m4a',
+          audioDuration: 30000,
+          createdAt: Date.now(),
+        },
+      };
+
+      // Act
+      eventBus.publish(event);
+
+      // Wait for async handler
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Assert - enqueue should NOT be called
+      expect(mockEnqueue).not.toHaveBeenCalled();
+
+      // Cleanup
+      testProcessor.stop();
+      useSettingsStore.getState().setAutoTranscription(true);
+    });
+
+    it('should auto-enqueue when auto-transcription is enabled (default)', async () => {
+      // Arrange - Create mock queue service to verify enqueue WAS called
+      const mockEnqueue = jest.fn();
+      const mockQueueService = {
+        enqueue: mockEnqueue,
+        remove: jest.fn(),
+      } as any;
+
+      const testProcessor = new TranscriptionQueueProcessor(mockQueueService, eventBus);
+
+      // Ensure auto-transcription is enabled (default state)
+      useSettingsStore.getState().setAutoTranscription(true);
+
+      testProcessor.start();
+
+      const event: CaptureRecordedEvent = {
+        type: 'CaptureRecorded',
+        timestamp: Date.now(),
+        payload: {
+          captureId: 'capture-1',
+          captureType: 'audio',
+          audioPath: '/audio1.m4a',
+          audioDuration: 30000,
+          createdAt: Date.now(),
+        },
+      };
+
+      // Act
+      eventBus.publish(event);
+
+      // Wait for async handler
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Assert - enqueue should be called with correct params
+      expect(mockEnqueue).toHaveBeenCalledTimes(1);
+      expect(mockEnqueue).toHaveBeenCalledWith({
+        captureId: 'capture-1',
+        audioPath: '/audio1.m4a',
+        audioDuration: 30000,
+      });
+
+      // Cleanup
+      testProcessor.stop();
     });
   });
 });

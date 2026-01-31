@@ -12,6 +12,7 @@
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { LLMModelId, LLMTask } from '../contexts/Normalization/services/LLMModelService';
 
 // Theme preference type
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -20,6 +21,19 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export interface DebugButtonPosition {
   edge: 'left' | 'right';
   verticalPercent: number; // 0-1, percentage from top
+}
+
+// LLM settings (global - consulted throughout the app)
+export interface LLMSettings {
+  // AI post-processing enabled/disabled
+  isEnabled: boolean;
+
+  // Automatic post-processing after transcription
+  isAutoPostProcess: boolean;
+
+  // Selected models for each task
+  selectedPostProcessingModel: LLMModelId | null;
+  selectedAnalysisModel: LLMModelId | null;
 }
 
 interface SettingsState {
@@ -33,11 +47,24 @@ interface SettingsState {
   // Debug button position (draggable, anchored to edge)
   debugButtonPosition: DebugButtonPosition;
 
+  // Auto-transcription - automatically transcribe audio captures after recording
+  // When disabled, transcription must be triggered manually from capture details
+  autoTranscriptionEnabled: boolean;
+
+  // LLM settings - AI post-processing configuration (consulted app-wide)
+  llm: LLMSettings;
+
   // Actions
   setThemePreference: (preference: ThemePreference) => void;
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
   setDebugButtonPosition: (position: DebugButtonPosition) => void;
+  setAutoTranscription: (enabled: boolean) => void;
+
+  // LLM Actions
+  setLLMEnabled: (enabled: boolean) => void;
+  setLLMAutoPostProcess: (enabled: boolean) => void;
+  setLLMModelForTask: (task: LLMTask, modelId: LLMModelId | null) => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -54,6 +81,17 @@ export const useSettingsStore = create<SettingsState>()(
         debugButtonPosition: {
           edge: 'right',
           verticalPercent: 0.85, // Near bottom
+        },
+
+        // Initial state - auto-transcription disabled by default (manual trigger from capture details)
+        autoTranscriptionEnabled: false,
+
+        // Initial LLM state - disabled by default
+        llm: {
+          isEnabled: false,
+          isAutoPostProcess: false,
+          selectedPostProcessingModel: null,
+          selectedAnalysisModel: null,
         },
 
         // Actions
@@ -75,6 +113,36 @@ export const useSettingsStore = create<SettingsState>()(
 
         setDebugButtonPosition: (position: DebugButtonPosition) => {
           set({ debugButtonPosition: position });
+        },
+
+        setAutoTranscription: (enabled: boolean) => {
+          set({ autoTranscriptionEnabled: enabled });
+          console.log('[SettingsStore] Auto-transcription:', enabled ? 'ON' : 'OFF');
+        },
+
+        // LLM Actions
+        setLLMEnabled: (enabled: boolean) => {
+          set((state) => ({
+            llm: { ...state.llm, isEnabled: enabled },
+          }));
+          console.log('[SettingsStore] LLM enabled:', enabled ? 'ON' : 'OFF');
+        },
+
+        setLLMAutoPostProcess: (enabled: boolean) => {
+          set((state) => ({
+            llm: { ...state.llm, isAutoPostProcess: enabled },
+          }));
+          console.log('[SettingsStore] LLM auto post-process:', enabled ? 'ON' : 'OFF');
+        },
+
+        setLLMModelForTask: (task: LLMTask, modelId: LLMModelId | null) => {
+          set((state) => ({
+            llm: {
+              ...state.llm,
+              [task === 'postProcessing' ? 'selectedPostProcessingModel' : 'selectedAnalysisModel']: modelId,
+            },
+          }));
+          console.log(`[SettingsStore] LLM model for ${task}:`, modelId);
         },
       }),
       {

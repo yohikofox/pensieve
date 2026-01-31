@@ -99,15 +99,27 @@ export class TranscriptionQueueService {
     audioPath: string;
     audioDuration?: number;
   }): Promise<void> {
-    // Check for existing entry (idempotent)
+    // Check for existing entry with pending/processing status (idempotent)
     const existing = this.db.executeSync(
-      "SELECT id FROM transcription_queue WHERE capture_id = ?",
+      "SELECT id, status FROM transcription_queue WHERE capture_id = ?",
       [capture.captureId],
     );
 
     if (existing.rows && existing.rows.length > 0) {
-      // Already queued, skip
-      return;
+      const status = existing.rows[0].status;
+
+      // If already pending or processing, skip (avoid duplicates)
+      if (status === 'pending' || status === 'processing') {
+        console.log(`[TranscriptionQueueService] ⏭️ Capture already in queue with status '${status}', skipping`);
+        return;
+      }
+
+      // If completed or failed, remove old entry to allow re-transcription
+      this.db.executeSync(
+        "DELETE FROM transcription_queue WHERE capture_id = ?",
+        [capture.captureId],
+      );
+      console.log(`[TranscriptionQueueService] 🗑️ Removed old queue entry (status: ${status}) for re-transcription`);
     }
 
     const queueId = generateId();

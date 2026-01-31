@@ -71,6 +71,8 @@ interface LLMModelCardProps {
   onUseModel?: (modelId: LLMModelId) => Promise<void>;
   /** Trigger re-check when HF auth state changes */
   isHfAuthenticated?: boolean;
+  /** Called after model deletion to refresh parent state */
+  onModelDeleted?: (modelId: LLMModelId) => void;
 }
 
 export function LLMModelCard({
@@ -79,6 +81,7 @@ export function LLMModelCard({
   showTpuBadge = false,
   onUseModel,
   isHfAuthenticated,
+  onModelDeleted,
 }: LLMModelCardProps) {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
@@ -185,6 +188,8 @@ export function LLMModelCard({
     try {
       await modelService.deleteModel(modelId);
       setStatus('not_downloaded');
+      // Notify parent to refresh models list
+      onModelDeleted?.(modelId);
     } catch (err) {
       toast.error('Impossible de supprimer le modèle');
     }
