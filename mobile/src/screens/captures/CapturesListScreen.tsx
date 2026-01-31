@@ -75,13 +75,10 @@ export function CapturesListScreen() {
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
   const [playingWavCaptureId, setPlayingWavCaptureId] = useState<string | null>(null);
 
-  // Debug mode from settings store
+  // Debug mode from settings store (Story 2.8 - Task 8)
   const debugMode = useSettingsStore((state) => state.debugMode);
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const toast = useToast();
-
-  // Error messages for failed captures (debug mode only)
-  const [errorMessages, setErrorMessages] = useState<Record<string, string>>({});
 
   // Dialog states
   const [showModelDialog, setShowModelDialog] = useState(false);
@@ -177,30 +174,6 @@ export function CapturesListScreen() {
     loadCaptures();
   }, [loadCaptures]);
 
-  // Load error messages for failed captures (debug mode only)
-  useEffect(() => {
-    if (!debugMode) {
-      setErrorMessages({});
-      return;
-    }
-
-    const fetchErrorMessages = async () => {
-      const queueService = container.resolve(TranscriptionQueueService);
-      const failedCaptures = captures.filter(c => c.state === 'failed');
-      const errors: Record<string, string> = {};
-
-      for (const capture of failedCaptures) {
-        const error = await queueService.getLastError(capture.id);
-        if (error) {
-          errors[capture.id] = error;
-        }
-      }
-
-      setErrorMessages(errors);
-    };
-
-    fetchErrorMessages();
-  }, [debugMode, captures]);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
@@ -665,8 +638,8 @@ export function CapturesListScreen() {
                 ) : isFailed ? (
                   <View>
                     <Text className="text-sm text-status-error italic">
-                      {debugMode && errorMessages[item.id]
-                        ? errorMessages[item.id]
+                      {debugMode && item.transcriptionError
+                        ? item.transcriptionError
                         : t('capture.status.failed', 'La transcription a échoué')}
                     </Text>
                   </View>
