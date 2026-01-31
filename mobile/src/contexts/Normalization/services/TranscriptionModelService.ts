@@ -1,9 +1,11 @@
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
+import { injectable, container } from 'tsyringe';
 import { fetch } from 'expo/fetch';
 import { File, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileHash } from '@preeternal/react-native-file-hash';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
@@ -172,6 +174,9 @@ export class TranscriptionModelService {
         await this.deleteModel(modelSize);
         throw new Error(`Checksum verification failed for ${modelSize} model. File deleted.`);
       }
+
+      // AC6: Auto-resume pending captures now that model is available (Story 2.7)
+      await this.autoResumePendingCaptures();
 
       return modelFile.uri;
     } catch (error) {
@@ -433,5 +438,68 @@ export class TranscriptionModelService {
   async getPromptString(): Promise<string> {
     const words = await this.getCustomVocabulary();
     return words.length > 0 ? words.join(', ') : '';
+  }
+
+  /**
+   * AC6: Auto-resume transcription for pending captures when model becomes available (Story 2.7)
+   *
+   * Finds all audio captures with state='captured' and no transcription,
+   * then adds them to the transcription queue.
+   *
+   * @returns Number of captures queued for transcription
+   */
+  private async autoResumePendingCaptures(): Promise<number> {
+    try {
+      console.log('[TranscriptionModelService] AC6: Checking for pending captures to auto-resume...');
+
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      const allCaptures = await repository.findAll();
+
+      // Filter: audio captures that are captured but not yet transcribed
+      const pendingCaptures = allCaptures.filter(
+        (capture) =>
+          capture.type === 'audio' &&
+          capture.state === 'captured' &&
+          !capture.normalizedText
+      );
+
+      if (pendingCaptures.length === 0) {
+        console.log('[TranscriptionModelService] AC6: No pending captures found');
+        return 0;
+      }
+
+      console.log(
+        `[TranscriptionModelService] AC6: Found ${pendingCaptures.length} pending capture(s), adding to queue...`
+      );
+
+      // Dynamically import to avoid circular dependency
+      const { TranscriptionQueueService } = await import('./TranscriptionQueueService');
+      const queueService = container.resolve(TranscriptionQueueService);
+
+      let queuedCount = 0;
+      for (const capture of pendingCaptures) {
+        try {
+          await queueService.enqueue({
+            captureId: capture.id,
+            audioPath: capture.rawContent || '',
+            audioDuration: capture.duration,
+          });
+          queuedCount++;
+        } catch (error) {
+          console.error(
+            `[TranscriptionModelService] AC6: Failed to enqueue capture ${capture.id}:`,
+            error
+          );
+        }
+      }
+
+      console.log(
+        `[TranscriptionModelService] AC6: ✅ Auto-resumed ${queuedCount}/${pendingCaptures.length} capture(s)`
+      );
+      return queuedCount;
+    } catch (error) {
+      console.error('[TranscriptionModelService] AC6: Auto-resume failed:', error);
+      return 0;
+    }
   }
 }

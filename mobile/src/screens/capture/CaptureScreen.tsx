@@ -4,6 +4,7 @@ import { useAudioRecorder, RecordingPresets, setAudioModeAsync } from 'expo-audi
 import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
 import { useTranslation } from 'react-i18next';
+import { useNavigation } from '@react-navigation/native';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { useAuthListener } from '../../contexts/identity/hooks/useAuthListener';
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
@@ -11,10 +12,13 @@ import { TextCaptureService } from '../../contexts/capture/services/TextCaptureS
 import { CrashRecoveryService } from '../../contexts/capture/services/CrashRecoveryService';
 import { FileStorageService } from '../../contexts/capture/services/FileStorageService';
 import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
+import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
+import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { IPermissionService } from '../../contexts/capture/domain/IPermissionService';
 import { TextCaptureInput, type TextCaptureInputRef } from '../../components/capture/TextCaptureInput';
 import { RecordingOverlay } from '../../components/capture/RecordingOverlay';
+import { ModelConfigPrompt } from '../../components/modals/ModelConfigPrompt';
 import { colors, shadows } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 
@@ -229,6 +233,7 @@ const CaptureToolButton = ({
 const CaptureScreenContent = () => {
   const { t } = useTranslation();
   const { user } = useAuthListener();
+  const navigation = useNavigation();
   const [state, setState] = useState<RecordingState>('idle');
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [showRecordingOverlay, setShowRecordingOverlay] = useState(false);
@@ -241,6 +246,9 @@ const CaptureScreenContent = () => {
   const [lastSavedCaptureId, setLastSavedCaptureId] = useState<string | null>(null);
   const [pendingRecordStart, setPendingRecordStart] = useState(false);
 
+  // Model configuration prompt state (AC2: Story 2.7)
+  const [showModelPrompt, setShowModelPrompt] = useState(false);
+
   // Create recorder using official HIGH_QUALITY preset (permissions + audio mode already configured by parent)
   const audioRecorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
 
@@ -251,6 +259,8 @@ const CaptureScreenContent = () => {
   const permissionServiceRef = useRef<IPermissionService | null>(null);
   const fileStorageServiceRef = useRef<FileStorageService | null>(null);
   const storageMonitorServiceRef = useRef<StorageMonitorService | null>(null);
+  const modelServiceRef = useRef<TranscriptionModelService | null>(null);
+  const transcriptionEngineServiceRef = useRef<TranscriptionEngineService | null>(null);
   const textCaptureInputRef = useRef<TextCaptureInputRef>(null);
 
   // Initialize services on mount via TSyringe container
@@ -261,6 +271,8 @@ const CaptureScreenContent = () => {
     permissionServiceRef.current = container.resolve<IPermissionService>(TOKENS.IPermissionService);
     fileStorageServiceRef.current = container.resolve(FileStorageService);
     storageMonitorServiceRef.current = container.resolve(StorageMonitorService);
+    modelServiceRef.current = container.resolve(TranscriptionModelService);
+    transcriptionEngineServiceRef.current = container.resolve(TranscriptionEngineService);
   }, []);
 
   // AC4: Crash recovery on app launch
@@ -311,56 +323,36 @@ const CaptureScreenContent = () => {
   }, [state]);
 
   const startRecording = async () => {
-    const recordingService = recordingServiceRef.current;
-    if (!recordingService) {
-      toast.error(t('capture.alerts.serviceNotInitialized'));
-      setState('idle');
-      return;
-    }
+    // AC1: Check transcription engine and model availability (Story 2.7)
+    const engineService = transcriptionEngineServiceRef.current;
+    const modelService = modelServiceRef.current;
 
-    // Check storage before recording
-    const storageMonitor = storageMonitorServiceRef.current;
-    if (!storageMonitor) {
-      toast.error(t('capture.alerts.serviceNotInitialized'));
-      return;
-    }
+    if (engineService && modelService) {
+      try {
+        // Check which transcription engine is selected
+        const isNativeEngine = await engineService.isNativeEngineSelected();
 
-    try {
-      const isCritical = await storageMonitor.isStorageCriticallyLow();
-      if (isCritical) {
-        toast.warning(t('capture.alerts.lowStorage'));
-        return;
+        if (isNativeEngine) {
+          // Native engine doesn't require Whisper model, proceed directly
+          console.log('[CaptureScreen] Native transcription engine selected, skipping Whisper model check');
+        } else {
+          // Whisper engine selected - check if model is available
+          const bestModel = await modelService.getBestAvailableModel();
+          if (!bestModel) {
+            // AC2: Show modal prompt when no Whisper model available
+            console.log('[CaptureScreen] Whisper engine selected but no model available, showing prompt');
+            setShowModelPrompt(true);
+            return; // Wait for user decision
+          }
+        }
+      } catch (error) {
+        console.error('[CaptureScreen] Failed to check transcription engine/model:', error);
+        // Don't block recording if check fails, just log warning
       }
-    } catch (error) {
-      console.error('[CaptureScreen] Storage check failed:', error);
     }
 
-    try {
-      await audioRecorder.prepareToRecordAsync();
-      const tempUri = audioRecorder.uri;
-
-      if (!tempUri) {
-        throw new Error('No URI available after prepare');
-      }
-
-      const result = await recordingService.startRecording(tempUri);
-
-      if (result.type !== 'success') {
-        console.error('[CaptureScreen] Failed to start recording:', result.type, result.error);
-        toast.error(result.error ?? t('capture.alerts.error'));
-        setState('idle');
-        return;
-      }
-
-      audioRecorder.record();
-      setState('recording');
-      setShowRecordingOverlay(true);
-    } catch (error) {
-      console.error('[CaptureScreen] Audio recorder error:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      toast.error(t('capture.alerts.startError', { error: errorMessage }));
-      setState('idle');
-    }
+    // Engine check passed or no services, proceed with recording
+    await proceedWithRecording();
   };
 
   const stopRecording = async () => {
@@ -510,6 +502,78 @@ const CaptureScreenContent = () => {
     }
   };
 
+  // AC2: Modal handlers (Story 2.7)
+  const handleGoToSettings = () => {
+    setShowModelPrompt(false);
+    // Navigate to Whisper Settings screen (nested in Settings tab)
+    navigation.navigate('Settings' as never, { screen: 'WhisperSettings' } as never);
+  };
+
+  const handleContinueWithoutTranscription = async () => {
+    setShowModelPrompt(false);
+    // AC3: Allow capture to proceed even without model
+    // The recording will be saved with state='captured'
+    // TranscriptionWorker will log warning and skip transcription
+    console.log('[CaptureScreen] User chose to continue without transcription model');
+
+    // Bypass model check and proceed with recording
+    // We'll call the recording logic directly
+    await proceedWithRecording();
+  };
+
+  const proceedWithRecording = async () => {
+    const recordingService = recordingServiceRef.current;
+    if (!recordingService) {
+      toast.error(t('capture.alerts.serviceNotInitialized'));
+      setState('idle');
+      return;
+    }
+
+    // Check storage before recording
+    const storageMonitor = storageMonitorServiceRef.current;
+    if (!storageMonitor) {
+      toast.error(t('capture.alerts.serviceNotInitialized'));
+      return;
+    }
+
+    try {
+      const isCritical = await storageMonitor.isStorageCriticallyLow();
+      if (isCritical) {
+        toast.warning(t('capture.alerts.lowStorage'));
+        return;
+      }
+    } catch (error) {
+      console.error('[CaptureScreen] Storage check failed:', error);
+    }
+
+    try {
+      await audioRecorder.prepareToRecordAsync();
+      const tempUri = audioRecorder.uri;
+
+      if (!tempUri) {
+        throw new Error('No URI available after prepare');
+      }
+
+      const result = await recordingService.startRecording(tempUri);
+
+      if (result.type !== 'success') {
+        console.error('[CaptureScreen] Failed to start recording:', result.type, result.error);
+        toast.error(result.error ?? t('capture.alerts.error'));
+        setState('idle');
+        return;
+      }
+
+      audioRecorder.record();
+      setState('recording');
+      setShowRecordingOverlay(true);
+    } catch (error) {
+      console.error('[CaptureScreen] Audio recorder error:', error);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error(t('capture.alerts.startError', { error: errorMessage }));
+      setState('idle');
+    }
+  };
+
   return (
     <View className="flex-1 bg-bg-screen">
       {/* Header */}
@@ -574,6 +638,13 @@ const CaptureScreenContent = () => {
           isStopping={state === 'stopping'}
         />
       </Modal>
+
+      {/* Model Configuration Prompt (AC2: Story 2.7) */}
+      <ModelConfigPrompt
+        visible={showModelPrompt}
+        onGoToSettings={handleGoToSettings}
+        onCancel={handleContinueWithoutTranscription}
+      />
     </View>
   );
 };

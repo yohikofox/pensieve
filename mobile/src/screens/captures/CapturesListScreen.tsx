@@ -80,6 +80,9 @@ export function CapturesListScreen() {
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const toast = useToast();
 
+  // AC7: Model availability state (Story 2.7)
+  const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
+
   // Dialog states
   const [showModelDialog, setShowModelDialog] = useState(false);
   const [showDeleteWavDialog, setShowDeleteWavDialog] = useState(false);
@@ -119,6 +122,21 @@ export function CapturesListScreen() {
       toast.error(`Erreur de lecture: ${playerStatus.error}`);
     }
   }, [playerStatus.isLoaded, playerStatus.playing, playerStatus.error, currentAudioPath, toast]);
+
+  // AC7: Check model availability on mount (Story 2.7)
+  useEffect(() => {
+    const checkModelAvailability = async () => {
+      try {
+        const modelService = container.resolve(TranscriptionModelService);
+        const bestModel = await modelService.getBestAvailableModel();
+        setHasModelAvailable(bestModel !== null);
+      } catch (error) {
+        console.error('[CapturesListScreen] Failed to check model availability:', error);
+        setHasModelAvailable(null); // Unknown state
+      }
+    };
+    checkModelAvailability();
+  }, []);
 
   // Reset playing state and seek to beginning when audio finishes
   useEffect(() => {
@@ -430,7 +448,19 @@ export function CapturesListScreen() {
             <View className="flex-row items-center justify-between mb-3">
               {/* Badge */}
               <View>
-                {isCaptured && (
+                {/* AC7: Show "Pending model" badge when no model available (Story 2.7) */}
+                {isCaptured && hasModelAvailable === false && !item.normalizedText && (
+                  <Badge variant="failed">
+                    <View className="flex-row items-center">
+                      <Feather name="alert-circle" size={12} color={colors.error[700]} />
+                      <Text className="ml-1 text-xs font-medium text-error-700">
+                        {t('capture.status.pendingModel', 'Modèle requis')}
+                      </Text>
+                    </View>
+                  </Badge>
+                )}
+                {/* Show normal status badges when model is available or unknown */}
+                {isCaptured && (hasModelAvailable === true || hasModelAvailable === null || item.normalizedText) && (
                   <Badge variant={item.isInQueue ? "processing" : "pending"}>
                     <View className="flex-row items-center">
                       {item.isInQueue ? (

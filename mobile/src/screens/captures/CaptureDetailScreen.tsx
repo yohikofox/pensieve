@@ -50,12 +50,14 @@ import { CorrectionLearningService } from '../../contexts/Normalization/services
 import { CaptureAnalysisService } from '../../contexts/Normalization/services/CaptureAnalysisService';
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
+import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
 import { GoogleCalendarService } from '../../services/GoogleCalendarService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 
 /** Action item structure from LLM JSON output */
 interface ActionItem {
@@ -316,6 +318,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showCalendarDialog, setShowCalendarDialog] = useState(false);
 
+  // Model availability state (AC4: Story 2.7)
+  const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
+
   useEffect(() => {
     loadCapture();
   }, [loadCapture]);
@@ -354,6 +359,21 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   useEffect(() => {
     loadAnalyses();
   }, [captureId]);
+
+  // Check model availability (AC4: Story 2.7)
+  useEffect(() => {
+    const checkModelAvailability = async () => {
+      try {
+        const modelService = container.resolve(TranscriptionModelService);
+        const bestModel = await modelService.getBestAvailableModel();
+        setHasModelAvailable(bestModel !== null);
+      } catch (error) {
+        console.error('[CaptureDetailScreen] Failed to check model availability:', error);
+        setHasModelAvailable(null); // Unknown state
+      }
+    };
+    checkModelAvailability();
+  }, []);
 
   // Sync local action items when analyses change
   useEffect(() => {
@@ -1017,7 +1037,17 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           {/* Status Badge - Only for audio captures */}
           {isAudio && (
             <View style={styles.statusRow}>
-              {capture.state === 'captured' && (
+              {/* AC4: Show "Model required" badge when no model available (Story 2.7) */}
+              {capture.state === 'captured' && hasModelAvailable === false && !capture.normalizedText && (
+                <View style={[styles.statusBadge, { backgroundColor: isDark ? colors.error[900] : colors.error[50] }]}>
+                  <Feather name="alert-circle" size={14} color={isDark ? colors.error[400] : colors.error[700]} />
+                  <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.error[300] : colors.error[700] }]}>
+                    Modèle de transcription requis
+                  </Text>
+                </View>
+              )}
+              {/* Show normal "waiting" status when model is available OR model status unknown */}
+              {capture.state === 'captured' && (hasModelAvailable === true || hasModelAvailable === null || capture.normalizedText) && (
                 <View style={[styles.statusBadge, { backgroundColor: themeColors.statusPendingBg }]}>
                   <Feather name={StatusIcons.pending} size={14} color={isDark ? colors.warning[400] : colors.warning[700]} />
                   <Text style={[styles.statusText, { marginLeft: 6, color: isDark ? colors.warning[300] : colors.warning[700] }]}>
@@ -1046,8 +1076,24 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
-          {/* Manual transcription button (when auto-transcription disabled) */}
-          {isAudio && capture.state === 'captured' && !autoTranscriptionEnabled && (
+          {/* AC5: Configure Model button (when no model available) - Story 2.7 */}
+          {isAudio && capture.state === 'captured' && hasModelAvailable === false && !capture.normalizedText && (
+            <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
+              <Button
+                variant="secondary"
+                size="md"
+                onPress={() => {
+                  navigation.navigate('WhisperSettings' as never);
+                }}
+              >
+                <Feather name="download" size={18} color={isDark ? colors.neutral[100] : colors.neutral[700]} style={{ marginRight: 8 }} />
+                Télécharger un modèle
+              </Button>
+            </View>
+          )}
+
+          {/* Manual transcription button (when auto-transcription disabled AND model available) */}
+          {isAudio && capture.state === 'captured' && !autoTranscriptionEnabled && hasModelAvailable === true && (
             <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
               <Button
                 variant="primary"
