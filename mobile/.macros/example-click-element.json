@@ -1,0 +1,31 @@
+{
+  "name": "example-click-element",
+  "description": "Example: Detect and click an element by label",
+  "steps": [
+    {
+      "action": "detect_element",
+      "label": "ElementLabel",
+      "description": "Find element in view hierarchy by its label"
+    },
+    {
+      "action": "click_center",
+      "description": "Click at the center of the detected element"
+    },
+    {
+      "action": "wait",
+      "duration": 500,
+      "description": "Wait for UI to update"
+    },
+    {
+      "action": "screenshot",
+      "description": "Take screenshot to verify result"
+    }
+  ],
+  "notes": [
+    "This is an example macro showing the basic pattern:",
+    "1. Detect element by label (from view hierarchy)",
+    "2. Click center of element (auto-calculated from bounds)",
+    "3. Wait for animation/transition",
+    "4. Screenshot for verification"
+  ]
+}

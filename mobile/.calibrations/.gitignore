@@ -1,0 +1,6 @@
+# Calibrations are device-specific and should not be committed
+*.json
+*.png
+
+# Except example calibration
+!example-calibration.json

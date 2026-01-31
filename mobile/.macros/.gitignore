@@ -1,0 +1,6 @@
+# Macros are test-specific and can be environment-dependent
+# Commit examples but not all test macros
+*.json
+
+# Except example macros
+!example-*.json

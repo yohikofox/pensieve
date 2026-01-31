@@ -34,6 +34,7 @@ import { LLMModelService } from './src/contexts/Normalization/services/LLMModelS
 import { NPUDetectionService } from './src/contexts/Normalization/services/NPUDetectionService';
 import { DevPanelProvider } from './src/components/dev/DevPanelContext';
 import { DevPanel } from './src/components/dev/DevPanel';
+import { CalibrationGrid } from './src/components/debug';
 
 // Initialize IoC container with production services
 registerServices();
@@ -201,6 +202,8 @@ function AppContent() {
       </NavigationContainer>
       {/* Global DevPanel - Floating button accessible from any screen */}
       <DevPanel />
+      {/* Calibration Grid for screen coordinate calibration */}
+      {__DEV__ && <CalibrationGrid />}
     </DevPanelProvider>
   );
 }

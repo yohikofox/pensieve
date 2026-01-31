@@ -46,6 +46,8 @@ import { CaptureIcons, StatusIcons, MediaIcons, ActionIcons } from '../../design
 import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureCard';
 import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
+import { SwipeableCard } from '../../components/cards/SwipeableCard';
+import { CalibrationGrid } from '../../components/debug';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -406,6 +408,34 @@ export function CapturesListScreen() {
     }
   }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
 
+  // Story 3.4: Swipe action handlers
+  const handleDeleteCapture = useCallback(async (captureId: string) => {
+    try {
+      const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      await repository.delete(captureId);
+      toast.success(t('captures.deleteSuccess', 'Capture supprimée'));
+      await loadCaptures(); // Reload list
+    } catch (error) {
+      console.error('[CapturesListScreen] Delete failed:', error);
+      toast.error(t('errors.deleteFailed', 'Impossible de supprimer'));
+    }
+  }, [loadCaptures, toast, t]);
+
+  const handleShareCapture = useCallback(async (capture: Capture) => {
+    try {
+      const content = capture.normalizedText || capture.rawContent || '';
+      const title = capture.type === 'audio' ? 'Capture audio Pensieve' : 'Capture texte Pensieve';
+
+      await Share.share({
+        message: content,
+        title: title,
+      });
+    } catch (error) {
+      console.error('[CapturesListScreen] Share failed:', error);
+      toast.error(t('errors.shareFailed', 'Impossible de partager'));
+    }
+  }, [toast, t]);
+
   // Footer component pour pagination loading
   const renderFooter = useCallback(() => {
     if (!isLoadingMore) return null;
@@ -434,8 +464,12 @@ export function CapturesListScreen() {
     const retryMessage = retryService.getRetryStatusMessage(item);
 
     return (
-      <TouchableOpacity onPress={() => handleCapturePress(item.id)} activeOpacity={0.7}>
-        <Card variant="elevated" className="mb-3">
+      <SwipeableCard
+        onDelete={() => handleDeleteCapture(item.id)}
+        onShare={() => handleShareCapture(item)}
+      >
+        <TouchableOpacity onPress={() => handleCapturePress(item.id)} activeOpacity={0.7}>
+          <Card variant="elevated" className="mb-3">
           {/* Header: Type + Duration + Date */}
           <View className="flex-row justify-between items-center mb-3">
             <View className="flex-row items-center">
@@ -716,7 +750,8 @@ export function CapturesListScreen() {
           </View>
         </Card>
       </TouchableOpacity>
-    );
+    </SwipeableCard>
+  );
   };
 
   // Story 3.1 AC7: Skeleton loading cards (Liquid Glass design)
@@ -808,6 +843,9 @@ export function CapturesListScreen() {
           },
         }}
       />
+
+      {/* Calibration Grid for testing */}
+      {__DEV__ && <CalibrationGrid />}
     </View>
   );
 }

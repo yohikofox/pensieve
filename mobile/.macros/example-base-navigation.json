@@ -1,0 +1,38 @@
+{
+  "name": "example-base-navigation",
+  "description": "Example: Base navigation macro (no dependencies)",
+  "dependencies": [],
+  "steps": [
+    {
+      "action": "press_button",
+      "button": "BACK",
+      "description": "Go back to main screen (if nested)"
+    },
+    {
+      "action": "wait",
+      "duration": 500
+    },
+    {
+      "action": "click_target",
+      "target": "capturer_tab",
+      "description": "Click Capturer tab in bottom navigation"
+    },
+    {
+      "action": "wait",
+      "duration": 500
+    },
+    {
+      "action": "screenshot",
+      "description": "Verify we're on Capturer screen"
+    }
+  ],
+  "notes": [
+    "This is a BASE macro - no dependencies",
+    "Other macros can depend on this for navigation",
+    "",
+    "Example dependents:",
+    "- start-audio-recording",
+    "- start-text-capture",
+    "- test-capture-buttons"
+  ]
+}

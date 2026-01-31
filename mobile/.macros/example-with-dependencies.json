@@ -1,0 +1,44 @@
+{
+  "name": "example-with-dependencies",
+  "description": "Example: Macro with dependencies for composition",
+  "dependencies": [
+    "navigate-to-capturer",
+    "ensure-recording-stopped"
+  ],
+  "steps": [
+    {
+      "action": "detect_element",
+      "label": "Voix",
+      "description": "Find Voix button (assumes we're on Capturer screen)"
+    },
+    {
+      "action": "click_center",
+      "description": "Click Voix to start recording"
+    },
+    {
+      "action": "wait",
+      "duration": 2000,
+      "description": "Record for 2 seconds"
+    },
+    {
+      "action": "press_button",
+      "button": "BACK",
+      "description": "Stop recording"
+    }
+  ],
+  "notes": [
+    "Dependencies are executed in order before this macro's steps",
+    "This allows composition: build complex macros from simple ones",
+    "Dependencies can have their own dependencies (recursive resolution)",
+    "",
+    "Execution flow:",
+    "1. Execute 'navigate-to-capturer' (if not already on screen)",
+    "2. Execute 'ensure-recording-stopped' (safety check)",
+    "3. Execute this macro's steps",
+    "",
+    "Benefits:",
+    "- Reusability: navigation logic in one place",
+    "- Safety: preconditions enforced via dependencies",
+    "- Maintainability: change navigation once, all macros benefit"
+  ]
+}
