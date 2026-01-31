@@ -58,7 +58,7 @@ import {
  */
 @injectable()
 export class FileStorageService implements IFileStorageService {
-  private readonly AUDIO_DIR = `${Paths.document}/audio/`;
+  private readonly AUDIO_DIR = `${Paths.document.uri}/audio/`;
 
   constructor() {
     this.ensureAudioDirectoryExists();
