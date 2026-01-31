@@ -78,6 +78,9 @@ export function CapturesListScreen() {
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toast = useToast();
 
+  // Error messages for failed captures (debug mode only)
+  const [errorMessages, setErrorMessages] = useState<Record<string, string>>({});
+
   // Dialog states
   const [showModelDialog, setShowModelDialog] = useState(false);
   const [showDeleteWavDialog, setShowDeleteWavDialog] = useState(false);
@@ -172,6 +175,31 @@ export function CapturesListScreen() {
     loadCaptures();
   }, [loadCaptures]);
 
+  // Load error messages for failed captures (debug mode only)
+  useEffect(() => {
+    if (!debugMode) {
+      setErrorMessages({});
+      return;
+    }
+
+    const fetchErrorMessages = async () => {
+      const queueService = container.resolve(TranscriptionQueueService);
+      const failedCaptures = captures.filter(c => c.state === 'failed');
+      const errors: Record<string, string> = {};
+
+      for (const capture of failedCaptures) {
+        const error = await queueService.getLastError(capture.id);
+        if (error) {
+          errors[capture.id] = error;
+        }
+      }
+
+      setErrorMessages(errors);
+    };
+
+    fetchErrorMessages();
+  }, [debugMode, captures]);
+
   const onRefresh = useCallback(() => {
     setRefreshing(true);
     loadCaptures().finally(() => {
@@ -182,11 +210,19 @@ export function CapturesListScreen() {
   const handleRetry = async (captureId: string) => {
     try {
       const queueService = container.resolve(TranscriptionQueueService);
-      await queueService.retryFailedByCaptureId(captureId);
-      // L'événement QueueItemStarted sera émis automatiquement
-      // Le listener mettra à jour le store
+      const result = await queueService.retryFailedByCaptureId(captureId);
+
+      if (result.success) {
+        toast.success(t('capture.alerts.retryStarted', 'Nouvelle tentative de transcription...'));
+        // L'événement QueueItemStarted sera émis automatiquement
+        // Le listener mettra à jour le store
+      } else {
+        // Show error message (e.g., "Trop de tentatives. Réessayez dans X minutes.")
+        toast.error(result.message || t('capture.alerts.retryFailed', 'Échec de la nouvelle tentative'));
+      }
     } catch (error) {
       console.error('[CapturesListScreen] Retry failed:', error);
+      toast.error(t('capture.alerts.retryError', 'Erreur lors de la nouvelle tentative'));
     }
   };
 
@@ -562,7 +598,13 @@ export function CapturesListScreen() {
                     {t('capture.status.pending')}
                   </Text>
                 ) : isFailed ? (
-                  <Text className="text-sm text-status-error italic">{t('capture.status.failed')}</Text>
+                  <View>
+                    <Text className="text-sm text-status-error italic">
+                      {debugMode && errorMessages[item.id]
+                        ? errorMessages[item.id]
+                        : t('capture.status.failed', 'La transcription a échoué')}
+                    </Text>
+                  </View>
                 ) : null}
               </>
             ) : (

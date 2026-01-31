@@ -182,7 +182,7 @@ describe('TranscriptionFlow Integration Tests', () => {
       const retried = await queueService.retryFailedByCaptureId('cap-retry');
 
       // Assert: Retry successful
-      expect(retried).toBe(true);
+      expect(retried.success).toBe(true);
 
       // Queue should have the item again
       const queueLength = await queueService.getQueueLength();
@@ -514,13 +514,135 @@ describe('TranscriptionFlow Integration Tests', () => {
 
       // Verify capture can be manually retried
       const resetSuccess = await queueService.retryFailedByCaptureId(capture.id);
-      expect(resetSuccess).toBe(true);
+      expect(resetSuccess.success).toBe(true);
 
       // Item should be back in pending state
       const retriedItem = await queueService.getNextCapture();
       expect(retriedItem).not.toBeNull();
       expect(retriedItem!.captureId).toBe('cap-max-retry');
       expect(retriedItem!.status).toBe('pending');
+    });
+  });
+
+  describe('20-Minute Retry Window', () => {
+    it('should block retry when 3 attempts within 20 minutes', async () => {
+      // Arrange: Create capture and mark as failed with 3 retries
+      const capture = captureRepository.createTestCapture('cap-window-blocked', '/audio/test.m4a', 2000);
+      const now = Date.now();
+
+      db.executeSync(
+        'INSERT INTO captures (id, type, state, raw_content, duration, created_at, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['cap-window-blocked', 'audio', 'failed', '/audio/test.m4a', 2000, now, now, 0]
+      );
+
+      // Simulate 3 retries within window (first retry 10 minutes ago)
+      const tenMinutesAgo = now - (10 * 60 * 1000);
+      db.executeSync(
+        `INSERT INTO transcription_queue (id, capture_id, audio_path, audio_duration, status, retry_count, first_retry_at, last_error, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['tq_window_blocked', 'cap-window-blocked', '/audio/test.m4a', 2000, 'failed', 3, tenMinutesAgo, 'Test error', now]
+      );
+
+      // Act: Try to retry
+      const result = await queueService.retryFailedByCaptureId('cap-window-blocked');
+
+      // Assert: Retry should be blocked
+      expect(result.success).toBe(false);
+      expect(result.remainingMinutes).toBeGreaterThan(0);
+      expect(result.remainingMinutes).toBeLessThanOrEqual(10);
+      expect(result.message).toContain('Trop de tentatives');
+      expect(result.message).toContain('minute');
+    });
+
+    it('should allow retry after 20-minute window expires', async () => {
+      // Arrange: Create capture with 3 retries, but first retry was 21 minutes ago
+      const capture = captureRepository.createTestCapture('cap-window-expired', '/audio/test.m4a', 2000);
+      const now = Date.now();
+
+      db.executeSync(
+        'INSERT INTO captures (id, type, state, raw_content, duration, created_at, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['cap-window-expired', 'audio', 'failed', '/audio/test.m4a', 2000, now, now, 0]
+      );
+
+      // First retry 21 minutes ago (window expired)
+      const twentyOneMinutesAgo = now - (21 * 60 * 1000);
+      db.executeSync(
+        `INSERT INTO transcription_queue (id, capture_id, audio_path, audio_duration, status, retry_count, first_retry_at, last_error, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['tq_window_expired', 'cap-window-expired', '/audio/test.m4a', 2000, 'failed', 3, twentyOneMinutesAgo, 'Test error', now]
+      );
+
+      // Act: Try to retry
+      const result = await queueService.retryFailedByCaptureId('cap-window-expired');
+
+      // Assert: Retry should succeed and reset counter
+      expect(result.success).toBe(true);
+      expect(result.remainingMinutes).toBeUndefined();
+      expect(result.message).toBeUndefined();
+
+      // Verify retry_count was reset to 1
+      const queueItem = db.executeSync(
+        'SELECT retry_count FROM transcription_queue WHERE capture_id = ?',
+        ['cap-window-expired']
+      );
+      expect(queueItem.rows![0].retry_count).toBe(1);
+    });
+
+    it('should set first_retry_at on first retry attempt', async () => {
+      // Arrange: Create failed capture with no retries yet
+      const capture = captureRepository.createTestCapture('cap-first-retry', '/audio/test.m4a', 2000);
+      const now = Date.now();
+
+      db.executeSync(
+        'INSERT INTO captures (id, type, state, raw_content, duration, created_at, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['cap-first-retry', 'audio', 'failed', '/audio/test.m4a', 2000, now, now, 0]
+      );
+
+      db.executeSync(
+        `INSERT INTO transcription_queue (id, capture_id, audio_path, audio_duration, status, retry_count, first_retry_at, last_error, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['tq_first_retry', 'cap-first-retry', '/audio/test.m4a', 2000, 'failed', 0, null, 'Test error', now]
+      );
+
+      // Act: First retry
+      const result = await queueService.retryFailedByCaptureId('cap-first-retry');
+
+      // Assert: Retry should succeed
+      expect(result.success).toBe(true);
+
+      // Verify first_retry_at was set
+      const queueItem = db.executeSync(
+        'SELECT first_retry_at, retry_count FROM transcription_queue WHERE capture_id = ?',
+        ['cap-first-retry']
+      );
+      expect(queueItem.rows![0].first_retry_at).not.toBeNull();
+      expect(queueItem.rows![0].retry_count).toBe(1);
+    });
+
+    it('should calculate remaining minutes correctly', async () => {
+      // Arrange: Capture with 3 retries, first retry 15 minutes ago
+      const capture = captureRepository.createTestCapture('cap-calc-minutes', '/audio/test.m4a', 2000);
+      const now = Date.now();
+
+      db.executeSync(
+        'INSERT INTO captures (id, type, state, raw_content, duration, created_at, updated_at, sync_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+        ['cap-calc-minutes', 'audio', 'failed', '/audio/test.m4a', 2000, now, now, 0]
+      );
+
+      const fifteenMinutesAgo = now - (15 * 60 * 1000);
+      db.executeSync(
+        `INSERT INTO transcription_queue (id, capture_id, audio_path, audio_duration, status, retry_count, first_retry_at, last_error, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ['tq_calc_minutes', 'cap-calc-minutes', '/audio/test.m4a', 2000, 'failed', 3, fifteenMinutesAgo, 'Test error', now]
+      );
+
+      // Act
+      const result = await queueService.retryFailedByCaptureId('cap-calc-minutes');
+
+      // Assert: Should have ~5 minutes remaining (20 - 15 = 5)
+      expect(result.success).toBe(false);
+      expect(result.remainingMinutes).toBeGreaterThanOrEqual(4);
+      expect(result.remainingMinutes).toBeLessThanOrEqual(6);
     });
   });
 });

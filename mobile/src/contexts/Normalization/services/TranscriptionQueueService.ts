@@ -21,6 +21,13 @@ export interface QueuedCapture {
   lastError?: string;
   createdAt: Date;
   startedAt?: Date;
+  firstRetryAt?: Date;
+}
+
+export interface RetryResult {
+  success: boolean;
+  remainingMinutes?: number;
+  message?: string;
 }
 
 interface QueueRow {
@@ -33,6 +40,7 @@ interface QueueRow {
   last_error: string | null;
   created_at: number;
   started_at: number | null;
+  first_retry_at: number | null;
 }
 
 /**
@@ -49,6 +57,7 @@ function mapRowToQueuedCapture(row: QueueRow): QueuedCapture {
     lastError: row.last_error || undefined,
     createdAt: new Date(row.created_at),
     startedAt: row.started_at ? new Date(row.started_at) : undefined,
+    firstRetryAt: row.first_retry_at ? new Date(row.first_retry_at) : undefined,
   };
 }
 
@@ -322,17 +331,71 @@ export class TranscriptionQueueService {
   /**
    * Retry failed capture by captureId (reset to pending)
    *
+   * Implements 20-minute retry window:
+   * - Max 3 retries per 20-minute window
+   * - After 20 minutes, retry count resets
+   * - Returns error if limit reached within window
+   *
    * @param captureId - Capture ID
-   * @returns true if retry was successful, false if capture not found in queue
+   * @returns RetryResult with success status, remaining minutes, and message
    */
-  async retryFailedByCaptureId(captureId: string): Promise<boolean> {
+  async retryFailedByCaptureId(captureId: string): Promise<RetryResult> {
+    const MAX_RETRIES = 3;
+    const RETRY_WINDOW_MS = 20 * 60 * 1000; // 20 minutes in milliseconds
+    const now = Date.now();
+
+    // Get current queue entry
+    const queueResult = this.db.executeSync(
+      `SELECT retry_count, first_retry_at FROM transcription_queue
+       WHERE capture_id = ? AND status = 'failed'`,
+      [captureId],
+    );
+
+    if (!queueResult.rows || queueResult.rows.length === 0) {
+      return {
+        success: false,
+        message: "Capture non trouvée dans la file d'échec",
+      };
+    }
+
+    const row = queueResult.rows[0] as { retry_count: number; first_retry_at: number | null };
+    const retryCount = row.retry_count;
+    const firstRetryAt = row.first_retry_at;
+
+    // Check if we're within the retry window and at limit
+    if (retryCount >= MAX_RETRIES && firstRetryAt) {
+      const elapsedMs = now - firstRetryAt;
+      const remainingMs = RETRY_WINDOW_MS - elapsedMs;
+
+      if (remainingMs > 0) {
+        // Still within window and at limit - reject retry
+        const remainingMinutes = Math.ceil(remainingMs / (60 * 1000));
+        return {
+          success: false,
+          remainingMinutes,
+          message: `Trop de tentatives. Réessayez dans ${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''}.`,
+        };
+      } else {
+        // Window expired - reset retry count and first_retry_at
+        console.log(
+          `[TranscriptionQueueService] 🔄 Retry window expired for ${captureId}, resetting counter`,
+        );
+      }
+    }
+
+    // Determine new values
+    const newRetryCount = firstRetryAt && now - firstRetryAt >= RETRY_WINDOW_MS ? 1 : retryCount + 1;
+    const newFirstRetryAt = !firstRetryAt || (now - firstRetryAt >= RETRY_WINDOW_MS) ? now : firstRetryAt;
+
+    // Update queue entry
     const result = this.db.executeSync(
       `UPDATE transcription_queue
        SET status = 'pending',
            started_at = NULL,
-           retry_count = retry_count + 1
+           retry_count = ?,
+           first_retry_at = ?
        WHERE capture_id = ? AND status = 'failed'`,
-      [captureId],
+      [newRetryCount, newFirstRetryAt, captureId],
     );
 
     const success = (result.rowsAffected ?? 0) > 0;
@@ -345,11 +408,35 @@ export class TranscriptionQueueService {
       );
 
       console.log(
-        `[TranscriptionQueueService] 🔄 Retrying failed capture: ${captureId}`,
+        `[TranscriptionQueueService] 🔄 Retrying failed capture: ${captureId} (attempt ${newRetryCount}/${MAX_RETRIES})`,
       );
     }
 
-    return success;
+    return {
+      success,
+      message: success ? undefined : "Échec de la mise à jour de la file",
+    };
+  }
+
+  /**
+   * Get last error message for a failed capture
+   *
+   * @param captureId - Capture ID
+   * @returns Error message or null if not found/no error
+   */
+  async getLastError(captureId: string): Promise<string | null> {
+    const result = this.db.executeSync(
+      `SELECT last_error FROM transcription_queue
+       WHERE capture_id = ? AND status = 'failed'`,
+      [captureId],
+    );
+
+    if (!result.rows || result.rows.length === 0) {
+      return null;
+    }
+
+    const row = result.rows[0] as { last_error: string | null };
+    return row.last_error;
   }
 
   /**

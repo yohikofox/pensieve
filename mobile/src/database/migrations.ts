@@ -1275,6 +1275,68 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v12 completed');
     },
   },
+  {
+    version: 13,
+    name: 'Add first_retry_at column to transcription_queue for 20-minute retry window',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v13: Adding first_retry_at to transcription_queue');
+
+      // Add first_retry_at column to track retry window
+      db.executeSync(`
+        ALTER TABLE transcription_queue
+        ADD COLUMN first_retry_at INTEGER
+      `);
+
+      console.log('[DB] ✅ Migration v13: first_retry_at column added');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v13');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE transcription_queue_v12 (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL UNIQUE,
+          audio_path TEXT NOT NULL,
+          audio_duration INTEGER,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'processing', 'completed', 'failed')),
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER,
+          started_at INTEGER,
+          completed_at INTEGER,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Copy data back (excluding first_retry_at)
+      db.executeSync(`
+        INSERT INTO transcription_queue_v12
+        SELECT id, capture_id, audio_path, audio_duration, status, retry_count,
+               last_error, created_at, updated_at, started_at, completed_at
+        FROM transcription_queue
+      `);
+
+      db.executeSync('DROP TABLE transcription_queue');
+      db.executeSync('ALTER TABLE transcription_queue_v12 RENAME TO transcription_queue');
+
+      // Recreate indexes
+      db.executeSync(`
+        CREATE INDEX idx_transcription_queue_status
+        ON transcription_queue(status, created_at)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX idx_transcription_queue_capture
+        ON transcription_queue(capture_id)
+      `);
+
+      console.log('[DB] ✅ Rollback v13 completed');
+    },
+  },
 ];
 
 /**
