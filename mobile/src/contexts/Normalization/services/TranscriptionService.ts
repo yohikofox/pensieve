@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import { File } from "expo-file-system";
 import { initWhisper, WhisperContext } from "whisper.rn";
 import { AudioConversionService } from "./AudioConversionService";
-import { WhisperModelService } from "./WhisperModelService";
+import { TranscriptionModelService } from "./TranscriptionModelService";
 
 export interface PerformanceMetrics {
   audioDuration: number; // Audio file duration in ms
@@ -37,7 +37,7 @@ export class TranscriptionService {
 
   constructor(
     private audioConversionService: AudioConversionService,
-    private whisperModelService: WhisperModelService,
+    private whisperModelService: TranscriptionModelService,
   ) {}
 
   /**

@@ -1,4 +1,4 @@
-import { WhisperModelService } from '../WhisperModelService';
+import { TranscriptionModelService } from '../TranscriptionModelService';
 import { fetch } from 'expo/fetch';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system';
@@ -59,11 +59,11 @@ function createMockResponse(options: {
   } as unknown as Response;
 }
 
-describe('WhisperModelService', () => {
-  let service: WhisperModelService;
+describe('TranscriptionModelService', () => {
+  let service: TranscriptionModelService;
 
   beforeEach(() => {
-    service = new WhisperModelService();
+    service = new TranscriptionModelService();
     jest.clearAllMocks();
     // Clear mock files between tests
     (FileSystem as any).__clearMockFiles?.();

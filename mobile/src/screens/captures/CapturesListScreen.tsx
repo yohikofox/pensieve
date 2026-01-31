@@ -32,7 +32,7 @@ import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { Capture } from '../../contexts/capture/domain/Capture.model';
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
-import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
 import { RetryLimitService } from '../../contexts/Normalization/services/RetryLimitService';
@@ -228,7 +228,7 @@ export function CapturesListScreen() {
 
       if (selectedEngine === 'whisper') {
         // Check if Whisper model is downloaded
-        const modelService = new WhisperModelService();
+        const modelService = new TranscriptionModelService();
         const bestModel = await modelService.getBestAvailableModel();
 
         if (!bestModel) {
@@ -243,7 +243,7 @@ export function CapturesListScreen() {
         if (!isNativeFileSupported) {
           // Native file transcription not supported, will fallback to Whisper
           // Check if Whisper model is available for fallback
-          const modelService = new WhisperModelService();
+          const modelService = new TranscriptionModelService();
           const bestModel = await modelService.getBestAvailableModel();
 
           if (!bestModel) {

@@ -35,7 +35,7 @@ import { TranscriptionService } from '../../contexts/Normalization/services/Tran
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
 import { TranscriptionQueueProcessor } from '../../contexts/Normalization/processors/TranscriptionQueueProcessor';
 import { TranscriptionWorker } from '../../contexts/Normalization/workers/TranscriptionWorker';
-import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 
 // Post-processing Services (LLM enhancement)
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
@@ -102,7 +102,7 @@ export function registerServices() {
   // Normalization Services (Story 2.5 - Transcription)
   container.registerSingleton('IFileSystem', ExpoFileSystem); // Filesystem abstraction for AudioConversionService
   container.registerSingleton(AudioConversionService);
-  container.registerSingleton(WhisperModelService);
+  container.registerSingleton(TranscriptionModelService);
   container.registerSingleton(TranscriptionService);
   container.registerSingleton(TranscriptionQueueService);
   container.registerSingleton(TranscriptionQueueProcessor);

@@ -20,10 +20,10 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import {
-  WhisperModelService,
+  TranscriptionModelService,
   type WhisperModelSize,
   type DownloadProgress,
-} from '../../contexts/Normalization/services/WhisperModelService';
+} from '../../contexts/Normalization/services/TranscriptionModelService';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
@@ -78,7 +78,7 @@ export function WhisperModelCard({
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const toast = useToast();
 
-  const modelService = new WhisperModelService();
+  const modelService = new TranscriptionModelService();
   const expectedSize = modelService.getExpectedSize(modelSize);
 
   // Check if model is already downloaded

@@ -1,4 +1,4 @@
-import { WhisperModelService } from '../WhisperModelService';
+import { TranscriptionModelService } from '../TranscriptionModelService';
 import { fetch } from 'expo/fetch';
 
 // Mocks are set up in jest-setup.js
@@ -38,12 +38,12 @@ function createSuccessResponse(): Response {
   } as unknown as Response;
 }
 
-describe('WhisperModelService - Retry Logic', () => {
-  let service: WhisperModelService;
+describe('TranscriptionModelService - Retry Logic', () => {
+  let service: TranscriptionModelService;
   let originalSetTimeout: typeof setTimeout;
 
   beforeEach(() => {
-    service = new WhisperModelService();
+    service = new TranscriptionModelService();
     jest.clearAllMocks();
     originalSetTimeout = global.setTimeout;
   });

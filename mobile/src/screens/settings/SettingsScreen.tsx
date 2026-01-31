@@ -18,7 +18,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 import { container } from 'tsyringe';
-import { WhisperModelService } from '../../contexts/Normalization/services/WhisperModelService';
+import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore, type ThemePreference } from '../../stores/settingsStore';
@@ -78,7 +78,7 @@ export const SettingsScreen = () => {
   const [showDeleteSuccessDialog, setShowDeleteSuccessDialog] = useState(false);
   const toast = useToast();
 
-  const modelService = new WhisperModelService();
+  const modelService = new TranscriptionModelService();
   const llmModelService = new LLMModelService();
   const engineService = container.resolve(TranscriptionEngineService);
 

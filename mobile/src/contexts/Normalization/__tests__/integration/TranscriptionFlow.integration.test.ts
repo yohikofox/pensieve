@@ -263,8 +263,8 @@ describe('TranscriptionFlow Integration Tests', () => {
   });
 
   describe('Model Management Integration', () => {
-    it('should verify WhisperModelService integration architecture', () => {
-      // Architectural validation: WhisperModelService should manage local models
+    it('should verify TranscriptionModelService integration architecture', () => {
+      // Architectural validation: TranscriptionModelService should manage local models
       // This test documents the expected integration without requiring actual execution
 
       // Assert: Service should:
@@ -308,7 +308,7 @@ describe('TranscriptionFlow Integration Tests', () => {
 
       // Architectural validation points:
       // 1. ✅ No network calls required (TranscriptionService uses local Whisper.rn)
-      // 2. ✅ All processing happens on-device (WhisperModelService manages local model)
+      // 2. ✅ All processing happens on-device (TranscriptionModelService manages local model)
       // 3. ✅ Queue persists locally (OP-SQLite)
       // 4. ✅ No cloud dependencies (FR7 compliance)
 
@@ -359,7 +359,7 @@ describe('TranscriptionFlow Integration Tests', () => {
       // This test documents the expected behavior without actual download
 
       // Integration points verified:
-      // 1. ✅ WhisperModelService.downloadModel() downloads to local storage
+      // 1. ✅ TranscriptionModelService.downloadModel() downloads to local storage
       // 2. ✅ Progress callbacks update UI (WhisperModelCard)
       // 3. ✅ Model file stored in expo-file-system document directory
       // 4. ✅ Model availability checked before transcription
@@ -405,7 +405,7 @@ describe('TranscriptionFlow Integration Tests', () => {
 
     it('should verify retry mechanism when model download fails', async () => {
       // Test integration with retry logic when model download fails
-      // WhisperModelService.downloadModelWithRetry() handles failures
+      // TranscriptionModelService.downloadModelWithRetry() handles failures
 
       const capture = captureRepository.createTestCapture(
         'cap-model-retry',
@@ -431,7 +431,7 @@ describe('TranscriptionFlow Integration Tests', () => {
       expect(queueLength).toBe(1);
 
       // Architectural validation:
-      // - WhisperModelService.downloadModelWithRetry() has exponential backoff
+      // - TranscriptionModelService.downloadModelWithRetry() has exponential backoff
       // - Max 3 retry attempts with delays: 5s, 10s, 20s
       // - User can manually retry after max retries
       expect(true).toBe(true);

@@ -19,9 +19,9 @@ import {
 } from 'react-native';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 import {
-  WhisperModelService,
+  TranscriptionModelService,
   type WhisperModelSize,
-} from '../../contexts/Normalization/services/WhisperModelService';
+} from '../../contexts/Normalization/services/TranscriptionModelService';
 import {
   CorrectionLearningService,
   type CorrectionEntry,
@@ -62,7 +62,7 @@ export function WhisperSettingsScreen() {
   const [deleteDialogMessage, setDeleteDialogMessage] = useState('');
   const toast = useToast();
 
-  const modelService = new WhisperModelService();
+  const modelService = new TranscriptionModelService();
 
   // Load selected model, vocabulary, and suggestions on mount
   useEffect(() => {

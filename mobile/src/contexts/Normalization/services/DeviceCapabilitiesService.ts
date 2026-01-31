@@ -13,7 +13,7 @@
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
 import { Platform } from 'react-native';
-import type { WhisperModelSize } from './WhisperModelService';
+import type { WhisperModelSize } from './TranscriptionModelService';
 import { NPUDetectionService } from './NPUDetectionService';
 
 export type DeviceTier = 'high-end' | 'mid-range' | 'low-end';

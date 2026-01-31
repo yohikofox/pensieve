@@ -1,7 +1,7 @@
 /**
  * LLMModelService - Manage LLM model download and storage
  *
- * Pattern: Follows WhisperModelService architecture
+ * Pattern: Follows TranscriptionModelService architecture
  *
  * Uses Expo SDK 54 modern APIs:
  * - expo/fetch with ReadableStream for progress tracking

@@ -14,10 +14,10 @@ jest.mock('../../../../shared/utils/notificationUtils', () => ({
   showTranscriptionFailedNotification: jest.fn().mockResolvedValue(undefined),
 }));
 
-// Mock WhisperModelService
-jest.mock('../../services/WhisperModelService', () => {
+// Mock TranscriptionModelService
+jest.mock('../../services/TranscriptionModelService', () => {
   return {
-    WhisperModelService: jest.fn().mockImplementation(() => ({
+    TranscriptionModelService: jest.fn().mockImplementation(() => ({
       getBestAvailableModel: jest.fn().mockResolvedValue('tiny'),
       getModelPath: jest.fn().mockImplementation((model) => `/mock/path/to/${model}.bin`),
       isModelDownloaded: jest.fn().mockResolvedValue(true),

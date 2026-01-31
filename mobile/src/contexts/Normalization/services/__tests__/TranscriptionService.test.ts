@@ -1,6 +1,6 @@
 import { TranscriptionService } from '../TranscriptionService';
 import { AudioConversionService } from '../AudioConversionService';
-import { WhisperModelService } from '../WhisperModelService';
+import { TranscriptionModelService } from '../TranscriptionModelService';
 import { initWhisper, WhisperContext } from 'whisper.rn';
 import { File } from 'expo-file-system';
 
@@ -16,8 +16,8 @@ const mockAudioConversionService = {
   isDebugModeEnabled: jest.fn(),
 };
 
-// Mock WhisperModelService
-const mockWhisperModelService = {
+// Mock TranscriptionModelService
+const mockTranscriptionModelService = {
   getPromptString: jest.fn(),
 };
 
@@ -50,7 +50,7 @@ describe('TranscriptionService', () => {
     mockAudioConversionService.convertToWhisperFormat.mockReset();
     mockAudioConversionService.cleanupTempFile.mockReset();
     mockAudioConversionService.isDebugModeEnabled.mockReset();
-    mockWhisperModelService.getPromptString.mockReset();
+    mockTranscriptionModelService.getPromptString.mockReset();
 
     // By default, conversion returns a .wav path
     mockAudioConversionService.convertToWhisperFormat.mockImplementation((inputPath: string) =>
@@ -60,11 +60,11 @@ describe('TranscriptionService', () => {
     // By default, debug mode is off
     mockAudioConversionService.isDebugModeEnabled.mockReturnValue(false);
     // By default, no custom vocabulary
-    mockWhisperModelService.getPromptString.mockResolvedValue('');
+    mockTranscriptionModelService.getPromptString.mockResolvedValue('');
 
     service = new TranscriptionService(
       mockAudioConversionService as unknown as AudioConversionService,
-      mockWhisperModelService as unknown as WhisperModelService
+      mockTranscriptionModelService as unknown as TranscriptionModelService
     );
     jest.clearAllMocks();
 
@@ -182,7 +182,7 @@ describe('TranscriptionService', () => {
       // Arrange
       const audioFilePath = '/path/to/audio.m4a';
       const customPrompt = 'workflow, sprint, feedback';
-      mockWhisperModelService.getPromptString.mockResolvedValue(customPrompt);
+      mockTranscriptionModelService.getPromptString.mockResolvedValue(customPrompt);
 
       mockContext.transcribe.mockReturnValue({
         stop: jest.fn(),
@@ -213,7 +213,7 @@ describe('TranscriptionService', () => {
     it('should not pass prompt when vocabulary is empty and return null transcriptPrompt', async () => {
       // Arrange
       const audioFilePath = '/path/to/audio.m4a';
-      mockWhisperModelService.getPromptString.mockResolvedValue('');
+      mockTranscriptionModelService.getPromptString.mockResolvedValue('');
 
       mockContext.transcribe.mockReturnValue({
         stop: jest.fn(),

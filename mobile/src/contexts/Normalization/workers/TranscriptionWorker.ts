@@ -37,7 +37,7 @@ import { TranscriptionQueueService } from '../services/TranscriptionQueueService
 import { TranscriptionService } from '../services/TranscriptionService';
 import { TranscriptionEngineService } from '../services/TranscriptionEngineService';
 import { NativeTranscriptionEngine } from '../services/NativeTranscriptionEngine';
-import { WhisperModelService, type WhisperModelSize } from '../services/WhisperModelService';
+import { TranscriptionModelService, type WhisperModelSize } from '../services/TranscriptionModelService';
 import { PostProcessingService } from '../services/PostProcessingService';
 import { DeviceCapabilitiesService } from '../services/DeviceCapabilitiesService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
@@ -62,7 +62,7 @@ type WorkerState = 'stopped' | 'running' | 'paused';
 export class TranscriptionWorker {
   private state: WorkerState = 'stopped';
   private isProcessing: boolean = false; // True when actively processing queue
-  private whisperModelService: WhisperModelService;
+  private whisperModelService: TranscriptionModelService;
   private postProcessingService: PostProcessingService;
   private engineService: TranscriptionEngineService;
   private nativeEngine: NativeTranscriptionEngine;
@@ -85,7 +85,7 @@ export class TranscriptionWorker {
     nativeEngine: NativeTranscriptionEngine,
     private deviceCapabilities: DeviceCapabilitiesService // Task 7.3
   ) {
-    this.whisperModelService = new WhisperModelService();
+    this.whisperModelService = new TranscriptionModelService();
     this.postProcessingService = postProcessingService;
     this.engineService = engineService;
     this.nativeEngine = nativeEngine;

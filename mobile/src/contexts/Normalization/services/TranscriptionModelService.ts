@@ -17,14 +17,17 @@ export interface DownloadProgress {
 }
 
 /**
- * Service to manage Whisper model download and storage
+ * Service to manage transcription model download and storage
+ *
+ * Currently supports Whisper models (tiny, base, small, medium, large-v3).
+ * Service name is generic to allow future support for other STT models.
  *
  * Uses Expo SDK 54 modern APIs:
  * - expo/fetch with ReadableStream for progress tracking
  * - expo-file-system File/Directory classes for storage
  *
  * Responsibilities:
- * - Download Whisper models (tiny, base) from remote URL
+ * - Download transcription models from remote URL
  * - Store models in secure app directory
  * - Track download progress
  * - Validate model existence
@@ -32,7 +35,7 @@ export interface DownloadProgress {
  * - Manage custom vocabulary for improved transcription
  */
 @injectable()
-export class WhisperModelService {
+export class TranscriptionModelService {
   private readonly MODEL_BASE_URL =
     'https://huggingface.co/ggerganov/whisper.cpp/resolve/main';
 
@@ -86,7 +89,7 @@ export class WhisperModelService {
     const modelUrl = `${this.MODEL_BASE_URL}/${config.filename}`;
     const modelFile = this.getModelFile(modelSize);
 
-    console.log('[WhisperModelService] 📥 Starting download:', {
+    console.log('[TranscriptionModelService] 📥 Starting download:', {
       modelUrl,
       modelPath: modelFile.uri,
     });
@@ -107,7 +110,7 @@ export class WhisperModelService {
       const contentLength = response.headers.get('content-length');
       const totalBytes = contentLength ? parseInt(contentLength, 10) : config.expectedSize;
 
-      console.log('[WhisperModelService] 📊 Content-Length:', totalBytes);
+      console.log('[TranscriptionModelService] 📊 Content-Length:', totalBytes);
 
       if (!response.body) {
         throw new Error('Response body is null');
@@ -139,7 +142,7 @@ export class WhisperModelService {
 
           // Log progress every ~10%
           if (Math.floor(progress * 10) !== Math.floor((receivedBytes - value.length) / totalBytes * 10)) {
-            console.log('[WhisperModelService] 📊 Progress:', {
+            console.log('[TranscriptionModelService] 📊 Progress:', {
               written: receivedBytes,
               total: totalBytes,
               percent: Math.round(progress * 100),
@@ -160,7 +163,7 @@ export class WhisperModelService {
       // Write to file using new expo-file-system API
       await modelFile.write(fileData);
 
-      console.log('[WhisperModelService] ✅ Download completed:', modelFile.uri);
+      console.log('[TranscriptionModelService] ✅ Download completed:', modelFile.uri);
 
       // Verify checksum
       const isValid = await this.verifyChecksum(modelSize);
@@ -172,7 +175,7 @@ export class WhisperModelService {
 
       return modelFile.uri;
     } catch (error) {
-      console.error('[WhisperModelService] ❌ Download failed:', error);
+      console.error('[TranscriptionModelService] ❌ Download failed:', error);
       throw new Error(
         `Failed to download ${modelSize} model: ${error instanceof Error ? error.message : 'Unknown error'}`
       );
@@ -240,7 +243,7 @@ export class WhisperModelService {
   async verifyChecksum(modelSize: WhisperModelSize): Promise<boolean> {
     const config = this.MODEL_CONFIGS[modelSize];
     if (!config.sha256) {
-      console.warn(`[WhisperModelService] No checksum for ${modelSize}, skipping verification`);
+      console.warn(`[TranscriptionModelService] No checksum for ${modelSize}, skipping verification`);
       return true;
     }
 
@@ -248,17 +251,17 @@ export class WhisperModelService {
     // Remove file:// prefix if present
     const cleanPath = filePath.startsWith('file://') ? filePath.slice(7) : filePath;
 
-    console.log(`[WhisperModelService] Verifying checksum for ${modelSize}...`);
+    console.log(`[TranscriptionModelService] Verifying checksum for ${modelSize}...`);
     const hash = await fileHash(cleanPath, 'SHA-256');
 
     if (hash.toLowerCase() !== config.sha256.toLowerCase()) {
-      console.error(`[WhisperModelService] ❌ Checksum mismatch for ${modelSize}`);
+      console.error(`[TranscriptionModelService] ❌ Checksum mismatch for ${modelSize}`);
       console.error(`  Expected: ${config.sha256}`);
       console.error(`  Got:      ${hash}`);
       return false;
     }
 
-    console.log(`[WhisperModelService] ✅ Checksum verified for ${modelSize}`);
+    console.log(`[TranscriptionModelService] ✅ Checksum verified for ${modelSize}`);
     return true;
   }
 
@@ -343,7 +346,7 @@ export class WhisperModelService {
       }
       return null;
     } catch (error) {
-      console.error('[WhisperModelService] Failed to get selected model:', error);
+      console.error('[TranscriptionModelService] Failed to get selected model:', error);
       return null;
     }
   }
@@ -356,9 +359,9 @@ export class WhisperModelService {
   async setSelectedModel(modelSize: WhisperModelSize): Promise<void> {
     try {
       await AsyncStorage.setItem(SELECTED_MODEL_KEY, modelSize);
-      console.log('[WhisperModelService] ✅ Selected model set to:', modelSize);
+      console.log('[TranscriptionModelService] ✅ Selected model set to:', modelSize);
     } catch (error) {
-      console.error('[WhisperModelService] Failed to set selected model:', error);
+      console.error('[TranscriptionModelService] Failed to set selected model:', error);
       throw error;
     }
   }
@@ -419,7 +422,7 @@ export class WhisperModelService {
       CUSTOM_VOCABULARY_KEY,
       JSON.stringify({ words })
     );
-    console.log('[WhisperModelService] ✅ Custom vocabulary saved:', words.length, 'words');
+    console.log('[TranscriptionModelService] ✅ Custom vocabulary saved:', words.length, 'words');
   }
 
   /**
