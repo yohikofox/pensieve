@@ -58,24 +58,28 @@ export const useCapturesStore = create<CapturesState>()(
       error: null,
 
       // Charge la première page (au mount)
-      // TODO: Optimiser avec pagination DB (offset/limit) pour grandes listes
+      // Story 3.1 - AC4: Optimisé avec pagination DB (offset/limit) + LIMIT+1 trick
       loadCaptures: async () => {
         try {
           set({ isLoading: true, error: null, hasMoreCaptures: true });
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-          const allCaptures = await repository.findAll();
-          const sorted = allCaptures.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-          // Pagination en mémoire: afficher première page
-          const firstPage = sorted.slice(0, PAGE_SIZE);
-          const hasMore = sorted.length > PAGE_SIZE;
+          // PERFORMANCE: Use LIMIT+1 trick to avoid expensive COUNT(*) query
+          // Load PAGE_SIZE+1 items to check if there are more without counting all rows
+          const results = await repository.findAllPaginated(PAGE_SIZE + 1, 0);
+
+          // If we got PAGE_SIZE+1 items, there are more pages
+          const hasMore = results.length > PAGE_SIZE;
+
+          // Keep only PAGE_SIZE items for display
+          const firstPage = hasMore ? results.slice(0, PAGE_SIZE) : results;
 
           set({
             captures: firstPage,
             isLoading: false,
             hasMoreCaptures: hasMore
           });
-          console.log('[CapturesStore] ✓ Loaded', firstPage.length, '/', sorted.length, 'captures (first page)');
+          console.log('[CapturesStore] ✓ Loaded', firstPage.length, 'captures (first page, hasMore:', hasMore, ')');
         } catch (error) {
           console.error('[CapturesStore] Load failed:', error);
           set({ error: error as Error, isLoading: false });
@@ -83,6 +87,7 @@ export const useCapturesStore = create<CapturesState>()(
       },
 
       // Charge la page suivante (infinite scroll)
+      // Story 3.1 - AC4: Optimisé avec pagination DB (offset/limit) + LIMIT+1 trick
       loadMoreCaptures: async () => {
         const { isLoadingMore, hasMoreCaptures, captures } = get();
 
@@ -94,22 +99,24 @@ export const useCapturesStore = create<CapturesState>()(
         try {
           set({ isLoadingMore: true });
 
-          // Recharger toutes les captures et prendre la page suivante
-          // TODO: Optimiser avec DB offset/limit
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-          const allCaptures = await repository.findAll();
-          const sorted = allCaptures.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-
           const currentLength = captures.length;
-          const nextPage = sorted.slice(currentLength, currentLength + PAGE_SIZE);
-          const hasMore = sorted.length > currentLength + PAGE_SIZE;
+
+          // PERFORMANCE: Use LIMIT+1 trick to avoid expensive COUNT(*) query
+          const results = await repository.findAllPaginated(PAGE_SIZE + 1, currentLength);
+
+          // If we got PAGE_SIZE+1 items, there are more pages
+          const hasMore = results.length > PAGE_SIZE;
+
+          // Keep only PAGE_SIZE items for display
+          const nextPage = hasMore ? results.slice(0, PAGE_SIZE) : results;
 
           set({
             captures: [...captures, ...nextPage],
             isLoadingMore: false,
             hasMoreCaptures: hasMore
           });
-          console.log('[CapturesStore] ✓ Loaded', nextPage.length, 'more captures (total:', currentLength + nextPage.length, '/', sorted.length, ')');
+          console.log('[CapturesStore] ✓ Loaded', nextPage.length, 'more captures (total:', currentLength + nextPage.length, ', hasMore:', hasMore, ')');
         } catch (error) {
           console.error('[CapturesStore] Load more failed:', error);
           set({ isLoadingMore: false });

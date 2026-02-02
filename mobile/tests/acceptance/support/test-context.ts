@@ -194,6 +194,20 @@ export class InMemoryDatabase {
   private _captures: Map<string, Capture> = new Map();
   private _syncQueue: Map<number, SyncQueueItem> = new Map();
   private _nextSyncQueueId: number = 1;
+  private _simulatedDelay: number = 0;
+
+  /**
+   * Set simulated delay for database operations (for testing loading states)
+   */
+  setSimulatedDelay(delayMs: number): void {
+    this._simulatedDelay = delayMs;
+  }
+
+  private async _applyDelay(): Promise<void> {
+    if (this._simulatedDelay > 0) {
+      await new Promise(resolve => setTimeout(resolve, this._simulatedDelay));
+    }
+  }
 
   async create(data: Partial<Capture>): Promise<Capture> {
     const capture: Capture = {
@@ -251,6 +265,7 @@ export class InMemoryDatabase {
   }
 
   async findAll(): Promise<Capture[]> {
+    await this._applyDelay();
     return Array.from(this._captures.values());
   }
 
@@ -349,6 +364,7 @@ export class InMemoryDatabase {
     this._captures.clear();
     this._syncQueue.clear();
     this._nextSyncQueueId = 1;
+    this._simulatedDelay = 0;
   }
 }
 
@@ -1557,6 +1573,40 @@ export class MockAudioPlayer {
 }
 
 // ============================================================================
+// Mock Network Status (for Story 3.1 offline indicator)
+// ============================================================================
+
+export class MockNetwork {
+  private _isOffline: boolean = false;
+  private _lastError: Error | null = null;
+
+  setOffline(offline: boolean): void {
+    this._isOffline = offline;
+  }
+
+  isOffline(): boolean {
+    return this._isOffline;
+  }
+
+  isConnected(): boolean {
+    return !this._isOffline;
+  }
+
+  setError(error: Error | null): void {
+    this._lastError = error;
+  }
+
+  getLastError(): Error | null {
+    return this._lastError;
+  }
+
+  reset(): void {
+    this._isOffline = false;
+    this._lastError = null;
+  }
+}
+
+// ============================================================================
 // Test Context (aggregates all mocks)
 // ============================================================================
 
@@ -1583,6 +1633,9 @@ export class TestContext {
   // Story 2.6 - Audio Player mock
   public audioPlayer: MockAudioPlayer;
 
+  // Story 3.1 - Network status mock
+  public network: MockNetwork;
+
   private _userId: string = 'test-user';
   private _isOffline: boolean = false;
 
@@ -1608,6 +1661,9 @@ export class TestContext {
 
     // Story 2.6 mocks
     this.audioPlayer = new MockAudioPlayer();
+
+    // Story 3.1 mocks
+    this.network = new MockNetwork();
   }
 
   setUserId(userId: string): void {
@@ -1648,6 +1704,9 @@ export class TestContext {
 
     // Story 2.6 resets
     this.audioPlayer.reset();
+
+    // Story 3.1 resets
+    this.network.reset();
 
     this._userId = 'test-user';
     this._isOffline = false;

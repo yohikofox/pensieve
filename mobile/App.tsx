@@ -35,6 +35,7 @@ import { NPUDetectionService } from './src/contexts/Normalization/services/NPUDe
 import { DevPanelProvider } from './src/components/dev/DevPanelContext';
 import { DevPanel } from './src/components/dev/DevPanel';
 import { CalibrationGridWrapper } from './src/components/debug';
+import { NetworkProvider } from './src/contexts/NetworkContext';
 
 // Initialize IoC container with production services
 registerServices();
@@ -229,13 +230,16 @@ function AppWithStatusBar() {
  * 1. SafeAreaProvider - Safe area insets
  * 2. ThemeProvider - Theme context and CSS variables
  * 3. ToastProvider - Toast notifications
+ * 4. NetworkProvider - Network connectivity status (Story 3.1 AC3)
  */
 export default function App() {
   return (
     <SafeAreaProvider>
       <ThemeProvider>
         <ToastProvider>
-          <AppWithStatusBar />
+          <NetworkProvider>
+            <AppWithStatusBar />
+          </NetworkProvider>
         </ToastProvider>
       </ThemeProvider>
     </SafeAreaProvider>

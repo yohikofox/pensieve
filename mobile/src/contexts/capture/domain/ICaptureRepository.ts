@@ -61,6 +61,18 @@ export interface ICaptureRepository {
   findAll(): Promise<Capture[]>;
 
   /**
+   * Find all Captures with pagination (Story 3.1 - AC4)
+   * @param limit - Number of captures to return
+   * @param offset - Number of captures to skip
+   */
+  findAllPaginated(limit: number, offset: number): Promise<Capture[]>;
+
+  /**
+   * Get total count of captures (Story 3.1 - for pagination)
+   */
+  count(): Promise<number>;
+
+  /**
    * Find captures pending synchronization
    * Returns captures that exist in sync_queue with operation IN ('create', 'update', 'delete')
    */

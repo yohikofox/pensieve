@@ -15,12 +15,12 @@
  * 4. Calculate coordinate transformation offsets
  */
 
-import React from 'react';
-import { View, Dimensions, StyleSheet, Text } from 'react-native';
-import { CalibrationPoint } from './CalibrationPoint';
-import { DebugRect } from './DebugRect';
+import React from "react";
+import { View, Dimensions, StyleSheet, Text } from "react-native";
+import { CalibrationPoint } from "./CalibrationPoint";
+import { DebugRect } from "./DebugRect";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
 interface CalibrationGridProps {
   /** Show labels with coordinates (default: true) */
@@ -29,43 +29,53 @@ interface CalibrationGridProps {
   pointSize?: number;
 }
 
-export function CalibrationGrid({ showLabels = true, pointSize = 20 }: CalibrationGridProps) {
+export function CalibrationGrid({
+  showLabels = true,
+  pointSize = 20,
+}: CalibrationGridProps) {
   // Use 10% inset from edges to ensure points are visible (not hidden by screen edges or system bars)
-  const inset = 0.10;
+  const inset = 0.1;
   const points = [
     {
-      id: 'top-left',
+      id: "origin",
+      x: 0,
+      y: 0,
+      color: "#FFFFFF",
+      label: `O (0,0)`,
+    },
+    {
+      id: "top-left",
       x: screenWidth * inset,
       y: screenHeight * inset,
-      color: '#FF0000',
-      label: `TL (${Math.round(screenWidth * inset)},${Math.round(screenHeight * inset)})`
+      color: "#FF0000",
+      label: `TL (${Math.round(screenWidth * inset)},${Math.round(screenHeight * inset)})`,
     },
     {
-      id: 'top-right',
+      id: "top-right",
       x: screenWidth * (1 - inset),
       y: screenHeight * inset,
-      color: '#00FF00',
-      label: `TR (${Math.round(screenWidth * (1 - inset))},${Math.round(screenHeight * inset)})`
+      color: "#00FF00",
+      label: `TR (${Math.round(screenWidth * (1 - inset))},${Math.round(screenHeight * inset)})`,
     },
     {
-      id: 'bottom-left',
+      id: "bottom-left",
       x: screenWidth * inset,
       y: screenHeight * (1 - inset),
-      color: '#0000FF',
-      label: `BL (${Math.round(screenWidth * inset)},${Math.round(screenHeight * (1 - inset))})`
+      color: "#0000FF",
+      label: `BL (${Math.round(screenWidth * inset)},${Math.round(screenHeight * (1 - inset))})`,
     },
     {
-      id: 'bottom-right',
+      id: "bottom-right",
       x: screenWidth * (1 - inset),
       y: screenHeight * (1 - inset),
-      color: '#FFFF00',
+      color: "#FFFF00",
       label: `BR (${Math.round(screenWidth * (1 - inset))},${Math.round(screenHeight * (1 - inset))})`,
     },
     {
-      id: 'center',
+      id: "center",
       x: screenWidth / 2,
       y: screenHeight / 2,
-      color: '#FF00FF',
+      color: "#FF00FF",
       label: `C (${Math.round(screenWidth / 2)},${Math.round(screenHeight / 2)})`,
     },
   ];
@@ -76,8 +86,12 @@ export function CalibrationGrid({ showLabels = true, pointSize = 20 }: Calibrati
       {showLabels && (
         <View style={styles.infoBox}>
           <Text style={styles.infoTitle}>Calibration Grid Active</Text>
-          <Text style={styles.infoText}>Screen: {screenWidth}x{screenHeight}</Text>
-          <Text style={styles.infoText}>Points: 5</Text>
+          <Text style={styles.infoText}>
+            Screen: {screenWidth}x{screenHeight}
+          </Text>
+          <Text style={styles.infoText}>
+            Points: 6 (including Origin at 0,0)
+          </Text>
         </View>
       )}
 
@@ -100,8 +114,8 @@ export function CalibrationGrid({ showLabels = true, pointSize = 20 }: Calibrati
             style={[
               styles.label,
               {
-                left: point.x + (point.id.includes('right') ? -100 : 10),
-                top: point.y + (point.id.includes('bottom') ? -30 : 10),
+                left: point.x + (point.id.includes("right") ? -100 : 10),
+                top: point.y + (point.id.includes("bottom") ? -30 : 10),
               },
             ]}
           >
@@ -116,39 +130,39 @@ const styles = StyleSheet.create({
   container: {
     ...StyleSheet.absoluteFillObject,
     zIndex: 9998,
-    pointerEvents: 'none',
+    pointerEvents: "none",
   },
   infoBox: {
-    position: 'absolute',
-    top: 100,
+    position: "absolute",
+    bottom: 180,
     left: 20,
     right: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
     padding: 12,
     borderRadius: 8,
     zIndex: 10000,
   },
   infoTitle: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 8,
   },
   infoText: {
-    color: '#CCCCCC',
+    color: "#CCCCCC",
     fontSize: 12,
     marginBottom: 4,
   },
   label: {
-    position: 'absolute',
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    position: "absolute",
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
     padding: 4,
     borderRadius: 4,
     zIndex: 10000,
   },
   labelText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontFamily: 'monospace',
+    fontFamily: "monospace",
   },
 });

@@ -1,12 +1,13 @@
 /**
  * CalibrationPoint - Single calibration marker
  *
- * Displays a colored point at specific coordinates for screen calibration.
+ * Displays a colored point with crosshair at specific coordinates for screen calibration.
  * Used by CalibrationGrid to establish coordinate system reference points.
+ * Now uses DebugClickTarget for consistent visualization with crosshair and center dot.
  */
 
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { DebugClickTarget } from './DebugClickTarget';
 
 interface CalibrationPointProps {
   /** X coordinate in pixels */
@@ -21,27 +22,13 @@ interface CalibrationPointProps {
 
 export function CalibrationPoint({ x, y, color, size = 20 }: CalibrationPointProps) {
   return (
-    <View
-      style={[
-        styles.point,
-        {
-          left: x - size / 2,
-          top: y - size / 2,
-          width: size,
-          height: size,
-          backgroundColor: color,
-          borderRadius: size / 2,
-        },
-      ]}
+    <DebugClickTarget
+      x={x}
+      y={y}
+      color={color}
+      size={size}
+      physical={false}
+      borderColor="#FFFFFF"
     />
   );
 }
-
-const styles = StyleSheet.create({
-  point: {
-    position: 'absolute',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    zIndex: 9999,
-  },
-});

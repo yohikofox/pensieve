@@ -1,8 +1,14 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
-import { useTranslation } from 'react-i18next';
-import { formatDuration } from '../../design-system/utils';
-import { Button } from '../../design-system/components';
+import React, { useEffect, useRef } from "react";
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Animated,
+  ActivityIndicator,
+} from "react-native";
+import { useTranslation } from "react-i18next";
+import { formatDuration } from "../../design-system/utils";
+import { CalibrationGridWrapper, CalibrationBorder } from "../debug";
 
 interface RecordingOverlayProps {
   duration: number;
@@ -38,7 +44,7 @@ export const RecordingOverlay = ({
           duration: 800,
           useNativeDriver: true,
         }),
-      ])
+      ]),
     );
     pulse.start();
 
@@ -47,6 +53,7 @@ export const RecordingOverlay = ({
 
   return (
     <View className="flex-1 bg-black/85 justify-center items-center">
+      <CalibrationGridWrapper />
       <View className="items-center px-10">
         {/* Recording indicator */}
         <Animated.View
@@ -58,13 +65,15 @@ export const RecordingOverlay = ({
 
         {/* Status text */}
         <Text className="text-lg text-white mb-4 font-medium">
-          {isStopping ? t('capture.recording.isStopping') : t('capture.recording.inProgress')}
+          {isStopping
+            ? t("capture.recording.isStopping")
+            : t("capture.recording.inProgress")}
         </Text>
 
         {/* Duration display */}
         <Text
           className="text-[64px] font-extralight text-white mb-14"
-          style={{ fontVariant: ['tabular-nums'] }}
+          style={{ fontVariant: ["tabular-nums"] }}
         >
           {formatDuration(duration)}
         </Text>
@@ -78,29 +87,33 @@ export const RecordingOverlay = ({
               <TouchableOpacity
                 className="py-3 px-6"
                 onPress={onCancel}
-                accessibilityLabel={t('common.cancel')}
+                accessible={true}
+                accessibilityLabel={t("common.cancel")}
                 accessibilityRole="button"
               >
                 <Text className="text-lg text-neutral-400 font-medium">
-                  {t('common.cancel')}
+                  {t("common.cancel")}
                 </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity
-                className="w-20 h-20 rounded-full bg-error-500 justify-center items-center"
-                style={{
-                  shadowColor: '#FF3B30',
-                  shadowOffset: { width: 0, height: 4 },
-                  shadowOpacity: 0.4,
-                  shadowRadius: 8,
-                  elevation: 8,
-                }}
-                onPress={onStop}
-                accessibilityLabel={t('capture.recording.stop')}
-                accessibilityRole="button"
-              >
-                <View className="w-7 h-7 rounded-sm bg-white" />
-              </TouchableOpacity>
+              <CalibrationBorder>
+                <TouchableOpacity
+                  className="w-20 h-20 rounded-full bg-error-500 justify-center items-center"
+                  style={{
+                    shadowColor: "#FF3B30",
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    elevation: 8,
+                  }}
+                  onPress={onStop}
+                  accessible={true}
+                  accessibilityLabel={t("capture.recording.stop")}
+                  accessibilityRole="button"
+                >
+                  <View className="w-7 h-7 rounded-sm bg-white" />
+                </TouchableOpacity>
+              </CalibrationBorder>
             </>
           )}
         </View>

@@ -271,6 +271,30 @@ export class CaptureRepository implements ICaptureRepository {
   }
 
   /**
+   * Find all Captures with pagination (Story 3.1 - AC4)
+   * @param limit - Number of captures to return
+   * @param offset - Number of captures to skip
+   */
+  async findAllPaginated(limit: number, offset: number): Promise<Capture[]> {
+    const result = database.execute(
+      'SELECT * FROM captures ORDER BY created_at DESC LIMIT ? OFFSET ?',
+      [limit, offset]
+    );
+
+    const rows = (result.rows ?? []) as CaptureRow[];
+    return rows.map(mapRowToCapture);
+  }
+
+  /**
+   * Get total count of captures (Story 3.1 - for pagination)
+   */
+  async count(): Promise<number> {
+    const result = database.execute('SELECT COUNT(*) as count FROM captures');
+    const row = result.rows?.[0] as { count: number } | undefined;
+    return row?.count ?? 0;
+  }
+
+  /**
    * Find Captures by state (RECORDING, CAPTURED, RECOVERED)
    */
   async findByState(state: string): Promise<Capture[]> {

@@ -2,13 +2,19 @@
  * CapturesListScreen - Display all captures with transcription status
  *
  * Story 2.5 - Task 5.1: Show progress indicator on captures
+ * Story 3.1: Liste Chronologique des Captures
  *
  * Features:
- * - List all captures (audio + text)
+ * - List all captures (audio + text) in reverse chronological order (AC1)
  * - Show transcription status for audio captures
  * - Spinner for "processing" state
  * - Display transcribed text for "ready" state
  * - Retry button for "failed" state
+ * - Offline indicator banner (AC3)
+ * - Empty state with "Jardin d'idées" metaphor (AC6)
+ * - Skeleton loading with shimmer animation (AC7)
+ * - Infinite scroll with FlatList optimizations (AC4)
+ * - Pull-to-refresh (AC5)
  */
 
 import React, { useEffect, useState, useCallback, useRef } from 'react';
@@ -49,6 +55,8 @@ import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureC
 import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
+import { OfflineBanner } from '../../components/common/OfflineBanner';
+import { useNetworkStatus } from '../../contexts/NetworkContext';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -62,10 +70,19 @@ type CaptureWithTranscription = Capture & {
 
 type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 'CapturesList'>;
 
+// Story 3.1 AC4: FlatList performance constants
+const ITEM_HEIGHT = 169; // Fixed height for getItemLayout
+const INITIAL_NUM_TO_RENDER = 10;
+const MAX_TO_RENDER_PER_BATCH = 10;
+const WINDOW_SIZE = 5;
+
 export function CapturesListScreen() {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { isDark } = useTheme();
+
+  // Story 3.1 AC3: Network status for offline indicator
+  const { isOffline } = useNetworkStatus();
 
   // Zustand store pour les captures (remplace useState)
   const captures = useCapturesStore(state => state.captures);
@@ -408,6 +425,17 @@ export function CapturesListScreen() {
       loadMoreCaptures();
     }
   }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
+
+  // Story 3.1 AC4: getItemLayout for fixed-height cards (60fps scrolling)
+  // IMPORTANT: Must be defined here, BEFORE any early returns, to maintain hooks order
+  const getItemLayout = useCallback(
+    (_data: any, index: number) => ({
+      length: ITEM_HEIGHT,
+      offset: ITEM_HEIGHT * index,
+      index,
+    }),
+    []
+  );
 
   // Story 3.4: Swipe action handlers
   const handleDeleteCapture = useCallback(async (captureId: string) => {
@@ -770,14 +798,23 @@ export function CapturesListScreen() {
     );
   }
 
+  // Story 3.1 AC6: Enhanced empty state with "Jardin d'idées" metaphor
   if (captures.length === 0) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View className="flex-1 bg-bg-screen">
+          {/* Story 3.1 AC3: Offline indicator */}
+          <OfflineBanner />
           <EmptyState
-            icon="inbox"
-            title={t('captures.empty')}
-            description={t('captures.emptyHint')}
+            icon="feather"
+            title={t('captures.emptyTitle', 'Votre jardin d\'idées est prêt à germer')}
+            description={t('captures.emptyDescription', 'Capturez votre première pensée')}
+            actionLabel={t('captures.emptyAction', 'Commencer')}
+            onAction={() => {
+              // Navigate to capture tab or trigger capture
+              // @ts-ignore - Tab navigation
+              navigation.getParent()?.navigate('Capture');
+            }}
           />
         </View>
       </GestureHandlerRootView>
@@ -787,6 +824,9 @@ export function CapturesListScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View className="flex-1 bg-bg-screen">
+        {/* Story 3.1 AC3: Offline indicator */}
+        <OfflineBanner />
+
         <FlatList
           data={captures}
           keyExtractor={(item) => item.id}
@@ -802,6 +842,12 @@ export function CapturesListScreen() {
           onEndReached={handleEndReached}
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
+          // Story 3.1 AC4: FlatList performance optimizations for 60fps
+          getItemLayout={getItemLayout}
+          initialNumToRender={INITIAL_NUM_TO_RENDER}
+          maxToRenderPerBatch={MAX_TO_RENDER_PER_BATCH}
+          windowSize={WINDOW_SIZE}
+          removeClippedSubviews={true}
         />
 
         {/* Model not available dialog */}
