@@ -28,9 +28,11 @@ export function OfflineBanner({
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    let animation: Animated.CompositeAnimation | null = null;
+
     if (isOffline) {
       // Slide in and fade in
-      Animated.parallel([
+      animation = Animated.parallel([
         Animated.spring(slideAnim, {
           toValue: 0,
           useNativeDriver: true,
@@ -42,10 +44,11 @@ export function OfflineBanner({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      animation.start();
     } else {
       // Slide out and fade out
-      Animated.parallel([
+      animation = Animated.parallel([
         Animated.timing(slideAnim, {
           toValue: -50,
           duration: 200,
@@ -56,8 +59,16 @@ export function OfflineBanner({
           duration: 150,
           useNativeDriver: true,
         }),
-      ]).start();
+      ]);
+      animation.start();
     }
+
+    // Cleanup: stop animation on unmount to prevent memory leaks
+    return () => {
+      if (animation) {
+        animation.stop();
+      }
+    };
   }, [isOffline, slideAnim, opacityAnim]);
 
   if (!isOffline) {

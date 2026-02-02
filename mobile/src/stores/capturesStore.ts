@@ -64,14 +64,31 @@ export const useCapturesStore = create<CapturesState>()(
           set({ isLoading: true, error: null, hasMoreCaptures: true });
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
 
-          // PERFORMANCE: Use LIMIT+1 trick to avoid expensive COUNT(*) query
-          // Load PAGE_SIZE+1 items to check if there are more without counting all rows
+          /**
+           * PERFORMANCE OPTIMIZATION: LIMIT+1 Pagination Pattern
+           *
+           * Instead of expensive COUNT(*) query to check if more pages exist,
+           * we request one extra item (PAGE_SIZE+1) and check if we got it.
+           *
+           * Benefits:
+           * - Eliminates separate COUNT(*) query (O(n) → O(1))
+           * - Single database round-trip instead of two
+           * - Scales to millions of rows without performance degradation
+           *
+           * Trade-off:
+           * - Fetches 1 extra row per page (negligible cost)
+           * - Slightly more complex logic (worth the performance gain)
+           *
+           * References:
+           * - Use The Index Luke: https://use-the-index-luke.com/sql/partial-results/fetch-next-page
+           * - Efficient Pagination: https://stackoverflow.com/a/34110100
+           */
           const results = await repository.findAllPaginated(PAGE_SIZE + 1, 0);
 
           // If we got PAGE_SIZE+1 items, there are more pages
           const hasMore = results.length > PAGE_SIZE;
 
-          // Keep only PAGE_SIZE items for display
+          // Keep only PAGE_SIZE items for display (discard the extra item)
           const firstPage = hasMore ? results.slice(0, PAGE_SIZE) : results;
 
           set({
@@ -102,13 +119,13 @@ export const useCapturesStore = create<CapturesState>()(
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
           const currentLength = captures.length;
 
-          // PERFORMANCE: Use LIMIT+1 trick to avoid expensive COUNT(*) query
+          // PERFORMANCE: LIMIT+1 pattern (see loadCaptures for full documentation)
           const results = await repository.findAllPaginated(PAGE_SIZE + 1, currentLength);
 
           // If we got PAGE_SIZE+1 items, there are more pages
           const hasMore = results.length > PAGE_SIZE;
 
-          // Keep only PAGE_SIZE items for display
+          // Keep only PAGE_SIZE items for display (discard the extra item)
           const nextPage = hasMore ? results.slice(0, PAGE_SIZE) : results;
 
           set({

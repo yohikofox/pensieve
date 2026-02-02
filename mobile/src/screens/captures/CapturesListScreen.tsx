@@ -57,6 +57,7 @@ import { GerminationBadge } from '../../components/animations/GerminationBadge';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
+import { FLATLIST_PERFORMANCE } from '../../constants/performance';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -69,11 +70,6 @@ type CaptureWithTranscription = Capture & {
 };
 
 type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 'CapturesList'>;
-
-// Story 3.1 AC4: FlatList performance constants
-const INITIAL_NUM_TO_RENDER = 10;
-const MAX_TO_RENDER_PER_BATCH = 10;
-const WINDOW_SIZE = 5;
 
 export function CapturesListScreen() {
   const { t } = useTranslation();
@@ -837,13 +833,13 @@ export function CapturesListScreen() {
             />
           }
           onEndReached={handleEndReached}
-          onEndReachedThreshold={0.5}
+          onEndReachedThreshold={FLATLIST_PERFORMANCE.END_REACHED_THRESHOLD}
           ListFooterComponent={renderFooter}
           // Story 3.1 AC4: FlatList performance optimizations for 60fps
           // Note: getItemLayout removed - cards have variable heights (debug mode, transcription)
-          initialNumToRender={INITIAL_NUM_TO_RENDER}
-          maxToRenderPerBatch={MAX_TO_RENDER_PER_BATCH}
-          windowSize={WINDOW_SIZE}
+          initialNumToRender={FLATLIST_PERFORMANCE.INITIAL_NUM_TO_RENDER}
+          maxToRenderPerBatch={FLATLIST_PERFORMANCE.MAX_TO_RENDER_PER_BATCH}
+          windowSize={FLATLIST_PERFORMANCE.WINDOW_SIZE}
           removeClippedSubviews={true}
         />
 
