@@ -36,7 +36,7 @@ export function NetworkProvider({ children }: NetworkProviderProps) {
   useEffect(() => {
     // Subscribe to network state changes
     const unsubscribe = NetInfo.addEventListener((state: NetInfoState) => {
-      const isConnected = state.isConnected ?? true;
+      const isConnected = state.isConnected === true;
       setNetworkState({
         isConnected,
         isOffline: !isConnected,
@@ -46,7 +46,7 @@ export function NetworkProvider({ children }: NetworkProviderProps) {
 
     // Fetch initial state
     NetInfo.fetch().then((state: NetInfoState) => {
-      const isConnected = state.isConnected ?? true;
+      const isConnected = state.isConnected === true;
       setNetworkState({
         isConnected,
         isOffline: !isConnected,

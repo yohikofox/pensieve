@@ -33,7 +33,7 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
-import * as FileSystemLegacy from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import { useTranslation } from 'react-i18next';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
@@ -71,7 +71,6 @@ type CaptureWithTranscription = Capture & {
 type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 'CapturesList'>;
 
 // Story 3.1 AC4: FlatList performance constants
-const ITEM_HEIGHT = 169; // Fixed height for getItemLayout
 const INITIAL_NUM_TO_RENDER = 10;
 const MAX_TO_RENDER_PER_BATCH = 10;
 const WINDOW_SIZE = 5;
@@ -158,6 +157,7 @@ export function CapturesListScreen() {
         setHasModelAvailable(bestModel !== null);
       } catch (error) {
         console.error('[CapturesListScreen] Failed to check model availability:', error);
+        toast.error(t('errors.generic'));
         setHasModelAvailable(null); // Unknown state
       }
     };
@@ -180,6 +180,7 @@ export function CapturesListScreen() {
     (capture: Capture) => {
       const audioPath = capture.rawContent;
       if (!audioPath) {
+        console.error('[CapturesListScreen] Play failed: no audio file');
         toast.error(t('capture.alerts.noAudioFile'));
         return;
       }
@@ -231,6 +232,7 @@ export function CapturesListScreen() {
       // Find the capture to check retry limit
       const capture = captures.find((c) => c.id === captureId);
       if (!capture) {
+        console.error('[CapturesListScreen] Retry failed: capture not found', captureId);
         toast.error('Capture introuvable');
         return;
       }
@@ -242,6 +244,7 @@ export function CapturesListScreen() {
       if (!retryCheck.allowed) {
         // Retry limit reached - show countdown message
         const message = retryService.getRetryStatusMessage(capture);
+        console.error('[CapturesListScreen] Retry limit reached:', capture.id);
         toast.error(message);
         return;
       }
@@ -256,6 +259,7 @@ export function CapturesListScreen() {
         // Le listener mettra à jour le store
       } else {
         // Show error message (e.g., "Trop de tentatives. Réessayez dans X minutes.")
+        console.error('[CapturesListScreen] Retry failed:', result.message);
         toast.error(result.message || t('capture.alerts.retryFailed', 'Échec de la nouvelle tentative'));
       }
     } catch (error) {
@@ -347,7 +351,7 @@ export function CapturesListScreen() {
       });
 
       if (!capture.wavPath) {
-        console.log('[CapturesListScreen] No wavPath, showing error toast');
+        console.error('[CapturesListScreen] Play WAV failed: no wavPath', capture.id);
         toast.error(t('capture.alerts.noAudioFile'));
         return;
       }
@@ -397,7 +401,7 @@ export function CapturesListScreen() {
     setShowDeleteWavDialog(false);
 
     try {
-      await FileSystemLegacy.deleteAsync(captureToDeleteWav.wavPath, { idempotent: true });
+      await FileSystem.deleteAsync(captureToDeleteWav.wavPath, { idempotent: true });
 
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
       await repository.update(captureToDeleteWav.id, { wavPath: null });
@@ -426,16 +430,9 @@ export function CapturesListScreen() {
     }
   }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
 
-  // Story 3.1 AC4: getItemLayout for fixed-height cards (60fps scrolling)
-  // IMPORTANT: Must be defined here, BEFORE any early returns, to maintain hooks order
-  const getItemLayout = useCallback(
-    (_data: any, index: number) => ({
-      length: ITEM_HEIGHT,
-      offset: ITEM_HEIGHT * index,
-      index,
-    }),
-    []
-  );
+  // Story 3.1 AC4: getItemLayout removed - cards have variable heights
+  // Cards height varies due to: debug mode, transcription length, conditional UI
+  // FlatList will measure items dynamically for correctness
 
   // Story 3.4: Swipe action handlers
   const handleDeleteCapture = useCallback(async (captureId: string) => {
@@ -843,7 +840,7 @@ export function CapturesListScreen() {
           onEndReachedThreshold={0.5}
           ListFooterComponent={renderFooter}
           // Story 3.1 AC4: FlatList performance optimizations for 60fps
-          getItemLayout={getItemLayout}
+          // Note: getItemLayout removed - cards have variable heights (debug mode, transcription)
           initialNumToRender={INITIAL_NUM_TO_RENDER}
           maxToRenderPerBatch={MAX_TO_RENDER_PER_BATCH}
           windowSize={WINDOW_SIZE}
