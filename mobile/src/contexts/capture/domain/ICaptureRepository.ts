@@ -99,4 +99,22 @@ export interface ICaptureRepository {
    * Check if a capture has a synchronization conflict
    */
   hasConflict(captureId: string): Promise<boolean>;
+
+  /**
+   * Observe a Capture by ID - returns Observable that emits on state changes
+   * Used for live updates (e.g., transcription completion)
+   * Story 3.2 - AC5: Live Transcription Updates
+   */
+  observeById(id: string): Observable<Capture | null>;
+}
+
+/**
+ * Observable interface for reactive updates
+ */
+export interface Observable<T> {
+  subscribe(observer: (value: T) => void): Subscription;
+}
+
+export interface Subscription {
+  unsubscribe(): void;
 }

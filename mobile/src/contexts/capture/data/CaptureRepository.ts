@@ -450,4 +450,37 @@ export class CaptureRepository implements ICaptureRepository {
     );
     return (result.rows?.length ?? 0) > 0;
   }
+
+  /**
+   * Observe a Capture by ID - emits on state changes
+   * Story 3.2 - AC5: Live Transcription Updates
+   *
+   * Simple polling-based Observable implementation for OP-SQLite
+   * Polls database every 500ms for changes to the capture
+   */
+  observeById(id: string): { subscribe: (observer: (value: Capture | null) => void) => { unsubscribe: () => void } } {
+    return {
+      subscribe: (observer: (value: Capture | null) => void) => {
+        // Emit initial value immediately
+        this.findById(id).then(observer).catch(() => observer(null));
+
+        // Poll for updates every 500ms
+        const interval = setInterval(async () => {
+          try {
+            const capture = await this.findById(id);
+            observer(capture);
+          } catch (error) {
+            // Silently handle errors during polling
+            observer(null);
+          }
+        }, 500);
+
+        return {
+          unsubscribe: () => {
+            clearInterval(interval);
+          }
+        };
+      }
+    };
+  }
 }

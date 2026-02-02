@@ -153,7 +153,7 @@ export function CapturesListScreen() {
         setHasModelAvailable(bestModel !== null);
       } catch (error) {
         console.error('[CapturesListScreen] Failed to check model availability:', error);
-        toast.error(t('errors.generic'));
+        toast.error(t('errors.modelCheckFailed', 'Impossible de vérifier le modèle de transcription'));
         setHasModelAvailable(null); // Unknown state
       }
     };
@@ -216,12 +216,31 @@ export function CapturesListScreen() {
   }, [loadCaptures]);
 
 
-  const onRefresh = useCallback(() => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    loadCaptures().finally(() => {
-      setRefreshing(false);
-    });
-  }, [loadCaptures]);
+
+    // AC5: Minimum 300ms refresh duration for smooth UX
+    const minDelay = new Promise(resolve => setTimeout(resolve, 300));
+
+    // Try cloud sync if available (Epic 6), fallback to local refresh
+    try {
+      const syncService = container.resolveOptional<any>(TOKENS.ISyncService);
+      if (syncService && !isOffline) {
+        await Promise.all([
+          syncService.syncCaptures().catch(() => {}), // Silent fail OK
+          loadCaptures(),
+          minDelay
+        ]);
+      } else {
+        await Promise.all([loadCaptures(), minDelay]);
+      }
+    } catch (error) {
+      // Fallback: always refresh local data
+      await Promise.all([loadCaptures(), minDelay]);
+    }
+
+    setRefreshing(false);
+  }, [loadCaptures, isOffline]);
 
   const handleRetry = async (captureId: string) => {
     try {
@@ -426,7 +445,7 @@ export function CapturesListScreen() {
     }
   }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
 
-  // Story 3.1 AC4: getItemLayout removed - cards have variable heights
+  // Story 3.1: getItemLayout removed - cards have variable heights
   // Cards height varies due to: debug mode, transcription length, conditional UI
   // FlatList will measure items dynamically for correctness
 

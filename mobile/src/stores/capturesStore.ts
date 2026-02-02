@@ -21,6 +21,7 @@ import { container } from 'tsyringe';
 import type { Capture } from '../contexts/capture/domain/Capture.model';
 import type { ICaptureRepository } from '../contexts/capture/domain/ICaptureRepository';
 import { TOKENS } from '../infrastructure/di/tokens';
+import { FLATLIST_PERFORMANCE } from '../constants/performance';
 
 // Extend Capture with queue status (event-driven)
 export type CaptureWithQueue = Capture & {
@@ -45,7 +46,8 @@ interface CapturesState {
   setIsInQueue: (captureId: string, isInQueue: boolean) => void;
 }
 
-const PAGE_SIZE = 20; // Nombre de captures par page
+// Use centralized performance constant for consistency
+const PAGE_SIZE = FLATLIST_PERFORMANCE.PAGINATION_BATCH_SIZE;
 
 export const useCapturesStore = create<CapturesState>()(
   devtools(

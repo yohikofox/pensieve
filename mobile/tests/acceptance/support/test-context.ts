@@ -1726,3 +1726,108 @@ export function generateFilePath(userId: string, timestamp?: number): string {
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+// ============================================================================
+// Story 3.2 - Capture Detail Helper Functions
+// ============================================================================
+
+/**
+ * Create a mock audio capture
+ */
+export function createMockAudioCapture(overrides: Partial<Capture> = {}): Capture {
+  return {
+    id: uuidv4(),
+    type: 'AUDIO',
+    state: 'ready',
+    rawContent: 'mock://audio_capture.m4a',
+    normalizedText: 'Transcription de l\'audio',
+    capturedAt: new Date(),
+    duration: 60000, // 1 minute
+    fileSize: 512000, // 500KB
+    filePath: 'mock://audio_capture.m4a',
+    format: 'm4a',
+    location: null,
+    tags: [],
+    recoveredFromCrash: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Create a mock text capture
+ */
+export function createMockTextCapture(overrides: Partial<Capture> = {}): Capture {
+  return {
+    id: uuidv4(),
+    type: 'TEXT',
+    state: 'ready',
+    rawContent: 'Texte de la capture',
+    normalizedText: 'Texte de la capture',
+    capturedAt: new Date(),
+    duration: undefined,
+    fileSize: undefined,
+    filePath: undefined,
+    format: undefined,
+    location: null,
+    tags: [],
+    recoveredFromCrash: false,
+    ...overrides,
+  };
+}
+
+/**
+ * Create a generic mock capture (defaults to audio)
+ */
+export function createMockCapture(overrides: Partial<Capture> = {}): Capture {
+  return createMockAudioCapture(overrides);
+}
+
+/**
+ * Mock CaptureRepository for Story 3.2 tests
+ */
+export function mockCaptureRepository() {
+  return {
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findByState: jest.fn(),
+    create: jest.fn(),
+    update: jest.fn(),
+    delete: jest.fn(),
+    count: jest.fn(),
+    observeById: jest.fn(), // For AC5 - Live transcription updates
+  };
+}
+
+/**
+ * Mock NetworkContext for Story 3.2 tests
+ */
+export const mockNetworkContext = {
+  isOffline: false,
+  mockOnline: () => {
+    mockNetworkContext.isOffline = false;
+  },
+  mockOffline: () => {
+    mockNetworkContext.isOffline = true;
+  },
+};
+
+/**
+ * Setup test container with DI mocks
+ */
+export function setupTestContainer() {
+  // Clear all registered instances
+  if (typeof jest !== 'undefined') {
+    jest.clearAllMocks();
+  }
+  // Additional DI setup if needed
+}
+
+/**
+ * Cleanup test container after tests
+ */
+export function cleanupTestContainer() {
+  // Clean up DI registrations
+  if (typeof jest !== 'undefined') {
+    jest.resetAllMocks();
+  }
+}
