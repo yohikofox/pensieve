@@ -58,6 +58,10 @@ import { GoogleCalendarService } from '../../services/GoogleCalendarService';
 import { useSettingsStore } from '../../stores/settingsStore';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useNavigation } from '@react-navigation/native';
+import { AudioPlayer } from '../../components/audio/AudioPlayer';
+import { WaveformPlayer } from '../../components/audio/WaveformPlayer';
+import { Waveform } from '../../components/audio/Waveform';
+import { TranscriptionSync } from '../../components/audio/TranscriptionSync';
 
 /** Action item structure from LLM JSON output */
 interface ActionItem {
@@ -320,6 +324,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   // Model availability state (AC4: Story 2.7)
   const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
+
+  // Audio player state (Story 3.2b - AC2)
+  const [audioPosition, setAudioPosition] = useState(0); // in milliseconds
+  const [audioDuration, setAudioDuration] = useState(0); // in milliseconds
 
   useEffect(() => {
     loadCapture();
@@ -878,6 +886,15 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     }
   }, [captureId]);
 
+  // Audio player callbacks (Story 3.2b - AC2)
+  const handleAudioPositionChange = useCallback((positionMs: number) => {
+    setAudioPosition(positionMs);
+  }, []);
+
+  const handleAudioSeek = useCallback((positionMs: number) => {
+    setAudioPosition(positionMs);
+  }, []);
+
   const handleTextChange = (text: string) => {
     setEditedText(text);
     const isAudioCapture = capture?.type === 'audio';
@@ -1120,6 +1137,30 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           )}
         </View>
 
+        {/* Audio Player (Story 3.2b - AC2) */}
+        {isAudio && capture.rawContent && (
+          <View style={[styles.audioCard, { backgroundColor: themeColors.cardBg }]}>
+            <AudioPlayer
+              audioUri={capture.rawContent}
+              onPositionChange={handleAudioPositionChange}
+              onPlaybackEnd={() => setAudioPosition(0)}
+            />
+          </View>
+        )}
+
+        {/* Waveform Player (Alternative design) */}
+        {isAudio && capture.rawContent && (
+          <View style={[styles.audioCard, { backgroundColor: themeColors.cardBg }]}>
+            <WaveformPlayer
+              audioUri={capture.rawContent}
+              captureId={capture.id}
+              metadata={metadata}
+              onPositionChange={handleAudioPositionChange}
+              onPlaybackEnd={() => setAudioPosition(0)}
+            />
+          </View>
+        )}
+
         {/* Content */}
         <View style={[styles.contentCard, { backgroundColor: themeColors.cardBg }]}>
           {(() => {
@@ -1187,9 +1228,19 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                     placeholderTextColor={themeColors.textMuted}
                   />
                 ) : hasText || (showOriginalContent && originalText) ? (
-                  <Text style={[styles.contentText, { color: showOriginalContent ? themeColors.textSecondary : themeColors.textPrimary }]} selectable>
-                    {displayText}
-                  </Text>
+                  // Story 3.2b - AC2: Use TranscriptionSync for audio captures with text available
+                  isAudio && capture.rawContent ? (
+                    <TranscriptionSync
+                      transcription={displayText}
+                      currentPosition={audioPosition}
+                      duration={audioDuration || capture.duration || 0}
+                      onSeek={handleAudioSeek}
+                    />
+                  ) : (
+                    <Text style={[styles.contentText, { color: showOriginalContent ? themeColors.textSecondary : themeColors.textPrimary }]} selectable>
+                      {displayText}
+                    </Text>
+                  )
                 ) : (
                   <Text style={[styles.placeholderText, { color: themeColors.textMuted }]}>
                     {capture.state === 'processing'
@@ -2087,6 +2138,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
     color: '#333',
+  },
+  audioCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   contentCard: {
     backgroundColor: '#FFFFFF',

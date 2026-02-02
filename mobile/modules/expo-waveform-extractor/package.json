@@ -1,0 +1,33 @@
+{
+  "name": "expo-waveform-extractor",
+  "version": "1.0.0",
+  "description": "Native waveform extraction for Expo SDK 54",
+  "main": "index.ts",
+  "homepage": "https://github.com/pensieve/expo-waveform-extractor",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "expo-module": "expo-module"
+  },
+  "keywords": [
+    "expo",
+    "expo-module",
+    "waveform",
+    "audio",
+    "rms"
+  ],
+  "author": "Pensieve",
+  "license": "MIT",
+  "devDependencies": {
+    "expo-module-scripts": "^4.0.0"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

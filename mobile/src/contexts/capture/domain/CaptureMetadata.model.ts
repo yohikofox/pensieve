@@ -24,6 +24,9 @@ export const METADATA_KEYS = {
 
   // Processing info
   TOTAL_PROCESSING_DURATION_MS: 'total_processing_duration_ms',
+
+  // Audio waveform (raw RMS values as JSON array)
+  WAVEFORM_DATA: 'waveform_data',
 } as const;
 
 export type MetadataKey = (typeof METADATA_KEYS)[keyof typeof METADATA_KEYS] | string;

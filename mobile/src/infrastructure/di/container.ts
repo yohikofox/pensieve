@@ -27,6 +27,7 @@ import { SyncQueueService } from '../../contexts/capture/services/SyncQueueServi
 import { StorageMonitorService } from '../../contexts/capture/services/StorageMonitorService';
 import { RetentionPolicyService } from '../../contexts/capture/services/RetentionPolicyService';
 import { EncryptionService } from '../../contexts/capture/services/EncryptionService';
+import { WaveformExtractionService } from '../../contexts/capture/services/WaveformExtractionService';
 
 // Normalization Services (Story 2.5)
 import { ExpoFileSystem } from '../../contexts/Normalization/adapters/ExpoFileSystem';
@@ -90,6 +91,7 @@ export function registerServices() {
   // Application Services
   container.registerSingleton(RecordingService); // Direct class registration
   container.registerSingleton(FileStorageService); // Direct class registration
+  container.registerSingleton(WaveformExtractionService); // Waveform auto-extraction
   container.registerSingleton(TOKENS.IPermissionService, PermissionService);
   container.registerSingleton(TOKENS.IFileStorageService, FileStorageService);
   container.registerSingleton(TOKENS.IOfflineSyncService, OfflineSyncService);

@@ -13,6 +13,17 @@
 global.__DEV__ = true;
 
 // ==========================================
+// Animation Frame Polyfill
+// ==========================================
+global.requestAnimationFrame = (cb) => {
+  return setTimeout(cb, 16); // ~60fps
+};
+
+global.cancelAnimationFrame = (id) => {
+  clearTimeout(id);
+};
+
+// ==========================================
 // React Native Mocks
 // ==========================================
 // Mock AsyncStorage (required by Supabase and other RN libraries)
@@ -63,6 +74,7 @@ jest.mock('react-native', () => {
       addChangeListener: jest.fn(() => ({ remove: jest.fn() })),
       removeChangeListener: jest.fn(),
     },
+    useColorScheme: jest.fn(() => 'light'),
     Alert: {
       alert: jest.fn(),
     },
@@ -81,6 +93,7 @@ jest.mock('react-native', () => {
     TextInput: 'TextInput',
     TouchableOpacity: 'TouchableOpacity',
     TouchableWithoutFeedback: 'TouchableWithoutFeedback',
+    ScrollView: 'ScrollView',
     Modal: 'Modal',
     Keyboard: {
       dismiss: jest.fn(),
@@ -111,6 +124,18 @@ jest.mock('react-native', () => {
     },
     ActivityIndicator: 'ActivityIndicator',
     Pressable: 'Pressable',
+    PanResponder: {
+      create: jest.fn((config) => ({
+        panHandlers: {
+          onStartShouldSetResponder: config.onStartShouldSetPanResponder,
+          onMoveShouldSetResponder: config.onMoveShouldSetPanResponder,
+          onResponderGrant: config.onPanResponderGrant,
+          onResponderMove: config.onPanResponderMove,
+          onResponderRelease: config.onPanResponderRelease,
+          onResponderTerminate: config.onPanResponderTerminate,
+        },
+      })),
+    },
   };
 });
 
@@ -451,6 +476,24 @@ jest.mock('./src/lib/supabase', () => ({
 // ==========================================
 // Note: OP-SQLite is mocked in individual tests using jest.mock()
 // See test files for database mocking strategy
+
+// ==========================================
+// NativeWind Mock
+// ==========================================
+// Mock nativewind to avoid JSX parsing issues in tests
+jest.mock('nativewind', () => ({
+  colorScheme: {
+    get: jest.fn(() => 'light'),
+    set: jest.fn(),
+    toggle: jest.fn(),
+  },
+  vars: jest.fn(),
+  useColorScheme: jest.fn(() => ({
+    colorScheme: 'light',
+    setColorScheme: jest.fn(),
+    toggleColorScheme: jest.fn(),
+  })),
+}));
 
 // ==========================================
 // React Native Audio API Mock (Audio Conversion)

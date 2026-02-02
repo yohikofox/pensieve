@@ -65,6 +65,7 @@
       "expo-asset",
       "expo-task-manager",
       "expo-background-fetch",
+      "expo-waveform-extractor",
       [
         "expo-notifications",
         {

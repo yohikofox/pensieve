@@ -58,7 +58,7 @@ export const FLATLIST_PERFORMANCE = {
    *
    * Recommended: 20-50 depending on item complexity
    */
-  PAGINATION_BATCH_SIZE: 20,
+  PAGINATION_BATCH_SIZE: 10,
 } as const;
 
 /**

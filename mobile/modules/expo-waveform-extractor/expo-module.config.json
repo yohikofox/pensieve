@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android", "web"],
+  "apple": {
+    "modules": ["ExpoWaveformExtractorModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.waveformextractor.ExpoWaveformExtractorModule"]
+  }
+}

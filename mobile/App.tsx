@@ -32,6 +32,7 @@ import { TranscriptionWorker } from './src/contexts/Normalization/workers/Transc
 import { registerTranscriptionBackgroundTask } from './src/contexts/Normalization/tasks/transcriptionBackgroundTask';
 import { LLMModelService } from './src/contexts/Normalization/services/LLMModelService';
 import { NPUDetectionService } from './src/contexts/Normalization/services/NPUDetectionService';
+import { WaveformExtractionService } from './src/contexts/capture/services/WaveformExtractionService';
 import { DevPanelProvider } from './src/components/dev/DevPanelContext';
 import { DevPanel } from './src/components/dev/DevPanel';
 import { CalibrationGridWrapper } from './src/components/debug';
@@ -146,6 +147,7 @@ function AppContent() {
   useEffect(() => {
     // Resolve services from DI container (singletons)
     const queueProcessor = container.resolve(TranscriptionQueueProcessor);
+    const waveformService = container.resolve(WaveformExtractionService);
     const worker = container.resolve(TranscriptionWorker);
     let appStateListener: ReturnType<typeof AppState.addEventListener> | null = null;
 
@@ -156,6 +158,10 @@ function AppContent() {
         // Start event listener (auto-enqueue captures)
         queueProcessor.start();
         console.log('[App] ✅ TranscriptionQueueProcessor started');
+
+        // Start waveform extraction service (auto-extract on capture)
+        waveformService.start();
+        console.log('[App] ✅ WaveformExtractionService started');
 
         // Start foreground worker (process queue)
         await worker.start();
@@ -187,6 +193,7 @@ function AppContent() {
     return () => {
       console.log('[App] Cleaning up transcription services...');
       queueProcessor.stop();
+      waveformService.stop();
       worker.stop();
       appStateListener?.remove();
     };
