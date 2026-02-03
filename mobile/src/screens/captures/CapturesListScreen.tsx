@@ -27,6 +27,8 @@ import {
   RefreshControl,
   Platform,
   Share,
+  AccessibilityInfo,
+  StyleSheet,
 } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
@@ -36,6 +38,7 @@ import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import * as FileSystem from 'expo-file-system';
 import { useTranslation } from 'react-i18next';
 import { container } from 'tsyringe';
+import LottieView from 'lottie-react-native';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../contexts/capture/domain/ICaptureRepository';
 import type { Capture } from '../../contexts/capture/domain/Capture.model';
@@ -55,6 +58,7 @@ import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureC
 import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
 import { MaturityBadge } from '../../components/animations/MaturityBadge';
+import { AnimatedEmptyState } from '../../components/animations/AnimatedEmptyState';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
@@ -114,6 +118,13 @@ export function CapturesListScreen() {
   const [showDeleteWavDialog, setShowDeleteWavDialog] = useState(false);
   const [captureToDeleteWav, setCaptureToDeleteWav] = useState<Capture | null>(null);
 
+  // Story 3.4 AC8b: Reduce Motion accessibility
+  const [isReduceMotionEnabled, setReduceMotionEnabled] = useState(false);
+
+  // Story 3.4 AC8: Lottie animations availability
+  // ✅ Animations created: butterfly.json and breeze.json
+  const [hasLottieAnimations] = useState(true);
+
   // Audio player - source changes when user taps play on different capture
   const player = useAudioPlayer(currentAudioPath);
   const playerStatus = useAudioPlayerStatus(player);
@@ -163,6 +174,26 @@ export function CapturesListScreen() {
       }
     };
     checkModelAvailability();
+  }, []);
+
+  // Story 3.4 AC8b: Check Reduce Motion preference and listen for changes
+  useEffect(() => {
+    // Check initial state
+    AccessibilityInfo.isReduceMotionEnabled().then((enabled) => {
+      setReduceMotionEnabled(enabled);
+    });
+
+    // Listen for changes while app is open
+    const subscription = AccessibilityInfo.addEventListener(
+      'reduceMotionChanged',
+      (enabled) => {
+        setReduceMotionEnabled(enabled);
+      }
+    );
+
+    return () => {
+      subscription?.remove();
+    };
   }, []);
 
   // Reset playing state and seek to beginning when audio finishes
@@ -540,23 +571,62 @@ export function CapturesListScreen() {
   }
 
   // Story 3.1 AC6: Enhanced empty state with "Jardin d'idées" metaphor
+  // Story 3.4 AC8: Animated empty state with breathing animation + Lottie
   if (captures.length === 0) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <View className="flex-1 bg-bg-screen">
           {/* Story 3.1 AC3: Offline indicator */}
           <OfflineBanner />
-          <EmptyState
-            icon="feather"
-            title={t('captures.emptyTitle', 'Votre jardin d\'idées est prêt à germer')}
-            description={t('captures.emptyDescription', 'Capturez votre première pensée')}
-            actionLabel={t('captures.emptyAction', 'Commencer')}
-            onAction={() => {
-              // Navigate to capture tab or trigger capture
-              // @ts-ignore - Tab navigation
-              navigation.getParent()?.navigate('Capture');
-            }}
-          />
+
+          <View style={{ flex: 1, position: 'relative' }}>
+            {/* Lottie Background Animation - Breeze (very subtle) */}
+            {hasLottieAnimations && !isReduceMotionEnabled && (
+              <LottieView
+                source={require('../../assets/animations/breeze.json')}
+                autoPlay
+                loop
+                style={StyleSheet.absoluteFill}
+                speed={0.5}
+                // Very subtle opacity for background ambient effect
+                {...{ opacity: 0.2 }}
+              />
+            )}
+
+            <AnimatedEmptyState enabled={!isReduceMotionEnabled}>
+              <View style={{ position: 'relative' }}>
+                <EmptyState
+                  icon="feather"
+                  iconColor={isDark ? colors.success[400] : colors.success[300]}
+                  title={t('captures.emptyTitle', 'Votre jardin d\'idées est prêt à germer')}
+                  description={t('captures.emptyDescription', 'Capturez votre première pensée')}
+                  actionLabel={t('captures.emptyAction', 'Commencer')}
+                  onAction={() => {
+                    // Navigate to capture tab or trigger capture
+                    // @ts-ignore - Tab navigation
+                    navigation.getParent()?.navigate('Capture');
+                  }}
+                />
+
+                {/* Lottie Foreground Animation - Butterfly (floating) */}
+                {hasLottieAnimations && !isReduceMotionEnabled && (
+                  <LottieView
+                    source={require('../../assets/animations/butterfly.json')}
+                    autoPlay
+                    loop
+                    style={{
+                      position: 'absolute',
+                      top: -60,
+                      right: 20,
+                      width: 100,
+                      height: 100,
+                    }}
+                    speed={0.8}
+                  />
+                )}
+              </View>
+            </AnimatedEmptyState>
+          </View>
         </View>
       </GestureHandlerRootView>
     );

@@ -28,3 +28,21 @@ Fonctionnalité: Story 3.4 - Navigation et Interactions dans le Feed
     Quand je vois une capture mature (> 7 jours)
     Alors elle affiche un indicateur de maturité "mature" avec une lueur ambrée subtile
     Et l'esthétique globale est calme et contemplative
+
+  Scénario: AC8 - États vides animés avec "Jardin d'idées"
+    Étant donné aucune capture n'existe dans la base de données
+    Quand j'ouvre l'écran de feed des captures
+    Alors je vois une illustration "feather" avec couleur verte calming
+    Et l'icône a une animation de respiration lente (3000ms cycle)
+    Et je vois le titre "Votre jardin d'idées est prêt à germer"
+    Et je vois la description "Capturez votre première pensée"
+    Et je vois un bouton "Commencer"
+    Et des micro-animations Lottie ajoutent de la vie à l'écran
+    Et l'esthétique est calming et contemplative
+
+  Scénario: AC8b - Respect de Reduce Motion
+    Étant donné l'utilisateur a activé "Reduce Motion" dans les réglages
+    Et aucune capture n'existe
+    Quand j'ouvre l'écran de feed
+    Alors l'état vide s'affiche sans animations
+    Et les informations restent accessibles

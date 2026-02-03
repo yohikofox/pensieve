@@ -6,6 +6,7 @@ import { Button } from './Button';
 
 interface EmptyStateProps {
   icon?: keyof typeof Feather.glyphMap;
+  iconColor?: string;
   title: string;
   description?: string;
   actionLabel?: string;
@@ -15,6 +16,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   icon,
+  iconColor,
   title,
   description,
   actionLabel,
@@ -25,7 +27,7 @@ export function EmptyState({
     <View className={cn('flex-1 items-center justify-center px-8 py-12', className)}>
       {icon && (
         <View className="w-20 h-20 rounded-full bg-bg-subtle items-center justify-center mb-6">
-          <Feather name={icon} size={40} color={colors.neutral[400]} />
+          <Feather name={icon} size={40} color={iconColor || colors.neutral[400]} />
         </View>
       )}
 
