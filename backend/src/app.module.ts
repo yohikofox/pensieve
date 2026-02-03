@@ -5,6 +5,7 @@ import { AppController } from './app.controller';
 import { SharedModule } from './modules/shared/shared.module';
 import { IdentityModule } from './modules/identity/identity.module';
 import { RgpdModule } from './modules/rgpd/rgpd.module';
+import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 
 @Module({
   imports: [
@@ -29,6 +30,8 @@ import { RgpdModule } from './modules/rgpd/rgpd.module';
     IdentityModule,
     // RGPD module (Data export & Account deletion)
     RgpdModule,
+    // Knowledge module (AI Digestion Queue - Story 4.1)
+    KnowledgeModule,
   ],
   controllers: [AppController],
   providers: [],
