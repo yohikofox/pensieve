@@ -579,53 +579,71 @@ export function CapturesListScreen() {
           {/* Story 3.1 AC3: Offline indicator */}
           <OfflineBanner />
 
-          <View style={{ flex: 1, position: 'relative' }}>
-            {/* Lottie Background Animation - Breeze (very subtle) */}
-            {hasLottieAnimations && !isReduceMotionEnabled && (
-              <LottieView
-                source={require('../../../assets/animations/breeze.json')}
-                autoPlay
-                loop
-                style={StyleSheet.absoluteFill}
-                speed={0.5}
-                // Very subtle opacity for background ambient effect
-                {...{ opacity: 0.2 }}
-              />
-            )}
-
+          <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            {/* Zone avec animation breeze + breathing - uniquement icône */}
             <AnimatedEmptyState enabled={!isReduceMotionEnabled}>
-              <View style={{ position: 'relative' }}>
-                <EmptyState
-                  icon="feather"
-                  iconColor={isDark ? colors.success[400] : colors.success[300]}
-                  title={t('captures.emptyTitle', 'Votre jardin d\'idées est prêt à germer')}
-                  description={t('captures.emptyDescription', 'Capturez votre première pensée')}
-                  actionLabel={t('captures.emptyAction', 'Commencer')}
-                  onAction={() => {
-                    // Navigate to capture tab or trigger capture
-                    // @ts-ignore - Tab navigation
-                    navigation.getParent()?.navigate('Capture');
-                  }}
-                />
-
-                {/* Lottie Foreground Animation - Butterfly (floating) */}
+              <View style={{ position: 'relative', marginBottom: 24 }}>
+                {/* Lottie Background Animation - Breeze (very subtle) - only on icon */}
                 {hasLottieAnimations && !isReduceMotionEnabled && (
+                  <View style={StyleSheet.absoluteFill} pointerEvents="none">
+                    <LottieView
+                      source={require('../../../assets/animations/breeze.json')}
+                      autoPlay
+                      loop
+                      style={{ flex: 1 }}
+                      speed={0.5}
+                      {...{ opacity: 0.2 }}
+                    />
+                  </View>
+                )}
+
+                {/* Icon */}
+                <View className="w-20 h-20 rounded-full bg-bg-subtle items-center justify-center">
+                  <Feather
+                    name="feather"
+                    size={40}
+                    color={isDark ? colors.success[400] : colors.success[300]}
+                  />
+                </View>
+              </View>
+            </AnimatedEmptyState>
+
+            {/* Title - no animation */}
+            <Text className="text-xl font-semibold text-text-primary text-center mb-2">
+              {t('captures.emptyTitle', 'Votre jardin d\'idées est prêt à germer')}
+            </Text>
+
+            {/* Description - no animation */}
+            <Text className="text-base text-text-tertiary text-center mb-6">
+              {t('captures.emptyDescription', 'Capturez votre première pensée')}
+            </Text>
+
+            {/* Button with butterfly positioned on top-right corner */}
+            <View style={{ position: 'relative' }}>
+              <Button
+                variant="primary"
+                onPress={() => {
+                  // Navigate to capture tab or trigger capture
+                  // @ts-ignore - Tab navigation
+                  navigation.getParent()?.navigate('Capture');
+                }}
+              >
+                {t('captures.emptyAction', 'Commencer')}
+              </Button>
+
+              {/* Lottie Foreground Animation - Butterfly on button top-right corner */}
+              {hasLottieAnimations && !isReduceMotionEnabled && (
+                <View style={{ position: 'absolute', top: -35, right: -35 }}>
                   <LottieView
                     source={require('../../../assets/animations/butterfly.json')}
                     autoPlay
                     loop
-                    style={{
-                      position: 'absolute',
-                      top: -60,
-                      right: 20,
-                      width: 100,
-                      height: 100,
-                    }}
+                    style={{ width: 70, height: 70 }}
                     speed={0.8}
                   />
-                )}
-              </View>
-            </AnimatedEmptyState>
+                </View>
+              )}
+            </View>
           </View>
         </View>
       </GestureHandlerRootView>
