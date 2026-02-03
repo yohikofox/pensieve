@@ -583,7 +583,7 @@ export function CapturesListScreen() {
             {/* Lottie Background Animation - Breeze (very subtle) */}
             {hasLottieAnimations && !isReduceMotionEnabled && (
               <LottieView
-                source={require('../../assets/animations/breeze.json')}
+                source={require('../../../assets/animations/breeze.json')}
                 autoPlay
                 loop
                 style={StyleSheet.absoluteFill}
@@ -611,7 +611,7 @@ export function CapturesListScreen() {
                 {/* Lottie Foreground Animation - Butterfly (floating) */}
                 {hasLottieAnimations && !isReduceMotionEnabled && (
                   <LottieView
-                    source={require('../../assets/animations/butterfly.json')}
+                    source={require('../../../assets/animations/butterfly.json')}
                     autoPlay
                     loop
                     style={{
