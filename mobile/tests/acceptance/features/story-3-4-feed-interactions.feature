@@ -13,6 +13,31 @@ Fonctionnalité: Story 3.4 - Navigation et Interactions dans le Feed
     Alors une transition hero fluide transforme la carte en vue détail
     Et la transition se termine en 250-350ms
 
+  Scénario: AC3 - Actions contextuelles au swipe
+    Étant donné je suis sur l'écran de feed avec des captures
+    Quand je swipe horizontalement une carte de capture vers la gauche
+    Alors des actions contextuelles apparaissent (partager)
+    Et le swipe révèle les options avec une physique spring
+    Et un feedback haptique confirme le seuil d'action
+    Quand je swipe horizontalement une carte vers la droite
+    Alors l'action de suppression apparaît
+    Et un feedback haptique confirme l'action
+
+  Scénario: AC4 - Animations de scroll
+    Étant donné je suis sur l'écran de feed avec 10+ captures
+    Quand je fais défiler le feed vers le bas
+    Alors les nouvelles captures apparaissent avec un fondu et glissement subtil
+    Et l'animation est décalée de 50ms par item pour un effet organique
+    Et la performance de scroll reste à 60fps
+
+  Scénario: AC5 - Menu contextuel appui long
+    Étant donné je suis sur l'écran de feed avec des captures
+    Quand je maintiens un appui long de 300ms sur une carte
+    Alors un menu contextuel apparaît avec une animation d'échelle
+    Et un feedback haptique moyen signale l'activation du menu
+    Et l'arrière-plan est légèrement flouté (effet Liquid Glass)
+    Et les options du menu sont: Partager, Supprimer, Épingler, Favoris
+
   Scénario: AC6 - Gestes de navigation spécifiques à la plateforme
     Étant donné je suis sur l'écran de détail d'une capture
     Quand j'utilise un geste de retour spécifique à la plateforme
