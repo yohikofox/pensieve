@@ -1831,3 +1831,6 @@ export function cleanupTestContainer() {
     jest.resetAllMocks();
   }
 }
+
+// Export singleton instance for tests
+export const testContext = new TestContext();

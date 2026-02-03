@@ -58,6 +58,7 @@ import { SwipeableCard } from '../../components/cards/SwipeableCard';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
 import { FLATLIST_PERFORMANCE } from '../../constants/performance';
+import { RetryLimitService } from '../../contexts/Normalization/services/RetryLimitService';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -67,6 +68,10 @@ type CapturesStackParamListExtended = {
 
 type CaptureWithTranscription = Capture & {
   transcriptionStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+};
+
+type CaptureWithQueue = Capture & {
+  isInQueue?: boolean;
 };
 
 type NavigationProp = NativeStackNavigationProp<CapturesStackParamListExtended, 'CapturesList'>;
@@ -490,309 +495,33 @@ export function CapturesListScreen() {
   }, [isLoadingMore, t]);
 
   const renderCaptureItem = ({ item }: { item: CaptureWithTranscription }) => {
-    const isAudio = item.type === 'audio';
-    const isProcessing = item.state === 'processing';
-    const isReady = item.state === 'ready';
-    const isFailed = item.state === 'failed';
-    const isCaptured = item.state === 'captured';
     const isPlaying = playingCaptureId === item.id && playerStatus.playing;
     const isPlayingWav = playingWavCaptureId === item.id && playerStatus.playing;
-
-    // Check retry rate limit (Story 2.8 - Task 4)
-    const retryService = new RetryLimitService();
-    const retryCheck = retryService.canRetry(item);
-    const canRetry = retryCheck.allowed;
-    const retryMessage = retryService.getRetryStatusMessage(item);
 
     return (
       <SwipeableCard
         onDelete={() => handleDeleteCapture(item.id)}
         onShare={() => handleShareCapture(item)}
       >
-        <TouchableOpacity onPress={() => handleCapturePress(item.id)} activeOpacity={0.7}>
-          <Card variant="elevated" className="mb-3">
-          {/* Header: Type + Duration + Date */}
-          <View className="flex-row justify-between items-center mb-3">
-            <View className="flex-row items-center">
-              <View
-                className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${
-                  isAudio ? 'bg-primary-subtle' : 'bg-secondary-subtle'
-                }`}
-              >
-                <Feather
-                  name={isAudio ? CaptureIcons.voice : CaptureIcons.text}
-                  size={16}
-                  color={isAudio ? colors.primary[500] : colors.secondary[500]}
-                />
-              </View>
-              <Text className="text-sm font-semibold text-text-primary">
-                {isAudio ? t('captures.types.audio') : t('captures.types.text')}
-              </Text>
-              {isAudio && item.duration && (
-                <Text className="text-sm text-text-tertiary ml-1">
-                  · {Math.floor(item.duration / 1000)}s
-                </Text>
-              )}
-            </View>
-            <Text className="text-xs text-text-tertiary">
-              {item.createdAt.toLocaleDateString('fr-FR', {
-                day: 'numeric',
-                month: 'short',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          </View>
-
-          {/* Status Badge + Action Buttons */}
-          {isAudio && (
-            <View className="flex-row items-center justify-between mb-3">
-              {/* Badge */}
-              <View>
-                {/* AC7: Show "Pending model" badge when no model available (Story 2.7) */}
-                {isCaptured && hasModelAvailable === false && !item.normalizedText && (
-                  <Badge variant="failed">
-                    <View className="flex-row items-center">
-                      <Feather name="alert-circle" size={12} color={colors.error[700]} />
-                      <Text className="ml-1 text-xs font-medium text-error-700">
-                        {t('capture.status.pendingModel', 'Modèle requis')}
-                      </Text>
-                    </View>
-                  </Badge>
-                )}
-                {/* Show normal status badges when model is available or unknown */}
-                {isCaptured && (hasModelAvailable === true || hasModelAvailable === null || item.normalizedText) && (
-                  <PulsingBadge enabled={item.isInQueue}>
-                    <Badge variant={item.isInQueue ? "processing" : "pending"}>
-                      <View className="flex-row items-center">
-                        {item.isInQueue ? (
-                          <>
-                            <ActivityIndicator size="small" color={colors.info[600]} />
-                            <Text className="ml-2 text-xs font-medium text-info-700">
-                              {t('capture.status.queued')}
-                            </Text>
-                          </>
-                        ) : (
-                          <>
-                            <Feather name={StatusIcons.pending} size={12} color={colors.warning[700]} />
-                            <Text className="ml-1 text-xs font-medium text-warning-700">
-                              {autoTranscriptionEnabled
-                                ? t('capture.status.pending')
-                                : t('capture.status.manual')}
-                            </Text>
-                          </>
-                        )}
-                      </View>
-                    </Badge>
-                  </PulsingBadge>
-                )}
-
-                {isProcessing && (
-                  <PulsingBadge enabled={true}>
-                    <Badge variant="processing">
-                      <View className="flex-row items-center">
-                        <ActivityIndicator size="small" color={colors.info[600]} />
-                        <Text className="ml-2 text-xs font-medium text-info-700">
-                          {t('capture.status.processing')}
-                        </Text>
-                      </View>
-                    </Badge>
-                  </PulsingBadge>
-                )}
-
-                {isReady && (
-                  <GerminationBadge enabled={true}>
-                    <Badge variant="ready">
-                      <View className="flex-row items-center">
-                        <Feather name={StatusIcons.success} size={12} color={colors.success[700]} />
-                        <Text className="ml-1 text-xs font-medium text-success-700">
-                          {t('capture.status.ready')}
-                        </Text>
-                      </View>
-                    </Badge>
-                  </GerminationBadge>
-                )}
-
-                {isFailed && (
-                  <Badge variant="failed">
-                    <View className="flex-row items-center">
-                      <Feather name={StatusIcons.error} size={12} color={colors.error[700]} />
-                      <Text className="ml-1 text-xs font-medium text-error-700">
-                        {t('capture.status.failed')}
-                      </Text>
-                    </View>
-                  </Badge>
-                )}
-              </View>
-
-              {/* Action Buttons - anchored right */}
-              <View className="flex-row items-center gap-2">
-                {/* Stop button - only visible when playing */}
-                {isPlaying && (
-                  <TouchableOpacity
-                    className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
-                    activeOpacity={0.7}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleStop(item);
-                    }}
-                  >
-                    <Feather name="square" size={22} color={colors.neutral[0]} />
-                  </TouchableOpacity>
-                )}
-
-                {/* Play/Pause button */}
-                <TouchableOpacity
-                  className="w-10 h-10 rounded-lg bg-success-500 items-center justify-center"
-                  activeOpacity={0.7}
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    handlePlayPause(item);
-                  }}
-                >
-                  <Feather
-                    name={isPlaying ? MediaIcons.pause : MediaIcons.play}
-                    size={24}
-                    color={colors.neutral[0]}
-                    style={!isPlaying ? { marginLeft: 24 * 0.15 } : undefined}
-                  />
-                </TouchableOpacity>
-
-                {/* Transcribe button (pending only) */}
-                {isCaptured && (
-                  <TouchableOpacity
-                    className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
-                    activeOpacity={0.7}
-                    onPress={(e) => {
-                      e.stopPropagation();
-                      handleTranscribe(item);
-                    }}
-                  >
-                    <Feather name="file-text" size={22} color={colors.neutral[0]} />
-                  </TouchableOpacity>
-                )}
-
-                {/* Retry button (failed only) - Story 2.8 */}
-                {isFailed && (
-                  <View>
-                    <TouchableOpacity
-                      className={`w-10 h-10 rounded-lg items-center justify-center ${
-                        canRetry ? 'bg-warning-500' : 'bg-neutral-300'
-                      }`}
-                      activeOpacity={canRetry ? 0.7 : 1}
-                      disabled={!canRetry}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        if (canRetry) {
-                          handleRetry(item.id);
-                        }
-                      }}
-                    >
-                      <Feather
-                        name="refresh-cw"
-                        size={22}
-                        color={canRetry ? colors.neutral[0] : colors.neutral[500]}
-                      />
-                    </TouchableOpacity>
-                    {/* Countdown message when disabled (AC3) */}
-                    {!canRetry && retryCheck.remainingTime && (
-                      <Text
-                        className="text-xs text-error-600 mt-1 text-center"
-                        style={{ maxWidth: 120 }}
-                      >
-                        {`Limite atteinte. ${retryCheck.remainingTime} min`}
-                      </Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            </View>
-          )}
-
-          {/* Content */}
-          <View>
-            {isAudio ? (
-              <>
-                {/* WAV debug buttons */}
-                {debugMode && item.wavPath && (
-                  <View className="flex-row items-center gap-2 mb-2">
-                    <TouchableOpacity
-                      className="flex-row items-center px-2 py-1.5 rounded-lg border"
-                      style={{
-                        backgroundColor: isDark ? colors.success[900] : colors.success[50],
-                        borderColor: isDark ? colors.success[700] : colors.success[200],
-                      }}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handlePlayWav(item);
-                      }}
-                    >
-                      <Feather
-                        name={isPlayingWav ? MediaIcons.pause : MediaIcons.volume}
-                        size={14}
-                        color={isDark ? colors.success[400] : colors.success[700]}
-                      />
-                      <Text
-                        className="ml-1 text-xs font-medium"
-                        style={{ color: isDark ? colors.success[400] : colors.success[700] }}
-                      >
-                        WAV
-                      </Text>
-                    </TouchableOpacity>
-                    <IconButton
-                      icon={ActionIcons.delete}
-                      size="sm"
-                      variant="ghost"
-                      color={isDark ? colors.error[400] : colors.error[600]}
-                      className="border"
-                      style={{
-                        backgroundColor: isDark ? colors.error[900] : colors.error[50],
-                        borderColor: isDark ? colors.error[700] : colors.error[200],
-                      }}
-                      onPress={(e) => {
-                        e.stopPropagation();
-                        handleDeleteWav(item);
-                      }}
-                    />
-                  </View>
-                )}
-
-                {/* Transcription result */}
-                {item.normalizedText ? (
-                  <Text className="text-base text-text-primary leading-relaxed" numberOfLines={4}>
-                    {item.normalizedText}
-                  </Text>
-                ) : isProcessing ? (
-                  <Text className="text-sm text-text-tertiary italic">
-                    {t('capture.status.processing')}...
-                  </Text>
-                ) : isCaptured ? (
-                  <Text className="text-sm text-text-tertiary italic">
-                    {autoTranscriptionEnabled
-                      ? t('capture.status.pending')
-                      : t('capture.status.manual')}
-                  </Text>
-                ) : isFailed ? (
-                  <View>
-                    <Text className="text-sm text-status-error italic">
-                      {debugMode && item.transcriptionError
-                        ? item.transcriptionError
-                        : t('capture.status.failed', 'La transcription a échoué')}
-                    </Text>
-                  </View>
-                ) : null}
-              </>
-            ) : (
-              /* Text capture - show content directly */
-              <Text className="text-base text-text-primary leading-relaxed" numberOfLines={4}>
-                {item.rawContent || item.normalizedText || t('captures.empty')}
-              </Text>
-            )}
-          </View>
-        </Card>
-      </TouchableOpacity>
-    </SwipeableCard>
-  );
+        <CaptureCard
+          item={item as CaptureWithQueue}
+          playback={{
+            isPlaying,
+            isPlayingWav,
+            hasModelAvailable,
+          }}
+          handlers={{
+            onPress: () => handleCapturePress(item.id),
+            onStop: () => handleStop(item),
+            onPlayPause: () => handlePlayPause(item),
+            onTranscribe: () => handleTranscribe(item),
+            onRetry: () => handleRetry(item.id),
+            onPlayWav: () => handlePlayWav(item),
+            onDeleteWav: () => handleDeleteWav(item),
+          }}
+        />
+      </SwipeableCard>
+    );
   };
 
   // Story 3.1 AC7: Skeleton loading cards (Liquid Glass design)
@@ -910,5 +639,392 @@ export function CapturesListScreen() {
 
       </View>
     </GestureHandlerRootView>
+  );
+}
+
+/**
+ * CaptureCard - Individual capture card component (co-localized)
+ *
+ * Dev Decision (Story 3.4): Co-localized for maintainability while respecting SRP.
+ * Trade-off: Component separation (readability/debug) vs YAGNI (single usage).
+ *
+ * Displays a single capture with:
+ * - Type indicator (audio/text)
+ * - Status badges (pending, processing, ready, failed)
+ * - Action buttons (play, transcribe, retry)
+ * - Transcription result or content
+ */
+interface CaptureCardProps {
+  item: CaptureWithQueue;
+  playback: {
+    isPlaying: boolean;
+    isPlayingWav: boolean;
+    hasModelAvailable: boolean | null;
+  };
+  handlers: {
+    onPress: () => void;
+    onStop: () => void;
+    onPlayPause: () => void;
+    onTranscribe: () => void;
+    onRetry: () => void;
+    onPlayWav?: () => void;
+    onDeleteWav?: () => void;
+  };
+}
+
+function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
+  const { t } = useTranslation();
+  const { isDark } = useTheme();
+  const debugMode = useSettingsStore((state) => state.debugMode);
+  const autoTranscriptionEnabled = useSettingsStore(
+    (state) => state.autoTranscriptionEnabled,
+  );
+
+  const { isPlaying, isPlayingWav, hasModelAvailable } = playback;
+  const { onPress, onStop, onPlayPause, onTranscribe, onRetry, onPlayWav, onDeleteWav } = handlers;
+
+  const isAudio = item.type === "audio";
+  const isProcessing = item.state === "processing";
+  const isReady = item.state === "ready";
+  const isFailed = item.state === "failed";
+  const isCaptured = item.state === "captured";
+
+  // Check retry rate limit
+  const retryService = new RetryLimitService();
+  const retryCheck = retryService.canRetry(item as any);
+  const canRetry = retryCheck.allowed;
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <Card variant="elevated" className="mb-3">
+        {/* Header: Type + Duration + Date */}
+        <View className="flex-row justify-between items-center mb-3">
+          <View className="flex-row items-center">
+            <View
+              className={`w-8 h-8 rounded-full items-center justify-center mr-2 ${
+                isAudio ? "bg-primary-subtle" : "bg-secondary-subtle"
+              }`}
+            >
+              <Feather
+                name={isAudio ? CaptureIcons.voice : CaptureIcons.text}
+                size={16}
+                color={isAudio ? colors.primary[500] : colors.secondary[500]}
+              />
+            </View>
+            <Text className="text-sm font-semibold text-text-primary">
+              {isAudio ? t("captures.types.audio") : t("captures.types.text")}
+            </Text>
+            {isAudio && !!item.duration && (
+              <Text className="text-sm text-text-tertiary ml-1">
+                {`· ${Math.floor(item.duration / 1000)}s`}
+              </Text>
+            )}
+          </View>
+          <Text className="text-xs text-text-tertiary">
+            {item.createdAt.toLocaleDateString("fr-FR", {
+              day: "numeric",
+              month: "short",
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
+          </Text>
+        </View>
+
+        {/* Status Badge + Action Buttons */}
+        {isAudio && (
+          <View className="flex-row items-center justify-between mb-3">
+            {/* Badge */}
+            <View>
+              {/* AC7: Show "Pending model" badge when no model available */}
+              {isCaptured &&
+                hasModelAvailable === false &&
+                !item.normalizedText && (
+                  <Badge variant="failed">
+                    <View className="flex-row items-center">
+                      <Feather
+                        name="alert-circle"
+                        size={12}
+                        color={colors.error[700]}
+                      />
+                      <Text className="ml-1 text-xs font-medium text-error-700">
+                        {t("capture.status.pendingModel", "Modèle requis")}
+                      </Text>
+                    </View>
+                  </Badge>
+                )}
+              {/* Show normal status badges when model is available or unknown */}
+              {isCaptured &&
+                (hasModelAvailable === true ||
+                  hasModelAvailable === null ||
+                  item.normalizedText) && (
+                  <PulsingBadge enabled={item.isInQueue}>
+                    <Badge variant={item.isInQueue ? "processing" : "pending"}>
+                      <View className="flex-row items-center">
+                        {item.isInQueue ? (
+                          <>
+                            <ActivityIndicator
+                              size="small"
+                              color={colors.info[600]}
+                            />
+                            <Text className="ml-2 text-xs font-medium text-info-700">
+                              {t("capture.status.queued")}
+                            </Text>
+                          </>
+                        ) : (
+                          <>
+                            <Feather
+                              name={StatusIcons.pending}
+                              size={12}
+                              color={colors.warning[700]}
+                            />
+                            <Text className="ml-1 text-xs font-medium text-warning-700">
+                              {autoTranscriptionEnabled
+                                ? t("capture.status.pending")
+                                : t("capture.status.manual")}
+                            </Text>
+                          </>
+                        )}
+                      </View>
+                    </Badge>
+                  </PulsingBadge>
+                )}
+
+              {isProcessing && (
+                <PulsingBadge enabled={true}>
+                  <Badge variant="processing">
+                    <View className="flex-row items-center">
+                      <ActivityIndicator
+                        size="small"
+                        color={colors.info[600]}
+                      />
+                      <Text className="ml-2 text-xs font-medium text-info-700">
+                        {t("capture.status.processing")}
+                      </Text>
+                    </View>
+                  </Badge>
+                </PulsingBadge>
+              )}
+
+              {isReady && (
+                <GerminationBadge enabled={true}>
+                  <Badge variant="ready">
+                    <View className="flex-row items-center">
+                      <Feather
+                        name={StatusIcons.success}
+                        size={12}
+                        color={colors.success[700]}
+                      />
+                      <Text className="ml-1 text-xs font-medium text-success-700">
+                        {t("capture.status.ready")}
+                      </Text>
+                    </View>
+                  </Badge>
+                </GerminationBadge>
+              )}
+
+              {isFailed && (
+                <Badge variant="failed">
+                  <View className="flex-row items-center">
+                    <Feather
+                      name={StatusIcons.error}
+                      size={12}
+                      color={colors.error[700]}
+                    />
+                    <Text className="ml-1 text-xs font-medium text-error-700">
+                      {t("capture.status.failed")}
+                    </Text>
+                  </View>
+                </Badge>
+              )}
+            </View>
+
+            {/* Action Buttons */}
+            <View className="flex-row items-center gap-2">
+              {/* Stop button */}
+              {isPlaying && (
+                <TouchableOpacity
+                  className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onStop();
+                  }}
+                >
+                  <Feather name="square" size={22} color={colors.neutral[0]} />
+                </TouchableOpacity>
+              )}
+
+              {/* Play/Pause button */}
+              <TouchableOpacity
+                className="w-10 h-10 rounded-lg bg-success-500 items-center justify-center"
+                activeOpacity={0.7}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  onPlayPause();
+                }}
+              >
+                <Feather
+                  name={isPlaying ? MediaIcons.pause : MediaIcons.play}
+                  size={24}
+                  color={colors.neutral[0]}
+                  style={!isPlaying ? { marginLeft: 24 * 0.15 } : undefined}
+                />
+              </TouchableOpacity>
+
+              {/* Transcribe button */}
+              {isCaptured && (
+                <TouchableOpacity
+                  className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
+                  activeOpacity={0.7}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    onTranscribe();
+                  }}
+                >
+                  <Feather
+                    name="file-text"
+                    size={22}
+                    color={colors.neutral[0]}
+                  />
+                </TouchableOpacity>
+              )}
+
+              {/* Retry button */}
+              {isFailed && (
+                <View>
+                  <TouchableOpacity
+                    className={`w-10 h-10 rounded-lg items-center justify-center ${
+                      canRetry ? "bg-warning-500" : "bg-neutral-300"
+                    }`}
+                    activeOpacity={canRetry ? 0.7 : 1}
+                    disabled={!canRetry}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      if (canRetry) {
+                        onRetry();
+                      }
+                    }}
+                  >
+                    <Feather
+                      name="refresh-cw"
+                      size={22}
+                      color={canRetry ? colors.neutral[0] : colors.neutral[500]}
+                    />
+                  </TouchableOpacity>
+                  {!canRetry && retryCheck.remainingTime && (
+                    <Text
+                      className="text-xs text-error-600 mt-1 text-center"
+                      style={{ maxWidth: 120 }}
+                    >
+                      {`Limite atteinte. ${retryCheck.remainingTime} min`}
+                    </Text>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* Content */}
+        <View>
+          {isAudio ? (
+            <>
+              {/* WAV debug buttons */}
+              {debugMode && item.wavPath && onPlayWav && onDeleteWav && (
+                <View className="flex-row items-center gap-2 mb-2">
+                  <TouchableOpacity
+                    className="flex-row items-center px-2 py-1.5 rounded-lg border"
+                    style={{
+                      backgroundColor: isDark
+                        ? colors.success[900]
+                        : colors.success[50],
+                      borderColor: isDark
+                        ? colors.success[700]
+                        : colors.success[200],
+                    }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onPlayWav();
+                    }}
+                  >
+                    <Feather
+                      name={isPlayingWav ? MediaIcons.pause : MediaIcons.volume}
+                      size={14}
+                      color={isDark ? colors.success[400] : colors.success[700]}
+                    />
+                    <Text
+                      className="ml-1 text-xs font-medium"
+                      style={{
+                        color: isDark
+                          ? colors.success[400]
+                          : colors.success[700],
+                      }}
+                    >
+                      WAV
+                    </Text>
+                  </TouchableOpacity>
+                  <IconButton
+                    icon={ActionIcons.delete}
+                    size="sm"
+                    variant="ghost"
+                    color={isDark ? colors.error[400] : colors.error[600]}
+                    className="border"
+                    style={{
+                      backgroundColor: isDark
+                        ? colors.error[900]
+                        : colors.error[50],
+                      borderColor: isDark
+                        ? colors.error[700]
+                        : colors.error[200],
+                    }}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      onDeleteWav();
+                    }}
+                  />
+                </View>
+              )}
+
+              {/* Transcription result */}
+              {item.normalizedText ? (
+                <Text
+                  className="text-base text-text-primary leading-relaxed"
+                  numberOfLines={4}
+                >
+                  {item.normalizedText}
+                </Text>
+              ) : isProcessing ? (
+                <Text className="text-sm text-text-tertiary italic">
+                  {t("capture.status.processing")}
+                  {"..."}
+                </Text>
+              ) : isCaptured ? (
+                <Text className="text-sm text-text-tertiary italic">
+                  {autoTranscriptionEnabled
+                    ? t("capture.status.pending")
+                    : t("capture.status.manual")}
+                </Text>
+              ) : isFailed ? (
+                <View>
+                  <Text className="text-sm text-status-error italic">
+                    {debugMode && item.transcriptionError
+                      ? item.transcriptionError
+                      : t("capture.status.failed", "La transcription a échoué")}
+                  </Text>
+                </View>
+              ) : null}
+            </>
+          ) : (
+            /* Text capture */
+            <Text
+              className="text-base text-text-primary leading-relaxed"
+              numberOfLines={4}
+            >
+              {item.rawContent || item.normalizedText || t("captures.empty")}
+            </Text>
+          )}
+        </View>
+      </Card>
+    </TouchableOpacity>
   );
 }
