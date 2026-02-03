@@ -261,12 +261,12 @@ const styles = StyleSheet.create({
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
   },
   sniffingControl: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+
   },
   sniffingLabel: {
     color: '#fff',

@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 8,
+
     marginTop: 8,
   },
   refreshButton: {

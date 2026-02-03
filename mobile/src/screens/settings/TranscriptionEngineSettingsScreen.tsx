@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   featuresRow: {
     flexDirection: 'row',
-    gap: 8,
+
   },
   featureBadge: {
     backgroundColor: '#E8F5E9',

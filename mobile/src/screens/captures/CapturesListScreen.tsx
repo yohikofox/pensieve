@@ -54,11 +54,11 @@ import { CaptureIcons, StatusIcons, MediaIcons, ActionIcons } from '../../design
 import { SkeletonCaptureCard } from '../../components/skeletons/SkeletonCaptureCard';
 import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
+import { MaturityBadge } from '../../components/animations/MaturityBadge';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
 import { FLATLIST_PERFORMANCE } from '../../constants/performance';
-import { RetryLimitService } from '../../contexts/Normalization/services/RetryLimitService';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -697,7 +697,7 @@ function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
   return (
     <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
       <Card variant="elevated" className="mb-3">
-        {/* Header: Type + Duration + Date */}
+        {/* Header: Type + Duration + Date + Maturity Badge */}
         <View className="flex-row justify-between items-center mb-3">
           <View className="flex-row items-center">
             <View
@@ -720,14 +720,18 @@ function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
               </Text>
             )}
           </View>
-          <Text className="text-xs text-text-tertiary">
-            {item.createdAt.toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "short",
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </Text>
+          <View className="flex-row items-center">
+            {/* Story 3.4 AC7: Maturity badge - "Jardin d'idées" visual evolution */}
+            <MaturityBadge capturedAt={item.capturedAt || item.createdAt} variant="minimal" />
+            <Text className="text-xs text-text-tertiary ml-2">
+              {item.createdAt.toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "short",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
+          </View>
         </View>
 
         {/* Status Badge + Action Buttons */}

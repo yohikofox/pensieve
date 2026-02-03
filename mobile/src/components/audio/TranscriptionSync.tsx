@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: spacing[2], // 8
+
   },
   word: {
     fontSize: typography.fontSize.lg, // 17 (closest to 16)

@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   },
   tabs: {
     paddingHorizontal: 16,
-    gap: 8,
+
   },
   tab: {
     paddingHorizontal: 16,

@@ -553,12 +553,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
-    gap: 8,
+
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
   },
   title: {
     fontSize: 16,
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+
   },
   warningText: {
     fontSize: 12,
@@ -698,7 +698,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 10,
+
     flexWrap: 'wrap',
   },
   downloadButton: {
@@ -743,7 +743,7 @@ const styles = StyleSheet.create({
   },
   downloadActionsRow: {
     flexDirection: 'row',
-    gap: 10,
+
     marginTop: 12,
     marginBottom: 8,
   },
@@ -754,7 +754,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: 8,
-    gap: 6,
+
     flex: 1,
   },
   pauseButton: {

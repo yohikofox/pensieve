@@ -96,7 +96,7 @@ export function SkeletonCaptureCard({ delay = 0 }: SkeletonCaptureCardProps) {
       />
 
       {/* Content lines */}
-      <View style={styles.content}>
+      <View className="gap-2">
         <Animated.View
           style={[
             styles.contentLine,
@@ -167,9 +167,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 12,
   },
-  content: {
-    gap: 8,
-  },
+  // content: migrated to NativeWind className="gap-2"
   contentLine: {
     height: 14,
     borderRadius: 4,

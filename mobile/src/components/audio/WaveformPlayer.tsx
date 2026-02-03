@@ -10,7 +10,7 @@
  * Uses Expo SDK 54 expo-audio API
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   TouchableOpacity,
@@ -18,13 +18,26 @@ import {
   Text,
   ActivityIndicator,
   GestureResponderEvent,
-} from 'react-native';
-import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
-import { Feather } from '@expo/vector-icons';
-import { colors, spacing, borderRadius, typography, componentSizes } from '../../design-system/tokens';
-import { useTheme } from '../../hooks/useTheme';
-import { useWaveformService } from '../../contexts/capture/hooks/useWaveformService';
-import { METADATA_KEYS, type CaptureMetadata } from '../../contexts/capture/domain/CaptureMetadata.model';
+} from "react-native";
+import {
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  setAudioModeAsync,
+} from "expo-audio";
+import { Feather } from "@expo/vector-icons";
+import {
+  colors,
+  spacing,
+  borderRadius,
+  typography,
+  componentSizes,
+} from "../../design-system/tokens";
+import { useTheme } from "../../hooks/useTheme";
+import { useWaveformService } from "../../contexts/capture/hooks/useWaveformService";
+import {
+  METADATA_KEYS,
+  type CaptureMetadata,
+} from "../../contexts/capture/domain/CaptureMetadata.model";
 
 interface WaveformPlayerProps {
   audioUri: string;
@@ -94,42 +107,51 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
       try {
         // Priority 1: Try to read from cached metadata (instant)
         if (metadata && metadata[METADATA_KEYS.WAVEFORM_DATA]?.value) {
-          console.log('📦 Loading waveform from cache');
-          const cachedData = JSON.parse(metadata[METADATA_KEYS.WAVEFORM_DATA].value);
+          console.log("📦 Loading waveform from cache");
+          const cachedData = JSON.parse(
+            metadata[METADATA_KEYS.WAVEFORM_DATA].value,
+          );
 
           // Normalize cached data
           const maxValue = Math.max(...cachedData);
-          const normalizedData = maxValue > 0
-            ? cachedData.map((v: number) => v / maxValue)
-            : cachedData;
+          const normalizedData =
+            maxValue > 0
+              ? cachedData.map((v: number) => v / maxValue)
+              : cachedData;
 
-          console.log('✅ Loaded', normalizedData.length, 'samples from cache');
+          console.log("✅ Loaded", normalizedData.length, "samples from cache");
           setWaveformData(normalizedData);
           return;
         }
 
         // Priority 2: Extract + save to DB via service (fallback for old captures)
         if (!captureId) {
-          console.warn('⚠️ No captureId provided, cannot save waveform to DB');
+          console.warn("⚠️ No captureId provided, cannot save waveform to DB");
           // Fallback to mock data
-          const mockData = Array.from({ length: waveformBars }, () => Math.random() * 0.5 + 0.3);
+          const mockData = Array.from(
+            { length: waveformBars },
+            () => Math.random() * 0.5 + 0.3,
+          );
           setWaveformData(mockData);
           return;
         }
 
-        console.log('🔄 Extracting waveform and saving to DB');
+        console.log("🔄 Extracting waveform and saving to DB");
         const normalizedData = await waveformService.extractAndSave(
           captureId,
           audioUri,
-          waveformBars
+          waveformBars,
         );
 
-        console.log('✅ Extracted, saved, and normalized');
+        console.log("✅ Extracted, saved, and normalized");
         setWaveformData(normalizedData);
       } catch (err) {
-        console.error('Failed to extract waveform:', err);
+        console.error("Failed to extract waveform:", err);
         // Fallback to mock data if extraction fails
-        const mockData = Array.from({ length: waveformBars }, () => Math.random() * 0.5 + 0.3);
+        const mockData = Array.from(
+          { length: waveformBars },
+          () => Math.random() * 0.5 + 0.3,
+        );
         setWaveformData(mockData);
       }
     };
@@ -149,8 +171,10 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
         });
         setIsLoading(false);
       } catch (err) {
-        console.error('Failed to configure audio:', err);
-        setError(err instanceof Error ? err.message : 'Failed to configure audio');
+        console.error("Failed to configure audio:", err);
+        setError(
+          err instanceof Error ? err.message : "Failed to configure audio",
+        );
         setIsLoading(false);
       }
     };
@@ -172,7 +196,11 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    * Handle playback end
    */
   useEffect(() => {
-    if (status.playing === false && status.currentTime >= status.duration && status.duration > 0) {
+    if (
+      status.playing === false &&
+      status.currentTime >= status.duration &&
+      status.duration > 0
+    ) {
       if (onPlaybackEnd) {
         onPlaybackEnd();
       }
@@ -220,7 +248,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
       const delta = ((now - lastUpdateTime.current) / 1000) * currentSpeed;
       lastUpdateTime.current = now;
 
-      setDisplayTime(prev => Math.min(prev + delta, status.duration));
+      setDisplayTime((prev) => Math.min(prev + delta, status.duration));
       animationFrameId.current = requestAnimationFrame(animate);
     };
 
@@ -243,11 +271,11 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
       try {
         // expo-audio SDK 54+ supports setPlaybackRate(rate, quality)
         // Known issues: brief pause/restart when changing (Issue #35174)
-        if (typeof player.setPlaybackRate === 'function') {
-          player.setPlaybackRate(speed, 'high');
+        if (typeof player.setPlaybackRate === "function") {
+          player.setPlaybackRate(speed, "high");
         }
       } catch (err) {
-        console.warn('[WaveformPlayer] Failed to set playback rate:', err);
+        console.warn("[WaveformPlayer] Failed to set playback rate:", err);
       }
     }
   }, [speedIndex, status.isLoaded, player]);
@@ -268,8 +296,8 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
         player.play();
       }
     } catch (err) {
-      console.error('Failed to toggle playback:', err);
-      setError(err instanceof Error ? err.message : 'Playback failed');
+      console.error("Failed to toggle playback:", err);
+      setError(err instanceof Error ? err.message : "Playback failed");
     }
   }, [player, status.playing, status.currentTime, status.duration]);
 
@@ -277,7 +305,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    * Cycle through speed options
    */
   const handleSpeedChange = useCallback(() => {
-    setSpeedIndex(prev => (prev + 1) % SPEED_OPTIONS.length);
+    setSpeedIndex((prev) => (prev + 1) % SPEED_OPTIONS.length);
   }, []);
 
   /**
@@ -295,7 +323,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
       player.seekTo(newPosition);
       setDisplayTime(newPosition);
     },
-    [player, status.isLoaded, status.duration]
+    [player, status.isLoaded, status.duration],
   );
 
   /**
@@ -303,7 +331,10 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    */
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player-loading">
+      <View
+        style={[styles.container, { backgroundColor: themeColors.containerBg }]}
+        testID="waveform-player-loading"
+      >
         <ActivityIndicator size="small" color={themeColors.playButtonBg} />
       </View>
     );
@@ -314,9 +345,14 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    */
   if (error) {
     return (
-      <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player-error">
+      <View
+        style={[styles.container, { backgroundColor: themeColors.containerBg }]}
+        testID="waveform-player-error"
+      >
         <Feather name="alert-circle" size={20} color={colors.error[500]} />
-        <Text style={[styles.errorText, { color: colors.error[500] }]}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.error[500] }]}>
+          {error}
+        </Text>
       </View>
     );
   }
@@ -326,15 +362,21 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   const currentSpeed = SPEED_OPTIONS[speedIndex];
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player">
+    <View
+      style={[styles.container, { backgroundColor: themeColors.containerBg }]}
+      testID="waveform-player"
+    >
       {/* Play/Pause Button */}
       <TouchableOpacity
-        style={[styles.playButton, { backgroundColor: themeColors.playButtonBg }]}
+        style={[
+          styles.playButton,
+          { backgroundColor: themeColors.playButtonBg },
+        ]}
         onPress={handlePlayPause}
-        testID={isPlaying ? 'waveform-pause-button' : 'waveform-play-button'}
+        testID={isPlaying ? "waveform-pause-button" : "waveform-play-button"}
       >
         <Feather
-          name={isPlaying ? 'pause' : 'play'}
+          name={isPlaying ? "pause" : "play"}
           size={20}
           color={themeColors.playButtonIcon}
         />
@@ -370,11 +412,16 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
 
       {/* Speed Control */}
       <TouchableOpacity
-        style={[styles.speedButton, { backgroundColor: themeColors.speedButtonBg }]}
+        style={[
+          styles.speedButton,
+          { backgroundColor: themeColors.speedButtonBg },
+        ]}
         onPress={handleSpeedChange}
         testID="waveform-speed-button"
       >
-        <Text style={[styles.speedText, { color: themeColors.speedButtonText }]}>
+        <Text
+          style={[styles.speedText, { color: themeColors.speedButtonText }]}
+        >
           {currentSpeed}x
         </Text>
       </TouchableOpacity>
@@ -384,13 +431,13 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     // backgroundColor: Applied dynamically with theme
-    borderRadius: borderRadius['3xl'], // 24
+    borderRadius: borderRadius["3xl"], // 24
     paddingVertical: spacing[3], // 12
     paddingHorizontal: spacing[4], // 16
-    gap: spacing[3], // 12
+
     height: 72, // Custom size for audio player
   },
   playButton: {
@@ -398,29 +445,29 @@ const styles = StyleSheet.create({
     height: componentSizes.icon.xl, // 40
     borderRadius: borderRadius.base, // 8
     // backgroundColor: Applied dynamically with theme
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   waveformContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing[0.5], // 2
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing[0.5],
     height: 48, // Custom height for waveform
   },
   waveformBar: {
     flex: 1,
-    borderRadius: spacing[0.5], // 2
+    borderRadius: spacing["px"], // 2
     minHeight: spacing[1], // 4
     // backgroundColor: Applied dynamically per bar (played/unplayed)
   },
   speedButton: {
     width: componentSizes.icon.xl, // 40
     height: componentSizes.icon.xl, // 40
-    borderRadius: borderRadius['2xl'], // 20 (circular)
+    borderRadius: borderRadius["2xl"], // 20 (circular)
     // backgroundColor: Applied dynamically with theme
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   speedText: {
     fontSize: typography.fontSize.sm, // 13 (closest to 12)

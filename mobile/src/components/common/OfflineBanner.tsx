@@ -82,34 +82,22 @@ export function OfflineBanner({
 
   return (
     <Animated.View
-      style={[
-        styles.container,
-        {
-          backgroundColor,
-          borderBottomColor: borderColor,
-          transform: [{ translateY: slideAnim }],
-          opacity: opacityAnim,
-        },
-      ]}
+      className="flex-row items-center justify-center py-2 px-4 border-b gap-2"
+      style={{
+        backgroundColor,
+        borderBottomColor: borderColor,
+        transform: [{ translateY: slideAnim }],
+        opacity: opacityAnim,
+      }}
     >
       <Feather name="wifi-off" size={16} color={iconColor} />
-      <Text style={[styles.text, { color: textColor }]}>{message}</Text>
+      <Text className="text-sm font-medium" style={{ color: textColor }}>
+        {message}
+      </Text>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderBottomWidth: 1,
-    gap: 8,
-  },
-  text: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  // Styles migrated to NativeWind className
 });

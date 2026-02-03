@@ -18,3 +18,13 @@ Fonctionnalité: Story 3.4 - Navigation et Interactions dans le Feed
     Quand j'utilise un geste de retour spécifique à la plateforme
     Alors la navigation respecte les conventions de la plateforme
     Et la transition de retour est fluide et prévisible
+
+  Scénario: AC7 - Évolution visuelle "Jardin d'idées"
+    Étant donné je consulte le feed avec des captures d'âges différents
+    Quand je vois une capture récente (< 1 jour)
+    Alors elle affiche un indicateur de maturité "nouvelle" avec une lueur verte subtile
+    Quand je vois une capture en croissance (1-7 jours)
+    Alors elle affiche un indicateur de maturité "en croissance" avec une lueur bleue subtile
+    Quand je vois une capture mature (> 7 jours)
+    Alors elle affiche un indicateur de maturité "mature" avec une lueur ambrée subtile
+    Et l'esthétique globale est calme et contemplative

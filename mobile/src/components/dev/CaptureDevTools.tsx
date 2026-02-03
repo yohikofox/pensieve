@@ -549,7 +549,7 @@ const styles = StyleSheet.create({
   },
   badgesRow: {
     flexDirection: 'row',
-    gap: 8,
+
     marginBottom: 8,
   },
   networkBadge: {
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
   },
   badgesContainer: {
     flexDirection: 'row',
-    gap: 8,
+
   },
   syncBadge: {
     paddingHorizontal: 12,
@@ -641,7 +641,7 @@ const styles = StyleSheet.create({
   statsContainer: {
     flexDirection: 'row',
     padding: 16,
-    gap: 12,
+
     backgroundColor: '#2D2D2D',
     marginHorizontal: 16,
     marginTop: 8,
@@ -666,7 +666,7 @@ const styles = StyleSheet.create({
   actionButtonsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 16,
-    gap: 12,
+
     marginTop: 12,
   },
   actionButton: {

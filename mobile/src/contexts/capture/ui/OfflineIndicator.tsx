@@ -151,7 +151,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF9500", // Orange for warning
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
     borderRadius: 8,
     marginHorizontal: 16,
     marginTop: 8,
@@ -172,7 +171,6 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    gap: 2,
   },
   title: {
     fontSize: 14,

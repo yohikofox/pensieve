@@ -459,12 +459,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
-    gap: 8,
+
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
   },
   title: {
     fontSize: 16,
@@ -593,7 +593,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
+
   },
   warningText: {
     fontSize: 12,
@@ -601,7 +601,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-    gap: 10,
+
     flexWrap: 'wrap',
   },
   downloadButton: {

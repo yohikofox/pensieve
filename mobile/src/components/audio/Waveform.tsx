@@ -10,15 +10,15 @@
  * Uses expo-audio useAudioSampleListener for native sample access
  */
 
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef } from "react";
 import {
   View,
   TouchableWithoutFeedback,
   StyleSheet,
   ActivityIndicator,
-} from 'react-native';
-import { useAudioSampleListener } from 'expo-audio';
-import { colors, spacing, borderRadius } from '../../design-system/tokens';
+} from "react-native";
+import { useAudioSampleListener } from "expo-audio";
+import { colors, spacing, borderRadius } from "../../design-system/tokens";
 
 interface WaveformProps {
   player: any;
@@ -44,47 +44,53 @@ export const Waveform: React.FC<WaveformProps> = ({
   /**
    * Listen to audio samples and build waveform data
    */
-  useAudioSampleListener(player, useCallback((sample) => {
-    if (!sample || !sample.channels || sample.channels.length === 0) {
-      return;
-    }
+  useAudioSampleListener(
+    player,
+    useCallback(
+      (sample) => {
+        if (!sample || !sample.channels || sample.channels.length === 0) {
+          return;
+        }
 
-    const frames = sample.channels[0].frames; // Use first channel (mono or left)
+        const frames = sample.channels[0].frames; // Use first channel (mono or left)
 
-    if (frames.length === 0) {
-      return;
-    }
+        if (frames.length === 0) {
+          return;
+        }
 
-    // Downsample frames to match desired bar count
-    const samplesPerBar = Math.ceil(frames.length / barCount);
-    const bars: number[] = [];
+        // Downsample frames to match desired bar count
+        const samplesPerBar = Math.ceil(frames.length / barCount);
+        const bars: number[] = [];
 
-    for (let i = 0; i < barCount; i++) {
-      const start = i * samplesPerBar;
-      const end = Math.min(start + samplesPerBar, frames.length);
+        for (let i = 0; i < barCount; i++) {
+          const start = i * samplesPerBar;
+          const end = Math.min(start + samplesPerBar, frames.length);
 
-      // Calculate RMS (Root Mean Square) for this segment
-      let sum = 0;
-      for (let j = start; j < end; j++) {
-        sum += frames[j] * frames[j];
-      }
-      const rms = Math.sqrt(sum / (end - start));
+          // Calculate RMS (Root Mean Square) for this segment
+          let sum = 0;
+          for (let j = start; j < end; j++) {
+            sum += frames[j] * frames[j];
+          }
+          const rms = Math.sqrt(sum / (end - start));
 
-      // Normalize to 0-1 range (frames are already -1 to 1)
-      bars.push(rms);
-    }
+          // Normalize to 0-1 range (frames are already -1 to 1)
+          bars.push(rms);
+        }
 
-    setWaveformData((prevData) => {
-      // Merge new data (keep accumulating samples)
-      if (prevData.length === 0) {
-        setIsLoading(false);
-        return bars;
-      }
+        setWaveformData((prevData) => {
+          // Merge new data (keep accumulating samples)
+          if (prevData.length === 0) {
+            setIsLoading(false);
+            return bars;
+          }
 
-      // Average with existing data for smoother waveform
-      return prevData.map((val, idx) => (val + (bars[idx] || 0)) / 2);
-    });
-  }, [barCount]));
+          // Average with existing data for smoother waveform
+          return prevData.map((val, idx) => (val + (bars[idx] || 0)) / 2);
+        });
+      },
+      [barCount],
+    ),
+  );
 
   /**
    * Handle tap-to-seek
@@ -100,13 +106,14 @@ export const Waveform: React.FC<WaveformProps> = ({
         onSeek(seekPosition);
       });
     },
-    [onSeek, duration]
+    [onSeek, duration],
   );
 
   /**
    * Calculate position indicator percentage
    */
-  const positionPercentage = duration > 0 ? (currentPosition / duration) * 100 : 0;
+  const positionPercentage =
+    duration > 0 ? (currentPosition / duration) * 100 : 0;
 
   /**
    * Render loading state
@@ -167,22 +174,21 @@ export const Waveform: React.FC<WaveformProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: '100%',
+    width: "100%",
     backgroundColor: colors.neutral[50],
     borderRadius: borderRadius.base, // 8
-    overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    overflow: "hidden",
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
   },
   barsContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    width: '100%',
-    height: '100%',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    width: "100%",
+    height: "100%",
     paddingHorizontal: spacing[1], // 4
-    gap: spacing.px, // 1
   },
   bar: {
     flex: 1,
@@ -190,7 +196,7 @@ const styles = StyleSheet.create({
     minHeight: spacing[0.5], // 2
   },
   positionIndicator: {
-    position: 'absolute',
+    position: "absolute",
     width: spacing[0.5], // 2
     backgroundColor: colors.error[500],
     opacity: 0.8,

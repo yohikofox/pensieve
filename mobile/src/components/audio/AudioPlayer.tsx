@@ -349,13 +349,13 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg, // 12
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[3], // 12
+
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing[4], // 16
+
     marginBottom: spacing[4], // 16
   },
   controlButton: {

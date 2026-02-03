@@ -866,7 +866,7 @@ const styles = StyleSheet.create({
   tpuTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
     marginBottom: 4,
   },
   tpuTitle: {
@@ -882,7 +882,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 8,
-    gap: 6,
+
   },
   tpuRecommendation: {
     fontSize: 13,
@@ -992,7 +992,7 @@ const styles = StyleSheet.create({
   debugTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
   },
   debugTitle: {
     fontSize: 15,
@@ -1031,7 +1031,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     marginTop: 12,
-    gap: 8,
+
   },
   debugButton: {
     paddingHorizontal: 16,
@@ -1041,7 +1041,7 @@ const styles = StyleSheet.create({
   debugButtonContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+
   },
   debugButtonPrimary: {
     backgroundColor: '#FF9800',
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   modalButtons: {
-    gap: 12,
+
   },
   taskButton: {
     flexDirection: 'row',
@@ -1173,7 +1173,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 12,
     borderWidth: 2,
-    gap: 12,
+
   },
   taskButtonText: {
     fontSize: 16,

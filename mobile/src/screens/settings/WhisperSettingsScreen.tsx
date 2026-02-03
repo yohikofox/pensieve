@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
   suggestionActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+
   },
   addButton: {
     backgroundColor: '#4CAF50',

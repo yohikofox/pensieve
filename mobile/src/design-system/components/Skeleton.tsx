@@ -69,12 +69,15 @@ interface SkeletonGroupProps {
 }
 
 export function SkeletonGroup({ count = 3, spacing = 12, children }: SkeletonGroupProps) {
+  // Convert spacing (px) to Tailwind gap class
+  const gapClass = spacing <= 4 ? 'gap-1' : spacing <= 8 ? 'gap-2' : spacing <= 12 ? 'gap-3' : 'gap-4';
+
   if (children) {
-    return <View style={{ gap: spacing }}>{children}</View>;
+    return <View className={gapClass}>{children}</View>;
   }
 
   return (
-    <View style={{ gap: spacing }}>
+    <View className={gapClass}>
       {Array.from({ length: count }).map((_, index) => (
         <Skeleton key={index} height={16} />
       ))}

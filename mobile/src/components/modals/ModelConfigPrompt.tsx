@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   buttons: {
-    gap: 12,
+
   },
   primaryButton: {
     flexDirection: 'row',
