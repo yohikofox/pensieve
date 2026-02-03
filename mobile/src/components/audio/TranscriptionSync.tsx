@@ -16,7 +16,7 @@ import {
   ScrollView,
   StyleSheet,
 } from 'react-native';
-import { colors } from '../../design-system/tokens';
+import { colors, spacing, borderRadius, typography } from '../../design-system/tokens';
 
 interface TranscriptionSyncProps {
   transcription: string;
@@ -171,25 +171,25 @@ const styles = StyleSheet.create({
     backgroundColor: colors.neutral[0],
   },
   contentContainer: {
-    padding: 16,
+    padding: spacing[4], // 16
   },
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing[2], // 8
   },
   word: {
-    fontSize: 16,
+    fontSize: typography.fontSize.lg, // 17 (closest to 16)
     color: colors.neutral[700],
-    lineHeight: 24,
+    lineHeight: 24, // Custom lineHeight (ratio would be 24/17=1.41)
   },
   highlightedWord: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: typography.fontSize.lg, // 17
+    fontWeight: typography.fontWeight.bold, // '700'
     color: colors.primary[600],
     backgroundColor: colors.primary[50],
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    borderRadius: 4,
+    paddingHorizontal: spacing[1], // 4
+    paddingVertical: spacing[0.5], // 2
+    borderRadius: borderRadius.sm, // 4
   },
 });

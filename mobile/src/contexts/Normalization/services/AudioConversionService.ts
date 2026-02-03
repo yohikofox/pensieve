@@ -145,8 +145,9 @@ export class AudioConversionService {
       const monoBuffer = await this.mixToMono(audioBuffer);
 
       // Step 2.5: Task 7.2 - Trim silence from beginning and end
-      // Fixed: Only trim silence if >= 1 second of consecutive silence, with 500ms safety margin
-      const trimmedBuffer = this.trimSilence(monoBuffer);
+      // DISABLED: User reported last word being cut off, so we keep full audio
+      // const trimmedBuffer = this.trimSilence(monoBuffer);
+      const trimmedBuffer = monoBuffer; // No trimming
 
       // Step 2.6: Task 7.2 - Check for long audio (>10min)
       this.checkLongAudio(trimmedBuffer);

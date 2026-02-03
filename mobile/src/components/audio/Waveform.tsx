@@ -18,7 +18,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useAudioSampleListener } from 'expo-audio';
-import { colors } from '../../design-system/tokens';
+import { colors, spacing, borderRadius } from '../../design-system/tokens';
 
 interface WaveformProps {
   player: any;
@@ -169,7 +169,7 @@ const styles = StyleSheet.create({
   container: {
     width: '100%',
     backgroundColor: colors.neutral[50],
-    borderRadius: 8,
+    borderRadius: borderRadius.base, // 8
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
@@ -181,17 +181,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     width: '100%',
     height: '100%',
-    paddingHorizontal: 4,
-    gap: 1,
+    paddingHorizontal: spacing[1], // 4
+    gap: spacing.px, // 1
   },
   bar: {
     flex: 1,
-    borderRadius: 2,
-    minHeight: 2,
+    borderRadius: spacing[0.5], // 2
+    minHeight: spacing[0.5], // 2
   },
   positionIndicator: {
     position: 'absolute',
-    width: 2,
+    width: spacing[0.5], // 2
     backgroundColor: colors.error[500],
     opacity: 0.8,
   },

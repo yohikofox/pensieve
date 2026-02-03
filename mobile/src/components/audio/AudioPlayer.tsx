@@ -22,7 +22,7 @@ import {
 } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../../design-system/tokens';
+import { colors, spacing, borderRadius, typography } from '../../design-system/tokens';
 import { useTheme } from '../../hooks/useTheme';
 import { ProgressBar } from './ProgressBar';
 
@@ -177,12 +177,17 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
    */
   const handlePlay = useCallback(async () => {
     try {
+      // If at the end, reset to beginning before playing
+      if (status.currentTime >= status.duration && status.duration > 0) {
+        player.seekTo(0);
+        setDisplayTime(0);
+      }
       player.play();
     } catch (err) {
       console.error('Failed to play audio:', err);
       setError(err instanceof Error ? err.message : 'Playback failed');
     }
-  }, [player]);
+  }, [player, status.currentTime, status.duration]);
 
   /**
    * Pause audio
@@ -339,58 +344,58 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    padding: 16,
+    padding: spacing[4], // 16
     backgroundColor: colors.neutral[0],
-    borderRadius: 12,
+    borderRadius: borderRadius.lg, // 12
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: spacing[3], // 12
   },
   controlsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 16,
-    marginBottom: 16,
+    gap: spacing[4], // 16
+    marginBottom: spacing[4], // 16
   },
   controlButton: {
-    width: 56,
+    width: 56, // Custom size for control buttons
     height: 56,
-    borderRadius: 28,
+    borderRadius: borderRadius.full, // Circular (28)
     alignItems: 'center',
     justifyContent: 'center',
   },
   controlLabel: {
-    fontSize: 10,
-    marginTop: 2,
-    fontWeight: '600',
+    fontSize: typography.fontSize.xs, // 11 (closest to 10)
+    marginTop: spacing[0.5], // 2
+    fontWeight: typography.fontWeight.semibold, // '600'
   },
   playButton: {
-    width: 64,
+    width: 64, // Custom size for main play button
     height: 64,
-    borderRadius: 32,
+    borderRadius: borderRadius.full, // Circular (32)
     backgroundColor: colors.primary[500],
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 8,
+    marginBottom: spacing[2], // 8
   },
   slider: {
     width: '100%',
-    height: 40,
+    height: 40, // Custom slider height
   },
   timeText: {
-    fontSize: 14,
+    fontSize: typography.fontSize.base, // 15 (closest to 14)
     color: colors.neutral[600],
-    fontFamily: 'monospace',
+    fontFamily: typography.fontFamily.mono, // 'monospace'
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: spacing[3], // 12
+    fontSize: typography.fontSize.base, // 15
     color: colors.neutral[600],
   },
   errorText: {
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: spacing[3], // 12
+    fontSize: typography.fontSize.base, // 15
     color: colors.error[500],
     textAlign: 'center',
   },

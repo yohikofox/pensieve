@@ -17,6 +17,9 @@ import type { LLMModelId, LLMTask } from '../contexts/Normalization/services/LLM
 // Theme preference type
 export type ThemePreference = 'light' | 'dark' | 'system';
 
+// Audio player type (Story 3.2b)
+export type AudioPlayerType = 'waveform' | 'classic';
+
 // Debug button position (anchored to edge)
 export interface DebugButtonPosition {
   edge: 'left' | 'right';
@@ -40,6 +43,9 @@ interface SettingsState {
   // Theme preference - 'light', 'dark', or 'system' (follows OS)
   themePreference: ThemePreference;
 
+  // Audio player type - 'waveform' (default) or 'classic' (Story 3.2b)
+  audioPlayerType: AudioPlayerType;
+
   // Debug mode - enables all debug features (WAV player, etc.)
   // Can be enabled by user permissions in production
   debugMode: boolean;
@@ -60,6 +66,7 @@ interface SettingsState {
 
   // Actions
   setThemePreference: (preference: ThemePreference) => void;
+  setAudioPlayerType: (type: AudioPlayerType) => void;
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
   setShowCalibrationGrid: (show: boolean) => void;
@@ -78,6 +85,9 @@ export const useSettingsStore = create<SettingsState>()(
       (set, get) => ({
         // Initial state - system theme by default
         themePreference: 'system' as ThemePreference,
+
+        // Initial state - waveform player by default (Story 3.2b)
+        audioPlayerType: 'waveform' as AudioPlayerType,
 
         // Initial state - debug mode off by default
         debugMode: false,
@@ -106,6 +116,11 @@ export const useSettingsStore = create<SettingsState>()(
         setThemePreference: (preference: ThemePreference) => {
           set({ themePreference: preference });
           console.log('[SettingsStore] Theme preference:', preference);
+        },
+
+        setAudioPlayerType: (type: AudioPlayerType) => {
+          set({ audioPlayerType: type });
+          console.log('[SettingsStore] Audio player type:', type);
         },
 
         setDebugMode: (enabled: boolean) => {

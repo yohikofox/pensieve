@@ -21,7 +21,8 @@ import {
 } from 'react-native';
 import { useAudioPlayer, useAudioPlayerStatus, setAudioModeAsync } from 'expo-audio';
 import { Feather } from '@expo/vector-icons';
-import { colors } from '../../design-system/tokens';
+import { colors, spacing, borderRadius, typography, componentSizes } from '../../design-system/tokens';
+import { useTheme } from '../../hooks/useTheme';
 import { useWaveformService } from '../../contexts/capture/hooks/useWaveformService';
 import { METADATA_KEYS, type CaptureMetadata } from '../../contexts/capture/domain/CaptureMetadata.model';
 
@@ -35,6 +36,27 @@ interface WaveformPlayerProps {
 }
 
 const SPEED_OPTIONS = [0.5, 1, 1.5, 2];
+
+/**
+ * Theme-adaptive colors for WaveformPlayer
+ * Matches the card style used in CaptureDetailScreen
+ */
+const getThemeColors = (isDark: boolean) => ({
+  // Container: Matches card background from CaptureDetailScreen
+  containerBg: isDark ? colors.neutral[900] : colors.neutral[50],
+
+  // Play button: Inverted from container for contrast
+  playButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
+  playButtonIcon: isDark ? colors.neutral[900] : colors.neutral[0],
+
+  // Speed button: Same as play button for consistency
+  speedButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
+  speedButtonText: isDark ? colors.neutral[900] : colors.neutral[0],
+
+  // Waveform bars: Primary color for played, subtle for unplayed
+  waveformPlayed: isDark ? colors.primary[400] : colors.primary[500],
+  waveformUnplayed: isDark ? colors.neutral[600] : colors.neutral[300],
+});
 
 export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   audioUri,
@@ -56,6 +78,10 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   // Initialize audio player
   const player = useAudioPlayer(audioUri);
   const status = useAudioPlayerStatus(player);
+
+  // Theme support
+  const { isDark } = useTheme();
+  const themeColors = getThemeColors(isDark);
 
   // Get waveform service with proper DI
   const waveformService = useWaveformService();
@@ -167,10 +193,14 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    */
   useEffect(() => {
     const drift = Math.abs(displayTime - status.currentTime);
-    if (!status.playing || drift > 1.0) {
+    const currentSpeed = SPEED_OPTIONS[speedIndex];
+    // Adaptive tolerance: at 2x speed, allow 2s drift before correction
+    const driftTolerance = 1.0 * currentSpeed;
+
+    if (!status.playing || drift > driftTolerance) {
       setDisplayTime(status.currentTime);
     }
-  }, [status.currentTime, status.playing, displayTime]);
+  }, [status.currentTime, status.playing, displayTime, speedIndex]);
 
   /**
    * Smooth animation loop when playing
@@ -210,10 +240,17 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   useEffect(() => {
     if (status.isLoaded) {
       const speed = SPEED_OPTIONS[speedIndex];
-      // Note: expo-audio doesn't have setRate in SDK 54, we simulate with animation speed
-      // In real implementation, use player.setRate(speed) if available
+      try {
+        // expo-audio SDK 54+ supports setPlaybackRate(rate, quality)
+        // Known issues: brief pause/restart when changing (Issue #35174)
+        if (typeof player.setPlaybackRate === 'function') {
+          player.setPlaybackRate(speed, 'high');
+        }
+      } catch (err) {
+        console.warn('[WaveformPlayer] Failed to set playback rate:', err);
+      }
     }
-  }, [speedIndex, status.isLoaded]);
+  }, [speedIndex, status.isLoaded, player]);
 
   /**
    * Toggle play/pause
@@ -223,13 +260,18 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
       if (status.playing) {
         player.pause();
       } else {
+        // If at the end, reset to beginning before playing
+        if (status.currentTime >= status.duration && status.duration > 0) {
+          player.seekTo(0);
+          setDisplayTime(0);
+        }
         player.play();
       }
     } catch (err) {
       console.error('Failed to toggle playback:', err);
       setError(err instanceof Error ? err.message : 'Playback failed');
     }
-  }, [player, status.playing]);
+  }, [player, status.playing, status.currentTime, status.duration]);
 
   /**
    * Cycle through speed options
@@ -261,8 +303,8 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    */
   if (isLoading) {
     return (
-      <View style={styles.container} testID="waveform-player-loading">
-        <ActivityIndicator size="small" color={colors.neutral[0]} />
+      <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player-loading">
+        <ActivityIndicator size="small" color={themeColors.playButtonBg} />
       </View>
     );
   }
@@ -272,9 +314,9 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
    */
   if (error) {
     return (
-      <View style={styles.container} testID="waveform-player-error">
+      <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player-error">
         <Feather name="alert-circle" size={20} color={colors.error[500]} />
-        <Text style={styles.errorText}>{error}</Text>
+        <Text style={[styles.errorText, { color: colors.error[500] }]}>{error}</Text>
       </View>
     );
   }
@@ -284,17 +326,17 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   const currentSpeed = SPEED_OPTIONS[speedIndex];
 
   return (
-    <View style={styles.container} testID="waveform-player">
+    <View style={[styles.container, { backgroundColor: themeColors.containerBg }]} testID="waveform-player">
       {/* Play/Pause Button */}
       <TouchableOpacity
-        style={styles.playButton}
+        style={[styles.playButton, { backgroundColor: themeColors.playButtonBg }]}
         onPress={handlePlayPause}
         testID={isPlaying ? 'waveform-pause-button' : 'waveform-play-button'}
       >
         <Feather
           name={isPlaying ? 'pause' : 'play'}
           size={20}
-          color={colors.neutral[900]}
+          color={themeColors.playButtonIcon}
         />
       </TouchableOpacity>
 
@@ -316,7 +358,9 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
                 styles.waveformBar,
                 {
                   height: `${height * 100}%`,
-                  backgroundColor: isPlayed ? colors.neutral[0] : colors.neutral[500],
+                  backgroundColor: isPlayed
+                    ? themeColors.waveformPlayed
+                    : themeColors.waveformUnplayed,
                 },
               ]}
             />
@@ -326,11 +370,13 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
 
       {/* Speed Control */}
       <TouchableOpacity
-        style={styles.speedButton}
+        style={[styles.speedButton, { backgroundColor: themeColors.speedButtonBg }]}
         onPress={handleSpeedChange}
         testID="waveform-speed-button"
       >
-        <Text style={styles.speedText}>{currentSpeed}x</Text>
+        <Text style={[styles.speedText, { color: themeColors.speedButtonText }]}>
+          {currentSpeed}x
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -340,18 +386,18 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.neutral[800],
-    borderRadius: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    gap: 12,
-    height: 72,
+    // backgroundColor: Applied dynamically with theme
+    borderRadius: borderRadius['3xl'], // 24
+    paddingVertical: spacing[3], // 12
+    paddingHorizontal: spacing[4], // 16
+    gap: spacing[3], // 12
+    height: 72, // Custom size for audio player
   },
   playButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: colors.neutral[0],
+    width: componentSizes.icon.xl, // 40
+    height: componentSizes.icon.xl, // 40
+    borderRadius: borderRadius.base, // 8
+    // backgroundColor: Applied dynamically with theme
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -359,30 +405,31 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-    height: 48,
+    gap: spacing[0.5], // 2
+    height: 48, // Custom height for waveform
   },
   waveformBar: {
     flex: 1,
-    borderRadius: 2,
-    minHeight: 4,
+    borderRadius: spacing[0.5], // 2
+    minHeight: spacing[1], // 4
+    // backgroundColor: Applied dynamically per bar (played/unplayed)
   },
   speedButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.neutral[0],
+    width: componentSizes.icon.xl, // 40
+    height: componentSizes.icon.xl, // 40
+    borderRadius: borderRadius['2xl'], // 20 (circular)
+    // backgroundColor: Applied dynamically with theme
     alignItems: 'center',
     justifyContent: 'center',
   },
   speedText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: colors.neutral[900],
+    fontSize: typography.fontSize.sm, // 13 (closest to 12)
+    fontWeight: typography.fontWeight.semibold, // '600'
+    // color: Applied dynamically with theme
   },
   errorText: {
-    fontSize: 12,
-    color: colors.error[500],
-    marginLeft: 8,
+    fontSize: typography.fontSize.sm, // 13
+    // color: Applied dynamically
+    marginLeft: spacing[2], // 8
   },
 });

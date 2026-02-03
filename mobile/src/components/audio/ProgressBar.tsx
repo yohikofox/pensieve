@@ -17,7 +17,7 @@ import {
   PanResponderGestureState,
   LayoutChangeEvent,
 } from 'react-native';
-import { colors } from '../../design-system/tokens';
+import { colors, spacing, componentSizes, shadows } from '../../design-system/tokens';
 
 interface ProgressBarProps {
   /** Current position in seconds */
@@ -164,8 +164,8 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   );
 };
 
-const THUMB_SIZE = 16;
-const TRACK_HEIGHT = 4;
+const THUMB_SIZE = componentSizes.icon.xs; // 16
+const TRACK_HEIGHT = spacing[1]; // 4
 
 const styles = StyleSheet.create({
   container: {
@@ -191,9 +191,6 @@ const styles = StyleSheet.create({
     height: THUMB_SIZE,
     borderRadius: THUMB_SIZE / 2,
     marginLeft: -THUMB_SIZE / 2,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 3,
+    ...shadows.base, // Unified shadow system
   },
 });

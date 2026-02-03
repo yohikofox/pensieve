@@ -97,8 +97,11 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
 
         const resultHandler = ExpoSpeechRecognitionModule.addListener('result', (event) => {
           if (event.isFinal) {
-            finalText = event.results[0]?.transcript || '';
+            // Take the last result (most complete) instead of first to avoid missing last words
+            const lastResult = event.results[event.results.length - 1];
+            finalText = lastResult?.transcript || '';
             console.log('[NativeTranscription] Got final result:', finalText.substring(0, 50));
+            console.log('[NativeTranscription] Total results segments:', event.results.length);
           }
         });
 
@@ -118,7 +121,19 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
           endHandler.remove();
           errorHandler.remove();
 
-          reject(new Error(event.error || 'Speech recognition failed'));
+          // Handle "no speech" as a graceful empty result, not an error
+          const errorMessage = event.error || '';
+          if (errorMessage.toLowerCase().includes('no speech') ||
+              errorMessage.toLowerCase().includes('no match') ||
+              errorMessage.toLowerCase().includes('no-speech')) {
+            console.log('[NativeTranscription] No speech detected, returning empty result');
+            resolve({
+              text: '',
+              isPartial: false,
+            });
+          } else {
+            reject(new Error(errorMessage || 'Speech recognition failed'));
+          }
         });
 
         // Start recognition with audio source (WAV format)

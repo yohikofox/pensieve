@@ -546,6 +546,19 @@ export class TranscriptionWorker {
           transcriptPrompt = transcriptionResult.transcriptPrompt;
         }
 
+        // Check if transcription returned empty result (no speech detected)
+        if (!rawTranscript || rawTranscript.trim().length === 0) {
+          console.log('[TranscriptionWorker] ⚠️ No speech detected in audio');
+          await this.captureRepository.update(queuedCapture.captureId, {
+            state: 'ready',
+            normalizedText: '',
+            transcriptionError: null,
+          });
+          await this.queueService.markCompleted(queuedCapture.captureId, '');
+          await showTranscriptionCompleteNotification(queuedCapture.captureId, '');
+          return true; // Item was processed successfully (no speech is not an error)
+        }
+
         // Post-process transcription with LLM if automatic post-processing is enabled
         // Use InteractionManager to avoid blocking UI during LLM inference
         let finalText = rawTranscript;

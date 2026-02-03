@@ -51,6 +51,7 @@ import { CaptureAnalysisService } from '../../contexts/Normalization/services/Ca
 import { TranscriptionQueueService } from '../../contexts/Normalization/services/TranscriptionQueueService';
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
+import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import type { CaptureAnalysis, AnalysisType } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_TYPES } from '../../contexts/capture/domain/CaptureAnalysis.model';
 import { ANALYSIS_LABELS, ANALYSIS_ICONS } from '../../contexts/Normalization/services/analysisPrompts';
@@ -266,6 +267,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const { captureId, startAnalysis } = route.params;
   const debugMode = useSettingsStore((state) => state.debugMode);
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
+  const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
   const [capture, setCapture] = useState<Capture | null>(null);
@@ -325,6 +327,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   // Model availability state (AC4: Story 2.7)
   const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
 
+  // Transcription engine state (Story 3.2b - fix for native transcription)
+  const [isNativeEngine, setIsNativeEngine] = useState<boolean>(false);
+
   // Audio player state (Story 3.2b - AC2)
   const [audioPosition, setAudioPosition] = useState(0); // in milliseconds
   const [audioDuration, setAudioDuration] = useState(0); // in milliseconds
@@ -381,6 +386,21 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       }
     };
     checkModelAvailability();
+  }, []);
+
+  // Check transcription engine type (Story 3.2b - fix for native transcription)
+  useEffect(() => {
+    const checkEngineType = async () => {
+      try {
+        const engineService = container.resolve(TranscriptionEngineService);
+        const isNative = await engineService.isNativeEngineSelected();
+        setIsNativeEngine(isNative);
+      } catch (error) {
+        console.error('[CaptureDetailScreen] Failed to check engine type:', error);
+        setIsNativeEngine(false); // Default to Whisper on error
+      }
+    };
+    checkEngineType();
   }, []);
 
   // Sync local action items when analyses change
@@ -1093,8 +1113,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
-          {/* AC5: Configure Model button (when no model available) - Story 2.7 */}
-          {isAudio && capture.state === 'captured' && hasModelAvailable === false && !capture.normalizedText && (
+          {/* AC5: Configure Model button (when no model available AND Whisper engine selected) - Story 2.7 */}
+          {isAudio && capture.state === 'captured' && !isNativeEngine && hasModelAvailable === false && !capture.normalizedText && (
             <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
               <Button
                 variant="secondary"
@@ -1109,8 +1129,10 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             </View>
           )}
 
-          {/* Manual transcription button (when auto-transcription disabled AND model available) */}
-          {isAudio && capture.state === 'captured' && !autoTranscriptionEnabled && hasModelAvailable === true && (
+          {/* Manual transcription button (Story 3.2b - Native or Whisper) */}
+          {isAudio && capture.state === 'captured' && !capture.normalizedText && (
+            // Show if: native engine selected OR (whisper engine + auto-transcription disabled + model available)
+            (isNativeEngine || (!autoTranscriptionEnabled && hasModelAvailable === true)) && (
             <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
               <Button
                 variant="primary"
@@ -1134,30 +1156,28 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 Transcrire maintenant
               </Button>
             </View>
+            )
           )}
         </View>
 
-        {/* Audio Player (Story 3.2b - AC2) */}
+        {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
         {isAudio && capture.rawContent && (
           <View style={[styles.audioCard, { backgroundColor: themeColors.cardBg }]}>
-            <AudioPlayer
-              audioUri={capture.rawContent}
-              onPositionChange={handleAudioPositionChange}
-              onPlaybackEnd={() => setAudioPosition(0)}
-            />
-          </View>
-        )}
-
-        {/* Waveform Player (Alternative design) */}
-        {isAudio && capture.rawContent && (
-          <View style={[styles.audioCard, { backgroundColor: themeColors.cardBg }]}>
-            <WaveformPlayer
-              audioUri={capture.rawContent}
-              captureId={capture.id}
-              metadata={metadata}
-              onPositionChange={handleAudioPositionChange}
-              onPlaybackEnd={() => setAudioPosition(0)}
-            />
+            {audioPlayerType === 'waveform' ? (
+              <WaveformPlayer
+                audioUri={capture.rawContent}
+                captureId={capture.id}
+                metadata={metadata}
+                onPositionChange={handleAudioPositionChange}
+                onPlaybackEnd={() => setAudioPosition(0)}
+              />
+            ) : (
+              <AudioPlayer
+                audioUri={capture.rawContent}
+                onPositionChange={handleAudioPositionChange}
+                onPlaybackEnd={() => setAudioPosition(0)}
+              />
+            )}
           </View>
         )}
 
@@ -1247,6 +1267,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       ? 'Transcription en cours...'
                       : capture.state === 'failed'
                       ? 'La transcription a échoué'
+                      : capture.state === 'ready' && isAudio
+                      ? 'Aucun audio détecté dans l\'enregistrement'
                       : 'Aucun contenu disponible'}
                   </Text>
                 )}

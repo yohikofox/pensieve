@@ -21,7 +21,7 @@ import { container } from 'tsyringe';
 import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
-import { useSettingsStore, type ThemePreference } from '../../stores/settingsStore';
+import { useSettingsStore, type ThemePreference, type AudioPlayerType } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
 import { colors } from '../../design-system/tokens';
@@ -45,6 +45,9 @@ export const SettingsScreen = () => {
   // Theme preference from global settings store
   const themePreference = useSettingsStore((state) => state.themePreference);
 
+  // Audio player type from global settings store (Story 3.2b)
+  const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
+
   // Debug mode from global settings store
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
@@ -67,6 +70,15 @@ export const SettingsScreen = () => {
     return labels[preference];
   };
 
+  // Get audio player label for display (Story 3.2b)
+  const getAudioPlayerLabel = (type: AudioPlayerType): string => {
+    const labels: Record<AudioPlayerType, string> = {
+      waveform: 'Lecteur minimaliste',
+      classic: 'Lecteur complet',
+    };
+    return labels[type];
+  };
+
   // Google Calendar state
   const [googleAuth, setGoogleAuth] = useState<GoogleAuthState>({
     isConnected: false,
@@ -80,6 +92,7 @@ export const SettingsScreen = () => {
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteSuccessDialog, setShowDeleteSuccessDialog] = useState(false);
+  const [showAudioPlayerDialog, setShowAudioPlayerDialog] = useState(false);
   const toast = useToast();
 
   const modelService = new TranscriptionModelService();
@@ -376,6 +389,14 @@ export const SettingsScreen = () => {
     // Navigation handled by auth state listener
   };
 
+  /**
+   * Handle audio player type selection (Story 3.2b)
+   */
+  const handleAudioPlayerTypeSelect = (type: AudioPlayerType) => {
+    useSettingsStore.getState().setAudioPlayerType(type);
+    setShowAudioPlayerDialog(false);
+  };
+
   return (
     <>
       <ScrollView className="flex-1 bg-bg-screen">
@@ -386,7 +407,7 @@ export const SettingsScreen = () => {
           </Text>
 
           <TouchableOpacity
-            className="flex-row items-center py-3 px-4"
+            className="flex-row items-center py-3 px-4 border-b border-border-default"
             onPress={() => navigation.navigate('ThemeSettings')}
           >
             <View className="flex-1">
@@ -400,6 +421,26 @@ export const SettingsScreen = () => {
             <View className="flex-row items-center">
               <Text className="text-base text-text-tertiary mr-1">
                 {getThemeLabel(themePreference)}
+              </Text>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+            </View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-4"
+            onPress={() => setShowAudioPlayerDialog(true)}
+          >
+            <View className="flex-1">
+              <Text className="text-lg text-text-primary">
+                Lecteur audio
+              </Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
+                Choisir le style du lecteur audio
+              </Text>
+            </View>
+            <View className="flex-row items-center">
+              <Text className="text-base text-text-tertiary mr-1">
+                {getAudioPlayerLabel(audioPlayerType)}
               </Text>
               <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </View>
@@ -653,6 +694,65 @@ export const SettingsScreen = () => {
                 {t('common.confirm')}
               </Button>
             </View>
+          </Card>
+        </View>
+      </Modal>
+
+      {/* Audio Player Type Selection Modal */}
+      <Modal
+        visible={showAudioPlayerDialog}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowAudioPlayerDialog(false)}
+      >
+        <View className="flex-1 bg-black/50 justify-center items-center">
+          <Card variant="elevated" className="w-4/5 max-w-[400px] p-5">
+            <Text className="text-lg font-semibold text-text-primary text-center mb-4">
+              Lecteur audio
+            </Text>
+
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-b border-border-default"
+              onPress={() => handleAudioPlayerTypeSelect('waveform')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  Lecteur minimaliste
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Waveform avec contrôles simplifiés
+                </Text>
+              </View>
+              {audioPlayerType === 'waveform' && (
+                <Feather name="check" size={24} color={colors.primary[600]} />
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4"
+              onPress={() => handleAudioPlayerTypeSelect('classic')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  Lecteur complet
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Contrôles avancés avec boutons ±15s
+                </Text>
+              </View>
+              {audioPlayerType === 'classic' && (
+                <Feather name="check" size={24} color={colors.primary[600]} />
+              )}
+            </TouchableOpacity>
+
+            <Button
+              variant="secondary"
+              size="lg"
+              className="mt-4"
+              onPress={() => setShowAudioPlayerDialog(false)}
+            >
+              Fermer
+            </Button>
           </Card>
         </View>
       </Modal>
