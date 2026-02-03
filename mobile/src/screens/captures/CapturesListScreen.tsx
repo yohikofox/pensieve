@@ -29,8 +29,10 @@ import {
   Share,
   AccessibilityInfo,
   StyleSheet,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { GestureHandlerRootView, LongPressGestureHandler, State } from 'react-native-gesture-handler';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -59,7 +61,9 @@ import { PulsingBadge } from '../../components/animations/PulsingBadge';
 import { GerminationBadge } from '../../components/animations/GerminationBadge';
 import { MaturityBadge } from '../../components/animations/MaturityBadge';
 import { AnimatedEmptyState } from '../../components/animations/AnimatedEmptyState';
+import { AnimatedCaptureCard } from '../../components/animations/AnimatedCaptureCard';
 import { SwipeableCard } from '../../components/cards/SwipeableCard';
+import { ContextMenu, type ContextMenuOption } from '../../components/menus/ContextMenu';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
 import { FLATLIST_PERFORMANCE } from '../../constants/performance';
@@ -126,12 +130,23 @@ export function CapturesListScreen() {
   // ✅ Animations created: butterfly.json and breeze.json
   const [hasLottieAnimations] = useState(true);
 
+  // Story 3.4 AC5: Context menu state
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuCapture, setContextMenuCapture] = useState<Capture | null>(null);
+
   // Story 3.4 Task 7.5: Performance monitoring
   const performanceMonitor = useRef(new FlatListPerformanceMonitor('CapturesListScreen', __DEV__)).current;
 
   // Audio player - source changes when user taps play on different capture
   const player = useAudioPlayer(currentAudioPath);
   const playerStatus = useAudioPlayerStatus(player);
+
+  // Story 3.4 AC2: Enable LayoutAnimation on Android
+  useEffect(() => {
+    if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   // Auto-play when source is loaded and shouldAutoPlay is true
   useEffect(() => {
@@ -391,6 +406,13 @@ export function CapturesListScreen() {
   };
 
   const handleCapturePress = (captureId: string) => {
+    // Story 3.4 AC2: Configure hero transition animation (300ms)
+    LayoutAnimation.configureNext({
+      duration: 300,
+      update: {
+        type: LayoutAnimation.Types.easeInEaseOut,
+      },
+    });
     navigation.navigate('CaptureDetail', { captureId });
   };
 
@@ -520,6 +542,24 @@ export function CapturesListScreen() {
     }
   }, [toast, t]);
 
+  // Story 3.4 AC5: Long-press context menu handlers
+  const handleLongPress = useCallback((capture: Capture) => {
+    setContextMenuCapture(capture);
+    setContextMenuVisible(true);
+  }, []);
+
+  const handlePinCapture = useCallback(async (capture: Capture) => {
+    // TODO: Implement pin functionality in future story
+    toast.info(t('captures.pinTodo', 'Fonctionnalité "Épingler" à venir'));
+    console.log('[CapturesListScreen] Pin capture:', capture.id);
+  }, [toast, t]);
+
+  const handleFavoriteCapture = useCallback(async (capture: Capture) => {
+    // TODO: Implement favorite functionality in future story
+    toast.info(t('captures.favoriteTodo', 'Fonctionnalité "Favoris" à venir'));
+    console.log('[CapturesListScreen] Favorite capture:', capture.id);
+  }, [toast, t]);
+
   // Footer component pour pagination loading
   const renderFooter = useCallback(() => {
     if (!isLoadingMore) return null;
@@ -532,33 +572,46 @@ export function CapturesListScreen() {
     );
   }, [isLoadingMore, t]);
 
-  const renderCaptureItem = ({ item }: { item: CaptureWithTranscription }) => {
+  const renderCaptureItem = ({ item, index }: { item: CaptureWithTranscription; index: number }) => {
     const isPlaying = playingCaptureId === item.id && playerStatus.playing;
     const isPlayingWav = playingWavCaptureId === item.id && playerStatus.playing;
 
     return (
-      <SwipeableCard
-        onDelete={() => handleDeleteCapture(item.id)}
-        onShare={() => handleShareCapture(item)}
-      >
-        <CaptureCard
-          item={item as CaptureWithQueue}
-          playback={{
-            isPlaying,
-            isPlayingWav,
-            hasModelAvailable,
+      <AnimatedCaptureCard index={index} enabled={!isReduceMotionEnabled}>
+        <LongPressGestureHandler
+          minDurationMs={300}
+          onHandlerStateChange={({ nativeEvent }) => {
+            if (nativeEvent.state === State.ACTIVE) {
+              handleLongPress(item);
+            }
           }}
-          handlers={{
-            onPress: () => handleCapturePress(item.id),
-            onStop: () => handleStop(item),
-            onPlayPause: () => handlePlayPause(item),
-            onTranscribe: () => handleTranscribe(item),
-            onRetry: () => handleRetry(item.id),
-            onPlayWav: () => handlePlayWav(item),
-            onDeleteWav: () => handleDeleteWav(item),
-          }}
-        />
-      </SwipeableCard>
+        >
+          <View>
+            <SwipeableCard
+              onDelete={() => handleDeleteCapture(item.id)}
+              onShare={() => handleShareCapture(item)}
+            >
+              <CaptureCard
+                item={item as CaptureWithQueue}
+                playback={{
+                  isPlaying,
+                  isPlayingWav,
+                  hasModelAvailable,
+                }}
+                handlers={{
+                  onPress: () => handleCapturePress(item.id),
+                  onStop: () => handleStop(item),
+                  onPlayPause: () => handlePlayPause(item),
+                  onTranscribe: () => handleTranscribe(item),
+                  onRetry: () => handleRetry(item.id),
+                  onPlayWav: () => handlePlayWav(item),
+                  onDeleteWav: () => handleDeleteWav(item),
+                }}
+              />
+            </SwipeableCard>
+          </View>
+        </LongPressGestureHandler>
+      </AnimatedCaptureCard>
     );
   };
 
@@ -733,6 +786,42 @@ export function CapturesListScreen() {
               setCaptureToDeleteWav(null);
             },
           }}
+        />
+
+        {/* Story 3.4 AC5: Context menu (long-press) */}
+        <ContextMenu
+          visible={contextMenuVisible}
+          onClose={() => {
+            setContextMenuVisible(false);
+            setContextMenuCapture(null);
+          }}
+          options={
+            contextMenuCapture
+              ? [
+                  {
+                    icon: 'share-2',
+                    label: t('captures.actions.share', 'Partager'),
+                    onPress: () => handleShareCapture(contextMenuCapture),
+                  },
+                  {
+                    icon: 'trash-2',
+                    label: t('captures.actions.delete', 'Supprimer'),
+                    onPress: () => handleDeleteCapture(contextMenuCapture.id),
+                    variant: 'danger' as const,
+                  },
+                  {
+                    icon: 'bookmark',
+                    label: t('captures.actions.pin', 'Épingler'),
+                    onPress: () => handlePinCapture(contextMenuCapture),
+                  },
+                  {
+                    icon: 'heart',
+                    label: t('captures.actions.favorite', 'Favoris'),
+                    onPress: () => handleFavoriteCapture(contextMenuCapture),
+                  },
+                ]
+              : []
+          }
         />
 
       </View>
