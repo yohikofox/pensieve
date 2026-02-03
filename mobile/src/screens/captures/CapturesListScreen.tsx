@@ -63,6 +63,7 @@ import { SwipeableCard } from '../../components/cards/SwipeableCard';
 import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
 import { FLATLIST_PERFORMANCE } from '../../constants/performance';
+import { FlatListPerformanceMonitor, measureAsync } from '../../utils/performanceMonitor';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -124,6 +125,9 @@ export function CapturesListScreen() {
   // Story 3.4 AC8: Lottie animations availability
   // ✅ Animations created: butterfly.json and breeze.json
   const [hasLottieAnimations] = useState(true);
+
+  // Story 3.4 Task 7.5: Performance monitoring
+  const performanceMonitor = useRef(new FlatListPerformanceMonitor('CapturesListScreen', __DEV__)).current;
 
   // Audio player - source changes when user taps play on different capture
   const player = useAudioPlayer(currentAudioPath);
@@ -258,22 +262,25 @@ export function CapturesListScreen() {
     // AC5: Minimum 300ms refresh duration for smooth UX
     const minDelay = new Promise(resolve => setTimeout(resolve, 300));
 
-    // Try cloud sync if available (Epic 6), fallback to local refresh
-    try {
-      const syncService = container.resolveOptional<any>(TOKENS.ISyncService);
-      if (syncService && !isOffline) {
-        await Promise.all([
-          syncService.syncCaptures().catch(() => {}), // Silent fail OK
-          loadCaptures(),
-          minDelay
-        ]);
-      } else {
+    // Story 3.4 Task 7.5: Measure refresh performance
+    await measureAsync('Pull to refresh', async () => {
+      // Try cloud sync if available (Epic 6), fallback to local refresh
+      try {
+        const syncService = container.resolveOptional<any>(TOKENS.ISyncService);
+        if (syncService && !isOffline) {
+          await Promise.all([
+            syncService.syncCaptures().catch(() => {}), // Silent fail OK
+            loadCaptures(),
+            minDelay
+          ]);
+        } else {
+          await Promise.all([loadCaptures(), minDelay]);
+        }
+      } catch (error) {
+        // Fallback: always refresh local data
         await Promise.all([loadCaptures(), minDelay]);
       }
-    } catch (error) {
-      // Fallback: always refresh local data
-      await Promise.all([loadCaptures(), minDelay]);
-    }
+    });
 
     setRefreshing(false);
   }, [loadCaptures, isOffline]);
@@ -677,6 +684,9 @@ export function CapturesListScreen() {
           maxToRenderPerBatch={FLATLIST_PERFORMANCE.MAX_TO_RENDER_PER_BATCH}
           windowSize={FLATLIST_PERFORMANCE.WINDOW_SIZE}
           removeClippedSubviews={true}
+          // Story 3.4 Task 7.5: Performance monitoring
+          onScroll={performanceMonitor.onScroll}
+          scrollEventThrottle={16}
         />
 
         {/* Model not available dialog */}
