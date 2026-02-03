@@ -16,6 +16,7 @@ import { TranscriptionEngineSettingsScreen } from '../screens/settings/Transcrip
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
 import { LLMSettingsScreen } from '../screens/settings/LLMSettingsScreen';
 import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
+import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
 import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
 import { useTheme } from '../hooks/useTheme';
 
@@ -25,6 +26,7 @@ export type SettingsStackParamList = {
   WhisperSettings: undefined;
   LLMSettings: undefined;
   ThemeSettings: undefined;
+  LottieGallery: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -77,6 +79,14 @@ export function SettingsStackNavigator() {
         component={ThemeSettingsScreen}
         options={{
           title: t('navigation.headers.theme'),
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="LottieGallery"
+        component={LottieGalleryScreen}
+        options={{
+          title: 'Lottie Animations',
           headerShown: true,
         }}
       />

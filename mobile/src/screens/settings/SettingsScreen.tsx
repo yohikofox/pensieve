@@ -644,6 +644,24 @@ export const SettingsScreen = () => {
               />
             </View>
           )}
+
+          {/* Lottie Gallery - only visible when debug mode is enabled */}
+          {debugMode && (
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-t border-border-subtle"
+              onPress={() => navigation.navigate('LottieGallery')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  Lottie Animations
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Prévisualiser toutes les animations Lottie
+                </Text>
+              </View>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+            </TouchableOpacity>
+          )}
         </Card>
       </ScrollView>
 
