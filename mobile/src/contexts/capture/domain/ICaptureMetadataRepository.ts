@@ -20,7 +20,7 @@ export interface ICaptureMetadataRepository {
   /**
    * Get all metadata for a capture as a key-value map
    */
-  getAllAsMap(captureId: string): Promise<Record<string, string | null>>;
+  getAllAsMap(captureId: string): Promise<Record<string, CaptureMetadata>>;
 
   /**
    * Set a single metadata value (upsert)

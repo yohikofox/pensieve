@@ -799,7 +799,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
     // For audio captures, use raw_transcript; for text captures, use editedText
     const isTextCapture = capture.type === 'text';
-    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
     const sourceText = isTextCapture ? editedText : rawTranscript;
 
     if (!sourceText) {
@@ -898,7 +898,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const handleTextChange = (text: string) => {
     setEditedText(text);
     const isAudioCapture = capture?.type === 'audio';
-    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value || null;
     const originalText = capture?.normalizedText || rawTranscript || (isAudioCapture ? '' : capture?.rawContent) || '';
     setHasChanges(text !== originalText);
   };
@@ -914,7 +914,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
       // Learn from corrections before saving (passive vocabulary learning)
       const isAudioCapture = capture.type === 'audio';
-      const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+      const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value || null;
       const originalText = capture.normalizedText || rawTranscript || (isAudioCapture ? '' : capture.rawContent) || '';
       if (originalText !== editedText) {
         await CorrectionLearningService.learn(originalText, editedText, captureId);
@@ -939,7 +939,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   const handleDiscardChanges = () => {
     const isAudioCapture = capture?.type === 'audio';
-    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT] || null;
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value || null;
     const originalText = capture?.normalizedText || rawTranscript || (isAudioCapture ? '' : capture?.rawContent) || '';
     setEditedText(originalText);
     setHasChanges(false);
@@ -1165,7 +1165,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         <View style={[styles.contentCard, { backgroundColor: themeColors.cardBg }]}>
           {(() => {
             // Check if content has been AI-enhanced
-            const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT];
+            const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
             const originalText = isAudio ? rawTranscript : capture?.rawContent;
             const hasBeenEnhanced = !!originalText && capture?.normalizedText && originalText !== capture.normalizedText;
 
@@ -1256,7 +1256,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         </View>
 
         {/* Raw Transcript (before LLM) - Show when different from final text */}
-        {metadata[METADATA_KEYS.RAW_TRANSCRIPT] && metadata[METADATA_KEYS.RAW_TRANSCRIPT] !== capture.normalizedText && (
+        {metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value && metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value !== capture.normalizedText && (
           <View style={[styles.rawTranscriptCard, { backgroundColor: themeColors.metadataBg, borderColor: themeColors.metadataBorder }]}>
             <Pressable
               style={styles.rawTranscriptHeader}
@@ -1275,7 +1275,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             {showRawTranscript && (
               <View style={[styles.rawTranscriptContent, { backgroundColor: themeColors.metadataContentBg, borderTopColor: themeColors.metadataBorder }]}>
                 <Text style={[styles.rawTranscriptText, { color: themeColors.textSecondary }]} selectable>
-                  {metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
+                  {metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value}
                 </Text>
                 <View style={[styles.rawTranscriptBadge, { backgroundColor: isDark ? colors.success[900] : '#E8F5E9' }]}>
                   <Feather name="zap" size={12} color={isDark ? colors.success[400] : colors.success[600]} />
@@ -1305,39 +1305,39 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
             </Pressable>
             {showMetadata && (
               <View style={[styles.metadataContent, { backgroundColor: themeColors.metadataContentBg, borderTopColor: themeColors.metadataBorder }]}>
-                {metadata[METADATA_KEYS.WHISPER_MODEL] && (
+                {metadata[METADATA_KEYS.WHISPER_MODEL]?.value && (
                   <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
                     <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Moteur de transcription</Text>
-                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.WHISPER_MODEL]}</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.WHISPER_MODEL]?.value}</Text>
                   </View>
                 )}
-                {metadata[METADATA_KEYS.WHISPER_DURATION_MS] && (
+                {metadata[METADATA_KEYS.WHISPER_DURATION_MS]?.value && (
                   <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
                     <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Durée de transcription</Text>
                     <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>
-                      {Math.round(parseInt(metadata[METADATA_KEYS.WHISPER_DURATION_MS]!) / 1000 * 10) / 10}s
+                      {Math.round(parseInt(metadata[METADATA_KEYS.WHISPER_DURATION_MS]?.value!) / 1000 * 10) / 10}s
                     </Text>
                   </View>
                 )}
-                {metadata[METADATA_KEYS.LLM_MODEL] && (
+                {metadata[METADATA_KEYS.LLM_MODEL]?.value && (
                   <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
                     <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Modèle LLM</Text>
-                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                    <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>{metadata[METADATA_KEYS.LLM_MODEL]?.value}</Text>
                   </View>
                 )}
-                {metadata[METADATA_KEYS.LLM_DURATION_MS] && (
+                {metadata[METADATA_KEYS.LLM_DURATION_MS]?.value && (
                   <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
                     <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Durée traitement LLM</Text>
                     <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]}>
-                      {Math.round(parseInt(metadata[METADATA_KEYS.LLM_DURATION_MS]!) / 1000 * 10) / 10}s
+                      {Math.round(parseInt(metadata[METADATA_KEYS.LLM_DURATION_MS]?.value!) / 1000 * 10) / 10}s
                     </Text>
                   </View>
                 )}
-                {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT] && (
+                {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT]?.value && (
                   <View style={[styles.metadataRow, { borderBottomColor: themeColors.borderDefault }]}>
                     <Text style={[styles.metadataLabel, { color: themeColors.textSecondary }]}>Vocabulaire utilisé</Text>
                     <Text style={[styles.metadataValue, { color: themeColors.textPrimary }]} numberOfLines={2}>
-                      {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT]}
+                      {metadata[METADATA_KEYS.TRANSCRIPT_PROMPT]?.value}
                     </Text>
                   </View>
                 )}
@@ -1350,8 +1350,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         {(() => {
           const isAudioCapture = capture.type === 'audio';
           const isTextCapture = capture.type === 'text';
-          const hasRawTranscript = !!metadata[METADATA_KEYS.RAW_TRANSCRIPT];
-          const hasBeenPostProcessed = !!metadata[METADATA_KEYS.LLM_MODEL];
+          const hasRawTranscript = !!metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
+          const hasBeenPostProcessed = !!metadata[METADATA_KEYS.LLM_MODEL]?.value;
           const canPostProcess = (isAudioCapture && hasRawTranscript) || (isTextCapture && editedText);
           const showPostProcessButton = canPostProcess && (!hasBeenPostProcessed || debugMode);
           const showReTranscribeButton = isAudioCapture && debugMode;
@@ -1757,8 +1757,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                   <Text style={[styles.reprocessStatusLabel, { color: themeColors.reprocessStatusLabel }]}>État actuel:</Text>
                   <View style={styles.reprocessStatusRow}>
                     <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>• raw_transcript: </Text>
-                    {metadata[METADATA_KEYS.RAW_TRANSCRIPT] ? (
-                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.length} chars</Text>
+                    {metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value ? (
+                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value?.length} chars</Text>
                     ) : (
                       <View style={styles.reprocessStatusMissing}>
                         <Feather name="x-circle" size={12} color={colors.error[500]} />
@@ -1779,8 +1779,8 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                   </View>
                   <View style={styles.reprocessStatusRow}>
                     <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>• LLM model: </Text>
-                    {metadata[METADATA_KEYS.LLM_MODEL] ? (
-                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.LLM_MODEL]}</Text>
+                    {metadata[METADATA_KEYS.LLM_MODEL]?.value ? (
+                      <Text style={[styles.reprocessStatusValue, { color: themeColors.reprocessStatusValue }]}>{metadata[METADATA_KEYS.LLM_MODEL]?.value}</Text>
                     ) : (
                       <View style={styles.reprocessStatusMissing}>
                         <Feather name="x-circle" size={12} color={colors.error[500]} />
@@ -1813,7 +1813,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                 <TouchableOpacity
                   style={[styles.reprocessButton, { backgroundColor: themeColors.reprocessButtonPostProcess }]}
                   onPress={handleRePostProcess}
-                  disabled={reprocessing.postProcess || !metadata[METADATA_KEYS.RAW_TRANSCRIPT]}
+                  disabled={reprocessing.postProcess || !metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value}
                 >
                   {reprocessing.postProcess ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
@@ -1823,7 +1823,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                       <View style={styles.reprocessButtonTextContainer}>
                         <Text style={styles.reprocessButtonTitle}>Re-post-traiter</Text>
                         <Text style={styles.reprocessButtonDesc}>
-                          {metadata[METADATA_KEYS.RAW_TRANSCRIPT]
+                          {metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value
                             ? 'Repasse raw_transcript dans le LLM'
                             : 'Nécessite raw_transcript'}
                         </Text>

@@ -53,12 +53,12 @@ export class CaptureMetadataRepository implements ICaptureMetadataRepository {
   /**
    * Get all metadata for a capture as a key-value map
    */
-  async getAllAsMap(captureId: string): Promise<Record<string, string | null>> {
+  async getAllAsMap(captureId: string): Promise<Record<string, CaptureMetadata>> {
     const metadata = await this.getAllForCapture(captureId);
-    const map: Record<string, string | null> = {};
+    const map: Record<string, CaptureMetadata> = {};
 
     for (const item of metadata) {
-      map[item.key] = item.value;
+      map[item.key] = item;
     }
 
     return map;
