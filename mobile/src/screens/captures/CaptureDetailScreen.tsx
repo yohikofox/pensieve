@@ -69,6 +69,7 @@ import { AudioPlayer } from "../../components/audio/AudioPlayer";
 import { WaveformPlayer } from "../../components/audio/WaveformPlayer";
 import { Waveform } from "../../components/audio/Waveform";
 import { TranscriptionSync } from "../../components/audio/TranscriptionSync";
+import { useCaptureDetailListener } from "../../hooks/useCaptureDetailListener";
 
 /** Action item structure from LLM JSON output */
 interface ActionItem {
@@ -312,6 +313,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
+
   const [capture, setCapture] = useState<Capture | null>(null);
   const [metadata, setMetadata] = useState<Record<string, string | null>>({});
   const [loading, setLoading] = useState(true);
@@ -397,6 +399,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
   }, [loadCapture]);
 
   // Poll for updates when capture is in a pending state (captured or processing)
+  // MIGR ATION NOTE: Polling replaced by event-driven updates via useCaptureDetailListener
+  // The listener automatically triggers loadCapture when transcription events occur
+  /*
   useEffect(() => {
     // Only poll if capture exists and is in a non-final state
     if (
@@ -438,6 +443,7 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       clearInterval(pollInterval);
     };
   }, [capture?.state, captureId, loadCapture]);
+  */
 
   // Load existing analyses
   useEffect(() => {
@@ -1048,6 +1054,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
       setLoading(false);
     }
   }, [captureId]);
+
+  // Event-driven updates (replaces polling)
+  useCaptureDetailListener(captureId, loadCapture);
 
   // Audio player callbacks (Story 3.2b - AC2)
   const handleAudioPositionChange = useCallback((positionMs: number) => {
