@@ -24,7 +24,8 @@ describe('DigestionResponseSchema', () => {
 
       const result = validateDigestionResponse(validResponse);
 
-      expect(result).toEqual(validResponse);
+      expect(result).toMatchObject(validResponse);
+      expect(result.todos).toEqual([]); // Default empty array (Story 4.3)
     });
 
     it('should validate a response without confidence field', () => {
@@ -204,7 +205,8 @@ describe('DigestionResponseSchema', () => {
 
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data).toEqual(validResponse);
+        expect(result.data).toMatchObject(validResponse);
+        expect(result.data.todos).toEqual([]); // Default empty array (Story 4.3)
       }
     });
 
@@ -251,6 +253,279 @@ describe('DigestionResponseSchema', () => {
       expect(response.summary).toBeDefined();
       expect(response.ideas).toBeDefined();
       expect(response.confidence).toBeDefined();
+    });
+  });
+
+  /**
+   * Story 4.3 - Todo Extraction Tests
+   * Subtask 1.6: Add unit tests for new schema validation with todos
+   */
+  describe('Todos Extraction (Story 4.3)', () => {
+    describe('Valid Todos', () => {
+      it('should validate response with empty todos array (AC6)', () => {
+        const validResponse = {
+          summary: 'This capture has no actions.',
+          ideas: ['Just an observation'],
+          todos: [],
+        };
+
+        const result = validateDigestionResponse(validResponse);
+
+        expect(result.todos).toEqual([]);
+      });
+
+      it('should validate response with single todo', () => {
+        const validResponse = {
+          summary: 'Summary with one action',
+          ideas: ['Key idea'],
+          todos: [
+            {
+              description: 'Send invoice to client',
+              deadline: 'Friday',
+              priority: 'high' as const,
+            },
+          ],
+        };
+
+        const result = validateDigestionResponse(validResponse);
+
+        expect(result.todos).toHaveLength(1);
+        expect(result.todos[0].description).toBe('Send invoice to client');
+        expect(result.todos[0].deadline).toBe('Friday');
+        expect(result.todos[0].priority).toBe('high');
+      });
+
+      it('should validate response with multiple todos (AC5)', () => {
+        const validResponse = {
+          summary: 'Summary with multiple actions',
+          ideas: ['Key idea'],
+          todos: [
+            {
+              description: 'Send invoice',
+              deadline: 'Friday',
+              priority: 'high' as const,
+            },
+            {
+              description: 'Buy milk',
+              deadline: 'today',
+              priority: 'low' as const,
+            },
+            {
+              description: 'Research competitor',
+              deadline: null,
+              priority: 'medium' as const,
+            },
+          ],
+        };
+
+        const result = validateDigestionResponse(validResponse);
+
+        expect(result.todos).toHaveLength(3);
+        expect(result.todos[2].deadline).toBeNull();
+      });
+
+      it('should accept up to 10 todos', () => {
+        const todos = Array(10)
+          .fill(0)
+          .map((_, idx) => ({
+            description: `Todo number ${idx + 1}`,
+            deadline: idx % 2 === 0 ? 'tomorrow' : null,
+            priority: 'medium' as const,
+          }));
+
+        const validResponse = {
+          summary: 'Summary with many todos',
+          ideas: ['Key idea'],
+          todos,
+        };
+
+        expect(() => validateDigestionResponse(validResponse)).not.toThrow();
+      });
+
+      it('should accept all priority levels', () => {
+        const priorities: Array<'low' | 'medium' | 'high'> = [
+          'low',
+          'medium',
+          'high',
+        ];
+
+        for (const priority of priorities) {
+          const response = {
+            summary: 'This is a valid summary for testing',
+            ideas: ['Valid key idea'],
+            todos: [
+              {
+                description: 'Test todo',
+                deadline: null,
+                priority,
+              },
+            ],
+          };
+
+          const result = validateDigestionResponse(response);
+          expect(result.todos[0].priority).toBe(priority);
+        }
+      });
+
+      it('should accept null deadline (AC3)', () => {
+        const validResponse = {
+          summary: 'This is a valid summary',
+          ideas: ['Valid key idea'],
+          todos: [
+            {
+              description: 'Todo without deadline',
+              deadline: null,
+              priority: 'medium' as const,
+            },
+          ],
+        };
+
+        const result = validateDigestionResponse(validResponse);
+        expect(result.todos[0].deadline).toBeNull();
+      });
+    });
+
+    describe('Invalid Todos', () => {
+      it('should reject todos with more than 10 items', () => {
+        const tooManyTodos = Array(11)
+          .fill(0)
+          .map((_, idx) => ({
+            description: `Todo ${idx + 1}`,
+            deadline: null,
+            priority: 'medium' as const,
+          }));
+
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: tooManyTodos,
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with description shorter than 3 characters', () => {
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              description: 'Go',
+              deadline: null,
+              priority: 'medium' as const,
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with description longer than 200 characters', () => {
+        const longDescription = 'a'.repeat(201);
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              description: longDescription,
+              deadline: null,
+              priority: 'medium' as const,
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with invalid priority', () => {
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              description: 'Valid description',
+              deadline: null,
+              priority: 'urgent',
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with missing description', () => {
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              deadline: 'Friday',
+              priority: 'high' as const,
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with missing priority', () => {
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              description: 'Valid description',
+              deadline: null,
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+
+      it('should reject todo with deadline longer than 50 characters', () => {
+        const longDeadline = 'a'.repeat(51);
+        const invalidResponse = {
+          summary: 'Valid summary',
+          ideas: ['Valid idea'],
+          todos: [
+            {
+              description: 'Valid description',
+              deadline: longDeadline,
+              priority: 'medium' as const,
+            },
+          ],
+        };
+
+        expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+          ZodError,
+        );
+      });
+    });
+
+    describe('Backward Compatibility', () => {
+      it('should validate responses without todos field (backward compat)', () => {
+        const validResponse = {
+          summary: 'Summary without todos',
+          ideas: ['Key idea'],
+        };
+
+        const result = validateDigestionResponse(validResponse);
+
+        expect(result.todos).toEqual([]); // Default to empty array
+      });
     });
   });
 });

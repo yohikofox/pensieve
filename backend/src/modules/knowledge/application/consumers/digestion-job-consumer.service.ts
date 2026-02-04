@@ -19,12 +19,19 @@ import type { DigestionJobPayload } from '../../domain/interfaces/digestion-job-
 import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
 import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.event';
 import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event';
+import { TodosExtracted } from '../../../action/domain/events/TodosExtracted.event';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
 import { EventBusService } from '../services/event-bus.service';
 import { ContentExtractorService } from '../services/content-extractor.service';
 import { ContentChunkerService } from '../services/content-chunker.service';
 import { ThoughtRepository } from '../repositories/thought.repository';
+import { TodoRepository, CreateTodoDto } from '../../../action/application/repositories/todo.repository';
+import { DeadlineParserService } from '../../../action/application/services/deadline-parser.service';
+import { DataSource } from 'typeorm';
+import { Thought } from '../../domain/entities/thought.entity';
+import { Idea } from '../../domain/entities/idea.entity';
+import { Todo } from '../../../action/domain/entities/todo.entity';
 
 @Injectable()
 export class DigestionJobConsumer implements OnModuleDestroy {
@@ -43,6 +50,9 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     private readonly contentExtractor: ContentExtractorService,
     private readonly contentChunker: ContentChunkerService,
     private readonly thoughtRepository: ThoughtRepository,
+    private readonly todoRepository: TodoRepository, // Story 4.3
+    private readonly deadlineParser: DeadlineParserService, // Story 4.3
+    private readonly dataSource: DataSource, // Story 4.3: For atomic transaction
   ) {}
 
   /**
@@ -238,21 +248,27 @@ export class DigestionJobConsumer implements OnModuleDestroy {
 
       // Subtask 5.2: Parse GPT response (already done by ContentChunkerService)
       this.progressTracker.updateProgress(job.captureId, 70);
-      const { summary, ideas, confidence, wasChunked, chunkCount } = digestionResult;
+      const { summary, ideas, todos = [], confidence, wasChunked, chunkCount } = digestionResult;
 
       if (wasChunked) {
         this.logger.log(`📊 Content was chunked into ${chunkCount} parts for processing`);
       }
 
-      // Subtask 5.3: Create Thought and Ideas entities (Task 4)
+      // Story 4.3: Log todos extraction
+      if (todos.length > 0) {
+        this.logger.log(`📝 Extracted ${todos.length} todos from capture`);
+      }
+
+      // Subtask 5.3 + Story 4.3 AC2: Create Thought + Ideas + Todos in SINGLE ATOMIC TRANSACTION
       const processingTimeMs = Date.now() - startTime;
       const confidenceScore = this.mapConfidenceToScore(confidence);
 
-      const thought = await this.thoughtRepository.createWithIdeas(
+      const { thought, createdTodos } = await this.createThoughtWithIdeasAndTodos(
         job.captureId,
         job.userId,
         summary,
         ideas,
+        todos,
         processingTimeMs,
         confidenceScore,
       );
@@ -266,9 +282,23 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         userId: job.userId,
         summary,
         ideasCount: ideas.length,
+        todosCount: createdTodos.length, // Story 4.3
         processingTimeMs,
         completedAt: new Date(),
       });
+
+      // Story 4.3 Task 6: Publish TodosExtracted event (AC8)
+      if (createdTodos.length > 0) {
+        const todosExtractedEvent = new TodosExtracted(
+          job.captureId,
+          thought.id,
+          job.userId,
+          createdTodos.map((t) => t.id),
+          createdTodos.length,
+          new Date(),
+        );
+        this.eventBus.publish('todos.extracted', todosExtractedEvent.toJSON());
+      }
 
       // Subtask 5.5: Update ProgressTracker with completion status
       this.progressTracker.completeTracking(job.captureId);
@@ -310,19 +340,106 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   }
 
   /**
-   * Simulate AI processing with progress updates
-   * Will be replaced with actual GPT-4o-mini calls in Story 4.2
+   * Create Thought with Ideas and Todos in SINGLE ATOMIC TRANSACTION
+   * Story 4.3 AC2: Implements atomic Thought + Ideas + Todos creation
+   * Subtask 2.5: Transaction handling for atomic creation
    *
-   * @param captureId - Capture being processed
+   * CRITICAL: If ANY creation fails → ROLLBACK entire transaction
+   * No partial data (NFR6: zero data loss tolerance)
+   *
+   * @param captureId - Capture that was digested
+   * @param userId - User who owns the capture
+   * @param summary - AI-generated summary
+   * @param ideas - Array of key ideas (1-10)
+   * @param todos - Extracted todos from GPT (0-10)
+   * @param processingTimeMs - Time taken for digestion
+   * @param confidenceScore - Optional confidence score
+   * @returns Object with created Thought and Todos
    */
-  private async simulateProcessingWithProgress(captureId: string): Promise<void> {
-    const steps = [25, 50, 75, 100];
+  private async createThoughtWithIdeasAndTodos(
+    captureId: string,
+    userId: string,
+    summary: string,
+    ideas: string[],
+    todos: Array<{ description: string; deadline: string | null; priority: 'low' | 'medium' | 'high' }>,
+    processingTimeMs: number,
+    confidenceScore?: number,
+  ): Promise<{ thought: Thought; createdTodos: Todo[] }> {
+    this.logger.log(
+      `💾 Creating Thought with ${ideas.length} ideas and ${todos.length} todos for capture ${captureId} (ATOMIC TRANSACTION)`,
+    );
 
-    for (const percentage of steps) {
-      await new Promise((resolve) => setTimeout(resolve, 25));
-      this.progressTracker.updateProgress(captureId, percentage);
-      this.logger.debug(`Progress: ${captureId} - ${percentage}%`);
-    }
+    // AC2: Use SINGLE transaction to ensure atomic creation
+    return await this.dataSource.transaction(async (manager) => {
+      // 1. Create Thought entity
+      const thought = manager.create(Thought, {
+        captureId,
+        userId,
+        summary,
+        confidenceScore,
+        processingTimeMs,
+      });
+
+      // 2. Save Thought first to get ID
+      const savedThought = await manager.save(Thought, thought);
+
+      // 3. Create Idea entities with orderIndex
+      const ideaEntities = ideas.map((ideaText, index) =>
+        manager.create(Idea, {
+          thoughtId: savedThought.id,
+          userId,
+          text: ideaText,
+          orderIndex: index,
+        }),
+      );
+
+      // 4. Save all Ideas
+      const savedIdeas = await manager.save(Idea, ideaEntities);
+
+      // 5. Story 4.3: Create Todos (AC2, AC5, AC6)
+      let createdTodos: Todo[] = [];
+
+      if (todos && todos.length > 0) {
+        // Parse deadlines and prepare Todo DTOs
+        const todoDtos: CreateTodoDto[] = [];
+
+        for (const todo of todos) {
+          // AC3: Parse deadline text into Date
+          // TODO: Get user timezone from JWT context (currently defaults to UTC)
+          // Future enhancement: Extract timezone from req.user or user profile
+          const userTimezone = 'UTC'; // FIXME: Story 4.4 or later - add user timezone support
+          const { date: deadlineDate, confidence: deadlineConfidence } =
+            this.deadlineParser.parse(todo.deadline, userTimezone);
+
+          todoDtos.push({
+            thoughtId: savedThought.id,
+            captureId,
+            userId,
+            description: todo.description,
+            deadline: deadlineDate,
+            deadlineConfidence,
+            priority: todo.priority,
+            priorityConfidence: 0.8, // From GPT inference (Task 4)
+            status: 'todo',
+          });
+        }
+
+        // AC5: Create multiple todos using transaction-aware repository method
+        createdTodos = await this.todoRepository.createManyInTransaction(
+          manager,
+          todoDtos,
+        );
+      }
+
+      // Attach Ideas to Thought for return value
+      savedThought.ideas = savedIdeas;
+
+      this.logger.log(
+        `✅ ATOMIC TRANSACTION complete: Thought ${savedThought.id} (${ideas.length} ideas, ${createdTodos.length} todos, ${processingTimeMs}ms)`,
+      );
+
+      return { thought: savedThought, createdTodos };
+    });
   }
 
   /**

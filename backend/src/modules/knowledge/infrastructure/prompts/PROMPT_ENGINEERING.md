@@ -1,19 +1,24 @@
 # Prompt Engineering Documentation
 ## Story 4.2 - Digestion IA - Résumé et Idées Clés
+## Story 4.3 - Extraction Automatique d'Actions
 
-**Subtask 2.5: Document prompt engineering decisions and examples**
+**Subtask 2.5 (Story 4.2): Document prompt engineering decisions and examples**
+**Subtask 1.5 (Story 4.3): Document todo extraction guidelines**
 
 ## Overview
 
-This document describes the prompt engineering strategy for GPT-4o-mini digestion of user captures. The goal is to extract concise summaries and key ideas from both text and audio captures while maintaining the user's voice and intent.
+This document describes the prompt engineering strategy for GPT-4o-mini digestion of user captures. The goal is to extract concise summaries, key ideas, and actionable todos from both text and audio captures while maintaining the user's voice and intent.
+
+**Story 4.3 Enhancement:** Single LLM call now extracts summary + ideas + todos in one API request (ADR-004 compliance).
 
 ## Model Configuration
 
 - **Model:** `gpt-4o-mini`
 - **Temperature:** `0.7` - Balanced between creativity and consistency
-- **Max Tokens:** `500` - Enforces concise summaries
+- **Max Tokens:** `500` - Enforces concise summaries (may need increase for todos)
 - **Timeout:** `30s` (NFR3 requirement)
 - **Response Format:** JSON mode for structured output
+- **Story 4.3:** Single call extracts summary + ideas + todos (ADR-004)
 
 ## System Prompt Design
 
@@ -24,28 +29,47 @@ This document describes the prompt engineering strategy for GPT-4o-mini digestio
 3. **Quality over Quantity:** Emphasize concise, high-quality insights (1-5 ideas max)
 4. **User Voice Preservation:** Instruct to maintain the user's original intent and voice
 5. **Best-Effort for Edge Cases:** Handle unclear or minimal content gracefully
+6. **Selective Todo Detection (Story 4.3):** Only extract genuine action items, not forced todos
 
-### System Prompt
+### System Prompt (Enhanced for Story 4.3)
 
 ```
 You are an AI assistant specialized in analyzing personal thoughts and ideas.
-Your goal is to extract the essence of the user's thought and identify key insights.
+Your goal is to extract the essence of the user's thought, identify key insights, and detect actionable tasks.
 
 For each thought provided:
 1. Generate a concise summary (2-3 sentences maximum) that captures the core message.
 2. Extract key ideas as bullet points (1-5 ideas maximum, prioritize quality over quantity).
+3. Detect actionable tasks/todos (0-10 maximum, be selective - only real actions).
 
-Guidelines:
+Guidelines for summary and ideas:
 - Be concise and precise.
 - Focus on actionable insights and meaningful themes.
 - If the thought is unclear or minimal, provide a best-effort summary.
 - Preserve the user's voice and intent.
 - Do not add information not present in the original thought.
 
+Guidelines for todo extraction:
+- A todo is an action the user needs to take (verbs: send, call, buy, finish, etc.)
+- Extract deadline if mentioned (e.g., "by Friday", "tomorrow", "in 3 days")
+- Infer priority from context:
+  - HIGH: urgent, ASAP, critical, deadline-driven
+  - MEDIUM: important, should do, need to
+  - LOW: maybe, when I have time, nice to have
+- If no clear action, do NOT force todo extraction - return empty array
+- Preserve the user's voice in todo description
+
 You must respond with valid JSON in this exact format:
 {
   "summary": "string",
   "ideas": ["idea 1", "idea 2", ...],
+  "todos": [
+    {
+      "description": "actionable task description",
+      "deadline": "deadline text if mentioned (e.g., 'Friday', 'tomorrow') or null",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
   "confidence": "high" | "medium" | "low"
 }
 ```
@@ -131,12 +155,16 @@ export const DigestionResponseSchema = z.object({
 
 - **Summary:** 10-500 characters (enforces conciseness, prevents empty responses)
 - **Ideas:** 1-10 ideas, each 5-200 characters (quality over quantity)
+- **Todos (Story 4.3):** 0-10 todos, each with:
+  - **Description:** 3-200 characters (actionable task description)
+  - **Deadline:** 0-50 characters or null (natural language deadline text)
+  - **Priority:** Enum (low/medium/high) - inferred from content
 - **Confidence:** Enum validation (high/medium/low) with default 'high'
 - **Whitespace Check:** Prevents empty strings that pass length checks
 
 ## Example Inputs and Expected Outputs
 
-### Example 1: Text Capture - Product Idea
+### Example 1: Text Capture - Product Idea (No Todos)
 
 **Input:**
 ```
@@ -152,29 +180,41 @@ Je veux créer une app mobile pour gérer mes tâches quotidiennes. Frustré par
     "Pain point: complexité de Todoist",
     "Marché cible: utilisateurs frustrés par les outils existants"
   ],
+  "todos": [],
   "confidence": "high"
 }
 ```
 
-### Example 2: Audio Capture - Freelance Observation
+**Note (Story 4.3):** No todos extracted because this is an observation/idea, not an actionable task.
+
+### Example 2: Audio Capture - Freelance Observation with Action (Story 4.3)
 
 **Input (transcription):**
 ```
-Hier j'ai croisé un freelance qui galère avec sa compta. C'est le 3ème ce mois-ci. Il y a clairement un truc à faire là-dessus.
+Hier j'ai croisé un freelance qui galère avec sa compta. C'est le 3ème ce mois-ci. Il y a clairement un truc à faire là-dessus. Faut que je regarde Pennylane et Indy cette semaine.
 ```
 
 **Expected Output:**
 ```json
 {
-  "summary": "L'utilisateur observe un pattern récurrent: trois freelances rencontrés ce mois ont des difficultés avec leur comptabilité. Il identifie une opportunité de marché potentielle.",
+  "summary": "L'utilisateur observe un pattern récurrent: trois freelances rencontrés ce mois ont des difficultés avec leur comptabilité. Il identifie une opportunité de marché potentielle et veut explorer des solutions existantes.",
   "ideas": [
     "Pain point récurrent: gestion comptable pour freelances",
     "Validation de marché: 3 occurrences en un mois",
     "Opportunité produit/service pour freelances"
   ],
+  "todos": [
+    {
+      "description": "Regarder Pennylane et Indy",
+      "deadline": "cette semaine",
+      "priority": "medium"
+    }
+  ],
   "confidence": "high"
 }
 ```
+
+**Note (Story 4.3):** One todo extracted with deadline "cette semaine" and medium priority (implied by "faut que je" = should do).
 
 ### Example 3: Minimal Content - Edge Case
 
@@ -195,6 +235,48 @@ Ok cool
 ```
 
 **Note:** Low confidence flag indicates limited insight extraction due to minimal content.
+
+### Example 3b: Multiple Todos with Deadline and Priority (Story 4.3)
+
+**Input:**
+```
+Faut que je pense à envoyer la facture à Mme Micheaux avant vendredi. C'est urgent. J'ai encore croisé un freelance qui galère avec sa compta, c'est le 3ème ce mois-ci. Acheter du lait en rentrant.
+```
+
+**Expected Output:**
+```json
+{
+  "summary": "Reminder de facture urgente, observation récurrente sur pain point compta freelance, course à faire.",
+  "ideas": [
+    "Pain point compta freelance (récurrence)",
+    "Opportunité produit compta simplifiée"
+  ],
+  "todos": [
+    {
+      "description": "Envoyer facture Mme Micheaux",
+      "deadline": "vendredi",
+      "priority": "high"
+    },
+    {
+      "description": "Analyser solutions compta freelance",
+      "deadline": null,
+      "priority": "medium"
+    },
+    {
+      "description": "Acheter lait",
+      "deadline": "aujourd'hui",
+      "priority": "low"
+    }
+  ],
+  "confidence": "high"
+}
+```
+
+**Note (Story 4.3):**
+- Three todos extracted from single capture (AC5: 1-to-Many relationship)
+- First todo: HIGH priority (keyword "urgent"), specific deadline "vendredi" (AC4)
+- Second todo: MEDIUM priority (implied action from observation), no deadline (AC3)
+- Third todo: LOW priority (simple errand), deadline inferred as "aujourd'hui" (AC3)
 
 ### Example 4: Long Content - Meeting Notes
 
@@ -253,6 +335,69 @@ Just provide a plain text summary.
 - Plain text responses are more reliable for very short/unclear content
 - Degraded functionality is better than complete failure
 - Low confidence flag alerts user to review original content
+
+## Todo Extraction Best Practices (Story 4.3)
+
+### What Makes a Good Todo
+
+✅ **Extract:**
+- Action verbs: "Send invoice", "Call client", "Buy groceries", "Finish report"
+- User's explicit intentions: "Faut que je...", "Je dois...", "N'oublie pas de..."
+- Implicit actions from context: "Meeting with Paul tomorrow" → "Prepare for meeting with Paul"
+
+❌ **Don't Extract:**
+- Observations without action: "Il fait beau" (no action)
+- Completed past actions: "J'ai envoyé l'email" (already done)
+- Questions without commitment: "Et si je faisais...?" (speculation)
+- Vague intentions: "Il faudrait peut-être..." (no commitment)
+
+### Priority Inference Keywords
+
+**High Priority:**
+- "urgent", "ASAP", "critique", "immédiatement", "au plus vite"
+- Deadline-driven: "avant vendredi", "today", "demain matin"
+- Consequences mentioned: "sinon je rate...", "client important"
+
+**Medium Priority:**
+- "important", "faut que je", "je dois", "n'oublie pas"
+- "cette semaine", "bientôt", "rapidement"
+- Default when no priority indicators
+
+**Low Priority:**
+- "peut-être", "quand j'ai le temps", "un jour", "nice to have"
+- "si possible", "éventuellement", "pas urgent"
+
+### Deadline Parsing Examples
+
+The AI extracts deadline **text** (not parsed dates - that's done by DeadlineParserService in Task 3):
+
+- "Friday" → `deadline: "Friday"`
+- "avant vendredi" → `deadline: "avant vendredi"`
+- "tomorrow" → `deadline: "tomorrow"`
+- "in 3 days" → `deadline: "in 3 days"`
+- "cette semaine" → `deadline: "cette semaine"`
+- No mention → `deadline: null`
+
+### Edge Cases
+
+**Multiple actions from single sentence:**
+```
+"Envoyer facture et appeler client"
+→ Todo 1: "Envoyer facture"
+→ Todo 2: "Appeler client"
+```
+
+**Action embedded in observation:**
+```
+"J'ai vu Paul, il faudrait qu'on reparle du projet"
+→ Todo: "Reparler du projet avec Paul"
+```
+
+**No action despite imperative tone:**
+```
+"Il faut vraiment que quelqu'un fasse quelque chose pour la compta des freelances"
+→ No todo (general observation, no specific action for the user)
+```
 
 ## Performance Considerations
 
@@ -326,4 +471,6 @@ Before production release:
 
 **Last Updated:** 2026-02-04
 **Author:** Dev Agent (Claude Sonnet 4.5)
-**Story:** 4.2 - Digestion IA - Résumé et Idées Clés
+**Stories:**
+- 4.2 - Digestion IA - Résumé et Idées Clés
+- 4.3 - Extraction Automatique d'Actions (Todo Detection Enhancement)

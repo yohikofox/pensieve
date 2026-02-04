@@ -4,9 +4,39 @@
  *
  * Covers Subtask 2.3: Implement response schema validation (Zod)
  * AC1: GPT-4o-mini Integration and Prompt Engineering
+ *
+ * Story 4.3 Enhancement:
+ * Subtask 1.2: Enhance DigestionResponseSchema to include todos array
+ * Subtask 1.3: Add todo format specification (description, deadline text, priority)
  */
 
 import { z } from 'zod';
+
+/**
+ * Todo Schema for extracted actionable tasks
+ * Story 4.3 - AC1: Single LLM Call Integration
+ *
+ * Requirements:
+ * - Description: 3-200 characters (actionable task description)
+ * - Deadline: Optional text (e.g., "Friday", "tomorrow", null if no deadline)
+ * - Priority: Enum (low/medium/high)
+ */
+export const TodoSchema = z.object({
+  description: z
+    .string()
+    .min(3, 'Todo description must be at least 3 characters')
+    .max(200, 'Todo description must not exceed 200 characters')
+    .refine((val) => val.trim().length > 0, {
+      message: 'Todo description cannot be empty or whitespace only',
+    }),
+
+  deadline: z
+    .string()
+    .max(50, 'Deadline text must not exceed 50 characters')
+    .nullable(),
+
+  priority: z.enum(['low', 'medium', 'high']),
+});
 
 /**
  * Digestion Response Schema
@@ -15,6 +45,7 @@ import { z } from 'zod';
  * Requirements:
  * - Summary: 10-500 characters (concise, 2-3 sentences)
  * - Ideas: 1-10 bullet points, each 5-200 characters
+ * - Todos: 0-10 actionable tasks (Story 4.3)
  * - Confidence: Optional indicator of analysis quality
  */
 export const DigestionResponseSchema = z.object({
@@ -39,6 +70,12 @@ export const DigestionResponseSchema = z.object({
     .min(1, 'At least one idea is required')
     .max(10, 'Maximum 10 ideas allowed'),
 
+  todos: z
+    .array(TodoSchema)
+    .max(10, 'Maximum 10 todos allowed')
+    .optional()
+    .default([]),
+
   confidence: z
     .enum(['high', 'medium', 'low'])
     .optional()
@@ -46,8 +83,9 @@ export const DigestionResponseSchema = z.object({
 });
 
 /**
- * TypeScript type inferred from schema
+ * TypeScript types inferred from schemas
  */
+export type TodoExtraction = z.infer<typeof TodoSchema>;
 export type DigestionResponse = z.infer<typeof DigestionResponseSchema>;
 
 /**

@@ -38,6 +38,7 @@
     "adm-zip": "^0.5.16",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
+    "chrono-node": "^2.9.0",
     "fs-extra": "^11.3.3",
     "minio": "^8.0.6",
     "openai": "^6.17.0",

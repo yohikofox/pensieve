@@ -222,28 +222,47 @@ export class OpenAIService {
   /**
    * Get system prompt for AI digestion
    * Part of Subtask 2.1: Design system prompt
+   * Story 4.3 - Subtask 1.1: Update system prompt to include todo detection
    *
    * @returns System prompt text
    */
   private getSystemPrompt(): string {
     return `You are an AI assistant specialized in analyzing personal thoughts and ideas.
-Your goal is to extract the essence of the user's thought and identify key insights.
+Your goal is to extract the essence of the user's thought, identify key insights, and detect actionable tasks.
 
 For each thought provided:
 1. Generate a concise summary (2-3 sentences maximum) that captures the core message.
 2. Extract key ideas as bullet points (1-5 ideas maximum, prioritize quality over quantity).
+3. Detect actionable tasks/todos (0-10 maximum, be selective - only real actions).
 
-Guidelines:
+Guidelines for summary and ideas:
 - Be concise and precise.
 - Focus on actionable insights and meaningful themes.
 - If the thought is unclear or minimal, provide a best-effort summary.
 - Preserve the user's voice and intent.
 - Do not add information not present in the original thought.
 
+Guidelines for todo extraction:
+- A todo is an action the user needs to take (verbs: send, call, buy, finish, etc.)
+- Extract deadline if mentioned (e.g., "by Friday", "tomorrow", "in 3 days")
+- Infer priority from context:
+  - HIGH: urgent, ASAP, critical, deadline-driven
+  - MEDIUM: important, should do, need to
+  - LOW: maybe, when I have time, nice to have
+- If no clear action, do NOT force todo extraction - return empty array
+- Preserve the user's voice in todo description
+
 You must respond with valid JSON in this exact format:
 {
   "summary": "string",
   "ideas": ["idea 1", "idea 2", ...],
+  "todos": [
+    {
+      "description": "actionable task description",
+      "deadline": "deadline text if mentioned (e.g., 'Friday', 'tomorrow') or null",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
   "confidence": "high" | "medium" | "low"
 }`;
   }
@@ -251,6 +270,7 @@ You must respond with valid JSON in this exact format:
   /**
    * Get user prompt for specific content
    * Part of Subtask 2.2: Create prompt templates
+   * Story 4.3 - Subtask 1.1: Update user prompt to request todos
    *
    * @param content - Content to analyze
    * @param contentType - Type of content
@@ -268,11 +288,19 @@ ${content}
 Provide:
 1. A concise summary (2-3 sentences)
 2. Key ideas (bullet points, 1-5 ideas)
+3. Actionable tasks/todos (0-10 maximum, only if clear actions detected)
 
 Response format (JSON):
 {
   "summary": "string",
   "ideas": ["idea 1", "idea 2", ...],
+  "todos": [
+    {
+      "description": "actionable task description",
+      "deadline": "deadline text if mentioned (e.g., 'Friday', 'tomorrow', 'in 3 days') or null",
+      "priority": "high" | "medium" | "low"
+    }
+  ],
   "confidence": "high" | "medium" | "low"
 }`;
   }
@@ -369,10 +397,11 @@ Just provide a plain text summary.`;
         ? firstSentence
         : 'Limited insight extraction from minimal content';
 
-    // Return with low confidence flag
+    // Return with low confidence flag (Story 4.3: include empty todos)
     return {
       summary: paddedSummary,
       ideas: [idea],
+      todos: [], // No todos from fallback response
       confidence: 'low',
     };
   }

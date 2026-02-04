@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { Thought } from './domain/entities/thought.entity';
 import { Idea } from './domain/entities/idea.entity';
+import { ActionModule } from '../action/action.module'; // Story 4.3: Import ActionModule for TodoRepository
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
@@ -42,6 +43,8 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
   imports: [
     // Register TypeORM entities for Knowledge Context (Story 4.2 Task 4)
     TypeOrmModule.forFeature([Thought, Idea]),
+    // Story 4.3: Import ActionModule for TodoRepository and DeadlineParserService
+    ActionModule,
     // Register RabbitMQ client for job publishing
     ClientsModule.register([
       {

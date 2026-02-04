@@ -19,6 +19,7 @@ import { OpenAIService } from './openai.service';
 export interface ChunkingResult {
   summary: string;
   ideas: string[];
+  todos: Array<{ description: string; deadline: string | null; priority: 'low' | 'medium' | 'high' }>; // Story 4.3
   confidence: 'high' | 'medium' | 'low';
   wasChunked: boolean;
   chunkCount?: number;
@@ -201,6 +202,10 @@ export class ContentChunkerService {
     const allIdeas = chunkResults.flatMap((r) => r.ideas);
     const uniqueIdeas = this.deduplicateIdeas(allIdeas);
 
+    // Story 4.3: Merge todos from all chunks (max 10)
+    const allTodos = chunkResults.flatMap((r) => r.todos || []);
+    const uniqueTodos = allTodos.slice(0, 10); // Simple truncation for now, could deduplicate by description
+
     // Determine overall confidence (lowest from all chunks)
     const confidenceLevels = ['high', 'medium', 'low'] as const;
     const minConfidence = chunkResults.reduce((min, r) => {
@@ -214,12 +219,13 @@ export class ContentChunkerService {
       chunkCount > 3 && minConfidence === 'high' ? 'medium' : minConfidence;
 
     this.logger.log(
-      `✅ Merged ${chunkCount} chunks → ${uniqueIdeas.length} unique ideas`,
+      `✅ Merged ${chunkCount} chunks → ${uniqueIdeas.length} unique ideas, ${uniqueTodos.length} todos`,
     );
 
     return {
       summary: mergedSummary,
       ideas: uniqueIdeas.slice(0, 10), // Max 10 ideas
+      todos: uniqueTodos, // Story 4.3: Include todos
       confidence: finalConfidence,
       wasChunked: true,
       chunkCount,

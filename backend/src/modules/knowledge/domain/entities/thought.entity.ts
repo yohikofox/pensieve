@@ -48,6 +48,11 @@ export class Thought {
   @OneToMany(() => Idea, (idea) => idea.thought, { cascade: true })
   ideas!: Idea[];
 
+  // Story 4.3: OneToMany relationship with Todos (Action Context)
+  // Lazy import to avoid circular dependency
+  // @OneToMany('Todo', 'thought', { cascade: true })
+  // todos!: any[]; // Type will be Todo[] but we avoid direct import
+
   // Note: ManyToOne to Capture will be added when Capture Context is integrated
   // @ManyToOne(() => Capture)
   // @JoinColumn({ name: 'captureId' })
