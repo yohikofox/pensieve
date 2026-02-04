@@ -12,6 +12,7 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { ConfigService } from '@nestjs/config';
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
@@ -22,6 +23,8 @@ import { DigestionRetryController } from './application/controllers/digestion-re
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
 import { CaptureRepositoryStub } from './infrastructure/stubs/capture-repository.stub';
+import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progress.store';
+import { RedisProgressStore } from './infrastructure/stores/redis-progress.store';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
@@ -53,6 +56,20 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     {
       provide: 'CAPTURE_REPOSITORY',
       useClass: CaptureRepositoryStub,
+    },
+    // Progress Store - choose implementation based on environment
+    {
+      provide: 'PROGRESS_STORE',
+      useFactory: (configService: ConfigService) => {
+        const storeType = configService.get<string>('PROGRESS_STORE_TYPE', 'memory');
+
+        if (storeType === 'redis') {
+          return new RedisProgressStore(configService);
+        }
+
+        return new InMemoryProgressStore();
+      },
+      inject: [ConfigService],
     },
   ],
   exports: [
