@@ -12,10 +12,11 @@
  * AC3: Priority-Based Job Processing
  */
 
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
 import { MessagePattern, Payload, Ctx } from '@nestjs/microservices';
 import type { RmqContext } from '@nestjs/microservices';
 import type { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
+import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
 import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.event';
 import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
@@ -32,6 +33,8 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   constructor(
     private readonly progressTracker: ProgressTrackerService,
     private readonly queueMonitoring: QueueMonitoringService,
+    @Inject('CAPTURE_REPOSITORY')
+    private readonly captureRepository: ICaptureRepository,
   ) {}
 
   /**
@@ -111,6 +114,17 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         this.queueMonitoring.recordJobFailed();
         this.queueMonitoring.recordJobLatency(duration);
 
+        // Subtask 5.3: Update Capture status to "digestion_failed" in database
+        await this.captureRepository.updateStatus(
+          job.captureId,
+          'digestion_failed',
+          {
+            processing_completed_at: new Date(),
+            error_message: errorMessage,
+            error_stack: stackTrace,
+          },
+        );
+
         // Subtask 5.5: Emit DigestionJobFailed event for alerting
         const failedEvent = new DigestionJobFailed(
           job.captureId,
@@ -123,7 +137,6 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         );
         this.logger.error('Domain event: DigestionJobFailed', failedEvent.toJSON());
 
-        // TODO: Subtask 5.3 - Update Capture status to "digestion_failed" in database
         // TODO: Send alert to monitoring system
       } else {
         // Will be retried by RabbitMQ with exponential backoff
@@ -181,6 +194,11 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     // Subtask 4.1 & 4.2: Start tracking with timestamp
     this.progressTracker.startTracking(job.captureId, job.userId);
 
+    // AC4: Update Capture status to "digesting" when job starts
+    await this.captureRepository.updateStatus(job.captureId, 'digesting', {
+      processing_started_at: new Date(),
+    });
+
     // Emit DigestionJobStarted event (AC4 - Task 4)
     const startedEvent = new DigestionJobStarted(
       job.captureId,
@@ -199,8 +217,12 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     // Mark tracking as complete
     this.progressTracker.completeTracking(job.captureId);
 
+    // AC4: Update Capture status to "digested" after successful processing
+    await this.captureRepository.updateStatus(job.captureId, 'digested', {
+      processing_completed_at: new Date(),
+    });
+
     // TODO: Story 4.2 - Store results (Thoughts, Ideas, Actions)
-    // TODO: AC4 - Update Capture status to "digested" in database
     // TODO: Subtask 4.3 & 4.4 - Publish progress updates via WebSocket
 
     this.logger.log(`✨ Digestion complete for ${job.captureId}`);

@@ -17,6 +17,7 @@ import {
   Priority,
 } from '../../domain/interfaces/digestion-job-payload.interface';
 import { DigestionJobQueued } from '../../domain/events/DigestionJobQueued.event';
+import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
 
 @Injectable()
 export class DigestionJobPublisher {
@@ -25,6 +26,8 @@ export class DigestionJobPublisher {
   constructor(
     @Inject('DIGESTION_QUEUE')
     private readonly rabbitMQClient: ClientProxy,
+    @Inject('CAPTURE_REPOSITORY')
+    private readonly captureRepository: ICaptureRepository,
   ) {}
 
   /**
@@ -40,6 +43,12 @@ export class DigestionJobPublisher {
       // Emit job to RabbitMQ queue
       await firstValueFrom(
         this.rabbitMQClient.emit('digestion.job.queued', payload),
+      );
+
+      // Subtask 2.4: Update Capture status to "queued_for_digestion"
+      await this.captureRepository.updateStatus(
+        capture.captureId,
+        'queued_for_digestion',
       );
 
       this.logger.log(

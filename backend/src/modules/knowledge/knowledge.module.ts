@@ -19,6 +19,7 @@ import { QueueMonitoringService } from './application/services/queue-monitoring.
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
+import { CaptureRepositoryStub } from './infrastructure/stubs/capture-repository.stub';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
@@ -43,6 +44,11 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     DigestionJobConsumer, // Consume and process jobs (AC3)
     ProgressTrackerService, // Track job progress (AC4)
     QueueMonitoringService, // Monitor queue health and metrics (AC6)
+    // Capture Repository stub - replaces when Capture Context is integrated
+    {
+      provide: 'CAPTURE_REPOSITORY',
+      useClass: CaptureRepositoryStub,
+    },
   ],
   exports: [
     RabbitMQSetupService,
