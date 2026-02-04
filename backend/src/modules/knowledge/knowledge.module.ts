@@ -15,6 +15,7 @@ import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.s
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
 import { ProgressTrackerService } from './application/services/progress-tracker.service';
+import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
@@ -27,6 +28,9 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
         ...getRabbitMQOptions(),
       },
     ]),
+  ],
+  controllers: [
+    DigestionRetryController, // Manual retry endpoint (AC5)
   ],
   providers: [
     RabbitMQSetupService, // Initialize queues on startup

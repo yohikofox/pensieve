@@ -17,6 +17,7 @@ import { MessagePattern, Payload, Ctx } from '@nestjs/microservices';
 import type { RmqContext } from '@nestjs/microservices';
 import type { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
 import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.event';
+import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
 
 @Injectable()
@@ -75,13 +76,54 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       }
     } catch (error) {
       const duration = Date.now() - startTime;
+
+      // Subtask 5.4: Log error details for debugging
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const stackTrace = error instanceof Error ? error.stack || '' : '';
+
       this.logger.error(
-        `❌ Job failed: ${job.captureId} (after ${duration}ms)`,
-        error,
+        `❌ Job failed: ${job.captureId} (after ${duration}ms, retry: ${job.retryCount})`,
+        {
+          errorMessage,
+          stackTrace,
+          jobPayload: job,
+        },
       );
 
+      // Subtask 5.3 & 5.5: Check if max retries reached
+      const MAX_RETRIES = 3;
+      if (job.retryCount >= MAX_RETRIES - 1) {
+        // Max retries reached, mark as permanently failed
+        this.logger.error(
+          `🔴 Job permanently failed after ${MAX_RETRIES} attempts: ${job.captureId}`,
+        );
+
+        // Mark progress tracking as failed
+        this.progressTracker.failTracking(job.captureId, errorMessage);
+
+        // Subtask 5.5: Emit DigestionJobFailed event for alerting
+        const failedEvent = new DigestionJobFailed(
+          job.captureId,
+          job.userId,
+          errorMessage,
+          stackTrace,
+          job.retryCount + 1, // Total attempts
+          new Date(),
+          job,
+        );
+        this.logger.error('Domain event: DigestionJobFailed', failedEvent.toJSON());
+
+        // TODO: Subtask 5.3 - Update Capture status to "digestion_failed" in database
+        // TODO: Send alert to monitoring system
+      } else {
+        // Will be retried by RabbitMQ with exponential backoff
+        this.logger.warn(
+          `⚠️  Job will be retried (attempt ${job.retryCount + 1}/${MAX_RETRIES}): ${job.captureId}`,
+        );
+      }
+
       // Don't acknowledge - let RabbitMQ retry or move to DLQ
-      // The retry logic will be handled by RabbitMQ dead-letter exchange (Task 5)
+      // Retry delays configured in RabbitMQ: 5s → 15s → 45s
       throw error;
     } finally {
       this.activeJobs.delete(jobPromise);
