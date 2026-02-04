@@ -41,15 +41,22 @@ export class QueueMonitoringService {
    * Get current queue depth (number of pending jobs)
    * Subtask 6.1: Queue depth monitoring
    *
-   * NOTE: This is a stub. In real implementation, this would query RabbitMQ
-   * management API or use amqplib channel.checkQueue()
+   * ⚠️ LIMITATION: Currently returns hardcoded 0
    *
-   * @returns Number of jobs waiting in queue
+   * REASON: Requires RabbitMQ channel access via NestJS microservices internals
+   * IMPACT: Queue depth metrics are inaccurate, overload detection won't work
+   * WORKAROUND: Monitor RabbitMQ directly via management UI or API
+   *
+   * TODO Story 4.5: Implement real queue depth monitoring
+   * 1. Research: How to access amqplib channel in NestJS @nestjs/microservices
+   * 2. Inject channel or use RabbitMQ HTTP management API
+   * 3. Call channel.checkQueue('digestion-jobs') or GET /api/queues/...
+   * 4. Update tests to verify real queue depth
+   *
+   * @returns Number of jobs waiting in queue (currently always 0)
    */
   async getQueueDepth(): Promise<number> {
-    // TODO: Query actual RabbitMQ queue depth
-    // For now, return 0 (no jobs pending)
-    // In production:
+    // TODO: Implement real query
     // const queueInfo = await this.channel.checkQueue('digestion-jobs');
     // return queueInfo.messageCount;
     return 0;

@@ -8,6 +8,20 @@
  * - Subtask 4.5: Calculate progress percentage
  *
  * AC4: Real-Time Progress Updates
+ *
+ * ⚠️ SCALABILITY LIMITATION: In-memory storage
+ *
+ * CURRENT: Uses Map<captureId, JobProgress> in memory
+ * WORKS FOR: Single-instance deployments, moderate load
+ * FAILS FOR: Multi-instance clusters (different memory per instance)
+ * IMPACT: Progress lost on restart, inconsistent across instances
+ *
+ * TODO Story 4.7: Migrate to external progress store
+ * OPTIONS:
+ *   1. Redis (recommended): Fast, distributed, supports pub/sub for real-time
+ *   2. PostgreSQL: Persistent, transactional, but slower for real-time
+ *   3. MongoDB: Document-based, good for flexible progress schema
+ * MIGRATION: Keep Map as fallback, add RedisProgressStore with same interface
  */
 
 import { Injectable, Logger } from '@nestjs/common';

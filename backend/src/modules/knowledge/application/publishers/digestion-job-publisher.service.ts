@@ -56,7 +56,17 @@ export class DigestionJobPublisher {
       );
 
       // Subtask 2.5: Publish Domain Event for observability
-      // TODO: Integrate with Event Bus when available
+      // ⚠️ LIMITATION: Events are only logged, not published to Event Bus
+      //
+      // REASON: No Event Bus infrastructure exists yet
+      // IMPACT: Other bounded contexts cannot react to digestion events
+      // WORKAROUND: Events are logged for debugging, can be indexed by log aggregator
+      //
+      // TODO Story 4.6: Integrate Event Bus for cross-context communication
+      // 1. Choose event bus (NestJS EventEmitter, RabbitMQ fanout, Redis pub/sub)
+      // 2. Create EventBusService with publish() method
+      // 3. Replace logger.debug() with eventBus.publish()
+      // 4. Add subscribers in other bounded contexts (Capture, Notification)
       const event = new DigestionJobQueued(
         payload.captureId,
         payload.userId,
