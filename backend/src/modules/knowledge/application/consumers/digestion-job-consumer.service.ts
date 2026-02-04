@@ -21,6 +21,7 @@ import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.eve
 import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
+import { EventBusService } from '../services/event-bus.service';
 
 @Injectable()
 export class DigestionJobConsumer implements OnModuleDestroy {
@@ -35,6 +36,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     private readonly queueMonitoring: QueueMonitoringService,
     @Inject('CAPTURE_REPOSITORY')
     private readonly captureRepository: ICaptureRepository,
+    private readonly eventBus: EventBusService,
   ) {}
 
   /**
@@ -135,7 +137,8 @@ export class DigestionJobConsumer implements OnModuleDestroy {
           new Date(),
           job,
         );
-        this.logger.error('Domain event: DigestionJobFailed', failedEvent.toJSON());
+        this.eventBus.publish('digestion.job.failed', failedEvent.toJSON());
+        this.logger.error(`Job permanently failed: ${job.captureId}`, failedEvent.toJSON());
 
         // TODO: Send alert to monitoring system
       } else {
@@ -205,7 +208,11 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       job.userId,
       new Date(),
     );
-    this.logger.debug('Domain event: DigestionJobStarted', startedEvent);
+    this.eventBus.publish('digestion.job.started', {
+      captureId: startedEvent.captureId,
+      userId: startedEvent.userId,
+      startedAt: startedEvent.startedAt,
+    });
 
     // TODO: Story 4.2 - Call GPT-4o-mini for actual digestion
     // For now, simulate processing with progress updates

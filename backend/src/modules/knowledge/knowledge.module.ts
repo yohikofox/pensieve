@@ -11,11 +11,13 @@
 
 import { Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
 import { ProgressTrackerService } from './application/services/progress-tracker.service';
 import { QueueMonitoringService } from './application/services/queue-monitoring.service';
+import { EventBusService } from './application/services/event-bus.service';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
@@ -32,6 +34,8 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
         ...getRabbitMQOptions(),
       },
     ]),
+    // Event emitter for domain events
+    EventEmitterModule.forRoot(),
   ],
   controllers: [
     DigestionRetryController, // Manual retry endpoint (AC5)
@@ -44,6 +48,7 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     DigestionJobConsumer, // Consume and process jobs (AC3)
     ProgressTrackerService, // Track job progress (AC4)
     QueueMonitoringService, // Monitor queue health and metrics (AC6)
+    EventBusService, // Domain event publishing (AC2, AC4, AC5)
     // Capture Repository stub - replaces when Capture Context is integrated
     {
       provide: 'CAPTURE_REPOSITORY',

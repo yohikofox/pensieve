@@ -18,6 +18,7 @@ import {
 } from '../../domain/interfaces/digestion-job-payload.interface';
 import { DigestionJobQueued } from '../../domain/events/DigestionJobQueued.event';
 import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
+import { EventBusService } from '../services/event-bus.service';
 
 @Injectable()
 export class DigestionJobPublisher {
@@ -28,6 +29,7 @@ export class DigestionJobPublisher {
     private readonly rabbitMQClient: ClientProxy,
     @Inject('CAPTURE_REPOSITORY')
     private readonly captureRepository: ICaptureRepository,
+    private readonly eventBus: EventBusService,
   ) {}
 
   /**
@@ -56,24 +58,19 @@ export class DigestionJobPublisher {
       );
 
       // Subtask 2.5: Publish Domain Event for observability
-      // ⚠️ LIMITATION: Events are only logged, not published to Event Bus
-      //
-      // REASON: No Event Bus infrastructure exists yet
-      // IMPACT: Other bounded contexts cannot react to digestion events
-      // WORKAROUND: Events are logged for debugging, can be indexed by log aggregator
-      //
-      // TODO Story 4.6: Integrate Event Bus for cross-context communication
-      // 1. Choose event bus (NestJS EventEmitter, RabbitMQ fanout, Redis pub/sub)
-      // 2. Create EventBusService with publish() method
-      // 3. Replace logger.debug() with eventBus.publish()
-      // 4. Add subscribers in other bounded contexts (Capture, Notification)
       const event = new DigestionJobQueued(
         payload.captureId,
         payload.userId,
         payload.queuedAt,
         payload.priority,
       );
-      this.logger.debug(`Domain event: DigestionJobQueued`, event);
+
+      this.eventBus.publish('digestion.job.queued', {
+        captureId: event.captureId,
+        userId: event.userId,
+        queuedAt: event.queuedAt,
+        priority: event.priority,
+      });
     } catch (error) {
       this.logger.error(
         `Failed to publish digestion job for capture ${capture.captureId}:`,
