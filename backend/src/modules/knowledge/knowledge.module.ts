@@ -36,6 +36,7 @@ import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progres
 import { RedisProgressStore } from './infrastructure/stores/redis-progress.store';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
+import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-events.gateway';
 
 @Module({
   imports: [
@@ -63,6 +64,7 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     ProgressTrackerService, // Track job progress (AC4)
     QueueMonitoringService, // Monitor queue health and metrics (AC6)
     EventBusService, // Domain event publishing (AC2, AC4, AC5)
+    KnowledgeEventsGateway, // WebSocket real-time notifications (Story 4.2 Task 6)
     // OpenAI Client Provider - Story 4.2 Subtask 1.2
     {
       provide: OpenAI,

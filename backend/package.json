@@ -30,7 +30,9 @@
     "@nestjs/event-emitter": "^3.0.1",
     "@nestjs/microservices": "^11.1.12",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/platform-socket.io": "^11.1.13",
     "@nestjs/typeorm": "^11.0.0",
+    "@nestjs/websockets": "^11.1.13",
     "@supabase/supabase-js": "^2.90.1",
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
@@ -43,6 +45,7 @@
     "redis": "^5.10.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "socket.io": "^4.8.3",
     "tiktoken": "^1.0.22",
     "typeorm": "^0.3.28",
     "zod": "^4.3.6"

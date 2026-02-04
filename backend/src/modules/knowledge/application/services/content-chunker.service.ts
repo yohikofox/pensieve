@@ -148,8 +148,13 @@ export class ContentChunkerService {
 
       // Decode back to text
       const encodingForDecode = encoding_for_model(this.model);
-      const chunkText = encodingForDecode.decode(chunkTokens);
+      const decoded = encodingForDecode.decode(chunkTokens);
       encodingForDecode.free();
+
+      // Handle Uint8Array from tiktoken (convert to string)
+      const chunkText = typeof decoded === 'string'
+        ? decoded
+        : new TextDecoder().decode(decoded);
 
       chunks.push(chunkText);
 

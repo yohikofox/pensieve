@@ -1,0 +1,237 @@
+/**
+ * KnowledgeEventsGateway Unit Tests
+ * Tests for Task 6.1: WebSocket gateway for real-time notifications
+ *
+ * Covers AC5: Real-Time Feed Update Notification
+ */
+
+import { Test, TestingModule } from '@nestjs/testing';
+import { KnowledgeEventsGateway } from './knowledge-events.gateway';
+import { EventBusService } from '../../application/services/event-bus.service';
+import type { Server, Socket } from 'socket.io';
+
+describe('KnowledgeEventsGateway (Task 6.1)', () => {
+  let gateway: KnowledgeEventsGateway;
+  let eventBus: EventBusService;
+  let mockServer: jest.Mocked<Server>;
+  let mockSocket: jest.Mocked<Socket>;
+
+  beforeEach(async () => {
+    // Mock Socket.IO Server
+    mockServer = {
+      to: jest.fn().mockReturnThis(),
+      emit: jest.fn(),
+    } as any;
+
+    // Mock Socket.IO Socket
+    mockSocket = {
+      id: 'test-socket-id',
+      data: {},
+      join: jest.fn(),
+      leave: jest.fn(),
+      emit: jest.fn(),
+    } as any;
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        KnowledgeEventsGateway,
+        {
+          provide: EventBusService,
+          useValue: {
+            subscribe: jest.fn(),
+          },
+        },
+      ],
+    }).compile();
+
+    gateway = module.get<KnowledgeEventsGateway>(KnowledgeEventsGateway);
+    eventBus = module.get<EventBusService>(EventBusService);
+
+    // Inject mock server
+    gateway['server'] = mockServer;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Gateway Initialization (Subtask 6.1)', () => {
+    it('should subscribe to digestion.completed events on initialization', () => {
+      // Act
+      gateway.afterInit(mockServer);
+
+      // Assert
+      expect(eventBus.subscribe).toHaveBeenCalledWith(
+        'digestion.completed',
+        expect.any(Function),
+      );
+    });
+
+    it('should set server reference on initialization', () => {
+      // Act
+      gateway.afterInit(mockServer);
+
+      // Assert
+      expect(gateway['server']).toBe(mockServer);
+    });
+  });
+
+  describe('Client Connection Management (Subtask 6.1)', () => {
+    it('should allow client to join user-specific room', async () => {
+      // Arrange
+      const userId = 'user-123';
+
+      // Act
+      await gateway.handleJoinRoom(mockSocket, userId);
+
+      // Assert
+      expect(mockSocket.join).toHaveBeenCalledWith(`user:${userId}`);
+    });
+
+    it('should store userId in socket data for later use', async () => {
+      // Arrange
+      const userId = 'user-456';
+
+      // Act
+      await gateway.handleJoinRoom(mockSocket, userId);
+
+      // Assert
+      expect(mockSocket.data.userId).toBe(userId);
+    });
+
+    it('should handle client disconnection gracefully', () => {
+      // Arrange
+      mockSocket.data.userId = 'user-789';
+
+      // Act
+      gateway.handleDisconnect(mockSocket);
+
+      // Assert - Should log disconnect (no errors)
+      expect(mockSocket.data.userId).toBe('user-789');
+    });
+  });
+
+  describe('Digestion Completed Event Broadcasting (AC5)', () => {
+    it('should broadcast digestion.completed event to user room', () => {
+      // Arrange
+      const completedEvent = {
+        thoughtId: 'thought-123',
+        captureId: 'capture-456',
+        userId: 'user-789',
+        summary: 'Test summary',
+        ideasCount: 3,
+        processingTimeMs: 1500,
+        completedAt: new Date().toISOString(),
+      };
+
+      // Act
+      gateway.handleDigestionCompleted(completedEvent);
+
+      // Assert
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-789');
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'digestion.completed',
+        expect.objectContaining({
+          thoughtId: 'thought-123',
+          captureId: 'capture-456',
+          userId: 'user-789',
+          summary: 'Test summary',
+          ideasCount: 3,
+        }),
+      );
+    });
+
+    it('should include all required fields in the event payload', () => {
+      // Arrange
+      const completedEvent = {
+        thoughtId: 'thought-abc',
+        captureId: 'capture-def',
+        userId: 'user-xyz',
+        summary: 'Summary text',
+        ideasCount: 5,
+        processingTimeMs: 2000,
+        completedAt: '2026-02-04T12:00:00Z',
+      };
+
+      // Act
+      gateway.handleDigestionCompleted(completedEvent);
+
+      // Assert - Verify all fields are present
+      const emitCall = (mockServer.emit as jest.Mock).mock.calls[0];
+      const payload = emitCall[1];
+
+      expect(payload).toHaveProperty('thoughtId', 'thought-abc');
+      expect(payload).toHaveProperty('captureId', 'capture-def');
+      expect(payload).toHaveProperty('userId', 'user-xyz');
+      expect(payload).toHaveProperty('summary', 'Summary text');
+      expect(payload).toHaveProperty('ideasCount', 5);
+      expect(payload).toHaveProperty('processingTimeMs', 2000);
+      expect(payload).toHaveProperty('completedAt', '2026-02-04T12:00:00Z');
+    });
+
+    it('should only notify the specific user (not broadcast to all)', () => {
+      // Arrange
+      const event1 = {
+        thoughtId: 'thought-1',
+        captureId: 'capture-1',
+        userId: 'user-A',
+        summary: 'Summary A',
+        ideasCount: 1,
+        processingTimeMs: 1000,
+        completedAt: new Date().toISOString(),
+      };
+
+      const event2 = {
+        thoughtId: 'thought-2',
+        captureId: 'capture-2',
+        userId: 'user-B',
+        summary: 'Summary B',
+        ideasCount: 2,
+        processingTimeMs: 1500,
+        completedAt: new Date().toISOString(),
+      };
+
+      // Act
+      gateway.handleDigestionCompleted(event1);
+      gateway.handleDigestionCompleted(event2);
+
+      // Assert - Each event goes to specific user room
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-A');
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-B');
+      expect(mockServer.to).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('Error Handling (Subtask 6.1)', () => {
+    it('should handle missing userId in event gracefully', () => {
+      // Arrange
+      const malformedEvent = {
+        thoughtId: 'thought-123',
+        captureId: 'capture-456',
+        // userId missing
+        summary: 'Test',
+        ideasCount: 1,
+      } as any;
+
+      // Act & Assert - Should not throw
+      expect(() => gateway.handleDigestionCompleted(malformedEvent)).not.toThrow();
+    });
+
+    it('should handle server not initialized', () => {
+      // Arrange
+      gateway['server'] = undefined as any;
+      const event = {
+        thoughtId: 'thought-123',
+        captureId: 'capture-456',
+        userId: 'user-789',
+        summary: 'Test',
+        ideasCount: 1,
+        processingTimeMs: 1000,
+        completedAt: new Date().toISOString(),
+      };
+
+      // Act & Assert - Should not throw
+      expect(() => gateway.handleDigestionCompleted(event)).not.toThrow();
+    });
+  });
+});
