@@ -18,6 +18,7 @@ import { ProgressTrackerService } from './application/services/progress-tracker.
 import { QueueMonitoringService } from './application/services/queue-monitoring.service';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
+import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
@@ -34,6 +35,7 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
   controllers: [
     DigestionRetryController, // Manual retry endpoint (AC5)
     MetricsController, // Prometheus metrics endpoint (AC6)
+    BatchDigestionController, // Batch submission endpoint (AC7)
   ],
   providers: [
     RabbitMQSetupService, // Initialize queues on startup
@@ -43,10 +45,11 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     QueueMonitoringService, // Monitor queue health and metrics (AC6)
   ],
   exports: [
-    'DIGESTION_QUEUE', // Export for use in other modules
     RabbitMQSetupService,
     DigestionJobPublisher, // Export for Capture Context integration
     DigestionJobConsumer,
+    ProgressTrackerService, // Export for monitoring
+    QueueMonitoringService, // Export for metrics access
   ],
 })
 export class KnowledgeModule {}
