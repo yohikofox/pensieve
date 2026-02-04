@@ -75,7 +75,30 @@ export class RabbitMQSetupService implements OnModuleInit {
 
       this.logger.log('✅ RabbitMQ infrastructure setup complete');
     } catch (error) {
-      this.logger.error('Failed to setup RabbitMQ infrastructure:', error);
+      // Detect queue parameter mismatch error (common when queue exists with different config)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const isPreconditionFailed = errorMessage.includes('PRECONDITION_FAILED') ||
+                                   errorMessage.includes('inequivalent arg');
+
+      if (isPreconditionFailed) {
+        this.logger.error(
+          '❌ RabbitMQ queue configuration mismatch detected!\n' +
+          '\n' +
+          'The queue already exists with different parameters.\n' +
+          'This happens when the queue was created before without x-max-priority.\n' +
+          '\n' +
+          'To fix this issue:\n' +
+          '1. Run: npm run reset-rabbitmq (or scripts/reset-rabbitmq-queues.sh)\n' +
+          '2. Restart the application\n' +
+          '\n' +
+          'Alternatively, manually delete the queues via RabbitMQ Management UI:\n' +
+          '- http://10.0.0.2:15672 (user: pensine, pass: pensine)\n' +
+          '- Delete: digestion-jobs, digestion-failed, digestion-dlx\n',
+        );
+      } else {
+        this.logger.error('Failed to setup RabbitMQ infrastructure:', error);
+      }
+
       throw error;
     }
   }
