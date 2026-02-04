@@ -67,36 +67,40 @@ export class BatchDigestionController {
     // Frontend should send them sorted, but we verify here
     const sortedCaptures = this.sortByRecency(captures);
 
-    // Subtask 7.5: Process each capture, track successes and failures
+    // Subtask 7.5: Process each capture in parallel, track successes and failures
+    const publishPromises = sortedCaptures.map((capture) =>
+      this.jobPublisher
+        .publishJob(capture)
+        .then(() => ({ capture, success: true as const, error: undefined }))
+        .catch((error) => ({
+          capture,
+          success: false as const,
+          error: error instanceof Error ? error.message : String(error),
+        })),
+    );
+
+    const settled = await Promise.all(publishPromises);
+
+    // Build results from settled promises
     const results: BatchSubmissionResponse['results'] = [];
     let successCount = 0;
     let failureCount = 0;
 
-    for (const capture of sortedCaptures) {
-      try {
-        // Publish job to RabbitMQ queue
-        await this.jobPublisher.publishJob(capture);
+    for (const result of settled) {
+      results.push({
+        captureId: result.capture.captureId,
+        success: result.success,
+        error: result.error,
+      });
 
-        results.push({
-          captureId: capture.captureId,
-          success: true,
-        });
+      if (result.success) {
         successCount++;
-
-        this.logger.debug(`✅ Queued: ${capture.captureId}`);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-
-        results.push({
-          captureId: capture.captureId,
-          success: false,
-          error: errorMessage,
-        });
+        this.logger.debug(`✅ Queued: ${result.capture.captureId}`);
+      } else {
         failureCount++;
-
         this.logger.error(
-          `❌ Failed to queue: ${capture.captureId}`,
-          error,
+          `❌ Failed to queue: ${result.capture.captureId}`,
+          result.error,
         );
       }
     }
