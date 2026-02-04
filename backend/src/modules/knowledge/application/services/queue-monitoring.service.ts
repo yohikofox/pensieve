@@ -13,6 +13,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 export interface QueueMetrics {
   jobsProcessed: number;
@@ -37,29 +38,72 @@ export class QueueMonitoringService {
   private readonly PREFETCH_COUNT = 3; // Concurrent workers (from AC3)
   private readonly AVG_JOB_DURATION_MS = 20000; // 20s estimate (from NFR3)
 
+  // RabbitMQ Management API config
+  private readonly rabbitmqManagementUrl: string;
+  private readonly rabbitmqVhost: string;
+  private readonly rabbitmqUsername: string;
+  private readonly rabbitmqPassword: string;
+
+  constructor(private readonly configService: ConfigService) {
+    this.rabbitmqManagementUrl = this.configService.get<string>(
+      'RABBITMQ_MANAGEMENT_URL',
+      'http://localhost:15672',
+    );
+    this.rabbitmqVhost = this.configService.get<string>('RABBITMQ_VHOST', '/');
+    this.rabbitmqUsername = this.configService.get<string>(
+      'RABBITMQ_USERNAME',
+      'guest',
+    );
+    this.rabbitmqPassword = this.configService.get<string>(
+      'RABBITMQ_PASSWORD',
+      'guest',
+    );
+  }
+
   /**
    * Get current queue depth (number of pending jobs)
    * Subtask 6.1: Queue depth monitoring
    *
-   * ⚠️ LIMITATION: Currently returns hardcoded 0
+   * Uses RabbitMQ Management HTTP API to query queue depth
+   * Falls back to 0 if API is unavailable (development/test environments)
    *
-   * REASON: Requires RabbitMQ channel access via NestJS microservices internals
-   * IMPACT: Queue depth metrics are inaccurate, overload detection won't work
-   * WORKAROUND: Monitor RabbitMQ directly via management UI or API
-   *
-   * TODO Story 4.5: Implement real queue depth monitoring
-   * 1. Research: How to access amqplib channel in NestJS @nestjs/microservices
-   * 2. Inject channel or use RabbitMQ HTTP management API
-   * 3. Call channel.checkQueue('digestion-jobs') or GET /api/queues/...
-   * 4. Update tests to verify real queue depth
-   *
-   * @returns Number of jobs waiting in queue (currently always 0)
+   * @returns Number of jobs waiting in queue
    */
   async getQueueDepth(): Promise<number> {
-    // TODO: Implement real query
-    // const queueInfo = await this.channel.checkQueue('digestion-jobs');
-    // return queueInfo.messageCount;
-    return 0;
+    try {
+      // Encode vhost for URL (e.g., "/" becomes "%2F")
+      const encodedVhost = encodeURIComponent(this.rabbitmqVhost);
+      const queueName = 'digestion-jobs';
+      const url = `${this.rabbitmqManagementUrl}/api/queues/${encodedVhost}/${queueName}`;
+
+      // Create Basic Auth header
+      const auth = Buffer.from(
+        `${this.rabbitmqUsername}:${this.rabbitmqPassword}`,
+      ).toString('base64');
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Basic ${auth}`,
+        },
+        signal: AbortSignal.timeout(5000), // 5s timeout
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const messageCount = data.messages_ready || 0;
+      return messageCount;
+    } catch (error) {
+      // Fallback to 0 if RabbitMQ Management API is not available
+      // This is expected in dev/test environments without RabbitMQ
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to query RabbitMQ queue depth, falling back to 0: ${errorMessage}`,
+      );
+      return 0;
+    }
   }
 
   /**
@@ -144,19 +188,23 @@ export class QueueMonitoringService {
    * Get current metrics snapshot
    * Subtask 6.4: Metrics tracking
    *
+   * NOTE: This method is now async due to queue depth query
+   *
    * @returns Current queue metrics
    */
-  getMetrics(): QueueMetrics {
+  async getMetrics(): Promise<QueueMetrics> {
     const avgLatency =
       this.latencies.length > 0
         ? this.latencies.reduce((sum, lat) => sum + lat, 0) / this.latencies.length
         : 0;
 
+    const currentQueueDepth = await this.getQueueDepth();
+
     return {
       jobsProcessed: this.jobsProcessed,
       jobsFailed: this.jobsFailed,
       avgLatencyMs: Math.round(avgLatency),
-      currentQueueDepth: 0, // TODO: Get real queue depth
+      currentQueueDepth,
       timestamp: new Date(),
     };
   }
@@ -165,10 +213,12 @@ export class QueueMonitoringService {
    * Export metrics in Prometheus format
    * Subtask 6.4: Prometheus metrics
    *
+   * NOTE: This method is now async due to queue depth query
+   *
    * @returns Prometheus-formatted metrics string
    */
-  getPrometheusMetrics(): string {
-    const metrics = this.getMetrics();
+  async getPrometheusMetrics(): Promise<string> {
+    const metrics = await this.getMetrics();
 
     return `
 # HELP digestion_jobs_processed_total Total number of digestion jobs processed
@@ -201,19 +251,21 @@ digestion_queue_depth ${metrics.currentQueueDepth}
 
   /**
    * Get monitoring statistics for logging/debugging
+   * NOTE: This method is now async due to queue depth query
    */
-  getStats(): {
+  async getStats(): Promise<{
     successRate: number;
     totalJobs: number;
     avgLatencyMs: number;
-  } {
+  }> {
     const totalJobs = this.jobsProcessed + this.jobsFailed;
     const successRate = totalJobs > 0 ? this.jobsProcessed / totalJobs : 0;
+    const metrics = await this.getMetrics();
 
     return {
       successRate: Math.round(successRate * 100) / 100,
       totalJobs,
-      avgLatencyMs: this.getMetrics().avgLatencyMs,
+      avgLatencyMs: metrics.avgLatencyMs,
     };
   }
 }

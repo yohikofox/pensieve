@@ -28,8 +28,8 @@ export class MetricsController {
    */
   @Get()
   @Header('Content-Type', 'text/plain; version=0.0.4')
-  getPrometheusMetrics(): string {
-    return this.queueMonitoring.getPrometheusMetrics();
+  async getPrometheusMetrics(): Promise<string> {
+    return await this.queueMonitoring.getPrometheusMetrics();
   }
 
   /**
@@ -39,7 +39,7 @@ export class MetricsController {
    * Returns metrics as JSON for debugging
    */
   @Get('json')
-  getMetricsJson() {
-    return this.queueMonitoring.getMetrics();
+  async getMetricsJson() {
+    return await this.queueMonitoring.getMetrics();
   }
 }
