@@ -11,7 +11,7 @@
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as amqp from 'amqplib';
 import { QueueNames, ExchangeNames, RoutingKeys } from './queue-names.constants';
-import { getRabbitMQUrl } from './rabbitmq.config';
+import { getRabbitMQUrl, DIGESTION_QUEUE_OPTIONS } from './rabbitmq.config';
 
 @Injectable()
 export class RabbitMQSetupService implements OnModuleInit {
@@ -62,15 +62,9 @@ export class RabbitMQSetupService implements OnModuleInit {
       );
 
       // Create main digestion jobs queue (Subtask 1.3)
-      await this.channel.assertQueue(QueueNames.DIGESTION_JOBS, {
-        durable: true, // Persistence enabled (AC1)
-        deadLetterExchange: ExchangeNames.DIGESTION_DLX,
-        deadLetterRoutingKey: RoutingKeys.DIGESTION_FAILED,
-        arguments: {
-          // Priority queue support (AC3)
-          'x-max-priority': 10,
-        },
-      });
+      // Uses centralized DIGESTION_QUEUE_OPTIONS to ensure consistency
+      // with consumer configuration (prevents PRECONDITION_FAILED errors)
+      await this.channel.assertQueue(QueueNames.DIGESTION_JOBS, DIGESTION_QUEUE_OPTIONS);
       this.logger.log(`✓ Digestion jobs queue created: ${QueueNames.DIGESTION_JOBS}`);
 
       this.logger.log('✅ RabbitMQ infrastructure setup complete');
