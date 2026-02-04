@@ -15,7 +15,9 @@ import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.s
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
 import { ProgressTrackerService } from './application/services/progress-tracker.service';
+import { QueueMonitoringService } from './application/services/queue-monitoring.service';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
+import { MetricsController } from './application/controllers/metrics.controller';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
@@ -31,12 +33,14 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
   ],
   controllers: [
     DigestionRetryController, // Manual retry endpoint (AC5)
+    MetricsController, // Prometheus metrics endpoint (AC6)
   ],
   providers: [
     RabbitMQSetupService, // Initialize queues on startup
     DigestionJobPublisher, // Publish digestion jobs (AC2)
     DigestionJobConsumer, // Consume and process jobs (AC3)
     ProgressTrackerService, // Track job progress (AC4)
+    QueueMonitoringService, // Monitor queue health and metrics (AC6)
   ],
   exports: [
     'DIGESTION_QUEUE', // Export for use in other modules

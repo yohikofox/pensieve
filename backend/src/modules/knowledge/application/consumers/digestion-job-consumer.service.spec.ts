@@ -8,6 +8,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DigestionJobConsumer } from './digestion-job-consumer.service';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
+import { QueueMonitoringService } from '../services/queue-monitoring.service';
 import { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
 
 describe('DigestionJobConsumer (AC3)', () => {
@@ -21,6 +22,7 @@ describe('DigestionJobConsumer (AC3)', () => {
       providers: [
         DigestionJobConsumer,
         ProgressTrackerService, // Task 4: Real-time progress tracking
+        QueueMonitoringService, // Task 6: Queue monitoring and metrics
       ],
     }).compile();
 

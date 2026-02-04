@@ -19,6 +19,7 @@ import type { DigestionJobPayload } from '../../domain/interfaces/digestion-job-
 import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.event';
 import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
+import { QueueMonitoringService } from '../services/queue-monitoring.service';
 
 @Injectable()
 export class DigestionJobConsumer implements OnModuleDestroy {
@@ -30,6 +31,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
 
   constructor(
     private readonly progressTracker: ProgressTrackerService,
+    private readonly queueMonitoring: QueueMonitoringService,
   ) {}
 
   /**
@@ -68,6 +70,10 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         `✅ Job completed: ${job.captureId} (took ${duration}ms)`,
       );
 
+      // Subtask 6.4: Record metrics for successful job
+      this.queueMonitoring.recordJobProcessed();
+      this.queueMonitoring.recordJobLatency(duration);
+
       // Acknowledge message success (if context provided - for e2e tests)
       if (context) {
         const channel = context.getChannelRef();
@@ -100,6 +106,10 @@ export class DigestionJobConsumer implements OnModuleDestroy {
 
         // Mark progress tracking as failed
         this.progressTracker.failTracking(job.captureId, errorMessage);
+
+        // Subtask 6.4: Record metrics for failed job (after max retries)
+        this.queueMonitoring.recordJobFailed();
+        this.queueMonitoring.recordJobLatency(duration);
 
         // Subtask 5.5: Emit DigestionJobFailed event for alerting
         const failedEvent = new DigestionJobFailed(
