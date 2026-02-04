@@ -22,6 +22,9 @@ import { DigestionJobFailed } from '../../domain/events/DigestionJobFailed.event
 import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
 import { EventBusService } from '../services/event-bus.service';
+import { ContentExtractorService } from '../services/content-extractor.service';
+import { OpenAIService } from '../services/openai.service';
+import { ThoughtRepository } from '../repositories/thought.repository';
 
 @Injectable()
 export class DigestionJobConsumer implements OnModuleDestroy {
@@ -37,6 +40,9 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     @Inject('CAPTURE_REPOSITORY')
     private readonly captureRepository: ICaptureRepository,
     private readonly eventBus: EventBusService,
+    private readonly contentExtractor: ContentExtractorService,
+    private readonly openaiService: OpenAIService,
+    private readonly thoughtRepository: ThoughtRepository,
   ) {}
 
   /**
@@ -186,16 +192,17 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   }
 
   /**
-   * Process the actual digestion logic
-   *
-   * NOTE: This is a stub. Actual AI digestion will be implemented in Story 4.2
-   * For now, we just simulate processing and emit events
+   * Process the actual digestion logic with GPT-4o-mini
+   * Story 4.2 Task 5: Digestion Worker Integration (AC1-AC4)
    *
    * @param job - Digestion job payload
    */
   private async processDigestion(job: DigestionJobPayload): Promise<void> {
-    // Subtask 4.1 & 4.2: Start tracking with timestamp
+    const startTime = Date.now();
+
+    // Subtask 5.1: Start tracking with timestamp
     this.progressTracker.startTracking(job.captureId, job.userId);
+    this.progressTracker.updateProgress(job.captureId, 10);
 
     // AC4: Update Capture status to "digesting" when job starts
     await this.captureRepository.updateStatus(job.captureId, 'digesting', {
@@ -214,25 +221,88 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       startedAt: startedEvent.startedAt,
     });
 
-    // TODO: Story 4.2 - Call GPT-4o-mini for actual digestion
-    // For now, simulate processing with progress updates
     this.logger.log(`🤖 Processing digestion for ${job.captureId}...`);
 
-    // Simulate AI processing with progress updates (Subtask 4.5)
-    await this.simulateProcessingWithProgress(job.captureId);
+    try {
+      // Subtask 5.1: Extract content from Capture (Task 3)
+      this.progressTracker.updateProgress(job.captureId, 20);
+      const { content, contentType } =
+        await this.contentExtractor.extractContent(job.captureId);
 
-    // Mark tracking as complete
-    this.progressTracker.completeTracking(job.captureId);
+      // Subtask 5.1: Call GPT-4o-mini for digestion (Task 1)
+      this.progressTracker.updateProgress(job.captureId, 40);
+      const digestionResult = await this.openaiService.digestContent(
+        content,
+        contentType,
+      );
 
-    // AC4: Update Capture status to "digested" after successful processing
-    await this.captureRepository.updateStatus(job.captureId, 'digested', {
-      processing_completed_at: new Date(),
-    });
+      // Subtask 5.2: Parse GPT response (already done by OpenAIService)
+      this.progressTracker.updateProgress(job.captureId, 70);
+      const { summary, ideas, confidence } = digestionResult;
 
-    // TODO: Story 4.2 - Store results (Thoughts, Ideas, Actions)
-    // TODO: Subtask 4.3 & 4.4 - Publish progress updates via WebSocket
+      // Subtask 5.3: Create Thought and Ideas entities (Task 4)
+      const processingTimeMs = Date.now() - startTime;
+      const confidenceScore = this.mapConfidenceToScore(confidence);
 
-    this.logger.log(`✨ Digestion complete for ${job.captureId}`);
+      const thought = await this.thoughtRepository.createWithIdeas(
+        job.captureId,
+        job.userId,
+        summary,
+        ideas,
+        processingTimeMs,
+        confidenceScore,
+      );
+
+      this.progressTracker.updateProgress(job.captureId, 90);
+
+      // Subtask 5.4: Publish DigestionCompleted domain event
+      this.eventBus.publish('digestion.completed', {
+        thoughtId: thought.id,
+        captureId: job.captureId,
+        userId: job.userId,
+        summary,
+        ideasCount: ideas.length,
+        processingTimeMs,
+        completedAt: new Date(),
+      });
+
+      // Subtask 5.5: Update ProgressTracker with completion status
+      this.progressTracker.completeTracking(job.captureId);
+      this.progressTracker.updateProgress(job.captureId, 100);
+
+      // Subtask 4.6: Update Capture status to "digested" after success
+      await this.captureRepository.updateStatus(job.captureId, 'digested', {
+        processing_completed_at: new Date(),
+      });
+
+      this.logger.log(
+        `✨ Digestion complete for ${job.captureId} - Thought: ${thought.id} (${ideas.length} ideas, ${processingTimeMs}ms, confidence: ${confidence})`,
+      );
+    } catch (error) {
+      // Error already logged and will be handled by handleDigestionJob
+      throw error;
+    }
+  }
+
+  /**
+   * Map confidence level to numeric score
+   * Helper for AC8: Low Confidence Handling
+   *
+   * @param confidence - Confidence level from GPT
+   * @returns Numeric score 0-1
+   */
+  private mapConfidenceToScore(
+    confidence?: 'high' | 'medium' | 'low',
+  ): number | undefined {
+    if (!confidence) return undefined;
+
+    const mapping = {
+      high: 0.9,
+      medium: 0.6,
+      low: 0.3,
+    };
+
+    return mapping[confidence];
   }
 
   /**

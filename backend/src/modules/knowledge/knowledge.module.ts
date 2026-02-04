@@ -12,8 +12,11 @@
 import { Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
+import { Thought } from './domain/entities/thought.entity';
+import { Idea } from './domain/entities/idea.entity';
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
@@ -22,6 +25,7 @@ import { QueueMonitoringService } from './application/services/queue-monitoring.
 import { EventBusService } from './application/services/event-bus.service';
 import { OpenAIService } from './application/services/openai.service';
 import { ContentExtractorService } from './application/services/content-extractor.service';
+import { ThoughtRepository } from './application/repositories/thought.repository';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
@@ -34,6 +38,8 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 
 @Module({
   imports: [
+    // Register TypeORM entities for Knowledge Context (Story 4.2 Task 4)
+    TypeOrmModule.forFeature([Thought, Idea]),
     // Register RabbitMQ client for job publishing
     ClientsModule.register([
       {
@@ -70,6 +76,7 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     },
     OpenAIService, // GPT-4o-mini digestion service (Story 4.2 Task 1)
     ContentExtractorService, // Content extraction from captures (Story 4.2 Task 3)
+    ThoughtRepository, // Thought + Ideas persistence (Story 4.2 Task 4)
     // Capture Repository stub - replaces when Capture Context is integrated
     {
       provide: 'CAPTURE_REPOSITORY',
