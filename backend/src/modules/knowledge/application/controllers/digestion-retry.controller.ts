@@ -8,9 +8,10 @@
  * AC5: Retry Logic and Error Handling
  */
 
-import { Controller, Post, Param, HttpCode, HttpStatus, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Post, Param, HttpCode, HttpStatus, Logger, UseGuards, Inject, NotFoundException } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
+import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
 
 @Controller('digestion')
@@ -20,6 +21,8 @@ export class DigestionRetryController {
 
   constructor(
     private readonly jobPublisher: DigestionJobPublisher,
+    @Inject('CAPTURE_REPOSITORY')
+    private readonly captureRepository: ICaptureRepository,
   ) {}
 
   /**
@@ -38,20 +41,23 @@ export class DigestionRetryController {
   ): Promise<{ message: string; captureId: string }> {
     this.logger.log(`🔄 Manual retry requested for capture: ${captureId}`);
 
-    // TODO: Fetch Capture from database to get full details
-    // For now, we'll create a stub job input
-    // In real implementation, this would query CaptureRepository
+    // Fetch Capture from repository to get full details
+    const capture = await this.captureRepository.findById(captureId);
 
-    const stubCaptureInput: CreateDigestionJobInput = {
-      captureId,
-      userId: 'unknown', // TODO: Fetch from database
-      type: 'TEXT', // TODO: Fetch from database
-      state: 'transcribed', // Assuming it's ready for retry
+    if (!capture) {
+      throw new NotFoundException(`Capture not found: ${captureId}`);
+    }
+
+    const captureInput: CreateDigestionJobInput = {
+      captureId: capture.id,
+      userId: capture.userId,
+      type: capture.type,
+      state: capture.status as 'transcribed', // Assume ready for retry
       userInitiated: false, // Manual retry is not user-initiated
     };
 
     // Publish new job with retryCount reset to 0
-    await this.jobPublisher.publishJob(stubCaptureInput);
+    await this.jobPublisher.publishJob(captureInput);
 
     this.logger.log(`✅ Retry job published for capture: ${captureId}`);
 
