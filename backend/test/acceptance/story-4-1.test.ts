@@ -122,7 +122,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'une capture audio a été transcrite', async () => {
+    given(/.*une capture audio a été transcrite/, async () => {
       capture = await context.captureRepo.create({
         id: 'capture-audio-123',
         userId: 'user-456',
@@ -193,7 +193,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'une capture texte a été créée', async () => {
+    given(/.*une capture texte a été créée/, async () => {
       capture = await context.captureRepo.create({
         id: 'capture-text-456',
         userId: 'user-789',
@@ -239,7 +239,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'une capture est créée suite à une action utilisateur explicite', async () => {
+    given(/.*une capture est créée suite à une action utilisateur explicite/, async () => {
       await context.captureRepo.create({
         id: 'capture-user-initiated',
         userId: 'user-123',
@@ -280,7 +280,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'une capture est prête pour digestion', async () => {
+    given(/.*une capture est prête pour digestion/, async () => {
       await context.captureRepo.create({
         id: 'capture-ready',
         userId: 'user-event',
@@ -337,7 +337,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs "([^"]*)" sont en queue$/, async (count: string, priority: string) => {
+    given(/^(?:que )?(\d+) jobs "([^"]*)" sont en queue$/, async (count: string, priority: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-normal-${i}`,
@@ -350,7 +350,7 @@ defineFeature(feature, (test) => {
       }
     });
 
-    and(/^que (\d+) job "([^"]*)" est publié après$/, async (count: string, priority: string) => {
+    and(/^(?:que )?(\d+) job "([^"]*)" est publié après$/, async (count: string, priority: string) => {
       await context.rabbitmq.publish('digestion-jobs', {
         captureId: 'capture-high',
         userId: 'user-123',
@@ -386,7 +386,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs sont publiés dans la queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs sont publiés dans la queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-concurrent-${i}`,
@@ -430,7 +430,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'un job est en cours de traitement', async () => {
+    given(/.*un job est en cours de traitement/, async () => {
       await context.rabbitmq.publish('digestion-jobs', {
         captureId: 'capture-timeout',
         userId: 'user-123',
@@ -442,7 +442,7 @@ defineFeature(feature, (test) => {
       job = await context.rabbitmq.consume('digestion-jobs');
     });
 
-    and(/^que le job prend plus de (\d+) secondes$/, (timeout: string) => {
+    and(/^(?:que )?le job prend plus de (\d+) secondes$/, (timeout: string) => {
       // Simulate timeout (in real implementation, job would exceed 60s)
       expect(parseInt(timeout)).toBe(60);
     });
@@ -479,7 +479,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'un job est en queue', async () => {
+    given(/.*un job est en queue/, async () => {
       capture = await context.captureRepo.create({
         id: 'capture-progress',
         userId: 'user-123',
@@ -537,7 +537,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'un job échoue à cause d\'une erreur API OpenAI', async () => {
+    given(/.*un job échoue à cause d.*une erreur API OpenAI/, async () => {
       await context.rabbitmq.publish('digestion-jobs', {
         captureId: 'capture-retry',
         userId: 'user-123',
@@ -577,7 +577,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given('qu\'un job a échoué 3 fois (retry exhausted)', async () => {
+    given(/.*un job a échoué 3 fois \(retry exhausted\)/, async () => {
       capture = await context.captureRepo.create({
         id: 'capture-max-retries',
         userId: 'user-123',
@@ -640,7 +640,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs sont en queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs sont en queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-monitoring-${i}`,
@@ -671,7 +671,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs sont en queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs sont en queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-overload-${i}`,
@@ -709,7 +709,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs sont en queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs sont en queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-wait-time-${i}`,
@@ -722,7 +722,7 @@ defineFeature(feature, (test) => {
       }
     });
 
-    and(/^que chaque job prend en moyenne (\d+) secondes$/, (avgDuration: string) => {
+    and(/^(?:que )?chaque job prend en moyenne (\d+) secondes$/, (avgDuration: string) => {
       // Average duration is tracked by metrics
     });
 
@@ -751,7 +751,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que le mobile a (\d+) captures en attente de digestion$/, async (count: string) => {
+    given(/^(?:que )?le mobile a (\d+) captures en attente de digestion$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.captureRepo.create({
           id: `capture-batch-${i}`,
@@ -802,7 +802,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs sont publiés dans la queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs sont publiés dans la queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-load-test-${i}`,
@@ -847,7 +847,7 @@ defineFeature(feature, (test) => {
       await context.setupRabbitMQInfrastructure();
     });
 
-    given(/^que (\d+) jobs durables sont en queue$/, async (count: string) => {
+    given(/^(?:que )?(\d+) jobs durables sont en queue$/, async (count: string) => {
       for (let i = 0; i < parseInt(count); i++) {
         await context.rabbitmq.publish('digestion-jobs', {
           captureId: `capture-restart-${i}`,
