@@ -29,6 +29,7 @@
     "@supabase/supabase-js": "^2.90.1",
     "@types/adm-zip": "^0.5.7",
     "adm-zip": "^0.5.16",
+    "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
     "fs-extra": "^11.3.3",
     "minio": "^8.0.6",
