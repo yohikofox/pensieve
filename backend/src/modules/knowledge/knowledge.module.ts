@@ -25,6 +25,7 @@ import { QueueMonitoringService } from './application/services/queue-monitoring.
 import { EventBusService } from './application/services/event-bus.service';
 import { OpenAIService } from './application/services/openai.service';
 import { ContentExtractorService } from './application/services/content-extractor.service';
+import { ContentChunkerService } from './application/services/content-chunker.service';
 import { ThoughtRepository } from './application/repositories/thought.repository';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
@@ -76,6 +77,7 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     },
     OpenAIService, // GPT-4o-mini digestion service (Story 4.2 Task 1)
     ContentExtractorService, // Content extraction from captures (Story 4.2 Task 3)
+    ContentChunkerService, // Long content chunking with overlap (Story 4.2 Task 7)
     ThoughtRepository, // Thought + Ideas persistence (Story 4.2 Task 4)
     // Capture Repository stub - replaces when Capture Context is integrated
     {

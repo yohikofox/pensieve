@@ -9,6 +9,10 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DigestionJobConsumer } from './digestion-job-consumer.service';
 import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
+import { EventBusService } from '../services/event-bus.service';
+import { ContentExtractorService } from '../services/content-extractor.service';
+import { ContentChunkerService } from '../services/content-chunker.service';
+import { ThoughtRepository } from '../repositories/thought.repository';
 import { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
 
 describe('DigestionJobConsumer (AC3)', () => {
@@ -18,11 +22,71 @@ describe('DigestionJobConsumer (AC3)', () => {
   beforeEach(async () => {
     mockProcessJob = jest.fn().mockResolvedValue(undefined);
 
+    // Create mock services
+    const mockProgressTracker = {
+      startTracking: jest.fn(),
+      updateProgress: jest.fn(),
+      completeTracking: jest.fn(),
+      failTracking: jest.fn(),
+    };
+
+    const mockQueueMonitoring = {
+      recordJobProcessed: jest.fn(),
+      recordJobFailed: jest.fn(),
+      recordJobLatency: jest.fn(),
+    };
+
+    const mockCaptureRepository = {
+      updateStatus: jest.fn().mockResolvedValue(undefined),
+    };
+
+    const mockEventBusService = {
+      publish: jest.fn(),
+    };
+
+    const mockContentExtractor = {
+      extractContent: jest.fn(),
+    };
+
+    const mockContentChunker = {
+      processContent: jest.fn(),
+    };
+
+    const mockThoughtRepository = {
+      createWithIdeas: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DigestionJobConsumer,
-        ProgressTrackerService, // Task 4: Real-time progress tracking
-        QueueMonitoringService, // Task 6: Queue monitoring and metrics
+        {
+          provide: ProgressTrackerService,
+          useValue: mockProgressTracker,
+        },
+        {
+          provide: QueueMonitoringService,
+          useValue: mockQueueMonitoring,
+        },
+        {
+          provide: 'CAPTURE_REPOSITORY',
+          useValue: mockCaptureRepository,
+        },
+        {
+          provide: EventBusService,
+          useValue: mockEventBusService,
+        },
+        {
+          provide: ContentExtractorService,
+          useValue: mockContentExtractor,
+        },
+        {
+          provide: ContentChunkerService,
+          useValue: mockContentChunker,
+        },
+        {
+          provide: ThoughtRepository,
+          useValue: mockThoughtRepository,
+        },
       ],
     }).compile();
 

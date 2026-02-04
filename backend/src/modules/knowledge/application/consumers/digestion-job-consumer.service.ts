@@ -23,7 +23,7 @@ import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
 import { EventBusService } from '../services/event-bus.service';
 import { ContentExtractorService } from '../services/content-extractor.service';
-import { OpenAIService } from '../services/openai.service';
+import { ContentChunkerService } from '../services/content-chunker.service';
 import { ThoughtRepository } from '../repositories/thought.repository';
 
 @Injectable()
@@ -41,7 +41,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     private readonly captureRepository: ICaptureRepository,
     private readonly eventBus: EventBusService,
     private readonly contentExtractor: ContentExtractorService,
-    private readonly openaiService: OpenAIService,
+    private readonly contentChunker: ContentChunkerService,
     private readonly thoughtRepository: ThoughtRepository,
   ) {}
 
@@ -229,16 +229,20 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       const { content, contentType } =
         await this.contentExtractor.extractContent(job.captureId);
 
-      // Subtask 5.1: Call GPT-4o-mini for digestion (Task 1)
+      // Subtask 5.1 & 7: Process content (with chunking if needed - Task 7)
       this.progressTracker.updateProgress(job.captureId, 40);
-      const digestionResult = await this.openaiService.digestContent(
+      const digestionResult = await this.contentChunker.processContent(
         content,
         contentType,
       );
 
-      // Subtask 5.2: Parse GPT response (already done by OpenAIService)
+      // Subtask 5.2: Parse GPT response (already done by ContentChunkerService)
       this.progressTracker.updateProgress(job.captureId, 70);
-      const { summary, ideas, confidence } = digestionResult;
+      const { summary, ideas, confidence, wasChunked, chunkCount } = digestionResult;
+
+      if (wasChunked) {
+        this.logger.log(`📊 Content was chunked into ${chunkCount} parts for processing`);
+      }
 
       // Subtask 5.3: Create Thought and Ideas entities (Task 4)
       const processingTimeMs = Date.now() - startTime;
