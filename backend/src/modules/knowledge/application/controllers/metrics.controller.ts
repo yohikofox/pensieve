@@ -8,10 +8,12 @@
  * AC6: Queue Monitoring and Metrics
  */
 
-import { Controller, Get, Header } from '@nestjs/common';
+import { Controller, Get, Header, UseGuards } from '@nestjs/common';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
 
 @Controller('metrics')
+@UseGuards(SupabaseAuthGuard)
 export class MetricsController {
   constructor(
     private readonly queueMonitoring: QueueMonitoringService,

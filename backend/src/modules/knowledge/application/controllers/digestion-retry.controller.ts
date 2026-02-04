@@ -8,11 +8,13 @@
  * AC5: Retry Logic and Error Handling
  */
 
-import { Controller, Post, Param, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Post, Param, HttpCode, HttpStatus, Logger, UseGuards } from '@nestjs/common';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
 
 @Controller('digestion')
+@UseGuards(SupabaseAuthGuard)
 export class DigestionRetryController {
   private readonly logger = new Logger(DigestionRetryController.name);
 

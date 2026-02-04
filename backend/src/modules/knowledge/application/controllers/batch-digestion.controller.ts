@@ -11,7 +11,8 @@
  * AC7: Offline Batch Processing
  */
 
-import { Controller, Post, Body, HttpCode, HttpStatus, Logger } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Logger, UseGuards } from '@nestjs/common';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
 
@@ -31,6 +32,7 @@ export interface BatchSubmissionResponse {
 }
 
 @Controller('digestion')
+@UseGuards(SupabaseAuthGuard)
 export class BatchDigestionController {
   private readonly logger = new Logger(BatchDigestionController.name);
 
