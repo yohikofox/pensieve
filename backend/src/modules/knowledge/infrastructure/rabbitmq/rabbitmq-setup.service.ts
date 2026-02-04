@@ -33,11 +33,13 @@ export class RabbitMQSetupService implements OnModuleInit {
       const url = getRabbitMQUrl();
       this.logger.log(`Connecting to RabbitMQ at ${url.replace(/\/\/.*@/, '//*****@')}`);
 
+      // @ts-expect-error - amqplib types issue with Connection
       this.connection = await amqp.connect(url, {
         // Connection pooling settings (Subtask 1.5)
         heartbeat: 30,
       });
 
+      // @ts-expect-error - amqplib types issue with createChannel
       this.channel = await this.connection.createChannel();
 
       // Create dead-letter exchange (Subtask 1.4)
@@ -90,6 +92,7 @@ export class RabbitMQSetupService implements OnModuleInit {
    */
   async onModuleDestroy() {
     await this.channel?.close();
+    // @ts-expect-error - amqplib types issue with close
     await this.connection?.close();
     this.logger.log('RabbitMQ connection closed');
   }

@@ -43,7 +43,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should publish a digestion job with correct payload structure', async () => {
       // RED: This will fail - service doesn't exist yet
       const mockCapture = {
-        id: 'capture-123',
+        captureId: 'capture-123',
         userId: 'user-456',
         type: 'AUDIO',
         state: 'transcribed',
@@ -67,7 +67,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should include captureId, userId, contentType, and priority in payload', async () => {
       // RED: Will fail - service doesn't exist
       const mockCapture = {
-        id: 'test-capture',
+        captureId: 'test-capture',
         userId: 'test-user',
         type: 'TEXT',
         state: 'ready',
@@ -86,7 +86,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should set priority to "high" for user-initiated captures', async () => {
       // RED: Will fail - priority logic doesn't exist
       const userInitiatedCapture = {
-        id: 'capture-high',
+        captureId: 'capture-high',
         userId: 'user-123',
         type: 'AUDIO',
         state: 'transcribed',
@@ -102,7 +102,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should set priority to "normal" for auto-background captures', async () => {
       // RED: Will fail - priority logic doesn't exist
       const backgroundCapture = {
-        id: 'capture-normal',
+        captureId: 'capture-normal',
         userId: 'user-123',
         type: 'AUDIO',
         state: 'transcribed',
@@ -118,7 +118,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should set contentType to "audio_transcribed" for audio captures', async () => {
       // RED: Will fail - content type mapping doesn't exist
       const audioCapture = {
-        id: 'audio-cap',
+        captureId: 'audio-cap',
         userId: 'user-1',
         type: 'AUDIO',
         state: 'transcribed',
@@ -133,7 +133,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should set contentType to "text" for text captures', async () => {
       // RED: Will fail - content type mapping doesn't exist
       const textCapture = {
-        id: 'text-cap',
+        captureId: 'text-cap',
         userId: 'user-1',
         type: 'TEXT',
         state: 'ready',
@@ -148,7 +148,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should include queuedAt timestamp', async () => {
       // RED: Will fail - timestamp logic doesn't exist
       const capture = {
-        id: 'cap-1',
+        captureId: 'cap-1',
         userId: 'user-1',
         type: 'TEXT',
         state: 'ready',
@@ -167,7 +167,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should initialize retryCount to 0', async () => {
       // RED: Will fail - retryCount doesn't exist
       const capture = {
-        id: 'cap-1',
+        captureId: 'cap-1',
         userId: 'user-1',
         type: 'TEXT',
         state: 'ready',
@@ -186,7 +186,7 @@ describe('DigestionJobPublisher (AC2)', () => {
       );
 
       const capture = {
-        id: 'cap-fail',
+        captureId: 'cap-fail',
         userId: 'user-1',
         type: 'TEXT',
         state: 'ready',
@@ -200,7 +200,7 @@ describe('DigestionJobPublisher (AC2)', () => {
     it('should bypass transcription for text captures', async () => {
       // RED: Will fail - method doesn't exist
       const textCapture = {
-        id: 'text-only',
+        captureId: 'text-only',
         userId: 'user-1',
         type: 'TEXT',
         text: 'Direct text input',

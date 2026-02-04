@@ -43,7 +43,7 @@ export class DigestionJobPublisher {
       );
 
       this.logger.log(
-        `✓ Digestion job queued for capture ${capture.id} (priority: ${payload.priority})`,
+        `✓ Digestion job queued for capture ${capture.captureId} (priority: ${payload.priority})`,
       );
 
       // Subtask 2.5: Publish Domain Event for observability
@@ -57,7 +57,7 @@ export class DigestionJobPublisher {
       this.logger.debug(`Domain event: DigestionJobQueued`, event);
     } catch (error) {
       this.logger.error(
-        `Failed to publish digestion job for capture ${capture.id}:`,
+        `Failed to publish digestion job for capture ${capture.captureId}:`,
         error,
       );
       throw error;
@@ -86,7 +86,7 @@ export class DigestionJobPublisher {
     capture: CreateDigestionJobInput,
   ): DigestionJobPayload {
     return {
-      captureId: capture.id,
+      captureId: capture.captureId,
       userId: capture.userId,
       contentType: this.mapContentType(capture.type),
       priority: this.determinePriority(capture),

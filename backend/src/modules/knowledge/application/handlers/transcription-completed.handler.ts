@@ -93,7 +93,7 @@ export class CaptureEventsHandler {
 
     // Subtask 2.3: Publish digestion job
     await this.digestionJobPublisher.publishJob({
-      id: event.captureId,
+      captureId: event.captureId,
       userId: event.userId,
       type: 'AUDIO',
       state: 'transcribed',
@@ -120,7 +120,7 @@ export class CaptureEventsHandler {
 
     // Subtask 2.6: Handle text captures (bypass transcription)
     await this.digestionJobPublisher.publishJobForTextCapture({
-      id: event.captureId,
+      captureId: event.captureId,
       userId: event.userId,
       type: 'TEXT',
       state: 'ready',
