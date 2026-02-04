@@ -13,16 +13,20 @@ import { Module } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { ConfigService } from '@nestjs/config';
+import OpenAI from 'openai';
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
 import { ProgressTrackerService } from './application/services/progress-tracker.service';
 import { QueueMonitoringService } from './application/services/queue-monitoring.service';
 import { EventBusService } from './application/services/event-bus.service';
+import { OpenAIService } from './application/services/openai.service';
+import { ContentExtractorService } from './application/services/content-extractor.service';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
 import { CaptureRepositoryStub } from './infrastructure/stubs/capture-repository.stub';
+import { CaptureContentRepositoryStub } from './infrastructure/stubs/capture-content-repository.stub';
 import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progress.store';
 import { RedisProgressStore } from './infrastructure/stores/redis-progress.store';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
@@ -52,10 +56,29 @@ import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
     ProgressTrackerService, // Track job progress (AC4)
     QueueMonitoringService, // Monitor queue health and metrics (AC6)
     EventBusService, // Domain event publishing (AC2, AC4, AC5)
+    // OpenAI Client Provider - Story 4.2 Subtask 1.2
+    {
+      provide: OpenAI,
+      useFactory: (configService: ConfigService) => {
+        const apiKey = configService.get<string>('OPENAI_API_KEY');
+        if (!apiKey) {
+          throw new Error('OPENAI_API_KEY is not configured in environment variables');
+        }
+        return new OpenAI({ apiKey });
+      },
+      inject: [ConfigService],
+    },
+    OpenAIService, // GPT-4o-mini digestion service (Story 4.2 Task 1)
+    ContentExtractorService, // Content extraction from captures (Story 4.2 Task 3)
     // Capture Repository stub - replaces when Capture Context is integrated
     {
       provide: 'CAPTURE_REPOSITORY',
       useClass: CaptureRepositoryStub,
+    },
+    // Capture Content Repository stub (Story 4.2 Task 3)
+    {
+      provide: 'CAPTURE_CONTENT_REPOSITORY',
+      useClass: CaptureContentRepositoryStub,
     },
     // Progress Store - choose implementation based on environment
     {
