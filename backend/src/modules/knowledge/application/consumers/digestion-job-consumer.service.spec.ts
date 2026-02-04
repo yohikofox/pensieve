@@ -7,6 +7,7 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { DigestionJobConsumer } from './digestion-job-consumer.service';
+import { ProgressTrackerService } from '../services/progress-tracker.service';
 import { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
 
 describe('DigestionJobConsumer (AC3)', () => {
@@ -19,6 +20,7 @@ describe('DigestionJobConsumer (AC3)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DigestionJobConsumer,
+        ProgressTrackerService, // Task 4: Real-time progress tracking
       ],
     }).compile();
 

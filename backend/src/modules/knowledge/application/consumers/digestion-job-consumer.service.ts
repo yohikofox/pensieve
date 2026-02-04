@@ -17,6 +17,7 @@ import { MessagePattern, Payload, Ctx } from '@nestjs/microservices';
 import type { RmqContext } from '@nestjs/microservices';
 import type { DigestionJobPayload } from '../../domain/interfaces/digestion-job-payload.interface';
 import { DigestionJobStarted } from '../../domain/events/DigestionJobStarted.event';
+import { ProgressTrackerService } from '../services/progress-tracker.service';
 
 @Injectable()
 export class DigestionJobConsumer implements OnModuleDestroy {
@@ -25,6 +26,10 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   private readonly PREFETCH_COUNT = 3; // Max 3 concurrent jobs (Subtask 3.2)
   private isShuttingDown = false;
   private activeJobs = new Set<Promise<void>>();
+
+  constructor(
+    private readonly progressTracker: ProgressTrackerService,
+  ) {}
 
   /**
    * Handle incoming digestion jobs from RabbitMQ
@@ -121,6 +126,9 @@ export class DigestionJobConsumer implements OnModuleDestroy {
    * @param job - Digestion job payload
    */
   private async processDigestion(job: DigestionJobPayload): Promise<void> {
+    // Subtask 4.1 & 4.2: Start tracking with timestamp
+    this.progressTracker.startTracking(job.captureId, job.userId);
+
     // Emit DigestionJobStarted event (AC4 - Task 4)
     const startedEvent = new DigestionJobStarted(
       job.captureId,
@@ -130,17 +138,36 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     this.logger.debug('Domain event: DigestionJobStarted', startedEvent);
 
     // TODO: Story 4.2 - Call GPT-4o-mini for actual digestion
-    // For now, simulate processing
+    // For now, simulate processing with progress updates
     this.logger.log(`🤖 Processing digestion for ${job.captureId}...`);
 
-    // Simulate AI processing time (remove in Story 4.2)
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    // Simulate AI processing with progress updates (Subtask 4.5)
+    await this.simulateProcessingWithProgress(job.captureId);
+
+    // Mark tracking as complete
+    this.progressTracker.completeTracking(job.captureId);
 
     // TODO: Story 4.2 - Store results (Thoughts, Ideas, Actions)
-    // TODO: AC4 - Update Capture status to "digested"
-    // TODO: AC4 - Publish progress updates via WebSocket
+    // TODO: AC4 - Update Capture status to "digested" in database
+    // TODO: Subtask 4.3 & 4.4 - Publish progress updates via WebSocket
 
     this.logger.log(`✨ Digestion complete for ${job.captureId}`);
+  }
+
+  /**
+   * Simulate AI processing with progress updates
+   * Will be replaced with actual GPT-4o-mini calls in Story 4.2
+   *
+   * @param captureId - Capture being processed
+   */
+  private async simulateProcessingWithProgress(captureId: string): Promise<void> {
+    const steps = [25, 50, 75, 100];
+
+    for (const percentage of steps) {
+      await new Promise((resolve) => setTimeout(resolve, 25));
+      this.progressTracker.updateProgress(captureId, percentage);
+      this.logger.debug(`Progress: ${captureId} - ${percentage}%`);
+    }
   }
 
   /**
