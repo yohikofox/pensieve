@@ -30,9 +30,10 @@ describe('OpenAIService', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
+        OpenAIService,
         {
-          provide: OpenAIService,
-          useFactory: () => new OpenAIService(mockOpenAI),
+          provide: 'OPENAI_CLIENT',
+          useValue: mockOpenAI,
         },
       ],
     }).compile();
@@ -90,6 +91,9 @@ describe('OpenAIService', () => {
         expect.objectContaining({
           model: 'gpt-4o-mini',
         }),
+        expect.objectContaining({
+          timeout: 30000,
+        }),
       );
     });
 
@@ -117,6 +121,7 @@ describe('OpenAIService', () => {
         expect.objectContaining({
           temperature: 0.7,
         }),
+        expect.any(Object), // options argument
       );
     });
 
@@ -144,6 +149,7 @@ describe('OpenAIService', () => {
         expect.objectContaining({
           max_tokens: 500,
         }),
+        expect.any(Object), // options argument
       );
     });
   });
@@ -182,7 +188,9 @@ describe('OpenAIService', () => {
 
       await service.digestContent(content, contentType);
 
+      // timeout is now in options (2nd argument)
       expect(mockOpenAI.chat.completions.create).toHaveBeenCalledWith(
+        expect.any(Object), // body argument
         expect.objectContaining({
           timeout: 30000, // 30 seconds (NFR3 compliance)
         }),

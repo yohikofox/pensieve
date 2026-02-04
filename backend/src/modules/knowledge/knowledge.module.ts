@@ -67,7 +67,7 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     KnowledgeEventsGateway, // WebSocket real-time notifications (Story 4.2 Task 6)
     // OpenAI Client Provider - Story 4.2 Subtask 1.2
     {
-      provide: OpenAI,
+      provide: 'OPENAI_CLIENT',
       useFactory: (configService: ConfigService) => {
         const apiKey = configService.get<string>('OPENAI_API_KEY');
         if (!apiKey) {

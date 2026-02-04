@@ -12,7 +12,7 @@
  * AC1: GPT-4o-mini Integration and Prompt Engineering
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Inject } from '@nestjs/common';
 import type OpenAI from 'openai';
 import { encoding_for_model } from 'tiktoken';
 import type { TiktokenModel } from 'tiktoken';
@@ -29,7 +29,10 @@ export class OpenAIService {
   private readonly temperature = 0.7; // Balance creativity and consistency
   private readonly maxTokens = 500; // Concise summary
 
-  constructor(private readonly openai: OpenAI) {}
+  constructor(
+    @Inject('OPENAI_CLIENT')
+    private readonly openai: OpenAI,
+  ) {}
 
   /**
    * Digest content using GPT-4o-mini with fallback strategy
