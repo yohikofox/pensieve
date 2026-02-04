@@ -7,12 +7,11 @@
 
 import { Test, TestingModule } from '@nestjs/testing';
 import { KnowledgeEventsGateway } from './knowledge-events.gateway';
-import { EventBusService } from '../../application/services/event-bus.service';
+import type { DomainEvent } from '../../application/services/event-bus.service';
 import type { Server, Socket } from 'socket.io';
 
 describe('KnowledgeEventsGateway (Task 6.1)', () => {
   let gateway: KnowledgeEventsGateway;
-  let eventBus: EventBusService;
   let mockServer: jest.Mocked<Server>;
   let mockSocket: jest.Mocked<Socket>;
 
@@ -33,19 +32,10 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        KnowledgeEventsGateway,
-        {
-          provide: EventBusService,
-          useValue: {
-            subscribe: jest.fn(),
-          },
-        },
-      ],
+      providers: [KnowledgeEventsGateway],
     }).compile();
 
     gateway = module.get<KnowledgeEventsGateway>(KnowledgeEventsGateway);
-    eventBus = module.get<EventBusService>(EventBusService);
 
     // Inject mock server
     gateway['server'] = mockServer;
@@ -56,23 +46,25 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
   });
 
   describe('Gateway Initialization (Subtask 6.1)', () => {
-    it('should subscribe to digestion.completed events on initialization', () => {
-      // Act
-      gateway.afterInit(mockServer);
-
-      // Assert
-      expect(eventBus.subscribe).toHaveBeenCalledWith(
-        'digestion.completed',
-        expect.any(Function),
-      );
-    });
-
-    it('should set server reference on initialization', () => {
+    it('should initialize server reference', () => {
       // Act
       gateway.afterInit(mockServer);
 
       // Assert
       expect(gateway['server']).toBe(mockServer);
+    });
+
+    it('should log initialization message', () => {
+      // Arrange
+      const logSpy = jest.spyOn(gateway['logger'], 'log');
+
+      // Act
+      gateway.afterInit(mockServer);
+
+      // Assert
+      expect(logSpy).toHaveBeenCalledWith(
+        expect.stringContaining('WebSocket Gateway initialized'),
+      );
     });
   });
 
@@ -114,18 +106,22 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
   describe('Digestion Completed Event Broadcasting (AC5)', () => {
     it('should broadcast digestion.completed event to user room', () => {
       // Arrange
-      const completedEvent = {
-        thoughtId: 'thought-123',
-        captureId: 'capture-456',
-        userId: 'user-789',
-        summary: 'Test summary',
-        ideasCount: 3,
-        processingTimeMs: 1500,
-        completedAt: new Date().toISOString(),
+      const domainEvent: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-123',
+          captureId: 'capture-456',
+          userId: 'user-789',
+          summary: 'Test summary',
+          ideasCount: 3,
+          processingTimeMs: 1500,
+          completedAt: new Date().toISOString(),
+        },
       };
 
       // Act
-      gateway.handleDigestionCompleted(completedEvent);
+      gateway.handleDigestionCompleted(domainEvent);
 
       // Assert
       expect(mockServer.to).toHaveBeenCalledWith('user:user-789');
@@ -143,18 +139,22 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
 
     it('should include all required fields in the event payload', () => {
       // Arrange
-      const completedEvent = {
-        thoughtId: 'thought-abc',
-        captureId: 'capture-def',
-        userId: 'user-xyz',
-        summary: 'Summary text',
-        ideasCount: 5,
-        processingTimeMs: 2000,
-        completedAt: '2026-02-04T12:00:00Z',
+      const domainEvent: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-abc',
+          captureId: 'capture-def',
+          userId: 'user-xyz',
+          summary: 'Summary text',
+          ideasCount: 5,
+          processingTimeMs: 2000,
+          completedAt: '2026-02-04T12:00:00Z',
+        },
       };
 
       // Act
-      gateway.handleDigestionCompleted(completedEvent);
+      gateway.handleDigestionCompleted(domainEvent);
 
       // Assert - Verify all fields are present
       const emitCall = (mockServer.emit as jest.Mock).mock.calls[0];
@@ -171,24 +171,32 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
 
     it('should only notify the specific user (not broadcast to all)', () => {
       // Arrange
-      const event1 = {
-        thoughtId: 'thought-1',
-        captureId: 'capture-1',
-        userId: 'user-A',
-        summary: 'Summary A',
-        ideasCount: 1,
-        processingTimeMs: 1000,
-        completedAt: new Date().toISOString(),
+      const event1: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-1',
+          captureId: 'capture-1',
+          userId: 'user-A',
+          summary: 'Summary A',
+          ideasCount: 1,
+          processingTimeMs: 1000,
+          completedAt: new Date().toISOString(),
+        },
       };
 
-      const event2 = {
-        thoughtId: 'thought-2',
-        captureId: 'capture-2',
-        userId: 'user-B',
-        summary: 'Summary B',
-        ideasCount: 2,
-        processingTimeMs: 1500,
-        completedAt: new Date().toISOString(),
+      const event2: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-2',
+          captureId: 'capture-2',
+          userId: 'user-B',
+          summary: 'Summary B',
+          ideasCount: 2,
+          processingTimeMs: 1500,
+          completedAt: new Date().toISOString(),
+        },
       };
 
       // Act
@@ -205,13 +213,17 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
   describe('Error Handling (Subtask 6.1)', () => {
     it('should handle missing userId in event gracefully', () => {
       // Arrange
-      const malformedEvent = {
-        thoughtId: 'thought-123',
-        captureId: 'capture-456',
-        // userId missing
-        summary: 'Test',
-        ideasCount: 1,
-      } as any;
+      const malformedEvent: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-123',
+          captureId: 'capture-456',
+          // userId missing
+          summary: 'Test',
+          ideasCount: 1,
+        },
+      };
 
       // Act & Assert - Should not throw
       expect(() => gateway.handleDigestionCompleted(malformedEvent)).not.toThrow();
@@ -220,14 +232,18 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
     it('should handle server not initialized', () => {
       // Arrange
       gateway['server'] = undefined as any;
-      const event = {
-        thoughtId: 'thought-123',
-        captureId: 'capture-456',
-        userId: 'user-789',
-        summary: 'Test',
-        ideasCount: 1,
-        processingTimeMs: 1000,
-        completedAt: new Date().toISOString(),
+      const event: DomainEvent = {
+        eventName: 'digestion.completed',
+        occurredAt: new Date(),
+        payload: {
+          thoughtId: 'thought-123',
+          captureId: 'capture-456',
+          userId: 'user-789',
+          summary: 'Test',
+          ideasCount: 1,
+          processingTimeMs: 1000,
+          completedAt: new Date().toISOString(),
+        },
       };
 
       // Act & Assert - Should not throw

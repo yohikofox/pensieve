@@ -21,32 +21,32 @@ import { Idea } from './idea.entity';
 @Entity('thoughts')
 export class Thought {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column('uuid')
-  captureId: string;
+  captureId!: string;
 
   @Column('uuid')
-  userId: string;
+  userId!: string;
 
   @Column('text')
-  summary: string;
+  summary!: string;
 
   @Column({ type: 'float', nullable: true })
   confidenceScore?: number; // 0-1, for low confidence detection (AC8)
 
   @Column('int')
-  processingTimeMs: number; // Performance monitoring (AC4)
+  processingTimeMs!: number; // Performance monitoring (AC4)
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   // Relationships
   @OneToMany(() => Idea, (idea) => idea.thought, { cascade: true })
-  ideas: Idea[];
+  ideas!: Idea[];
 
   // Note: ManyToOne to Capture will be added when Capture Context is integrated
   // @ManyToOne(() => Capture)

@@ -23,8 +23,9 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Logger } from '@nestjs/common';
+import { OnEvent } from '@nestjs/event-emitter';
 import { Server, Socket } from 'socket.io';
-import { EventBusService } from '../../application/services/event-bus.service';
+import type { DomainEvent } from '../../application/services/event-bus.service';
 
 interface DigestionCompletedPayload {
   thoughtId: string;
@@ -47,26 +48,18 @@ export class KnowledgeEventsGateway
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer()
-  private server: Server;
+  private server!: Server; // Non-null assertion: initialized by @WebSocketServer
 
   private readonly logger = new Logger(KnowledgeEventsGateway.name);
 
-  constructor(private readonly eventBus: EventBusService) {}
-
   /**
-   * Initialize gateway and subscribe to domain events
-   * Subtask 6.1: Event subscription setup
+   * Initialize gateway
+   * Subtask 6.1: Gateway initialization
    */
   afterInit(server: Server): void {
     this.server = server;
     this.logger.log('🔌 Knowledge Events WebSocket Gateway initialized');
-
-    // Subscribe to digestion.completed events from EventBus
-    this.eventBus.subscribe('digestion.completed', (event) => {
-      this.handleDigestionCompleted(event as DigestionCompletedPayload);
-    });
-
-    this.logger.log('📡 Subscribed to digestion.completed events');
+    this.logger.log('📡 Listening for digestion.completed events via @OnEvent');
   }
 
   /**
@@ -108,14 +101,16 @@ export class KnowledgeEventsGateway
    * Broadcast digestion completed event to specific user
    * AC5: Real-Time Feed Update Notification
    *
-   * This is called by the EventBus subscription when DigestionJobConsumer
+   * This is called by NestJS EventEmitter when DigestionJobConsumer
    * publishes a digestion.completed event
    *
-   * @param event - Digestion completed event payload
+   * @param event - Domain event with digestion completed payload
    */
-  handleDigestionCompleted(event: DigestionCompletedPayload): void {
+  @OnEvent('digestion.completed')
+  handleDigestionCompleted(event: DomainEvent): void {
+    const payload = event.payload as DigestionCompletedPayload;
     // Validate event has required fields
-    if (!event.userId) {
+    if (!payload.userId) {
       this.logger.warn('⚠️  Received digestion.completed event without userId');
       return;
     }
@@ -125,21 +120,21 @@ export class KnowledgeEventsGateway
       return;
     }
 
-    const roomName = `user:${event.userId}`;
+    const roomName = `user:${payload.userId}`;
 
     this.logger.log(
-      `📤 Broadcasting digestion.completed to ${roomName}: thought=${event.thoughtId}, capture=${event.captureId}`,
+      `📤 Broadcasting digestion.completed to ${roomName}: thought=${payload.thoughtId}, capture=${payload.captureId}`,
     );
 
     // Broadcast only to the user's room (not to all clients)
     this.server.to(roomName).emit('digestion.completed', {
-      thoughtId: event.thoughtId,
-      captureId: event.captureId,
-      userId: event.userId,
-      summary: event.summary,
-      ideasCount: event.ideasCount,
-      processingTimeMs: event.processingTimeMs,
-      completedAt: event.completedAt,
+      thoughtId: payload.thoughtId,
+      captureId: payload.captureId,
+      userId: payload.userId,
+      summary: payload.summary,
+      ideasCount: payload.ideasCount,
+      processingTimeMs: payload.processingTimeMs,
+      completedAt: payload.completedAt,
     });
   }
 }

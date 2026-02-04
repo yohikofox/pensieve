@@ -88,23 +88,27 @@ export class OpenAIService {
     content: string,
     contentType: 'text' | 'audio',
   ): Promise<DigestionResponse> {
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
-      messages: [
-        {
-          role: 'system',
-          content: this.getSystemPrompt(),
-        },
-        {
-          role: 'user',
-          content: this.getUserPrompt(content, contentType),
-        },
-      ],
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      timeout: this.timeout,
-      response_format: { type: 'json_object' },
-    });
+    const response = await this.openai.chat.completions.create(
+      {
+        model: this.model,
+        messages: [
+          {
+            role: 'system',
+            content: this.getSystemPrompt(),
+          },
+          {
+            role: 'user',
+            content: this.getUserPrompt(content, contentType),
+          },
+        ],
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        response_format: { type: 'json_object' },
+      },
+      {
+        timeout: this.timeout, // Request options
+      },
+    );
 
     // Subtask 1.4: Log response details
     this.logger.log(
@@ -129,23 +133,27 @@ export class OpenAIService {
   ): Promise<DigestionResponse> {
     this.logger.log('🔄 Using fallback prompt (plain text mode)');
 
-    const response = await this.openai.chat.completions.create({
-      model: this.model,
-      messages: [
-        {
-          role: 'system',
-          content: `You are a helpful assistant. Provide concise summaries of user thoughts.`,
-        },
-        {
-          role: 'user',
-          content: this.getFallbackUserPrompt(content, contentType),
-        },
-      ],
-      temperature: this.temperature,
-      max_tokens: this.maxTokens,
-      timeout: this.timeout,
-      // No JSON mode - plain text response
-    });
+    const response = await this.openai.chat.completions.create(
+      {
+        model: this.model,
+        messages: [
+          {
+            role: 'system',
+            content: `You are a helpful assistant. Provide concise summaries of user thoughts.`,
+          },
+          {
+            role: 'user',
+            content: this.getFallbackUserPrompt(content, contentType),
+          },
+        ],
+        temperature: this.temperature,
+        max_tokens: this.maxTokens,
+        // No JSON mode - plain text response
+      },
+      {
+        timeout: this.timeout, // Request options
+      },
+    );
 
     this.logger.log('✅ Fallback response received');
 

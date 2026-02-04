@@ -20,28 +20,28 @@ import { Thought } from './thought.entity';
 @Entity('ideas')
 export class Idea {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column('uuid')
-  thoughtId: string;
+  thoughtId!: string;
 
   @Column('uuid')
-  userId: string;
+  userId!: string;
 
   @Column('text')
-  text: string;
+  text!: string;
 
   @Column({ type: 'int', nullable: true })
   orderIndex?: number; // Preserve order from GPT response (AC4)
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt!: Date;
 
   // Relationships
   @ManyToOne(() => Thought, (thought) => thought.ideas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'thoughtId' })
-  thought: Thought;
+  thought!: Thought;
 }
