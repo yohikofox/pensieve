@@ -22,6 +22,8 @@ import { KnowledgeModule } from './modules/knowledge/knowledge.module';
         autoLoadEntities: true,
         synchronize: process.env.NODE_ENV !== 'production',
         logging: process.env.NODE_ENV === 'development',
+        migrations: ['dist/migrations/*.js'],
+        migrationsRun: process.env.NODE_ENV === 'production', // Auto-run in production
       }),
     }),
     // Shared services (MinioService, Guards)

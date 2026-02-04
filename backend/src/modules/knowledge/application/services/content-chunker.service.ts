@@ -63,9 +63,21 @@ export class ContentChunkerService {
     }
 
     // Content too long, needs chunking
+    const estimatedChunks = Math.ceil(tokenCount / this.maxTokensPerChunk);
     this.logger.log(
-      `🔪 Content exceeds limit, chunking into ~${Math.ceil(tokenCount / this.maxTokensPerChunk)} chunks`,
+      `🔪 Content exceeds limit, chunking into ~${estimatedChunks} chunks`,
     );
+
+    // Warning: Sequential chunking may exceed job timeout (AC6 + NFR3 conflict)
+    // Each chunk takes ~30s, job timeout is 60s
+    // TODO Story 4.2 Follow-up: Implement parallel chunking or adaptive timeout
+    if (estimatedChunks > 2) {
+      this.logger.warn(
+        `⚠️  ${estimatedChunks} chunks detected - may exceed 60s job timeout. ` +
+        `Consider parallel processing for content > 8000 tokens.`,
+      );
+    }
+
     return await this.processChunkedContent(content, contentType);
   }
 

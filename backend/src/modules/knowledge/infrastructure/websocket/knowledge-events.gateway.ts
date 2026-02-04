@@ -39,7 +39,9 @@ interface DigestionCompletedPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: '*', // TODO: Configure for production (restrict to mobile app)
+    origin: process.env.NODE_ENV === 'production'
+      ? [process.env.MOBILE_APP_URL || 'https://app.pensieve.io']
+      : ['http://localhost:8081', 'exp://localhost:8081'], // Expo dev URLs
     credentials: true,
   },
   namespace: '/knowledge',
@@ -127,11 +129,13 @@ export class KnowledgeEventsGateway
     );
 
     // Broadcast only to the user's room (not to all clients)
+    // Note: Send minimal data - mobile will fetch full Thought via API
+    // This reduces sensitive data exposure over WebSocket (NFR12 compliance)
     this.server.to(roomName).emit('digestion.completed', {
       thoughtId: payload.thoughtId,
       captureId: payload.captureId,
       userId: payload.userId,
-      summary: payload.summary,
+      summaryPreview: payload.summary.substring(0, 100) + '...', // Preview only
       ideasCount: payload.ideasCount,
       processingTimeMs: payload.processingTimeMs,
       completedAt: payload.completedAt,

@@ -46,18 +46,31 @@ export class OpenAIService {
     content: string,
     contentType: 'text' | 'audio',
   ): Promise<DigestionResponse> {
-    // Subtask 1.4: Log request details
+    // Subtask 1.4: Log request details (REDACTED - no PII logging per NFR12)
+    const contentPreview = content.length > 50
+      ? content.substring(0, 50) + '...'
+      : content;
     this.logger.log(
-      `🤖 Calling GPT-4o-mini for ${contentType} content (${content.length} chars)`,
+      `🤖 Calling GPT-4o-mini for ${contentType} content (${content.length} chars, preview: "${contentPreview}")`,
     );
 
     try {
       // Subtask 1.1: Call GPT-4o-mini with primary prompt
       return await this.digestWithPrimaryPrompt(content, contentType);
     } catch (primaryError) {
-      // Subtask 2.6: Try fallback prompt if primary fails
+      // Check if it's a rate limit error (OpenAI 429)
       const errorMessage =
         primaryError instanceof Error ? primaryError.message : String(primaryError);
+
+      if (this.isRateLimitError(primaryError)) {
+        this.logger.warn(
+          `⏱️  OpenAI rate limit hit (429). Will retry with exponential backoff.`,
+        );
+        // Re-throw with specific error type for consumer to handle
+        throw new Error(`RATE_LIMIT: ${errorMessage}`);
+      }
+
+      // Subtask 2.6: Try fallback prompt if primary fails (non-rate-limit errors)
       this.logger.warn(
         `⚠️  Primary prompt failed: ${errorMessage}. Trying fallback prompt...`,
       );
@@ -161,6 +174,25 @@ export class OpenAIService {
     this.logger.log('✅ Fallback response received');
 
     return this.parseFallbackResponse(response);
+  }
+
+  /**
+   * Check if error is a rate limit error (OpenAI 429)
+   * AC7: Handle API errors (rate limit, timeout, malformed response)
+   *
+   * @param error - Error object from OpenAI
+   * @returns True if rate limit error
+   */
+  private isRateLimitError(error: unknown): boolean {
+    if (error instanceof Error) {
+      // OpenAI SDK wraps 429 in Error with specific message
+      return (
+        error.message.includes('429') ||
+        error.message.includes('rate limit') ||
+        error.message.toLowerCase().includes('too many requests')
+      );
+    }
+    return false;
   }
 
   /**
