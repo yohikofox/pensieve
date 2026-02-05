@@ -78,9 +78,9 @@ export interface ITodoRepository {
   getAll(): Promise<Todo[]>;
 
   /**
-   * Find all active todos (status = 'todo') sorted for Actions screen
-   * Story 5.2 - AC2, AC3: Fetch all todos for centralized Actions tab
-   * @returns Array of active todos sorted by: deadline (ASC), priority (DESC)
+   * Find all todos sorted for Actions screen
+   * Story 5.3 - Task 3: Fetch all todos (filtering happens client-side)
+   * @returns Array of all todos (active + completed) sorted by status, deadline, priority
    */
   findAll(): Promise<Todo[]>;
 
@@ -90,6 +90,14 @@ export interface ITodoRepository {
    * @returns Number of active todos
    */
   countActive(): Promise<number>;
+
+  /**
+   * Count todos by status
+   * Story 5.3 - AC1, Task 3: Count todos for filter badges
+   * @param status - Status to count ('todo' or 'completed')
+   * @returns Number of todos with given status
+   */
+  countByStatus(status: 'todo' | 'completed'): Promise<number>;
 
   /**
    * Find all active todos with source context (Thought + Idea)

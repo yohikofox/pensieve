@@ -232,16 +232,16 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
-   * Find all active todos (status = 'todo') sorted for Actions screen
-   * Story 5.2 - AC2, AC3: Fetch all todos for centralized Actions tab
+   * Find all todos sorted for Actions screen
+   * Story 5.3 - Task 3: Fetch all todos (filtering happens client-side)
    * Sorted by: deadline (ASC nulls last), priority (DESC)
-   * @returns Array of active todos
+   * @returns Array of all todos (active + completed)
    */
   async findAll(): Promise<Todo[]> {
     const result = database.execute(
       `SELECT * FROM todos
-       WHERE status = 'todo'
        ORDER BY
+         CASE WHEN status = 'todo' THEN 0 ELSE 1 END ASC,
          CASE WHEN deadline IS NULL THEN 1 ELSE 0 END ASC,
          deadline ASC,
          CASE priority
@@ -264,6 +264,26 @@ export class TodoRepository implements ITodoRepository {
   async countActive(): Promise<number> {
     const result = database.execute(
       `SELECT COUNT(*) as count FROM todos WHERE status = 'todo'`
+    );
+
+    const rows = result.rows || [];
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    return rows[0].count as number;
+  }
+
+  /**
+   * Count todos by status
+   * Story 5.3 - AC1, Task 3: Count todos for filter badges
+   * @param status - Status to count ('todo' or 'completed')
+   * @returns Number of todos with given status
+   */
+  async countByStatus(status: 'todo' | 'completed'): Promise<number> {
+    const result = database.execute(
+      `SELECT COUNT(*) as count FROM todos WHERE status = ?`,
+      [status]
     );
 
     const rows = result.rows || [];
