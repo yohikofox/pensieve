@@ -39,6 +39,7 @@ import { CalibrationGridWrapper } from './src/components/debug';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import { deepLinkService } from './src/services/deep-linking/DeepLinkService';
 import { databaseService } from './src/services/database/DatabaseService';
+import { QueryProvider } from './src/providers/QueryProvider';
 
 // Initialize IoC container with production services
 registerServices();
@@ -275,13 +276,15 @@ function AppWithStatusBar() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <ThemeProvider>
-        <ToastProvider>
-          <NetworkProvider>
-            <AppWithStatusBar />
-          </NetworkProvider>
-        </ToastProvider>
-      </ThemeProvider>
+      <QueryProvider>
+        <ThemeProvider>
+          <ToastProvider>
+            <NetworkProvider>
+              <AppWithStatusBar />
+            </NetworkProvider>
+          </ToastProvider>
+        </ThemeProvider>
+      </QueryProvider>
     </SafeAreaProvider>
   );
 }

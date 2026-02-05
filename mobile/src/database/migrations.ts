@@ -1439,6 +1439,126 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v14 completed');
     },
   },
+  {
+    version: 15,
+    name: 'Add thoughts, ideas, and todos tables for Knowledge and Action contexts',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v15: Creating thoughts, ideas, and todos tables');
+
+      // Step 1: Create thoughts table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS thoughts (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          summary TEXT NOT NULL,
+          confidence_score REAL,
+          processing_time_ms INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes for thoughts
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_thoughts_capture_id ON thoughts(capture_id)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_thoughts_user_id ON thoughts(user_id)
+      `);
+
+      console.log('[DB] ✅ thoughts table created');
+
+      // Step 2: Create ideas table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS ideas (
+          id TEXT PRIMARY KEY NOT NULL,
+          thought_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          text TEXT NOT NULL,
+          order_index INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes for ideas
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_ideas_thought_id ON ideas(thought_id)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_ideas_user_id ON ideas(user_id)
+      `);
+
+      console.log('[DB] ✅ ideas table created');
+
+      // Step 3: Create todos table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS todos (
+          id TEXT PRIMARY KEY NOT NULL,
+          thought_id TEXT NOT NULL,
+          idea_id TEXT,
+          capture_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('todo', 'completed', 'abandoned')) DEFAULT 'todo',
+          description TEXT NOT NULL,
+          deadline INTEGER,
+          priority TEXT NOT NULL CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+          completed_at INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE,
+          FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE SET NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes for todos (performance-critical for queries)
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_thought_id ON todos(thought_id)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_idea_id ON todos(idea_id)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_deadline ON todos(deadline)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)
+      `);
+
+      console.log('[DB] ✅ todos table created');
+
+      console.log('[DB] ✅ Migration v15: All tables created successfully');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v15');
+
+      // Drop tables in reverse order (respect FK constraints)
+      db.executeSync('DROP TABLE IF EXISTS todos');
+      db.executeSync('DROP TABLE IF EXISTS ideas');
+      db.executeSync('DROP TABLE IF EXISTS thoughts');
+
+      console.log('[DB] ✅ Rollback v15 completed');
+    },
+  },
 ];
 
 /**

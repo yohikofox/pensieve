@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 14;
+export const SCHEMA_VERSION = 15;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -148,6 +148,116 @@ export const CREATE_INDEX_CAPTURE_ANALYSIS_CAPTURE_ID = `
 
 export const CREATE_INDEX_CAPTURE_ANALYSIS_CAPTURE_TYPE = `
   CREATE UNIQUE INDEX IF NOT EXISTS idx_capture_analysis_capture_type ON capture_analysis(capture_id, analysis_type)
+`;
+
+/**
+ * Thoughts Table - AI-Generated Summaries (Knowledge Context)
+ *
+ * Story 5.1 - Subtask 1.1: thoughts table for Knowledge Context
+ * Stores AI-generated summaries from captures
+ */
+export const CREATE_THOUGHTS_TABLE = `
+  CREATE TABLE IF NOT EXISTS thoughts (
+    id TEXT PRIMARY KEY NOT NULL,
+    capture_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    confidence_score REAL,
+    processing_time_ms INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_THOUGHTS_CAPTURE_ID = `
+  CREATE INDEX IF NOT EXISTS idx_thoughts_capture_id ON thoughts(capture_id)
+`;
+
+export const CREATE_INDEX_THOUGHTS_USER_ID = `
+  CREATE INDEX IF NOT EXISTS idx_thoughts_user_id ON thoughts(user_id)
+`;
+
+/**
+ * Ideas Table - Key Ideas Extracted from Thoughts (Knowledge Context)
+ *
+ * Story 5.1 - Subtask 1.1: ideas table for Knowledge Context
+ * Stores individual key ideas extracted from thoughts
+ */
+export const CREATE_IDEAS_TABLE = `
+  CREATE TABLE IF NOT EXISTS ideas (
+    id TEXT PRIMARY KEY NOT NULL,
+    thought_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    text TEXT NOT NULL,
+    order_index INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_IDEAS_THOUGHT_ID = `
+  CREATE INDEX IF NOT EXISTS idx_ideas_thought_id ON ideas(thought_id)
+`;
+
+export const CREATE_INDEX_IDEAS_USER_ID = `
+  CREATE INDEX IF NOT EXISTS idx_ideas_user_id ON ideas(user_id)
+`;
+
+/**
+ * Todos Table - Actionable Tasks (Action Context)
+ *
+ * Story 5.1 - Subtask 1.1: Design Todo table schema for OP-SQLite
+ * AC1, AC2, AC4: Todo entity with all required fields for inline display
+ * Stores actionable tasks extracted from captures, linked to thoughts and ideas
+ */
+export const CREATE_TODOS_TABLE = `
+  CREATE TABLE IF NOT EXISTS todos (
+    id TEXT PRIMARY KEY NOT NULL,
+    thought_id TEXT NOT NULL,
+    idea_id TEXT,
+    capture_id TEXT NOT NULL,
+    user_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('todo', 'completed', 'abandoned')) DEFAULT 'todo',
+    description TEXT NOT NULL,
+    deadline INTEGER,
+    priority TEXT NOT NULL CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+    completed_at INTEGER,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE,
+    FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE SET NULL,
+    FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+  )
+`;
+
+/**
+ * Performance Indexes for Todos
+ * Subtask 1.4: Add indices on thoughtId, ideaId, status, priority
+ */
+export const CREATE_INDEX_TODOS_THOUGHT_ID = `
+  CREATE INDEX IF NOT EXISTS idx_todos_thought_id ON todos(thought_id)
+`;
+
+export const CREATE_INDEX_TODOS_IDEA_ID = `
+  CREATE INDEX IF NOT EXISTS idx_todos_idea_id ON todos(idea_id)
+`;
+
+export const CREATE_INDEX_TODOS_STATUS = `
+  CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)
+`;
+
+export const CREATE_INDEX_TODOS_PRIORITY = `
+  CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority)
+`;
+
+export const CREATE_INDEX_TODOS_DEADLINE = `
+  CREATE INDEX IF NOT EXISTS idx_todos_deadline ON todos(deadline)
+`;
+
+export const CREATE_INDEX_TODOS_USER_ID = `
+  CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)
 `;
 
 /**
