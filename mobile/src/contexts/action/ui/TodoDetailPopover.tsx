@@ -16,16 +16,20 @@ import {
   Switch,
   StyleSheet,
   Platform,
+  Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as Haptics from 'expo-haptics';
+import { container } from 'tsyringe';
 import { useTheme } from '../../../hooks/useTheme';
 import type { Todo, TodoPriority } from '../domain/Todo.model';
 import { useUpdateTodo } from '../hooks/useUpdateTodo';
 import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
 import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 
 interface TodoDetailPopoverProps {
   visible: boolean;
@@ -133,11 +137,47 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
     setIsCompleted(value);
   };
 
-  // Subtask 6.7-6.8: Navigate to source Idea/Capture (FR20)
+  // Subtask 6.7-6.8 + 7.7: Navigate to source Idea/Capture (FR20) with error handling
   const handleViewOrigin = async () => {
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    onClose();
-    navigation.navigate('CaptureDetail', { captureId: todo.captureId });
+
+    try {
+      // Task 7.7: Verify capture exists before navigating
+      const captureRepository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+      const capture = await captureRepository.findById(todo.captureId);
+
+      if (!capture) {
+        // Capture not found or deleted - show error alert
+        Alert.alert(
+          'Capture introuvable',
+          'La capture d\'origine n\'existe plus ou a été supprimée.',
+          [
+            {
+              text: 'OK',
+              style: 'default',
+            },
+          ]
+        );
+        return;
+      }
+
+      // Capture exists - navigate to detail screen
+      onClose();
+      navigation.navigate('CaptureDetail', { captureId: todo.captureId });
+    } catch (error) {
+      // Navigation or database error
+      console.error('[TodoDetailPopover] Error navigating to capture:', error);
+      Alert.alert(
+        'Erreur',
+        'Impossible d\'accéder à la capture d\'origine. Veuillez réessayer.',
+        [
+          {
+            text: 'OK',
+            style: 'default',
+          },
+        ]
+      );
+    }
   };
 
   const deadlineFormat = formatDeadline(deadline);
