@@ -15,6 +15,7 @@ import { fr } from 'date-fns/locale';
 import { Todo, TodoPriority } from '../domain/Todo.model';
 import { useTheme } from '../../../hooks/useTheme';
 import { colors } from '../../../design-system/tokens';
+import { CompletionAnimation } from './CompletionAnimation';
 
 interface TodoItemProps {
   todo: Todo;
@@ -102,23 +103,25 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
       onPress={() => onTap(todo)}
       activeOpacity={0.7}
     >
-      {/* Checkbox (Subtask 4.2: AC8) */}
+      {/* Checkbox with completion animation (Subtask 4.2: AC8, Task 8) */}
       <TouchableOpacity
         onPress={handleToggle}
         style={styles.checkboxContainer}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <View
-          style={[
-            styles.checkbox,
-            {
-              borderColor: isCompleted ? priorityColor : mutedColor,
-              backgroundColor: isCompleted ? priorityColor : 'transparent',
-            },
-          ]}
-        >
-          {isCompleted && <Feather name="check" size={14} color={colors.white} />}
-        </View>
+        <CompletionAnimation isCompleted={isCompleted}>
+          <View
+            style={[
+              styles.checkbox,
+              {
+                borderColor: isCompleted ? priorityColor : mutedColor,
+                backgroundColor: isCompleted ? priorityColor : 'transparent',
+              },
+            ]}
+          >
+            {isCompleted && <Feather name="check" size={14} color={colors.white} />}
+          </View>
+        </CompletionAnimation>
       </TouchableOpacity>
 
       {/* Todo content */}

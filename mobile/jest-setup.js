@@ -496,6 +496,60 @@ jest.mock('nativewind', () => ({
 }));
 
 // ==========================================
+// React Native Reanimated Mock
+// ==========================================
+// Mock react-native-reanimated for animation tests (Story 5.1 Task 8)
+jest.mock('react-native-reanimated', () => {
+  // Custom inline mock (official mock is ESM and causes issues with Jest)
+  return {
+    default: {
+      View: 'Animated.View',
+      Text: 'Animated.Text',
+      ScrollView: 'Animated.ScrollView',
+      createAnimatedComponent: (component) => component,
+    },
+    View: 'Animated.View',
+    Text: 'Animated.Text',
+    ScrollView: 'Animated.ScrollView',
+    useSharedValue: (initialValue) => ({
+      value: initialValue,
+    }),
+    useAnimatedStyle: (callback) => callback(),
+    withSpring: (value) => value,
+    withTiming: (value) => value,
+    withSequence: (...values) => values[values.length - 1],
+    runOnJS: (fn) => fn,
+    Easing: {
+      linear: jest.fn(),
+      ease: jest.fn(),
+      quad: jest.fn(),
+      cubic: jest.fn(),
+    },
+    createAnimatedComponent: (component) => component,
+  };
+});
+
+// ==========================================
+// Expo Haptics Mock
+// ==========================================
+// Mock expo-haptics for haptic feedback tests
+jest.mock('expo-haptics', () => ({
+  impactAsync: jest.fn(() => Promise.resolve()),
+  notificationAsync: jest.fn(() => Promise.resolve()),
+  selectionAsync: jest.fn(() => Promise.resolve()),
+  ImpactFeedbackStyle: {
+    Light: 'light',
+    Medium: 'medium',
+    Heavy: 'heavy',
+  },
+  NotificationFeedbackType: {
+    Success: 'success',
+    Warning: 'warning',
+    Error: 'error',
+  },
+}));
+
+// ==========================================
 // React Native Audio API Mock (Audio Conversion)
 // ==========================================
 // Mock react-native-audio-api for audio conversion tests
