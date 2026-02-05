@@ -1,14 +1,16 @@
 /**
  * ActionsScreen - Centralized Actions Tab with Filters and Sorting
  * Story 5.3 - Task 7: Integration of filtering and sorting
+ * Story 5.3 - Task 10: Animation and transitions
  *
  * NEW in Story 5.3:
  * - AC1: Filter tabs (Toutes | À faire | Faites) with count badges
- * - AC2-AC4: Client-side filtering logic
+ * - AC2-AC4: Client-side filtering logic with fade animations
  * - AC5-AC7: Sort options menu (Default, Priority, Created Date, Alphabetical)
  * - AC8: Filter and sort state persistence
  * - AC9: Contextual empty states per filter
- * - AC10: Real-time filter counts update
+ * - AC10: Real-time filter counts update with smooth transitions
+ * - Animations: FadeIn (300ms), FadeOut (200ms), LinearTransition for reordering
  *
  * From Story 5.2:
  * - AC2: Unified list of all todos from all captures
@@ -28,6 +30,7 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
+import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -181,13 +184,19 @@ export const ActionsScreen = () => {
     </View>
   );
 
-  // Render todo card
+  // Render todo card with animations (Story 5.3 - Task 10)
   const renderTodoCard = (todo: EnrichedTodo) => (
-    <ActionsTodoCard
-      todo={todo}
-      sourcePreview={todo.sourcePreview}
-      sourceTimestamp={todo.sourceTimestamp}
-    />
+    <Animated.View
+      entering={FadeIn.duration(300)}
+      exiting={FadeOut.duration(200)}
+      layout={LinearTransition.springify().damping(15).stiffness(150)}
+    >
+      <ActionsTodoCard
+        todo={todo}
+        sourcePreview={todo.sourcePreview}
+        sourceTimestamp={todo.sourceTimestamp}
+      />
+    </Animated.View>
   );
 
   // Empty state (Story 5.3 - AC9: Contextual empty states)
@@ -206,7 +215,7 @@ export const ActionsScreen = () => {
     );
   }
 
-  // Render SectionList (for 'default' sort)
+  // Render SectionList (for 'default' sort) with animations (Story 5.3 - Task 10)
   if (isSections) {
     return (
       <View style={styles.container}>
@@ -245,7 +254,7 @@ export const ActionsScreen = () => {
     );
   }
 
-  // Render FlatList (for other sorts: priority, createdDate, alphabetical)
+  // Render FlatList (for other sorts: priority, createdDate, alphabetical) with animations (Story 5.3 - Task 10)
   return (
     <View style={styles.container}>
       {renderHeader()}
