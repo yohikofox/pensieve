@@ -4,6 +4,7 @@
  * Screens:
  * - CapturesList: List of all captures
  * - CaptureDetail: Full capture details with transcription
+ * - QueueDetails: Queue status with multi-capture progress (Story 4.4, AC6)
  *
  * Story 3.4 Features:
  * - AC2: Hero transition animation (300ms timing via LayoutAnimation)
@@ -18,12 +19,14 @@ import { useTranslation } from 'react-i18next';
 import { Platform } from 'react-native';
 import { CapturesListScreen } from '../screens/captures/CapturesListScreen';
 import { CaptureDetailScreen } from '../screens/captures/CaptureDetailScreen';
+import { QueueDetailsScreen } from '../screens/queue/QueueDetailsScreen';
 import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
 import { useTheme } from '../hooks/useTheme';
 
 export type CapturesStackParamList = {
   CapturesList: undefined;
   CaptureDetail: { captureId: string };
+  QueueDetails: undefined;
 };
 
 const Stack = createNativeStackNavigator<CapturesStackParamList>();
@@ -64,6 +67,15 @@ export function CapturesStackNavigator() {
           fullScreenGestureEnabled: Platform.OS === 'ios', // iOS: swipe from anywhere on screen
           gestureDirection: 'horizontal', // Horizontal swipe for back navigation
           animationTypeForReplace: 'push', // Smooth transition when replacing screen
+        }}
+      />
+      <Stack.Screen
+        name="QueueDetails"
+        component={QueueDetailsScreen}
+        options={{
+          title: 'Queue Status', // TODO: Add translation
+          headerShown: true,
+          gestureEnabled: true,
         }}
       />
     </Stack.Navigator>
