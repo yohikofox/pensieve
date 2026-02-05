@@ -265,11 +265,27 @@ export default {
     },
   },
 
+  actions: {
+    title: 'Mes Actions',
+    empty: {
+      title: 'Votre jardin est paisible aujourd\'hui',
+      description: 'Aucune action en attente. Profitez de ce moment de tranquillité !',
+    },
+    groups: {
+      overdue: 'En retard',
+      today: 'Aujourd\'hui',
+      thisWeek: 'Cette semaine',
+      later: 'Plus tard',
+      noDeadline: 'Pas d\'échéance',
+    },
+  },
+
   navigation: {
     tabs: {
       news: 'Actualités',
       captures: 'Captures',
       capture: 'Capturer',
+      actions: 'Actions',
       projects: 'Projets',
       settings: 'Réglages',
     },
@@ -277,6 +293,7 @@ export default {
       news: 'Actualités',
       captures: 'Mes Captures',
       capture: 'Capturer',
+      actions: 'Mes Actions',
       projects: 'Projets',
       settings: 'Réglages',
       captureDetail: 'Détail',

@@ -230,6 +230,49 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
+   * Find all active todos (status = 'todo') sorted for Actions screen
+   * Story 5.2 - AC2, AC3: Fetch all todos for centralized Actions tab
+   * Sorted by: deadline (ASC nulls last), priority (DESC)
+   * @returns Array of active todos
+   */
+  async findAll(): Promise<Todo[]> {
+    const result = database.execute(
+      `SELECT * FROM todos
+       WHERE status = 'todo'
+       ORDER BY
+         CASE WHEN deadline IS NULL THEN 1 ELSE 0 END ASC,
+         deadline ASC,
+         CASE priority
+           WHEN 'high' THEN 0
+           WHEN 'medium' THEN 1
+           WHEN 'low' THEN 2
+         END ASC,
+         created_at ASC`
+    );
+
+    const rows = result.rows || [];
+    return rows.map((row: any) => this.mapRowToTodo(row));
+  }
+
+  /**
+   * Count active todos (status = 'todo')
+   * Story 5.2 - AC1: Badge count for Actions tab
+   * @returns Number of active todos
+   */
+  async countActive(): Promise<number> {
+    const result = database.execute(
+      `SELECT COUNT(*) as count FROM todos WHERE status = 'todo'`
+    );
+
+    const rows = result.rows || [];
+    if (rows.length === 0) {
+      return 0;
+    }
+
+    return rows[0].count as number;
+  }
+
+  /**
    * Map SQLite row to Todo model
    * Handles snake_case to camelCase conversion and type mapping
    */

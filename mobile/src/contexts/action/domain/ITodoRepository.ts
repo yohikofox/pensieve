@@ -64,4 +64,18 @@ export interface ITodoRepository {
    * @returns All todos in database
    */
   getAll(): Promise<Todo[]>;
+
+  /**
+   * Find all active todos (status = 'todo') sorted for Actions screen
+   * Story 5.2 - AC2, AC3: Fetch all todos for centralized Actions tab
+   * @returns Array of active todos sorted by: deadline (ASC), priority (DESC)
+   */
+  findAll(): Promise<Todo[]>;
+
+  /**
+   * Count active todos (status = 'todo')
+   * Story 5.2 - AC1: Badge count for Actions tab
+   * @returns Number of active todos
+   */
+  countActive(): Promise<number>;
 }

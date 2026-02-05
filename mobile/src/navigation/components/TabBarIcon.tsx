@@ -49,6 +49,7 @@ export const TabIcons = {
   news: 'rss' as const,              // RSS feed = news/updates
   captures: 'inbox' as const,        // Inbox = collected items
   capture: 'plus-circle' as const,   // Plus circle = create/add action
+  actions: 'check-square' as const,  // Check square = todos/tasks
   projects: 'folder' as const,       // Folder = organized collections
   settings: 'sliders' as const,      // Sliders = adjustments/preferences
 
