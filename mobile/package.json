@@ -45,6 +45,7 @@
     "@react-navigation/stack": "^7.6.16",
     "@supabase/supabase-js": "^2.90.1",
     "@types/jest": "29.5.14",
+    "date-fns": "^4.1.0",
     "diff-match-patch": "^1.0.5",
     "dotenv": "^17.2.3",
     "expo": "~54.0.31",
