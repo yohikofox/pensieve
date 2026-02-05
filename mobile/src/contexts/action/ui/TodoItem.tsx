@@ -10,12 +10,11 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
-import { formatDistanceToNow, isPast } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Todo, TodoPriority } from '../domain/Todo.model';
 import { useTheme } from '../../../hooks/useTheme';
 import { colors } from '../../../design-system/tokens';
 import { CompletionAnimation } from './CompletionAnimation';
+import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
 
 interface TodoItemProps {
   todo: Todo;
@@ -35,19 +34,8 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
   // Determine if todo is completed
   const isCompleted = todo.status === 'completed';
 
-  // Determine if deadline is overdue
-  const isOverdue = todo.deadline ? isPast(todo.deadline) : false;
-
-  // Format deadline with human-readable relative time
-  const formatDeadline = (timestamp?: number): string => {
-    if (!timestamp) return '';
-
-    if (isOverdue) {
-      return `En retard de ${formatDistanceToNow(timestamp, { locale: fr })}`;
-    }
-
-    return `Dans ${formatDistanceToNow(timestamp, { locale: fr })}`;
-  };
+  // Use formatDeadline utility (Issue #6 fix: removed duplication)
+  const deadlineFormat = formatDeadline(todo.deadline);
 
   // Get priority badge color
   const getPriorityColor = (priority: TodoPriority): string => {
@@ -91,7 +79,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
   const textColor = isDark ? colors.gray[100] : colors.gray[900];
   const mutedColor = isDark ? colors.gray[400] : colors.gray[600];
   const priorityColor = getPriorityColor(todo.priority);
-  const overdueColor = isDark ? colors.red[400] : colors.red[600];
+  const deadlineColor = getDeadlineColor(deadlineFormat, isDark);
 
   return (
     <TouchableOpacity
@@ -146,16 +134,16 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
               <Feather
                 name="clock"
                 size={12}
-                color={isOverdue ? overdueColor : mutedColor}
+                color={deadlineColor}
                 style={styles.icon}
               />
               <Text
                 style={[
                   styles.deadline,
-                  { color: isOverdue ? overdueColor : mutedColor },
+                  { color: deadlineColor },
                 ]}
               >
-                {formatDeadline(todo.deadline)}
+                {deadlineFormat.text}
               </Text>
             </View>
           )}

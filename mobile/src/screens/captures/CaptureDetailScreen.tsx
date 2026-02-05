@@ -44,6 +44,10 @@ import { TOKENS } from "../../infrastructure/di/tokens";
 import type { ICaptureRepository } from "../../contexts/capture/domain/ICaptureRepository";
 import type { ICaptureMetadataRepository } from "../../contexts/capture/domain/ICaptureMetadataRepository";
 import type { ICaptureAnalysisRepository } from "../../contexts/capture/domain/ICaptureAnalysisRepository";
+import type { IThoughtRepository } from "../../contexts/knowledge/domain/IThoughtRepository";
+import type { IIdeaRepository } from "../../contexts/knowledge/domain/IIdeaRepository";
+import type { Idea } from "../../contexts/knowledge/domain/Idea.model";
+import { IdeaItem } from "../../contexts/knowledge/ui/IdeaItem";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import type { Capture } from "../../contexts/capture/domain/Capture.model";
 import { CorrectionLearningService } from "../../contexts/Normalization/services/CorrectionLearningService";
@@ -336,6 +340,11 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     [ANALYSIS_TYPES.ACTION_ITEMS]: null,
     [ANALYSIS_TYPES.IDEAS]: null,
   });
+
+  // Story 5.1 - Task 10.4: Structured ideas state (replaces text-only IDEAS analysis)
+  const [ideas, setIdeas] = useState<Idea[]>([]);
+  const [ideasLoading, setIdeasLoading] = useState(false);
+
   const [analysisLoading, setAnalysisLoading] = useState<
     Record<AnalysisType, boolean>
   >({
@@ -1048,6 +1057,36 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
         "";
       setEditedText(initialText);
       setHasChanges(false);
+
+      // Story 5.1 - Task 10.4: Load structured ideas for inline todo display
+      if (result) {
+        try {
+          setIdeasLoading(true);
+          const thoughtRepository = container.resolve<IThoughtRepository>(
+            TOKENS.IThoughtRepository
+          );
+          const ideaRepository = container.resolve<IIdeaRepository>(
+            TOKENS.IIdeaRepository
+          );
+
+          // Load thought by captureId
+          const thought = await thoughtRepository.findByCaptureId(result.id);
+
+          if (thought) {
+            // Load ideas by thoughtId
+            const loadedIdeas = await ideaRepository.findByThoughtId(thought.id);
+            setIdeas(loadedIdeas);
+          } else {
+            // No thought yet (capture not digested)
+            setIdeas([]);
+          }
+        } catch (ideaError) {
+          console.error("[CaptureDetailScreen] Failed to load ideas:", ideaError);
+          setIdeas([]); // Fail gracefully
+        } finally {
+          setIdeasLoading(false);
+        }
+      }
     } catch (error) {
       console.error("[CaptureDetailScreen] Failed to load capture:", error);
     } finally {
@@ -2822,7 +2861,26 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                           </TouchableOpacity>
                         )}
                       </View>
-                      {analyses[ANALYSIS_TYPES.IDEAS] && (
+                      {/* Story 5.1 - Task 10.4: Display structured ideas with inline todos */}
+                      {ideasLoading ? (
+                        <View style={{ padding: 16, alignItems: 'center' }}>
+                          <ActivityIndicator size="small" color={colors.primary[500]} />
+                          <Text
+                            style={[
+                              styles.analysisResult,
+                              { color: themeColors.textSecondary, marginTop: 8 },
+                            ]}
+                          >
+                            Chargement des idées...
+                          </Text>
+                        </View>
+                      ) : ideas.length > 0 ? (
+                        <View style={{ paddingHorizontal: 8 }}>
+                          {ideas.map((idea) => (
+                            <IdeaItem key={idea.id} idea={idea} />
+                          ))}
+                        </View>
+                      ) : analyses[ANALYSIS_TYPES.IDEAS] ? (
                         <Text
                           style={[
                             styles.analysisResult,
@@ -2831,6 +2889,15 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
                           selectable
                         >
                           {analyses[ANALYSIS_TYPES.IDEAS].content}
+                        </Text>
+                      ) : (
+                        <Text
+                          style={[
+                            styles.analysisResult,
+                            { color: themeColors.textSecondary },
+                          ]}
+                        >
+                          Aucune idée extraite pour cette capture.
                         </Text>
                       )}
                     </View>

@@ -96,7 +96,7 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
     };
   }
 
-  // For dates > 7 days, use relative time with date-fns
+  // For dates > 7 days, use relative time with date-fns (Issue #16 fix: locale française)
   const relativeTime = formatDistanceToNow(deadlineDate, {
     locale: fr,
     addSuffix: false,

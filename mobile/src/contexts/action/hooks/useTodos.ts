@@ -18,7 +18,13 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
  * Fetch todos for a specific idea
  * AC1, AC2: Retrieve todos with sorting (active first, then priority)
  *
- * @param ideaId - Idea UUID
+ * IMPORTANT (Issue #5 fix):
+ * - This hook fetches todos linked to a specific ideaId
+ * - Orphan todos (idea_id = NULL) are NOT fetched by this hook
+ * - enabled: !!ideaId ensures query only runs if ideaId is truthy (non-empty string)
+ * - For empty string, React Query will not execute the query (returns empty data)
+ *
+ * @param ideaId - Idea UUID (must be non-empty string)
  * @returns React Query result with todos array, loading and error states
  */
 export const useTodos = (ideaId: string): UseQueryResult<Todo[], Error> => {
@@ -28,6 +34,6 @@ export const useTodos = (ideaId: string): UseQueryResult<Todo[], Error> => {
     queryKey: ['todos', ideaId],
     queryFn: () => todoRepository.findByIdeaId(ideaId),
     staleTime: 5 * 60 * 1000, // 5 minutes cache (AC: Subtask 2.4)
-    enabled: !!ideaId, // Only run if ideaId is provided
+    enabled: !!ideaId && ideaId.trim().length > 0, // Only run if ideaId is valid (Issue #5 fix)
   });
 };

@@ -41,8 +41,9 @@ export interface ITodoRepository {
    * AC6: Support editing description, deadline, priority
    * @param id - Todo UUID
    * @param changes - Partial todo fields to update
+   * @returns true if update was applied, false if no changes detected
    */
-  update(id: string, changes: Partial<Todo>): Promise<void>;
+  update(id: string, changes: Partial<Todo>): Promise<boolean>;
 
   /**
    * Delete a todo

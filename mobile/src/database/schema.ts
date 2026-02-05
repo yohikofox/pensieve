@@ -211,12 +211,19 @@ export const CREATE_INDEX_IDEAS_USER_ID = `
  * Story 5.1 - Subtask 1.1: Design Todo table schema for OP-SQLite
  * AC1, AC2, AC4: Todo entity with all required fields for inline display
  * Stores actionable tasks extracted from captures, linked to thoughts and ideas
+ *
+ * CRITICAL BUSINESS RULE (Issue #3 fix):
+ * - idea_id CAN BE NULL for generic/orphan todos not linked to a specific idea
+ * - Orphan todos (idea_id = NULL) are displayed at the THOUGHT level (not inline with ideas)
+ * - When backend extracts todos from a capture, it MAY or MAY NOT link them to specific ideas
+ * - Example: "Buy milk" (generic action) vs "Research competitor X" (linked to business idea)
+ * - Queries MUST handle NULL idea_id appropriately (see TodoRepository)
  */
 export const CREATE_TODOS_TABLE = `
   CREATE TABLE IF NOT EXISTS todos (
     id TEXT PRIMARY KEY NOT NULL,
     thought_id TEXT NOT NULL,
-    idea_id TEXT,
+    idea_id TEXT,                    -- NULLABLE: NULL = orphan todo (not linked to specific idea)
     capture_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
     status TEXT NOT NULL CHECK(status IN ('todo', 'completed', 'abandoned')) DEFAULT 'todo',

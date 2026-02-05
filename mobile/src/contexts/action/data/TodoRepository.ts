@@ -64,10 +64,21 @@ export class TodoRepository implements ITodoRepository {
    * Active todos first (status = 'todo'), then completed todos
    * Within each group: sorted by priority (high → medium → low)
    *
-   * @param ideaId - Idea UUID
+   * IMPORTANT (Issue #4 fix):
+   * This query ONLY returns todos explicitly linked to the given ideaId.
+   * Orphan todos (idea_id = NULL) are NOT returned by this query.
+   * To fetch orphan todos, use findByThoughtId() or a dedicated findOrphanTodos() method.
+   *
+   * @param ideaId - Idea UUID (must not be null/empty)
    * @returns Array of todos sorted by: active first, then priority (high → medium → low)
    */
   async findByIdeaId(ideaId: string): Promise<Todo[]> {
+    if (!ideaId || ideaId.trim() === '') {
+      // Return empty array if ideaId is invalid (prevents SQL errors)
+      console.warn('[TodoRepository] findByIdeaId called with empty ideaId');
+      return [];
+    }
+
     const result = this.db.executeSync(
       `SELECT * FROM todos
        WHERE idea_id = ?
@@ -115,8 +126,9 @@ export class TodoRepository implements ITodoRepository {
    * AC6: Support editing description, deadline, priority
    * @param id - Todo UUID
    * @param changes - Partial todo fields to update
+   * @returns true if update was applied, false if no changes detected (Issue #9 fix)
    */
-  async update(id: string, changes: Partial<Todo>): Promise<void> {
+  async update(id: string, changes: Partial<Todo>): Promise<boolean> {
     // Build dynamic UPDATE statement based on provided changes
     const fields: string[] = [];
     const values: any[] = [];
@@ -154,11 +166,13 @@ export class TodoRepository implements ITodoRepository {
     values.push(id);
 
     if (fields.length === 1) {
-      // Only updatedAt was set, no actual changes
-      return;
+      // Only updatedAt was set, no actual changes (Issue #9 fix: return false)
+      console.debug('[TodoRepository] update() called with no actual changes for todo:', id);
+      return false;
     }
 
     this.db.executeSync(`UPDATE todos SET ${fields.join(', ')} WHERE id = ?`, values);
+    return true;
   }
 
   /**

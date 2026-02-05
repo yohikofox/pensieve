@@ -79,18 +79,10 @@ export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId }) => {
     );
   }
 
-  // Subtask 3.3: Sort todos by status (active first) then priority (high → medium → low)
-  // Note: Sorting is already handled by TodoRepository.findByIdeaId()
-  // But we ensure it here for consistency
-  const sortedTodos = [...todos].sort((a, b) => {
-    // Active todos first
-    if (a.status === 'todo' && b.status !== 'todo') return -1;
-    if (a.status !== 'todo' && b.status === 'todo') return 1;
-
-    // Within same status, sort by priority
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return priorityOrder[a.priority] - priorityOrder[b.priority];
-  });
+  // Subtask 3.3: Sorting is already handled by TodoRepository.findByIdeaId()
+  // Issue #12 fix: Removed redundant client-side sorting (trust repository SQL sorting)
+  // Repository sorts by: CASE status, CASE priority, created_at
+  const sortedTodos = todos;
 
   const bgColor = isDark ? colors.gray[900] : colors.blue[50];
   const borderColor = isDark ? colors.gray[700] : colors.blue[200];
