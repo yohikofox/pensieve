@@ -10,13 +10,13 @@ import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTodos } from '../hooks/useTodos';
 import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
 import { TodoItem } from './TodoItem';
+import { TodoDetailPopover } from './TodoDetailPopover';
 import { Todo } from '../domain/Todo.model';
 import { useTheme } from '../../../hooks/useTheme';
 import { colors } from '../../../design-system/tokens';
 
 interface InlineTodoListProps {
   ideaId: string;
-  onTodoTap?: (todo: Todo) => void;
 }
 
 /**
@@ -24,9 +24,10 @@ interface InlineTodoListProps {
  * AC1: Inline display with parent idea
  * AC2: Multiple todos sorted by priority
  * AC3: No actions - clean display (hide if empty)
+ * AC6: Todo detail popover on tap
  * AC7: Consistent styling across feed
  */
-export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId, onTodoTap }) => {
+export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId }) => {
   const { isDark } = useTheme();
 
   // Subtask 3.2: Fetch todos using useTodos hook
@@ -35,16 +36,22 @@ export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId, onTodoTa
   // Subtask 5.1: Toggle todo status mutation
   const toggleMutation = useToggleTodoStatus();
 
+  // Subtask 6.1: Todo detail popover state
+  const [selectedTodo, setSelectedTodo] = useState<Todo | null>(null);
+
   // Handle checkbox toggle (AC8)
   const handleToggle = (todoId: string) => {
     toggleMutation.mutate(todoId);
   };
 
-  // Handle todo tap (AC6)
+  // Handle todo tap (AC6) - Open detail popover
   const handleTodoTap = (todo: Todo) => {
-    if (onTodoTap) {
-      onTodoTap(todo);
-    }
+    setSelectedTodo(todo);
+  };
+
+  // Close popover
+  const handleClosePopover = () => {
+    setSelectedTodo(null);
   };
 
   // Subtask 3.5: AC3 - Hide section if todos array is empty
@@ -117,6 +124,15 @@ export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId, onTodoTa
           />
         ))}
       </View>
+
+      {/* Todo detail popover (Subtask 6.1: AC6) */}
+      {selectedTodo && (
+        <TodoDetailPopover
+          visible={!!selectedTodo}
+          todo={selectedTodo}
+          onClose={handleClosePopover}
+        />
+      )}
     </View>
   );
 };
