@@ -21,6 +21,19 @@ export class User {
   @UpdateDateColumn({ type: 'timestamp' })
   updated_at!: Date;
 
+  // Notification preferences (Story 4.4 - AC7)
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  pushToken?: string | null;
+
+  @Column({ type: 'boolean', default: true })
+  pushNotificationsEnabled!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  localNotificationsEnabled!: boolean;
+
+  @Column({ type: 'boolean', default: true })
+  hapticFeedbackEnabled!: boolean;
+
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
   audit_logs!: AuditLog[];
 }

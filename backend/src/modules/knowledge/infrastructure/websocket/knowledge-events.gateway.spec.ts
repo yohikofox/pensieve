@@ -1,8 +1,12 @@
 /**
  * KnowledgeEventsGateway Unit Tests
- * Tests for Task 6.1: WebSocket gateway for real-time notifications
+ * Tests for Story 4.2 Task 6.1 + Story 4.4 Task 3
  *
- * Covers AC5: Real-Time Feed Update Notification
+ * Covers:
+ * - Story 4.2, AC5: Real-Time Feed Update Notification
+ * - Story 4.4, AC2: Active Processing Indicator
+ * - Story 4.4, AC6: Multi-Capture Progress Tracking
+ * - Story 4.4, AC9: Timeout Warning Notification
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
@@ -131,7 +135,7 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
           thoughtId: 'thought-123',
           captureId: 'capture-456',
           userId: 'user-789',
-          summary: 'Test summary',
+          summaryPreview: expect.stringContaining('Test summary'), // NFR12: preview only
           ideasCount: 3,
         }),
       );
@@ -163,7 +167,8 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
       expect(payload).toHaveProperty('thoughtId', 'thought-abc');
       expect(payload).toHaveProperty('captureId', 'capture-def');
       expect(payload).toHaveProperty('userId', 'user-xyz');
-      expect(payload).toHaveProperty('summary', 'Summary text');
+      expect(payload).toHaveProperty('summaryPreview'); // NFR12: preview only, not full summary
+      expect(payload.summaryPreview).toContain('Summary text');
       expect(payload).toHaveProperty('ideasCount', 5);
       expect(payload).toHaveProperty('processingTimeMs', 2000);
       expect(payload).toHaveProperty('completedAt', '2026-02-04T12:00:00Z');
@@ -248,6 +253,160 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
 
       // Act & Assert - Should not throw
       expect(() => gateway.handleDigestionCompleted(event)).not.toThrow();
+    });
+  });
+
+  describe('Progress Update Event Broadcasting (Story 4.4, AC2, AC6)', () => {
+    beforeEach(() => {
+      gateway['server'] = mockServer;
+    });
+
+    it('should broadcast progress.update event to user room', () => {
+      // Arrange
+      const progressEvent = {
+        captureId: 'capture-123',
+        userId: 'user-456',
+        status: 'processing',
+        elapsed: 5000,
+        queuePosition: undefined,
+        estimatedRemaining: 10000,
+        timestamp: new Date(),
+      };
+
+      // Act
+      gateway.handleProgressUpdate(progressEvent);
+
+      // Assert
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-456');
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'progress.update',
+        expect.objectContaining({
+          captureId: 'capture-123',
+          status: 'processing',
+          elapsed: 5000,
+        }),
+      );
+    });
+
+    it('should include queue position for queued jobs (AC1)', () => {
+      // Arrange
+      const queuedEvent = {
+        captureId: 'capture-123',
+        userId: 'user-456',
+        status: 'queued',
+        elapsed: 0,
+        queuePosition: 3,
+        estimatedRemaining: 60000,
+        timestamp: new Date(),
+      };
+
+      // Act
+      gateway.handleProgressUpdate(queuedEvent);
+
+      // Assert
+      const emitCall = (mockServer.emit as jest.Mock).mock.calls[0];
+      const payload = emitCall[1];
+      expect(payload.queuePosition).toBe(3);
+      expect(payload.estimatedRemaining).toBe(60000);
+    });
+
+    it('should handle missing userId gracefully', () => {
+      // Arrange
+      const malformedEvent = {
+        captureId: 'capture-123',
+        // userId missing
+        status: 'processing',
+        elapsed: 5000,
+      };
+
+      // Act & Assert - Should not throw
+      expect(() => gateway.handleProgressUpdate(malformedEvent)).not.toThrow();
+      expect(mockServer.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Still Processing Event Broadcasting (Story 4.4, AC2)', () => {
+    beforeEach(() => {
+      gateway['server'] = mockServer;
+    });
+
+    it('should broadcast progress.still-processing event after 10s', () => {
+      // Arrange
+      const stillProcessingEvent = {
+        captureId: 'capture-123',
+        userId: 'user-456',
+        elapsed: 12000,
+        timestamp: new Date(),
+      };
+
+      // Act
+      gateway.handleStillProcessing(stillProcessingEvent);
+
+      // Assert
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-456');
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'progress.still-processing',
+        expect.objectContaining({
+          captureId: 'capture-123',
+          elapsed: 12000,
+        }),
+      );
+    });
+
+    it('should handle missing userId gracefully', () => {
+      // Arrange
+      const malformedEvent = {
+        captureId: 'capture-123',
+        elapsed: 12000,
+      };
+
+      // Act & Assert - Should not throw
+      expect(() => gateway.handleStillProcessing(malformedEvent)).not.toThrow();
+      expect(mockServer.emit).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Timeout Warning Event Broadcasting (Story 4.4, AC9)', () => {
+    beforeEach(() => {
+      gateway['server'] = mockServer;
+    });
+
+    it('should broadcast progress.timeout-warning after 30s', () => {
+      // Arrange
+      const timeoutEvent = {
+        captureId: 'capture-123',
+        userId: 'user-456',
+        elapsed: 32000,
+        threshold: 30000,
+        timestamp: new Date(),
+      };
+
+      // Act
+      gateway.handleTimeoutWarning(timeoutEvent);
+
+      // Assert
+      expect(mockServer.to).toHaveBeenCalledWith('user:user-456');
+      expect(mockServer.emit).toHaveBeenCalledWith(
+        'progress.timeout-warning',
+        expect.objectContaining({
+          captureId: 'capture-123',
+          elapsed: 32000,
+          threshold: 30000,
+        }),
+      );
+    });
+
+    it('should handle missing userId gracefully', () => {
+      // Arrange
+      const malformedEvent = {
+        captureId: 'capture-123',
+        elapsed: 32000,
+        threshold: 30000,
+      };
+
+      // Act & Assert - Should not throw
+      expect(() => gateway.handleTimeoutWarning(malformedEvent)).not.toThrow();
+      expect(mockServer.emit).not.toHaveBeenCalled();
     });
   });
 });

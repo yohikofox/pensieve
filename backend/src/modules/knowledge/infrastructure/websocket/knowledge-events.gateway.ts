@@ -1,14 +1,18 @@
 /**
  * Knowledge Events WebSocket Gateway
- * Real-time notification system for digestion completion events
+ * Real-time notification system for digestion completion and progress events
  *
  * Covers:
- * - Task 6, Subtask 6.1: WebSocket event handler for digestion.completed
- * - AC5: Real-Time Feed Update Notification
+ * - Story 4.2, Task 6, Subtask 6.1: WebSocket event handler for digestion.completed
+ * - Story 4.2, AC5: Real-Time Feed Update Notification
+ * - Story 4.4, Task 3: WebSocket Real-Time Progress Updates
+ * - Story 4.4, AC2: Active Processing Indicator
+ * - Story 4.4, AC6: Multi-Capture Progress Tracking
+ * - Story 4.4, AC9: Timeout Warning Notification
  *
  * Pattern:
  * - Clients join user-specific rooms (user:{userId})
- * - Digestion completed events are broadcast only to the relevant user
+ * - Events are broadcast only to the relevant user (NFR13)
  * - Mobile app receives immediate notifications for feed updates
  */
 
@@ -139,6 +143,108 @@ export class KnowledgeEventsGateway
       ideasCount: payload.ideasCount,
       processingTimeMs: payload.processingTimeMs,
       completedAt: payload.completedAt,
+    });
+  }
+
+  /**
+   * Broadcast progress update to specific user
+   * Story 4.4, Task 3, Subtask 3.1-3.4: WebSocket progress updates
+   * AC2: Active Processing Indicator
+   * AC6: Multi-Capture Progress Tracking
+   *
+   * This is called by ProgressNotificationService when progress changes
+   *
+   * @param event - Progress update event
+   */
+  @OnEvent('progress.update')
+  handleProgressUpdate(event: any): void {
+    if (!event.userId) {
+      this.logger.warn('⚠️  Received progress.update event without userId');
+      return;
+    }
+
+    if (!this.server) {
+      this.logger.warn('⚠️  Server not initialized, cannot broadcast event');
+      return;
+    }
+
+    const roomName = `user:${event.userId}`;
+
+    this.logger.debug(
+      `📈 Broadcasting progress.update to ${roomName}: capture=${event.captureId}, status=${event.status}, elapsed=${event.elapsed}ms`,
+    );
+
+    // Broadcast progress update to user-specific room
+    this.server.to(roomName).emit('progress.update', {
+      captureId: event.captureId,
+      status: event.status,
+      elapsed: event.elapsed,
+      queuePosition: event.queuePosition,
+      estimatedRemaining: event.estimatedRemaining,
+      timestamp: event.timestamp,
+    });
+  }
+
+  /**
+   * Broadcast "Still processing..." notification
+   * AC2: Still processing notification after 10s
+   *
+   * @param event - Progress update event with elapsed > 10s
+   */
+  @OnEvent('progress.still-processing')
+  handleStillProcessing(event: any): void {
+    if (!event.userId) {
+      this.logger.warn('⚠️  Received progress.still-processing event without userId');
+      return;
+    }
+
+    if (!this.server) {
+      this.logger.warn('⚠️  Server not initialized, cannot broadcast event');
+      return;
+    }
+
+    const roomName = `user:${event.userId}`;
+
+    this.logger.debug(
+      `⏳ Broadcasting progress.still-processing to ${roomName}: capture=${event.captureId}, elapsed=${event.elapsed}ms`,
+    );
+
+    this.server.to(roomName).emit('progress.still-processing', {
+      captureId: event.captureId,
+      elapsed: event.elapsed,
+      timestamp: event.timestamp,
+    });
+  }
+
+  /**
+   * Broadcast timeout warning to specific user
+   * AC9: Timeout Warning Notification
+   *
+   * @param event - Timeout warning event
+   */
+  @OnEvent('progress.timeout-warning')
+  handleTimeoutWarning(event: any): void {
+    if (!event.userId) {
+      this.logger.warn('⚠️  Received progress.timeout-warning event without userId');
+      return;
+    }
+
+    if (!this.server) {
+      this.logger.warn('⚠️  Server not initialized, cannot broadcast event');
+      return;
+    }
+
+    const roomName = `user:${event.userId}`;
+
+    this.logger.warn(
+      `⚠️  Broadcasting progress.timeout-warning to ${roomName}: capture=${event.captureId}, elapsed=${event.elapsed}ms`,
+    );
+
+    this.server.to(roomName).emit('progress.timeout-warning', {
+      captureId: event.captureId,
+      elapsed: event.elapsed,
+      threshold: event.threshold,
+      timestamp: event.timestamp,
     });
   }
 }
