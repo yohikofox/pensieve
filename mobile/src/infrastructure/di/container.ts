@@ -16,6 +16,7 @@ import { TOKENS } from './tokens';
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
 import { CaptureMetadataRepository } from '../../contexts/capture/data/CaptureMetadataRepository';
 import { CaptureAnalysisRepository } from '../../contexts/capture/data/CaptureAnalysisRepository';
+import { IdeaRepository } from '../../contexts/knowledge/data/IdeaRepository';
 import { TodoRepository } from '../../contexts/action/data/TodoRepository';
 
 // Services
@@ -84,6 +85,7 @@ export function registerServices() {
   container.registerSingleton(TOKENS.ICaptureRepository, CaptureRepository);
   container.registerSingleton(TOKENS.ICaptureMetadataRepository, CaptureMetadataRepository);
   container.registerSingleton(TOKENS.ICaptureAnalysisRepository, CaptureAnalysisRepository);
+  container.registerSingleton(TOKENS.IIdeaRepository, IdeaRepository);
   container.registerSingleton(TOKENS.ITodoRepository, TodoRepository);
 
   // Platform Adapters (Hardware/SDK wrappers)

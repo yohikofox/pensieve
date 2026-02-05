@@ -13,6 +13,7 @@ export const TOKENS = {
   ICaptureRepository: Symbol.for('ICaptureRepository'),
   ICaptureMetadataRepository: Symbol.for('ICaptureMetadataRepository'),
   ICaptureAnalysisRepository: Symbol.for('ICaptureAnalysisRepository'),
+  IIdeaRepository: Symbol.for('IIdeaRepository'),
   ITodoRepository: Symbol.for('ITodoRepository'),
 
   // Hardware/Platform Adapters
