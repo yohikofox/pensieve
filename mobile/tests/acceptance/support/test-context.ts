@@ -1607,6 +1607,231 @@ export class MockNetwork {
 }
 
 // ============================================================================
+// Mock Notification Service (Story 4.4)
+// ============================================================================
+
+export class MockNotificationService {
+  public sentNotifications: Array<{
+    type: string;
+    title: string;
+    body: string;
+    data?: any;
+    timestamp: Date;
+  }> = [];
+
+  public permissions: 'granted' | 'denied' | 'undetermined' = 'granted';
+
+  async requestPermissions(): Promise<boolean> {
+    return this.permissions === 'granted';
+  }
+
+  async showQueuedNotification(captureId: string, queuePosition?: number): Promise<string> {
+    const notification = {
+      type: 'queued',
+      title: 'Processing your thought...',
+      body: queuePosition ? `Position in queue: ${queuePosition}` : 'Starting soon',
+      data: { captureId, type: 'queued' },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showProcessingNotification(captureId: string, elapsed: number): Promise<string | null> {
+    if (elapsed < 10000) return null;
+
+    const notification = {
+      type: 'still_processing',
+      title: 'Still processing...',
+      body: `Taking longer than usual (${Math.round(elapsed / 1000)}s)`,
+      data: { captureId, type: 'still_processing' },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showCompletionNotification(
+    captureId: string,
+    summary: string,
+    ideasCount: number,
+    todosCount: number
+  ): Promise<string> {
+    const notification = {
+      type: 'completed',
+      title: '✨ New insights from your thought!',
+      body: `${ideasCount} ideas, ${todosCount} actions. "${summary.substring(0, 50)}..."`,
+      data: { captureId, type: 'completed', deepLink: `pensieve://capture/${captureId}` },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showErrorNotification(captureId: string, retryCount: number): Promise<string> {
+    const notification = {
+      type: 'failed',
+      title: 'Unable to process thought',
+      body: 'Tap to retry',
+      data: { captureId, type: 'failed', action: 'retry' },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showTimeoutWarningNotification(captureId: string, elapsed: number): Promise<string> {
+    const notification = {
+      type: 'timeout_warning',
+      title: '⚠️ This is taking longer than usual...',
+      body: `Processing for ${Math.round(elapsed / 1000)}s. Keep waiting?`,
+      data: { captureId, type: 'timeout_warning' },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showOfflineQueueNotification(queuedCount: number): Promise<string> {
+    const notification = {
+      type: 'offline_queue',
+      title: 'Offline Queue',
+      body: `${queuedCount} capture${queuedCount > 1 ? 's' : ''} queued for when online`,
+      data: { type: 'offline_queue', count: queuedCount },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  async showNetworkRestoredNotification(queuedCount: number): Promise<string> {
+    const notification = {
+      type: 'network_restored',
+      title: '🌐 Network Restored',
+      body: `Processing ${queuedCount} queued capture${queuedCount > 1 ? 's' : ''}...`,
+      data: { type: 'network_restored', count: queuedCount },
+      timestamp: new Date(),
+    };
+    this.sentNotifications.push(notification);
+    return `notification-${Date.now()}`;
+  }
+
+  getNotificationsByType(type: string) {
+    return this.sentNotifications.filter((n) => n.type === type);
+  }
+
+  getLastNotification() {
+    return this.sentNotifications[this.sentNotifications.length - 1];
+  }
+
+  reset() {
+    this.sentNotifications = [];
+    this.permissions = 'granted';
+  }
+}
+
+// ============================================================================
+// Mock WebSocket (Story 4.4)
+// ============================================================================
+
+export class MockWebSocket {
+  public listeners: Map<string, Array<(data: any) => void>> = new Map();
+  public emittedEvents: Array<{ event: string; data: any; timestamp: Date }> = [];
+  public connected = false;
+
+  connect() {
+    this.connected = true;
+  }
+
+  disconnect() {
+    this.connected = false;
+  }
+
+  on(event: string, callback: (data: any) => void) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, []);
+    }
+    this.listeners.get(event)!.push(callback);
+  }
+
+  off(event: string, callback: (data: any) => void) {
+    const callbacks = this.listeners.get(event);
+    if (callbacks) {
+      const index = callbacks.indexOf(callback);
+      if (index > -1) {
+        callbacks.splice(index, 1);
+      }
+    }
+  }
+
+  emit(event: string, data: any) {
+    this.emittedEvents.push({ event, data, timestamp: new Date() });
+  }
+
+  // Test helper: trigger an event as if received from server
+  triggerEvent(event: string, data: any) {
+    const callbacks = this.listeners.get(event);
+    if (callbacks) {
+      callbacks.forEach((cb) => cb(data));
+    }
+  }
+
+  reset() {
+    this.listeners.clear();
+    this.emittedEvents = [];
+    this.connected = false;
+  }
+}
+
+// ============================================================================
+// Mock Haptic Service (Story 4.4)
+// ============================================================================
+
+export class MockHapticService {
+  public triggeredHaptics: Array<{
+    type: 'impact' | 'notification' | 'selection';
+    style?: 'light' | 'medium' | 'heavy';
+    timestamp: Date;
+  }> = [];
+
+  public enabled = true;
+
+  async triggerImpact(style: 'light' | 'medium' | 'heavy' = 'medium'): Promise<void> {
+    if (!this.enabled) return;
+    this.triggeredHaptics.push({
+      type: 'impact',
+      style,
+      timestamp: new Date(),
+    });
+  }
+
+  async triggerNotification(type: 'success' | 'warning' | 'error'): Promise<void> {
+    if (!this.enabled) return;
+    this.triggeredHaptics.push({
+      type: 'notification',
+      timestamp: new Date(),
+    });
+  }
+
+  async triggerSelection(): Promise<void> {
+    if (!this.enabled) return;
+    this.triggeredHaptics.push({
+      type: 'selection',
+      timestamp: new Date(),
+    });
+  }
+
+  getHapticsByType(type: string) {
+    return this.triggeredHaptics.filter((h) => h.type === type);
+  }
+
+  reset() {
+    this.triggeredHaptics = [];
+    this.enabled = true;
+  }
+}
+
+// ============================================================================
 // Test Context (aggregates all mocks)
 // ============================================================================
 
@@ -1636,6 +1861,11 @@ export class TestContext {
   // Story 3.1 - Network status mock
   public network: MockNetwork;
 
+  // Story 4.4 - Notifications, WebSocket, Haptics mocks
+  public notifications: MockNotificationService;
+  public webSocket: MockWebSocket;
+  public haptics: MockHapticService;
+
   private _userId: string = 'test-user';
   private _isOffline: boolean = false;
 
@@ -1664,6 +1894,11 @@ export class TestContext {
 
     // Story 3.1 mocks
     this.network = new MockNetwork();
+
+    // Story 4.4 mocks
+    this.notifications = new MockNotificationService();
+    this.webSocket = new MockWebSocket();
+    this.haptics = new MockHapticService();
   }
 
   setUserId(userId: string): void {
@@ -1707,6 +1942,11 @@ export class TestContext {
 
     // Story 3.1 resets
     this.network.reset();
+
+    // Story 4.4 resets
+    this.notifications.reset();
+    this.webSocket.reset();
+    this.haptics.reset();
 
     this._userId = 'test-user';
     this._isOffline = false;
