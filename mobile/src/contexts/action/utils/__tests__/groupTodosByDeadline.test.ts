@@ -1,11 +1,27 @@
 /**
  * groupTodosByDeadline Unit Tests
  * Story 5.2 - Subtask 4.6: Test grouping logic with various scenarios
+ *
+ * Code Review Fix #10: Updated tests for i18n
  */
 
 import { addDays, startOfDay, endOfWeek, subDays } from 'date-fns';
 import { Todo } from '../../domain/Todo.model';
 import { groupTodosByDeadline } from '../groupTodosByDeadline';
+
+// Mock i18n
+jest.mock('i18next', () => ({
+  t: (key: string) => {
+    const translations: Record<string, string> = {
+      'actions.groups.overdue': 'En retard',
+      'actions.groups.today': "Aujourd'hui",
+      'actions.groups.thisWeek': 'Cette semaine',
+      'actions.groups.later': 'Plus tard',
+      'actions.groups.noDeadline': "Pas d'échéance",
+    };
+    return translations[key] || key;
+  },
+}));
 
 // Helper to create a test todo
 const createTodo = (

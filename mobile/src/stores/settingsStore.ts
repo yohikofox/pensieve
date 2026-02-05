@@ -61,6 +61,10 @@ interface SettingsState {
   // When disabled, transcription must be triggered manually from capture details
   autoTranscriptionEnabled: boolean;
 
+  // Haptic feedback - enable/disable haptic feedback for UI interactions
+  // Story 5.2 Code Review Fix #7: User preference check before haptics
+  hapticFeedbackEnabled: boolean;
+
   // LLM settings - AI post-processing configuration (consulted app-wide)
   llm: LLMSettings;
 
@@ -72,6 +76,7 @@ interface SettingsState {
   setShowCalibrationGrid: (show: boolean) => void;
   setDebugButtonPosition: (position: DebugButtonPosition) => void;
   setAutoTranscription: (enabled: boolean) => void;
+  setHapticFeedback: (enabled: boolean) => void;
 
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
@@ -103,6 +108,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Initial state - auto-transcription disabled by default (manual trigger from capture details)
         autoTranscriptionEnabled: false,
+
+        // Initial state - haptic feedback enabled by default (Story 5.2 Code Review Fix #7)
+        hapticFeedbackEnabled: true,
 
         // Initial LLM state - disabled by default
         llm: {
@@ -146,6 +154,11 @@ export const useSettingsStore = create<SettingsState>()(
         setAutoTranscription: (enabled: boolean) => {
           set({ autoTranscriptionEnabled: enabled });
           console.log('[SettingsStore] Auto-transcription:', enabled ? 'ON' : 'OFF');
+        },
+
+        setHapticFeedback: (enabled: boolean) => {
+          set({ hapticFeedbackEnabled: enabled });
+          console.log('[SettingsStore] Haptic feedback:', enabled ? 'ON' : 'OFF');
         },
 
         // LLM Actions

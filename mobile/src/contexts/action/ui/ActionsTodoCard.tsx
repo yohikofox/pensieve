@@ -8,6 +8,8 @@
  * - Relative timestamp ("3 hours ago")
  * - Tap to open TodoDetailPopover
  * - Checkbox toggle with completion animation
+ *
+ * Code Review Fix #7: Haptic feedback respects user preferences
  */
 
 import React, { useState } from 'react';
@@ -19,6 +21,7 @@ import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
 import { formatDeadline } from '../utils/formatDeadline';
 import { CompletionAnimation } from './CompletionAnimation';
 import { TodoDetailPopover } from './TodoDetailPopover';
+import { useSettingsStore } from '../../../stores/settingsStore';
 
 interface ActionsTodoCardProps {
   todo: Todo;
@@ -34,10 +37,13 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   const [isDetailVisible, setIsDetailVisible] = useState(false);
   const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
   const toggleStatus = useToggleTodoStatus();
+  const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
 
   const handleToggle = () => {
-    // Haptic feedback
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // Haptic feedback (Code Review Fix #7: respect user preference)
+    if (hapticFeedbackEnabled) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    }
 
     // Show completion animation if marking as done
     if (todo.status === 'todo') {
