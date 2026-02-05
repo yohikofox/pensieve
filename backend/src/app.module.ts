@@ -7,6 +7,7 @@ import { IdentityModule } from './modules/identity/identity.module';
 import { RgpdModule } from './modules/rgpd/rgpd.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ActionModule } from './modules/action/action.module'; // Story 4.3: Action Context
+import { NotificationModule } from './modules/notification/notification.module'; // Story 4.4: Notification Context
 
 @Module({
   imports: [
@@ -37,6 +38,8 @@ import { ActionModule } from './modules/action/action.module'; // Story 4.3: Act
     KnowledgeModule,
     // Action module (Todos extraction - Story 4.3)
     ActionModule,
+    // Notification module (Progress notifications - Story 4.4)
+    NotificationModule,
   ],
   controllers: [AppController],
   providers: [],

@@ -260,9 +260,11 @@ export class PushNotificationService {
       const tickets = await this.sendPushNotifications([message]);
 
       if (tickets.length === 0 || tickets[0].status === 'error') {
+        const errorMessage =
+          tickets[0]?.status === 'error' ? tickets[0].message : 'Failed to send';
         return {
           success: false,
-          error: tickets[0]?.message || 'Failed to send',
+          error: errorMessage,
         };
       }
 

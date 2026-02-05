@@ -132,7 +132,6 @@ export class DigestionJobConsumer implements OnModuleDestroy {
           job.captureId,
           job.userId,
           errorMessage,
-          job.retryCount + 1,
         );
 
         // Subtask 6.4: Record metrics for failed job (after max retries)
@@ -338,9 +337,6 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       await this.progressNotificationService.completeTrackingWithNotifications(
         job.captureId,
         job.userId,
-        summary,
-        ideas.length,
-        createdTodos.length,
       );
       await this.progressNotificationService.updateProgressWithNotifications(
         job.captureId,

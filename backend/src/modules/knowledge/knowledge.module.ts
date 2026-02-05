@@ -9,7 +9,7 @@
  * - Progress notifications (Story 4.4)
  */
 
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { ClientsModule } from '@nestjs/microservices';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -18,6 +18,7 @@ import OpenAI from 'openai';
 import { Thought } from './domain/entities/thought.entity';
 import { Idea } from './domain/entities/idea.entity';
 import { ActionModule } from '../action/action.module'; // Story 4.3: Import ActionModule for TodoRepository
+import { NotificationModule } from '../notification/notification.module'; // Story 4.4: Import NotificationModule for ProgressNotificationService
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
@@ -45,6 +46,8 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     TypeOrmModule.forFeature([Thought, Idea]),
     // Story 4.3: Import ActionModule for TodoRepository and DeadlineParserService
     ActionModule,
+    // Story 4.4: Import NotificationModule for ProgressNotificationService (forward ref to avoid circular dependency)
+    forwardRef(() => NotificationModule),
     // Register RabbitMQ client for job publishing
     ClientsModule.register([
       {

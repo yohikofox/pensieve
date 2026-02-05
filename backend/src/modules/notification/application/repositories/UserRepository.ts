@@ -79,7 +79,7 @@ export class UserRepository {
     }
 
     return {
-      pushToken: user.pushToken,
+      pushToken: user.pushToken ?? undefined,
       pushNotificationsEnabled: user.pushNotificationsEnabled,
       localNotificationsEnabled: user.localNotificationsEnabled,
       hapticFeedbackEnabled: user.hapticFeedbackEnabled,
