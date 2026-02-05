@@ -684,6 +684,24 @@ export const SettingsScreen = () => {
               <Text className="text-xl text-text-disabled font-semibold">›</Text>
             </TouchableOpacity>
           )}
+
+          {/* TodoDetailPopover Test - only visible when debug mode is enabled */}
+          {debugMode && (
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-t border-border-subtle"
+              onPress={() => navigation.navigate('TodoDetailPopoverTest')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  TodoDetailPopover Test
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Tester le composant TodoDetailPopover
+                </Text>
+              </View>
+              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+            </TouchableOpacity>
+          )}
         </Card>
       </ScrollView>
 

@@ -18,6 +18,7 @@ import { LLMSettingsScreen } from '../screens/settings/LLMSettingsScreen';
 import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { NotificationSettingsScreen } from '../screens/settings/NotificationSettingsScreen';
 import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
+import { TodoDetailPopoverTestScreen } from '../screens/__dev__/TodoDetailPopoverTestScreen';
 import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
 import { useTheme } from '../hooks/useTheme';
 
@@ -29,6 +30,7 @@ export type SettingsStackParamList = {
   ThemeSettings: undefined;
   NotificationSettings: undefined;
   LottieGallery: undefined;
+  TodoDetailPopoverTest: undefined;
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -97,6 +99,14 @@ export function SettingsStackNavigator() {
         component={LottieGalleryScreen}
         options={{
           title: 'Lottie Animations',
+          headerShown: true,
+        }}
+      />
+      <Stack.Screen
+        name="TodoDetailPopoverTest"
+        component={TodoDetailPopoverTestScreen}
+        options={{
+          title: 'TodoDetailPopover Test',
           headerShown: true,
         }}
       />

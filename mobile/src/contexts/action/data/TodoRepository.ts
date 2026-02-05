@@ -6,21 +6,20 @@
  * AC1, AC2: Query todos by ideaId with sorting (priority desc, createdAt asc)
  */
 
-import { injectable, inject } from 'tsyringe';
-import type { DB } from '@op-engineering/op-sqlite';
+import { injectable } from 'tsyringe';
+import { database } from '../../../database';
 import { Todo, TodoStatus } from '../domain/Todo.model';
 import { ITodoRepository } from '../domain/ITodoRepository';
 
 @injectable()
 export class TodoRepository implements ITodoRepository {
-  constructor(@inject('DB') private readonly db: DB) {}
 
   /**
    * Create a new todo
    * AC1: Store todos in OP-SQLite
    */
   async create(todo: Todo): Promise<void> {
-    this.db.executeSync(
+    database.execute(
       `INSERT INTO todos (
         id, thought_id, idea_id, capture_id, user_id,
         status, description, deadline, priority, completed_at,
@@ -48,7 +47,7 @@ export class TodoRepository implements ITodoRepository {
    * @returns Todo or null if not found
    */
   async findById(id: string): Promise<Todo | null> {
-    const result = this.db.executeSync('SELECT * FROM todos WHERE id = ?', [id]);
+    const result = database.execute('SELECT * FROM todos WHERE id = ?', [id]);
 
     const rows = result.rows || [];
     if (rows.length === 0) {
@@ -79,7 +78,7 @@ export class TodoRepository implements ITodoRepository {
       return [];
     }
 
-    const result = this.db.executeSync(
+    const result = database.execute(
       `SELECT * FROM todos
        WHERE idea_id = ?
        ORDER BY
@@ -103,7 +102,7 @@ export class TodoRepository implements ITodoRepository {
    * @returns Array of todos sorted by: active first, then priority
    */
   async findByThoughtId(thoughtId: string): Promise<Todo[]> {
-    const result = this.db.executeSync(
+    const result = database.execute(
       `SELECT * FROM todos
        WHERE thought_id = ?
        ORDER BY
@@ -171,7 +170,7 @@ export class TodoRepository implements ITodoRepository {
       return false;
     }
 
-    this.db.executeSync(`UPDATE todos SET ${fields.join(', ')} WHERE id = ?`, values);
+    database.execute(`UPDATE todos SET ${fields.join(', ')} WHERE id = ?`, values);
     return true;
   }
 
@@ -180,7 +179,7 @@ export class TodoRepository implements ITodoRepository {
    * @param id - Todo UUID
    */
   async delete(id: string): Promise<void> {
-    this.db.executeSync('DELETE FROM todos WHERE id = ?', [id]);
+    database.execute('DELETE FROM todos WHERE id = ?', [id]);
   }
 
   /**
@@ -202,7 +201,7 @@ export class TodoRepository implements ITodoRepository {
     const completedAt = newStatus === 'completed' ? Date.now() : null;
 
     // Update status and completedAt
-    this.db.executeSync(
+    database.execute(
       `UPDATE todos
        SET status = ?, completed_at = ?, updated_at = ?
        WHERE id = ?`,
@@ -224,7 +223,7 @@ export class TodoRepository implements ITodoRepository {
    * @returns All todos in database
    */
   async getAll(): Promise<Todo[]> {
-    const result = this.db.executeSync('SELECT * FROM todos ORDER BY created_at DESC');
+    const result = database.execute('SELECT * FROM todos ORDER BY created_at DESC');
 
     const rows = result.rows || [];
     return rows.map((row: any) => this.mapRowToTodo(row));

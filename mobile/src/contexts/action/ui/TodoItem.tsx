@@ -96,6 +96,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
         onPress={handleToggle}
         style={styles.checkboxContainer}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        testID={`checkbox-${todo.id}`}
       >
         <CompletionAnimation isCompleted={isCompleted}>
           <View

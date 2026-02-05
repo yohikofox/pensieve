@@ -5,6 +5,7 @@
  * Tests rendering, empty state, loading state, error state, todo interactions
  */
 
+import 'reflect-metadata'; // Required for TSyringe DI
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { InlineTodoList } from '../InlineTodoList';
@@ -15,8 +16,15 @@ import type { Todo } from '../../domain/Todo.model';
 // Mock dependencies
 jest.mock('../../hooks/useTodos');
 jest.mock('../../hooks/useToggleTodoStatus');
-jest.mock('../../../hooks/useTheme', () => ({
+jest.mock('../../../../hooks/useTheme', () => ({
   useTheme: () => ({ isDark: false }),
+}));
+jest.mock('../../../../design-system/tokens', () => ({
+  colors: {
+    gray: { 700: '#374151', 900: '#111827' },
+    blue: { 50: '#eff6ff', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 600: '#2563eb', 700: '#1d4ed8' },
+    red: { 50: '#fef2f2', 400: '#f87171', 600: '#dc2626' },
+  },
 }));
 jest.mock('../TodoItem', () => ({
   TodoItem: ({ todo, onToggle, onTap }: any) => (
@@ -77,10 +85,10 @@ describe('InlineTodoList', () => {
         error: null,
       });
 
-      const { container } = render(<InlineTodoList ideaId="idea-1" />);
+      const { toJSON } = render(<InlineTodoList ideaId="idea-1" />);
 
       // Component returns null when todos is empty (AC3: No actions - clean display)
-      expect(container.children.length).toBe(0);
+      expect(toJSON()).toBeNull();
     });
 
     it('should render nothing when todos is null', () => {
@@ -90,9 +98,9 @@ describe('InlineTodoList', () => {
         error: null,
       });
 
-      const { container } = render(<InlineTodoList ideaId="idea-1" />);
+      const { toJSON } = render(<InlineTodoList ideaId="idea-1" />);
 
-      expect(container.children.length).toBe(0);
+      expect(toJSON()).toBeNull();
     });
 
     it('should render nothing when todos is undefined', () => {
@@ -102,9 +110,9 @@ describe('InlineTodoList', () => {
         error: null,
       });
 
-      const { container } = render(<InlineTodoList ideaId="idea-1" />);
+      const { toJSON } = render(<InlineTodoList ideaId="idea-1" />);
 
-      expect(container.children.length).toBe(0);
+      expect(toJSON()).toBeNull();
     });
   });
 
@@ -262,7 +270,7 @@ describe('InlineTodoList', () => {
         error: null,
       });
 
-      const { getByTestID } = render(<InlineTodoList ideaId="idea-1" />);
+      const { getByTestId } = render(<InlineTodoList ideaId="idea-1" />);
 
       const checkbox = getByTestId('checkbox-todo-123');
       fireEvent.press(checkbox);

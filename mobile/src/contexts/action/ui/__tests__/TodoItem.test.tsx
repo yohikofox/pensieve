@@ -13,8 +13,18 @@ import type { Todo } from '../../domain/Todo.model';
 
 // Mock dependencies
 jest.mock('expo-haptics');
-jest.mock('../../../hooks/useTheme', () => ({
+jest.mock('../../../../hooks/useTheme', () => ({
   useTheme: () => ({ isDark: false }),
+}));
+jest.mock('../../../../design-system/tokens', () => ({
+  colors: {
+    gray: { 50: '#f9fafb', 100: '#f3f4f6', 400: '#9ca3af', 600: '#4b5563', 800: '#1f2937', 900: '#111827' },
+    blue: { 400: '#60a5fa', 600: '#2563eb' },
+    red: { 400: '#f87171', 500: '#ef4444' },
+    yellow: { 400: '#fbbf24', 500: '#f59e0b' },
+    green: { 400: '#4ade80', 500: '#22c55e' },
+    white: '#ffffff',
+  },
 }));
 jest.mock('../CompletionAnimation', () => ({
   CompletionAnimation: ({ children }: any) => children,
@@ -219,11 +229,11 @@ describe('TodoItem', () => {
 
     it('should call onToggle with todo id', () => {
       const todo = createMockTodo({ id: 'specific-todo-id' });
-      const { getByRole } = render(
+      const { getByTestId } = render(
         <TodoItem todo={todo} onToggle={mockOnToggle} onTap={mockOnTap} />
       );
 
-      const checkbox = getByRole('button');
+      const checkbox = getByTestId('checkbox-specific-todo-id');
       fireEvent.press(checkbox);
 
       expect(mockOnToggle).toHaveBeenCalledWith('specific-todo-id');
@@ -280,12 +290,12 @@ describe('TodoItem', () => {
 
     it('should handle empty description gracefully', () => {
       const todo = createMockTodo({ description: '' });
-      const { container } = render(
+      const { toJSON } = render(
         <TodoItem todo={todo} onToggle={mockOnToggle} onTap={mockOnTap} />
       );
 
       // Should render without crashing
-      expect(container).toBeTruthy();
+      expect(toJSON()).toBeTruthy();
     });
   });
 });
