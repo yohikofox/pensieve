@@ -9,7 +9,9 @@
 import { injectable } from 'tsyringe';
 import { database } from '../../../database';
 import { Todo, TodoStatus } from '../domain/Todo.model';
-import { ITodoRepository } from '../domain/ITodoRepository';
+import { ITodoRepository, TodoWithSource } from '../domain/ITodoRepository';
+import { Thought } from '../../knowledge/domain/Thought.model';
+import { Idea } from '../../knowledge/domain/Idea.model';
 
 @injectable()
 export class TodoRepository implements ITodoRepository {
@@ -270,6 +272,94 @@ export class TodoRepository implements ITodoRepository {
     }
 
     return rows[0].count as number;
+  }
+
+  /**
+   * Find all active todos with source context (Thought + Idea)
+   * Story 5.2 - AC6, Task 7: Source preview in Actions tab
+   *
+   * Optimized query with LEFT JOIN to fetch Thought and Idea in one query
+   * Avoids N+1 queries for better performance
+   *
+   * @returns Array of todos with thought and idea data
+   */
+  async findAllWithSource(): Promise<TodoWithSource[]> {
+    const result = database.execute(
+      `SELECT
+        t.*,
+        th.id as thought_id_data,
+        th.capture_id as thought_capture_id,
+        th.user_id as thought_user_id,
+        th.summary as thought_summary,
+        th.confidence_score as thought_confidence_score,
+        th.processing_time_ms as thought_processing_time_ms,
+        th.created_at as thought_created_at,
+        th.updated_at as thought_updated_at,
+        i.id as idea_id_data,
+        i.thought_id as idea_thought_id,
+        i.user_id as idea_user_id,
+        i.text as idea_text,
+        i.order_index as idea_order_index,
+        i.created_at as idea_created_at,
+        i.updated_at as idea_updated_at
+       FROM todos t
+       LEFT JOIN thoughts th ON t.thought_id = th.id
+       LEFT JOIN ideas i ON t.idea_id = i.id
+       WHERE t.status = 'todo'
+       ORDER BY
+         CASE WHEN t.deadline IS NULL THEN 1 ELSE 0 END ASC,
+         t.deadline ASC,
+         CASE t.priority
+           WHEN 'high' THEN 0
+           WHEN 'medium' THEN 1
+           WHEN 'low' THEN 2
+         END ASC,
+         t.created_at ASC`
+    );
+
+    const rows = result.rows || [];
+    return rows.map((row: any) => this.mapRowToTodoWithSource(row));
+  }
+
+  /**
+   * Map SQLite row to TodoWithSource model
+   * Handles joined Thought and Idea data
+   */
+  private mapRowToTodoWithSource(row: any): TodoWithSource {
+    const todo = this.mapRowToTodo(row);
+
+    // Map Thought if exists
+    const thought: Thought | undefined = row.thought_id_data
+      ? {
+          id: row.thought_id_data,
+          captureId: row.thought_capture_id,
+          userId: row.thought_user_id,
+          summary: row.thought_summary,
+          confidenceScore: row.thought_confidence_score ?? undefined,
+          processingTimeMs: row.thought_processing_time_ms,
+          createdAt: row.thought_created_at,
+          updatedAt: row.thought_updated_at,
+        }
+      : undefined;
+
+    // Map Idea if exists
+    const idea: Idea | undefined = row.idea_id_data
+      ? {
+          id: row.idea_id_data,
+          thoughtId: row.idea_thought_id,
+          userId: row.idea_user_id,
+          text: row.idea_text,
+          orderIndex: row.idea_order_index ?? undefined,
+          createdAt: row.idea_created_at,
+          updatedAt: row.idea_updated_at,
+        }
+      : undefined;
+
+    return {
+      ...todo,
+      thought,
+      idea,
+    };
   }
 
   /**

@@ -4,9 +4,21 @@
  *
  * Story 5.1 - Subtask 1.3: Define TodoRepository interface
  * AC1, AC2: Support querying todos by ideaId with sorting
+ * Story 5.2 - Task 7: Source preview with Thought/Idea context
  */
 
 import { Todo } from './Todo.model';
+import { Thought } from '../../knowledge/domain/Thought.model';
+import { Idea } from '../../knowledge/domain/Idea.model';
+
+/**
+ * Todo with source context (Thought + Idea)
+ * Story 5.2 - AC6: Source preview in Actions tab
+ */
+export interface TodoWithSource extends Todo {
+  thought?: Thought;
+  idea?: Idea;
+}
 
 export interface ITodoRepository {
   /**
@@ -78,4 +90,12 @@ export interface ITodoRepository {
    * @returns Number of active todos
    */
   countActive(): Promise<number>;
+
+  /**
+   * Find all active todos with source context (Thought + Idea)
+   * Story 5.2 - AC6, Task 7: Source preview in Actions tab
+   * Optimized query with LEFT JOIN to avoid N+1 queries
+   * @returns Array of todos with thought and idea data
+   */
+  findAllWithSource(): Promise<TodoWithSource[]>;
 }

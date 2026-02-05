@@ -13,13 +13,13 @@ import React, { useMemo } from 'react';
 import { View, Text, SectionList, RefreshControl } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useAllTodos } from '../../contexts/action/hooks/useAllTodos';
+import { useAllTodosWithSource } from '../../contexts/action/hooks/useAllTodosWithSource';
 import { EmptyState } from '../../contexts/action/ui/EmptyState';
 import { ActionsTodoCard } from '../../contexts/action/ui/ActionsTodoCard';
 import { groupTodosByDeadline } from '../../contexts/action/utils/groupTodosByDeadline';
 
 export const ActionsScreen = () => {
-  const { data: todos, isLoading, refetch, isRefetching } = useAllTodos();
+  const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
 
   // Group todos by deadline
   const sections = useMemo(() => {
@@ -52,20 +52,30 @@ export const ActionsScreen = () => {
       className="flex-1 bg-background-50 dark:bg-background-950"
       sections={sections}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <ActionsTodoCard
-          todo={item}
-          sourcePreview={undefined} // TODO: Task 7 - Fetch source preview
-          sourceTimestamp={
-            item.createdAt
-              ? formatDistanceToNow(item.createdAt, {
-                  addSuffix: true,
-                  locale: fr,
-                })
-              : undefined
-          }
-        />
-      )}
+      renderItem={({ item }) => {
+        // Extract source preview (Task 7 - AC6)
+        const sourcePreview = item.idea?.text || item.thought?.summary || undefined;
+        const truncatedPreview = sourcePreview
+          ? sourcePreview.length > 50
+            ? `${sourcePreview.substring(0, 50)}...`
+            : sourcePreview
+          : undefined;
+
+        return (
+          <ActionsTodoCard
+            todo={item}
+            sourcePreview={truncatedPreview}
+            sourceTimestamp={
+              item.createdAt
+                ? formatDistanceToNow(item.createdAt, {
+                    addSuffix: true,
+                    locale: fr,
+                  })
+                : undefined
+            }
+          />
+        );
+      }}
       renderSectionHeader={({ section: { title } }) => (
         <View className="bg-background-100 dark:bg-background-900 px-4 py-2">
           <Text className="text-content-secondary dark:text-content-secondary-dark text-sm font-semibold uppercase">
