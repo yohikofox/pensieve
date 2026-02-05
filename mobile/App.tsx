@@ -38,6 +38,7 @@ import { DevPanel } from './src/components/dev/DevPanel';
 import { CalibrationGridWrapper } from './src/components/debug';
 import { NetworkProvider } from './src/contexts/NetworkContext';
 import { deepLinkService } from './src/services/deep-linking/DeepLinkService';
+import { databaseService } from './src/services/database/DatabaseService';
 
 // Initialize IoC container with production services
 registerServices();
@@ -73,6 +74,22 @@ function AppContent() {
 
   // Select navigation theme based on current color scheme
   const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;
+
+  // Story 4.4 - Initialize Local Database (Task 6.5)
+  useEffect(() => {
+    const initializeDatabase = async () => {
+      try {
+        console.log('[App] Initializing local database...');
+        await databaseService.initialize();
+        console.log('[App] ✅ Local database initialized');
+      } catch (error) {
+        // Silent fail - don't block app startup
+        console.error('[App] Database initialization failed:', error);
+      }
+    };
+
+    initializeDatabase();
+  }, []); // Run once on mount
 
   // Story 4.4 - Deep Link Service for notification navigation (AC4)
   const navigationRef = useNavigationContainerRef();

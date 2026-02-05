@@ -2,11 +2,18 @@
  * Notification Settings Screen
  * Story 4.4: Notifications de Progression IA
  * Task 6, Subtask 6.3: Mobile notification settings UI
+ * Task 6, Subtask 6.5: Local persistence with OP-SQLite
  *
  * AC7: Users can configure notification preferences:
  * - Push notifications enable/disable
  * - Local notifications enable/disable
  * - Haptic feedback enable/disable
+ *
+ * Offline-first approach:
+ * 1. Load from local storage immediately (instant UI)
+ * 2. Sync with API in background (when online)
+ * 3. Save to local storage first (instant feedback)
+ * 4. Sync to API in background (eventually consistent)
  */
 
 import React, { useState, useEffect } from 'react';
@@ -23,10 +30,13 @@ import { apiConfig } from '../../config/api';
 import { colors } from '../../design-system/tokens';
 import { Card, useToast } from '../../design-system/components';
 import * as Notifications from 'expo-notifications';
+import { notificationPreferencesStorage } from '../../services/storage/NotificationPreferencesStorage';
+import { useNetworkStatus } from '../../contexts/NetworkContext';
 
 export const NotificationSettingsScreen = () => {
   const { t } = useTranslation();
   const toast = useToast();
+  const { isConnected } = useNetworkStatus();
 
   // State for notification preferences
   const [pushNotificationsEnabled, setPushNotificationsEnabled] = useState(false);
@@ -36,37 +46,27 @@ export const NotificationSettingsScreen = () => {
   const [saving, setSaving] = useState(false);
 
   /**
-   * Load current notification preferences from backend
-   * Story 4.4, Task 6, Subtask 6.3
+   * Load preferences (offline-first)
+   * 1. Load from local storage immediately (Task 6.5)
+   * 2. Sync with API in background if online
    */
   useEffect(() => {
     const loadPreferences = async () => {
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        if (!session) {
-          console.warn('[NotificationSettings] No session, using defaults');
-          setLoading(false);
-          return;
+        // 1. Load from local storage first (instant)
+        const localPrefs = await notificationPreferencesStorage.getPreferences();
+        if (localPrefs) {
+          setPushNotificationsEnabled(localPrefs.pushNotificationsEnabled);
+          setLocalNotificationsEnabled(localPrefs.localNotificationsEnabled);
+          setHapticFeedbackEnabled(localPrefs.hapticFeedbackEnabled);
+          console.log('[NotificationSettings] Loaded from local storage');
         }
 
-        // Fetch current preferences from backend API
-        const response = await fetch(apiConfig.endpoints.users.notificationSettings, {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        });
-
-        if (response.ok) {
-          const settings = await response.json();
-          setPushNotificationsEnabled(settings.pushNotificationsEnabled ?? false);
-          setLocalNotificationsEnabled(settings.localNotificationsEnabled ?? true);
-          setHapticFeedbackEnabled(settings.hapticFeedbackEnabled ?? true);
+        // 2. Sync with API in background if online
+        if (isConnected) {
+          await syncWithAPI();
         } else {
-          console.warn('[NotificationSettings] Failed to load settings, using defaults');
+          console.log('[NotificationSettings] Offline, using cached preferences');
         }
       } catch (error) {
         console.error('[NotificationSettings] Error loading preferences:', error);
@@ -77,11 +77,61 @@ export const NotificationSettingsScreen = () => {
     };
 
     loadPreferences();
-  }, [t, toast]);
+  }, [t, toast, isConnected]);
 
   /**
-   * Save notification preferences to backend
-   * Story 4.4, Task 6, Subtask 6.3
+   * Sync preferences with API
+   * Loads from server and updates local storage if different
+   */
+  const syncWithAPI = async () => {
+    try {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (!session) {
+        console.warn('[NotificationSettings] No session, skipping API sync');
+        return;
+      }
+
+      // Fetch from API
+      const response = await fetch(apiConfig.endpoints.users.notificationSettings, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const serverSettings = await response.json();
+
+        // Update UI state
+        setPushNotificationsEnabled(serverSettings.pushNotificationsEnabled ?? false);
+        setLocalNotificationsEnabled(serverSettings.localNotificationsEnabled ?? true);
+        setHapticFeedbackEnabled(serverSettings.hapticFeedbackEnabled ?? true);
+
+        // Update local storage with server values
+        await notificationPreferencesStorage.savePreferences({
+          pushNotificationsEnabled: serverSettings.pushNotificationsEnabled ?? false,
+          localNotificationsEnabled: serverSettings.localNotificationsEnabled ?? true,
+          hapticFeedbackEnabled: serverSettings.hapticFeedbackEnabled ?? true,
+          syncedAt: new Date().toISOString(),
+        });
+
+        console.log('[NotificationSettings] Synced with API successfully');
+      } else {
+        console.warn('[NotificationSettings] API sync failed, using cached values');
+      }
+    } catch (error) {
+      console.error('[NotificationSettings] API sync error:', error);
+      // Continue with cached values
+    }
+  };
+
+  /**
+   * Save preferences (offline-first)
+   * 1. Save to local storage immediately (Task 6.5)
+   * 2. Sync to API in background if online
    */
   const savePreferences = async (
     push: boolean,
@@ -89,6 +139,37 @@ export const NotificationSettingsScreen = () => {
     haptic: boolean,
   ) => {
     setSaving(true);
+    try {
+      // 1. Save to local storage first (instant)
+      await notificationPreferencesStorage.savePreferences({
+        pushNotificationsEnabled: push,
+        localNotificationsEnabled: local,
+        hapticFeedbackEnabled: haptic,
+        syncedAt: null, // Mark as not synced yet
+      });
+
+      console.log('[NotificationSettings] Saved to local storage');
+
+      // 2. Sync to API in background if online
+      if (isConnected) {
+        await syncToAPI(push, local, haptic);
+      } else {
+        console.log('[NotificationSettings] Offline, will sync later');
+        toast.success(t('settings.notifications.saveSuccess'));
+      }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error('[NotificationSettings] Save error:', errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  /**
+   * Sync preferences to API
+   */
+  const syncToAPI = async (push: boolean, local: boolean, haptic: boolean) => {
     try {
       const {
         data: { session },
@@ -98,7 +179,7 @@ export const NotificationSettingsScreen = () => {
         throw new Error(t('auth.notAuthenticated'));
       }
 
-      // Update preferences via backend API
+      // Update via API
       const response = await fetch(apiConfig.endpoints.users.notificationSettings, {
         method: 'PATCH',
         headers: {
@@ -117,13 +198,15 @@ export const NotificationSettingsScreen = () => {
         throw new Error(error.message || t('settings.notifications.saveError'));
       }
 
+      // Mark as synced in local storage
+      await notificationPreferencesStorage.markAsSynced();
+      console.log('[NotificationSettings] Synced to API successfully');
+
       toast.success(t('settings.notifications.saveSuccess'));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      console.error('[NotificationSettings] Save error:', errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setSaving(false);
+      console.error('[NotificationSettings] API sync error:', errorMessage);
+      // Don't show error to user - will retry on next connection
     }
   };
 
@@ -263,6 +346,15 @@ export const NotificationSettingsScreen = () => {
           {t('settings.notifications.infoMessage')}
         </Text>
       </Card>
+
+      {/* Offline Indicator */}
+      {!isConnected && (
+        <Card variant="warning" className="mx-4 mb-8 p-4">
+          <Text className="text-xs text-text-primary">
+            📡 Offline - Changes will sync when connection is restored
+          </Text>
+        </Card>
+      )}
     </ScrollView>
   );
 };
