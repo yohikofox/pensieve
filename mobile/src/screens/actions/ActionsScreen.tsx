@@ -1,36 +1,51 @@
 /**
- * ActionsScreen - Centralized Actions Tab
- * Story 5.2 - Task 2 & 5: Main screen with virtualized list
+ * ActionsScreen - Centralized Actions Tab with Filters and Sorting
+ * Story 5.3 - Task 7: Integration of filtering and sorting
  *
- * AC2: Unified list of all todos from all captures
- * AC3: Default grouping by deadline
- * AC4: Efficient rendering (virtualized SectionList)
- * AC5: Empty state with "Jardin d'idées" illustration
- * AC7: Pull-to-refresh functionality
- * AC8: Scroll position persistence
+ * NEW in Story 5.3:
+ * - AC1: Filter tabs (Toutes | À faire | Faites) with count badges
+ * - AC2-AC4: Client-side filtering logic
+ * - AC5-AC7: Sort options menu (Default, Priority, Created Date, Alphabetical)
+ * - AC8: Filter and sort state persistence
+ * - AC9: Contextual empty states per filter
+ * - AC10: Real-time filter counts update
  *
- * Code Review Fixes Applied:
- * - Issue #2: Added getItemLayout for 60fps performance
- * - Issue #3: Implemented scroll position persistence
- * - Issue #8: Pre-compute source preview in useMemo
- * - Issue #11: Pre-compute timestamps in useMemo
- * - Issue #12: Extract magic number 50 to constant
+ * From Story 5.2:
+ * - AC2: Unified list of all todos from all captures
+ * - AC4: Efficient rendering (virtualized list)
+ * - AC7: Pull-to-refresh functionality
+ * - AC8: Scroll position persistence
  */
 
 import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, SectionList, RefreshControl, SectionListData } from 'react-native';
+import {
+  View,
+  Text,
+  SectionList,
+  FlatList,
+  RefreshControl,
+  SectionListData,
+  TouchableOpacity,
+  StyleSheet,
+} from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useAllTodosWithSource } from '../../contexts/action/hooks/useAllTodosWithSource';
-import { EmptyState } from '../../contexts/action/ui/EmptyState';
+import { useFilterState } from '../../contexts/action/hooks/useFilterState';
+import { useFilteredTodoCounts } from '../../contexts/action/hooks/useFilteredTodoCounts';
+import { filterTodos } from '../../contexts/action/utils/filterTodos';
+import { sortTodos, isSectionData } from '../../contexts/action/utils/sortTodos';
+import { FilterTabs } from '../../contexts/action/ui/FilterTabs';
+import { SortMenu } from '../../contexts/action/ui/SortMenu';
+import { FilteredEmptyState } from '../../contexts/action/ui/FilteredEmptyState';
 import { ActionsTodoCard } from '../../contexts/action/ui/ActionsTodoCard';
-import { groupTodosByDeadline, TodoSection } from '../../contexts/action/utils/groupTodosByDeadline';
+import { TodoSection } from '../../contexts/action/utils/groupTodosByDeadline';
 import { TodoWithSource } from '../../contexts/action/domain/ITodoRepository';
 
-// Constants (Issue #12 fix)
+// Constants
 const MAX_PREVIEW_LENGTH = 50;
-const ESTIMATED_ITEM_HEIGHT = 120; // Average height for ActionsTodoCard
+const ESTIMATED_ITEM_HEIGHT = 120;
 const SECTION_HEADER_HEIGHT = 40;
 
 interface EnrichedTodo extends TodoWithSource {
@@ -41,33 +56,46 @@ interface EnrichedTodo extends TodoWithSource {
 export const ActionsScreen = () => {
   const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
 
-  // Issue #3 fix: Scroll position persistence (AC8)
+  // Story 5.3: Filter and sort state (AC1, AC8)
+  const { filter, sort, setFilter, setSort, isLoading: isFilterLoading } = useFilterState();
+  const counts = useFilteredTodoCounts();
+
+  // Sort menu visibility
+  const [isSortMenuVisible, setSortMenuVisible] = useState(false);
+
+  // Scroll position persistence (Story 5.2 - AC8)
   const sectionListRef = useRef<SectionList>(null);
+  const flatListRef = useRef<FlatList>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
 
-  // Restore scroll position on focus (AC8)
+  // Restore scroll position on focus
   useFocusEffect(
     React.useCallback(() => {
-      if (scrollOffset > 0 && sectionListRef.current) {
-        // Small delay to ensure list is rendered
+      if (scrollOffset > 0) {
         setTimeout(() => {
-          sectionListRef.current?.scrollToLocation({
-            sectionIndex: 0,
-            itemIndex: 0,
-            viewOffset: scrollOffset,
-            animated: false,
-          });
+          if (sectionListRef.current) {
+            sectionListRef.current.scrollToLocation({
+              sectionIndex: 0,
+              itemIndex: 0,
+              viewOffset: scrollOffset,
+              animated: false,
+            });
+          } else if (flatListRef.current) {
+            flatListRef.current.scrollToOffset({
+              offset: scrollOffset,
+              animated: false,
+            });
+          }
         }, 100);
       }
     }, [scrollOffset])
   );
 
-  // Issue #8 & #11 fix: Pre-compute todos with preview and timestamp (Performance)
+  // Pre-compute todos with preview and timestamp (Story 5.2 - Performance)
   const enrichedTodos = useMemo(() => {
     if (!todos) return [];
 
     return todos.map((todo): EnrichedTodo => {
-      // Pre-compute source preview (Issue #8 fix)
       const sourceText = todo.idea?.text || todo.thought?.summary;
       const sourcePreview = sourceText
         ? sourceText.length > MAX_PREVIEW_LENGTH
@@ -75,7 +103,6 @@ export const ActionsScreen = () => {
           : sourceText
         : undefined;
 
-      // Pre-compute relative timestamp (Issue #11 fix)
       const sourceTimestamp = todo.createdAt
         ? formatDistanceToNow(todo.createdAt, {
             addSuffix: true,
@@ -91,15 +118,24 @@ export const ActionsScreen = () => {
     });
   }, [todos]);
 
-  // Group todos by deadline
-  const sections = useMemo(() => {
+  // Story 5.3: Apply filtering (AC2-AC4)
+  const filteredTodos = useMemo(() => {
     if (!enrichedTodos || enrichedTodos.length === 0) return [];
-    return groupTodosByDeadline(enrichedTodos);
-  }, [enrichedTodos]);
+    return filterTodos(enrichedTodos, filter);
+  }, [enrichedTodos, filter]);
 
-  // Issue #2 fix: getItemLayout for performance (AC4)
+  // Story 5.3: Apply sorting (AC5-AC7)
+  const sortedData = useMemo(() => {
+    if (!filteredTodos || filteredTodos.length === 0) return [];
+    return sortTodos(filteredTodos, sort);
+  }, [filteredTodos, sort]);
+
+  // Check if sorted data is sections or flat list
+  const isSections = isSectionData(sortedData);
+
+  // getItemLayout for performance
   const getItemLayout = (
-    _data: SectionListData<EnrichedTodo, TodoSection>[] | null,
+    _data: any,
     index: number
   ) => {
     return {
@@ -109,65 +145,188 @@ export const ActionsScreen = () => {
     };
   };
 
-  // Save scroll position on blur (AC8)
+  // Save scroll position
   const handleScroll = (event: any) => {
     const offset = event.nativeEvent.contentOffset.y;
     setScrollOffset(offset);
   };
 
   // Loading state
-  if (isLoading) {
+  if (isLoading || isFilterLoading) {
     return (
-      <View className="flex-1 bg-background-50 dark:bg-background-950 items-center justify-center">
-        <Text className="text-content-secondary dark:text-content-secondary-dark">
-          Chargement...
-        </Text>
+      <View style={styles.centerContainer}>
+        <Text style={styles.loadingText}>Chargement...</Text>
       </View>
     );
   }
 
-  // Empty state
-  if (!enrichedTodos || enrichedTodos.length === 0) {
-    return (
-      <View className="flex-1 bg-background-50 dark:bg-background-950">
-        <EmptyState />
+  // Render header (filter tabs + sort button)
+  const renderHeader = () => (
+    <View>
+      <FilterTabs
+        activeFilter={filter}
+        onFilterChange={setFilter}
+        counts={counts}
+      />
+      <View style={styles.sortButtonContainer}>
+        <TouchableOpacity
+          style={styles.sortButton}
+          onPress={() => setSortMenuVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="Trier les actions"
+        >
+          <Text style={styles.sortButtonText}>⇅ Trier</Text>
+        </TouchableOpacity>
       </View>
-    );
-  }
+    </View>
+  );
 
-  return (
-    <SectionList
-      ref={sectionListRef}
-      className="flex-1 bg-background-50 dark:bg-background-950"
-      sections={sections}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <ActionsTodoCard
-          todo={item}
-          sourcePreview={item.sourcePreview}
-          sourceTimestamp={item.sourceTimestamp}
-        />
-      )}
-      renderSectionHeader={({ section: { title } }) => (
-        <View className="bg-background-100 dark:bg-background-900 px-4 py-2">
-          <Text className="text-content-secondary dark:text-content-secondary-dark text-sm font-semibold uppercase">
-            {title}
-          </Text>
-        </View>
-      )}
-      contentContainerStyle={{ padding: 16 }}
-      stickySectionHeadersEnabled
-      refreshControl={
-        <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
-      }
-      // Performance optimizations (AC4)
-      windowSize={10}
-      initialNumToRender={15}
-      maxToRenderPerBatch={10}
-      removeClippedSubviews
-      getItemLayout={getItemLayout} // Issue #2 fix
-      onScroll={handleScroll} // Issue #3 fix
-      scrollEventThrottle={16}
+  // Render todo card
+  const renderTodoCard = (todo: EnrichedTodo) => (
+    <ActionsTodoCard
+      todo={todo}
+      sourcePreview={todo.sourcePreview}
+      sourceTimestamp={todo.sourceTimestamp}
     />
   );
+
+  // Empty state (Story 5.3 - AC9: Contextual empty states)
+  if (!filteredTodos || filteredTodos.length === 0) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        <FilteredEmptyState filter={filter} onFilterChange={setFilter} />
+        <SortMenu
+          visible={isSortMenuVisible}
+          onClose={() => setSortMenuVisible(false)}
+          activeSort={sort}
+          onSortChange={setSort}
+        />
+      </View>
+    );
+  }
+
+  // Render SectionList (for 'default' sort)
+  if (isSections) {
+    return (
+      <View style={styles.container}>
+        {renderHeader()}
+        <SectionList
+          ref={sectionListRef}
+          style={styles.list}
+          sections={sortedData as TodoSection[]}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item }) => renderTodoCard(item)}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionHeaderText}>{title}</Text>
+            </View>
+          )}
+          contentContainerStyle={styles.listContent}
+          stickySectionHeadersEnabled
+          refreshControl={
+            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+          }
+          windowSize={10}
+          initialNumToRender={15}
+          maxToRenderPerBatch={10}
+          removeClippedSubviews
+          getItemLayout={getItemLayout}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        />
+        <SortMenu
+          visible={isSortMenuVisible}
+          onClose={() => setSortMenuVisible(false)}
+          activeSort={sort}
+          onSortChange={setSort}
+        />
+      </View>
+    );
+  }
+
+  // Render FlatList (for other sorts: priority, createdDate, alphabetical)
+  return (
+    <View style={styles.container}>
+      {renderHeader()}
+      <FlatList
+        ref={flatListRef}
+        style={styles.list}
+        data={sortedData as EnrichedTodo[]}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => renderTodoCard(item)}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+        }
+        windowSize={10}
+        initialNumToRender={15}
+        maxToRenderPerBatch={10}
+        removeClippedSubviews
+        getItemLayout={getItemLayout}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+      />
+      <SortMenu
+        visible={isSortMenuVisible}
+        onClose={() => setSortMenuVisible(false)}
+        activeSort={sort}
+        onSortChange={setSort}
+      />
+    </View>
+  );
 };
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FAFAFA',
+  },
+  centerContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FAFAFA',
+  },
+  loadingText: {
+    color: '#6B7280',
+  },
+  list: {
+    flex: 1,
+  },
+  listContent: {
+    padding: 16,
+  },
+  sortButtonContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
+  },
+  sortButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  sortButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  sectionHeader: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sectionHeaderText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#6B7280',
+    textTransform: 'uppercase',
+  },
+});
