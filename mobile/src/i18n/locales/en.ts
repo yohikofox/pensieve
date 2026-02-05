@@ -140,6 +140,7 @@ export default {
       appearance: 'Appearance',
       transcription: 'Transcription',
       integrations: 'Integrations',
+      notifications: 'Notifications',
       privacy: 'Privacy & Data',
       development: 'Development',
     },
@@ -218,6 +219,23 @@ export default {
       debugMode: 'Debug mode',
       debugModeSubtitle: 'Enable diagnostic tools (logs, WAV playback...)',
     },
+    notifications: {
+      title: 'Notifications',
+      pushSection: 'Push Notifications',
+      localSection: 'Local Notifications',
+      pushNotifications: 'Push notifications',
+      pushNotificationsSubtitle: 'Receive notifications from server',
+      localNotifications: 'Local notifications',
+      localNotificationsSubtitle: 'Notifications stored on this device',
+      hapticFeedback: 'Haptic feedback',
+      hapticFeedbackSubtitle: 'Vibrations during actions',
+      loadError: 'Unable to load preferences',
+      saveSuccess: 'Preferences saved',
+      saveError: 'Unable to save preferences',
+      permissionDenied: 'Notification permission denied',
+      infoMessage:
+        'Notifications inform you of the progress of your capture processing. You can disable them at any time.',
+    },
   },
 
   errors: {
@@ -264,6 +282,7 @@ export default {
       whisperModel: 'Whisper Model',
       aiEnhancement: 'AI Enhancement',
       theme: 'Theme',
+      notificationSettings: 'Notifications',
     },
   },
 

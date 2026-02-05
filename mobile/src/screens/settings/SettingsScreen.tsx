@@ -565,6 +565,28 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
+        {/* Notifications Section - Story 4.4 */}
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+            {t('settings.sections.notifications')}
+          </Text>
+
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-4"
+            onPress={() => navigation.navigate('NotificationSettings')}
+          >
+            <View className="flex-1">
+              <Text className="text-lg text-text-primary">
+                {t('settings.notifications.title')}
+              </Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
+                {t('settings.notifications.pushNotificationsSubtitle')}
+              </Text>
+            </View>
+            <Text className="text-xl text-text-disabled font-semibold">›</Text>
+          </TouchableOpacity>
+        </Card>
+
         {/* RGPD Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">

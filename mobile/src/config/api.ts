@@ -17,6 +17,10 @@ export const apiConfig = {
       me: `${API_URL}/api/auth/me`,
       health: `${API_URL}/api/auth/health`,
     },
+    users: {
+      pushToken: `${API_URL}/api/users/push-token`,
+      notificationSettings: `${API_URL}/api/users/notification-settings`,
+    },
   },
   google: {
     // Google OAuth Client ID for calendar integration

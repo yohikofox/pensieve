@@ -2,7 +2,7 @@ import 'reflect-metadata';
 import './global.css';
 import './src/i18n';
 import React, { useEffect } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { Appearance } from 'react-native';
 import { colorScheme as nwColorScheme } from 'nativewind';
@@ -37,6 +37,7 @@ import { DevPanelProvider } from './src/components/dev/DevPanelContext';
 import { DevPanel } from './src/components/dev/DevPanel';
 import { CalibrationGridWrapper } from './src/components/debug';
 import { NetworkProvider } from './src/contexts/NetworkContext';
+import { deepLinkService } from './src/services/deep-linking/DeepLinkService';
 
 // Initialize IoC container with production services
 registerServices();
@@ -72,6 +73,21 @@ function AppContent() {
 
   // Select navigation theme based on current color scheme
   const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;
+
+  // Story 4.4 - Deep Link Service for notification navigation (AC4)
+  const navigationRef = useNavigationContainerRef();
+
+  // Story 4.4 - Initialize Deep Link Service (Task 7, Subtask 7.1)
+  useEffect(() => {
+    // Wait for navigation to be ready
+    if (navigationRef.current) {
+      console.log('[App] Initializing deep link service...');
+      const cleanup = deepLinkService.initialize(navigationRef.current);
+      console.log('[App] ✅ Deep link service initialized');
+
+      return cleanup;
+    }
+  }, [navigationRef]);
 
   // AC4: Check for crash-recovered recordings on app launch
   // Story 2.1 - Crash Recovery Notification
@@ -205,7 +221,7 @@ function AppContent() {
 
   return (
     <DevPanelProvider>
-      <NavigationContainer theme={navigationTheme}>
+      <NavigationContainer ref={navigationRef} theme={navigationTheme}>
         {user ? <MainNavigator /> : <AuthNavigator />}
       </NavigationContainer>
       {/* Global DevPanel - Floating button accessible from any screen */}
