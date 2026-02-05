@@ -28,6 +28,7 @@ import { ContentChunkerService } from '../services/content-chunker.service';
 import { ThoughtRepository } from '../repositories/thought.repository';
 import { TodoRepository, CreateTodoDto } from '../../../action/application/repositories/todo.repository';
 import { DeadlineParserService } from '../../../action/application/services/deadline-parser.service';
+import { ProgressNotificationService } from '../../../notification/application/services/ProgressNotificationService';
 import { DataSource } from 'typeorm';
 import { Thought } from '../../domain/entities/thought.entity';
 import { Idea } from '../../domain/entities/idea.entity';
@@ -52,6 +53,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     private readonly thoughtRepository: ThoughtRepository,
     private readonly todoRepository: TodoRepository, // Story 4.3
     private readonly deadlineParser: DeadlineParserService, // Story 4.3
+    private readonly progressNotificationService: ProgressNotificationService, // Story 4.4 Task 12
     private readonly dataSource: DataSource, // Story 4.3: For atomic transaction
   ) {}
 
@@ -125,8 +127,13 @@ export class DigestionJobConsumer implements OnModuleDestroy {
           `🔴 Job permanently failed after ${MAX_RETRIES} attempts: ${job.captureId}`,
         );
 
-        // Mark progress tracking as failed
-        this.progressTracker.failTracking(job.captureId, errorMessage);
+        // Story 4.4 Task 12: Mark progress tracking as failed with notifications
+        await this.progressNotificationService.failTrackingWithNotifications(
+          job.captureId,
+          job.userId,
+          errorMessage,
+          job.retryCount + 1,
+        );
 
         // Subtask 6.4: Record metrics for failed job (after max retries)
         this.queueMonitoring.recordJobFailed();
@@ -204,15 +211,26 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   /**
    * Process the actual digestion logic with GPT-4o-mini
    * Story 4.2 Task 5: Digestion Worker Integration (AC1-AC4)
+   * Story 4.4 Task 12: Integration with notifications
    *
    * @param job - Digestion job payload
    */
   private async processDigestion(job: DigestionJobPayload): Promise<void> {
     const startTime = Date.now();
 
-    // Subtask 5.1: Start tracking with timestamp
-    this.progressTracker.startTracking(job.captureId, job.userId);
-    this.progressTracker.updateProgress(job.captureId, 10);
+    // Story 4.4 Task 12: Start tracking with notifications
+    // Queue position estimation: queuePosition * 20s avg per job
+    const queuePosition = await this.queueMonitoring.getQueueDepth();
+    await this.progressNotificationService.startTrackingWithNotifications(
+      job.captureId,
+      job.userId,
+      queuePosition,
+    );
+    await this.progressNotificationService.updateProgressWithNotifications(
+      job.captureId,
+      job.userId,
+      10,
+    );
 
     // AC4: Update Capture status to "digesting" when job starts
     await this.captureRepository.updateStatus(job.captureId, 'digesting', {
@@ -235,19 +253,31 @@ export class DigestionJobConsumer implements OnModuleDestroy {
 
     try {
       // Subtask 5.1: Extract content from Capture (Task 3)
-      this.progressTracker.updateProgress(job.captureId, 20);
+      await this.progressNotificationService.updateProgressWithNotifications(
+        job.captureId,
+        job.userId,
+        20,
+      );
       const { content, contentType } =
         await this.contentExtractor.extractContent(job.captureId);
 
       // Subtask 5.1 & 7: Process content (with chunking if needed - Task 7)
-      this.progressTracker.updateProgress(job.captureId, 40);
+      await this.progressNotificationService.updateProgressWithNotifications(
+        job.captureId,
+        job.userId,
+        40,
+      );
       const digestionResult = await this.contentChunker.processContent(
         content,
         contentType,
       );
 
       // Subtask 5.2: Parse GPT response (already done by ContentChunkerService)
-      this.progressTracker.updateProgress(job.captureId, 70);
+      await this.progressNotificationService.updateProgressWithNotifications(
+        job.captureId,
+        job.userId,
+        70,
+      );
       const { summary, ideas, todos = [], confidence, wasChunked, chunkCount } = digestionResult;
 
       if (wasChunked) {
@@ -273,7 +303,11 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         confidenceScore,
       );
 
-      this.progressTracker.updateProgress(job.captureId, 90);
+      await this.progressNotificationService.updateProgressWithNotifications(
+        job.captureId,
+        job.userId,
+        90,
+      );
 
       // Subtask 5.4: Publish DigestionCompleted domain event
       this.eventBus.publish('digestion.completed', {
@@ -300,9 +334,19 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         this.eventBus.publish('todos.extracted', todosExtractedEvent.toJSON());
       }
 
-      // Subtask 5.5: Update ProgressTracker with completion status
-      this.progressTracker.completeTracking(job.captureId);
-      this.progressTracker.updateProgress(job.captureId, 100);
+      // Story 4.4 Task 12: Complete tracking with notifications
+      await this.progressNotificationService.completeTrackingWithNotifications(
+        job.captureId,
+        job.userId,
+        summary,
+        ideas.length,
+        createdTodos.length,
+      );
+      await this.progressNotificationService.updateProgressWithNotifications(
+        job.captureId,
+        job.userId,
+        100,
+      );
 
       // Subtask 4.6: Update Capture status to "digested" after success
       await this.captureRepository.updateStatus(job.captureId, 'digested', {
