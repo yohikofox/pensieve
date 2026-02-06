@@ -6,15 +6,12 @@
  */
 
 import { injectable } from 'tsyringe';
-import { open } from '@op-engineering/op-sqlite';
+import { AbstractRepository } from '../../../shared/data/AbstractRepository';
 import type { IIdeaRepository } from '../domain/IIdeaRepository';
 import type { Idea } from '../domain/Idea.model';
 
-const DB_NAME = 'pensieve.db';
-
 @injectable()
-export class IdeaRepository implements IIdeaRepository {
-  private db = open({ name: DB_NAME });
+export class IdeaRepository extends AbstractRepository implements IIdeaRepository {
 
   async create(idea: Idea): Promise<void> {
     const query = `
@@ -22,7 +19,7 @@ export class IdeaRepository implements IIdeaRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?)
     `;
 
-    this.db.executeSync(query, [
+    this.executeQuery(query, [
       idea.id,
       idea.thoughtId,
       idea.userId,
@@ -34,25 +31,18 @@ export class IdeaRepository implements IIdeaRepository {
   }
 
   async findById(id: string): Promise<Idea | null> {
-    const result = this.db.executeSync('SELECT * FROM ideas WHERE id = ?', [id]);
-    const rows = result.rows || [];
-
-    if (rows.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToIdea(rows[0] as any);
+    const row = this.executeQueryOne<any>('SELECT * FROM ideas WHERE id = ?', [id]);
+    return row ? this.mapRowToIdea(row) : null;
   }
 
   async findByThoughtId(thoughtId: string): Promise<Idea[]> {
-    const result = this.db.executeSync(
+    const { rows } = this.executeQuery<any>(
       `SELECT * FROM ideas
        WHERE thought_id = ?
        ORDER BY order_index ASC, created_at ASC`,
       [thoughtId]
     );
-    const rows = result.rows || [];
-    return rows.map((row: any) => this.mapRowToIdea(row));
+    return rows.map((row) => this.mapRowToIdea(row));
   }
 
   async update(id: string, changes: Partial<Idea>): Promise<void> {
@@ -76,22 +66,21 @@ export class IdeaRepository implements IIdeaRepository {
     values.push(id); // For WHERE clause
 
     const query = `UPDATE ideas SET ${updates.join(', ')} WHERE id = ?`;
-    this.db.executeSync(query, values);
+    this.executeQuery(query, values);
   }
 
   async delete(id: string): Promise<void> {
-    this.db.executeSync('DELETE FROM ideas WHERE id = ?', [id]);
+    this.executeQuery('DELETE FROM ideas WHERE id = ?', [id]);
   }
 
   async getAll(userId: string): Promise<Idea[]> {
-    const result = this.db.executeSync(
+    const { rows } = this.executeQuery<any>(
       `SELECT * FROM ideas
        WHERE user_id = ?
        ORDER BY created_at DESC`,
       [userId]
     );
-    const rows = result.rows || [];
-    return rows.map((row: any) => this.mapRowToIdea(row));
+    return rows.map((row) => this.mapRowToIdea(row));
   }
 
   private mapRowToIdea(row: any): Idea {

@@ -7,7 +7,7 @@
  * - Track sync status
  */
 
-import { databaseService } from '../database/DatabaseService';
+import { database } from '../../database';
 
 export interface NotificationPreferences {
   pushNotificationsEnabled: boolean;
@@ -34,16 +34,17 @@ export class NotificationPreferencesStorage {
    */
   async getPreferences(): Promise<NotificationPreferences | null> {
     try {
-      const db = databaseService.getDB();
-      const result = db.execute(
+      const db = database.getDatabase();
+      const result = db.executeSync(
         'SELECT * FROM notification_preferences WHERE id = 1'
       );
 
-      if (!result.rows || result.rows.length === 0) {
+      const rows = result.rows || [];
+      if (rows.length === 0) {
         return null;
       }
 
-      const row = result.rows.item(0);
+      const row = rows[0];
       return {
         pushNotificationsEnabled: row.push_notifications_enabled === 1,
         localNotificationsEnabled: row.local_notifications_enabled === 1,
@@ -62,8 +63,8 @@ export class NotificationPreferencesStorage {
    */
   async savePreferences(preferences: Omit<NotificationPreferences, 'updatedAt'>): Promise<void> {
     try {
-      const db = databaseService.getDB();
-      db.execute(
+      const db = database.getDatabase();
+      db.executeSync(
         `UPDATE notification_preferences
          SET push_notifications_enabled = ?,
              local_notifications_enabled = ?,
@@ -89,8 +90,8 @@ export class NotificationPreferencesStorage {
    */
   async markAsSynced(): Promise<void> {
     try {
-      const db = databaseService.getDB();
-      db.execute(
+      const db = database.getDatabase();
+      db.executeSync(
         `UPDATE notification_preferences
          SET synced_at = datetime('now')
          WHERE id = 1`
@@ -126,8 +127,8 @@ export class NotificationPreferencesStorage {
    */
   async reset(): Promise<void> {
     try {
-      const db = databaseService.getDB();
-      db.execute(
+      const db = database.getDatabase();
+      db.executeSync(
         `UPDATE notification_preferences
          SET push_notifications_enabled = 0,
              local_notifications_enabled = 1,

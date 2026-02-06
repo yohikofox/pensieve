@@ -6,28 +6,20 @@
  */
 
 import { injectable } from 'tsyringe';
-import { open } from '@op-engineering/op-sqlite';
+import { AbstractRepository } from '../../../shared/data/AbstractRepository';
 import type { IThoughtRepository } from '../domain/IThoughtRepository';
 import type { Thought } from '../domain/Thought.model';
 
-const DB_NAME = 'pensieve.db';
-
 @injectable()
-export class ThoughtRepository implements IThoughtRepository {
-  private db = open({ name: DB_NAME });
+export class ThoughtRepository extends AbstractRepository implements IThoughtRepository {
 
   async findByCaptureId(captureId: string): Promise<Thought | null> {
-    const result = this.db.executeSync(
+    const row = this.executeQueryOne<any>(
       'SELECT * FROM thoughts WHERE capture_id = ? LIMIT 1',
       [captureId]
     );
-    const rows = result.rows || [];
 
-    if (rows.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToThought(rows[0] as any);
+    return row ? this.mapRowToThought(row) : null;
   }
 
   async create(thought: Thought): Promise<void> {
@@ -39,7 +31,7 @@ export class ThoughtRepository implements IThoughtRepository {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    this.db.executeSync(query, [
+    this.executeQuery(query, [
       thought.id,
       thought.captureId,
       thought.userId,
@@ -52,14 +44,8 @@ export class ThoughtRepository implements IThoughtRepository {
   }
 
   async findById(id: string): Promise<Thought | null> {
-    const result = this.db.executeSync('SELECT * FROM thoughts WHERE id = ?', [id]);
-    const rows = result.rows || [];
-
-    if (rows.length === 0) {
-      return null;
-    }
-
-    return this.mapRowToThought(rows[0] as any);
+    const row = this.executeQueryOne<any>('SELECT * FROM thoughts WHERE id = ?', [id]);
+    return row ? this.mapRowToThought(row) : null;
   }
 
   private mapRowToThought(row: any): Thought {

@@ -1559,6 +1559,46 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v15 completed');
     },
   },
+  {
+    version: 16,
+    name: 'Add notification_preferences table (migrate from DatabaseService)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v16: Creating notification_preferences table');
+
+      // Create notification_preferences table
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS notification_preferences (
+          id INTEGER PRIMARY KEY CHECK (id = 1),
+          push_notifications_enabled INTEGER NOT NULL DEFAULT 0,
+          local_notifications_enabled INTEGER NOT NULL DEFAULT 1,
+          haptic_feedback_enabled INTEGER NOT NULL DEFAULT 1,
+          synced_at TEXT,
+          updated_at TEXT NOT NULL
+        )
+      `);
+
+      // Insert default row if not exists
+      db.executeSync(`
+        INSERT OR IGNORE INTO notification_preferences (
+          id,
+          push_notifications_enabled,
+          local_notifications_enabled,
+          haptic_feedback_enabled,
+          updated_at
+        )
+        VALUES (1, 0, 1, 1, datetime('now'))
+      `);
+
+      console.log('[DB] ✅ Migration v16: notification_preferences table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v16');
+      db.executeSync('DROP TABLE IF EXISTS notification_preferences');
+      console.log('[DB] ✅ Rollback v16 completed');
+    },
+  },
 ];
 
 /**
