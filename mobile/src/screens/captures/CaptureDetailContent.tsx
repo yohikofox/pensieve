@@ -41,7 +41,7 @@ import {
   DatePickerModal,
   CaptureDetailLoading,
   CaptureDetailError,
-  AudioPlayerSection,
+  CaptureAudioPlayerSection,
   ContentSection,
 } from "../../components/capture";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
@@ -167,8 +167,6 @@ export function CaptureDetailContent({
     );
   }
 
-  const isAudio = capture.type === "audio";
-
   return (
     <StandardLayout>
       <View style={styles.container}>
@@ -179,8 +177,8 @@ export function CaptureDetailContent({
           {/* Header Info */}
           <CaptureHeader />
 
-          {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
-          {isAudio && capture.rawContent && <AudioPlayerSection />}
+          {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
+          <CaptureAudioPlayerSection />
 
           {/* Content */}
           <ContentSection

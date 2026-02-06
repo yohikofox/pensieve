@@ -20,4 +20,5 @@ export { DatePickerModal } from "./DatePickerModal";
 export { CaptureDetailLoading } from "./CaptureDetailLoading";
 export { CaptureDetailError } from "./CaptureDetailError";
 export { AudioPlayerSection } from "./AudioPlayerSection";
+export { CaptureAudioPlayerSection } from "./CaptureAudioPlayerSection";
 export { ContentSection } from "./ContentSection";
