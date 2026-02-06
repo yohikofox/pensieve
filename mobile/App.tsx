@@ -45,9 +45,13 @@ import { CalibrationGridWrapper } from "./src/components/debug";
 import { NetworkProvider } from "./src/contexts/NetworkContext";
 import { deepLinkService } from "./src/services/deep-linking/DeepLinkService";
 import { QueryProvider } from "./src/providers/QueryProvider";
+import { createLogger } from "./src/utils/logger";
 
 // Initialize IoC container with production services
 registerServices();
+
+// Create scoped logger for App
+const log = createLogger('App');
 
 // Synchronously initialize theme BEFORE first render
 // This ensures NativeWind's dark: classes are set correctly from the start
@@ -56,8 +60,8 @@ registerServices();
   const systemScheme = Appearance.getColorScheme() ?? "light";
   const targetScheme =
     storedPreference === "system" ? systemScheme : storedPreference;
-  console.debug(
-    "[App] Theme init:",
+  log.debug(
+    "Theme init:",
     targetScheme,
     "(preference:",
     storedPreference,
@@ -100,9 +104,9 @@ function AppContent() {
   useEffect(() => {
     // Wait for navigation to be ready
     if (navigationRef.current) {
-      console.debug("[App] Initializing deep link service...");
+      log.debug("Initializing deep link service...");
       const cleanup = deepLinkService.initialize(navigationRef.current);
-      console.debug("[App] ✅ Deep link service initialized");
+      log.debug("✅ Deep link service initialized");
 
       return cleanup;
     }
@@ -126,7 +130,7 @@ function AppContent() {
         }
       } catch (error) {
         // Silent fail - don't block app startup for crash recovery issues
-        console.error("[App] Crash recovery check failed:", error);
+        log.error("Crash recovery check failed:", error);
       }
     };
 
@@ -148,15 +152,15 @@ function AppContent() {
           await modelService.recoverInterruptedDownloads();
 
         if (recoveredModels.length > 0) {
-          console.debug(
-            "[App] Recovered interrupted downloads:",
+          log.debug(
+            "Recovered interrupted downloads:",
             recoveredModels,
           );
           // TODO: Show toast notification if we want to inform user
         }
       } catch (error) {
         // Silent fail - don't block app startup
-        console.error("[App] Download recovery failed:", error);
+        log.error("Download recovery failed:", error);
       }
     };
 
@@ -168,12 +172,12 @@ function AppContent() {
     const setupNotifications = async () => {
       try {
         const granted = await requestNotificationPermissions();
-        console.debug(
-          "[App] Notification permissions:",
+        log.debug(
+          "Notification permissions:",
           granted ? "granted" : "denied",
         );
       } catch (error) {
-        console.error("[App] Notification setup failed:", error);
+        log.error("Notification setup failed:", error);
       }
     };
 
@@ -181,8 +185,8 @@ function AppContent() {
 
     // Setup notification response handler (when user taps notification)
     const cleanup = setupNotificationResponseHandler((captureId) => {
-      console.debug(
-        "[App] User tapped transcription notification for:",
+      log.debug(
+        "User tapped transcription notification for:",
         captureId,
       );
       // Navigate to capture detail using deep link service
@@ -203,36 +207,36 @@ function AppContent() {
 
     const initializeTranscription = async () => {
       try {
-        console.debug("[App] Initializing transcription services...");
+        log.debug("Initializing transcription services...");
 
         // Start event listener (auto-enqueue captures)
         queueProcessor.start();
-        console.debug("[App] ✅ TranscriptionQueueProcessor started");
+        log.debug("✅ TranscriptionQueueProcessor started");
 
         // Start waveform extraction service (auto-extract on capture)
         waveformService.start();
-        console.debug("[App] ✅ WaveformExtractionService started");
+        log.debug("✅ WaveformExtractionService started");
 
         // Start foreground worker (process queue)
         await worker.start();
-        console.debug("[App] ✅ TranscriptionWorker started");
+        log.debug("✅ TranscriptionWorker started");
 
         // Register background task (15-min periodic checks)
         await registerTranscriptionBackgroundTask();
-        console.debug("[App] ✅ Background transcription task registered");
+        log.debug("✅ Background transcription task registered");
 
         // Handle app lifecycle (foreground/background)
         appStateListener = AppState.addEventListener(
           "change",
           async (nextAppState: AppStateStatus) => {
             if (nextAppState === "background") {
-              console.debug(
-                "[App] App backgrounding - pausing transcription worker",
+              log.debug(
+                "App backgrounding - pausing transcription worker",
               );
               await worker.pause();
             } else if (nextAppState === "active") {
-              console.debug(
-                "[App] App foregrounding - resuming transcription worker",
+              log.debug(
+                "App foregrounding - resuming transcription worker",
               );
               await worker.resume();
             }
@@ -240,8 +244,8 @@ function AppContent() {
         );
       } catch (error) {
         // Silent fail - don't block app startup
-        console.error(
-          "[App] Transcription services initialization failed:",
+        log.error(
+          "Transcription services initialization failed:",
           error,
         );
       }
@@ -251,7 +255,7 @@ function AppContent() {
 
     // Cleanup on unmount (called correctly by useEffect)
     return () => {
-      console.debug("[App] Cleaning up transcription services...");
+      log.debug("Cleaning up transcription services...");
       queueProcessor.stop();
       waveformService.stop();
       worker.stop();
