@@ -43,7 +43,9 @@ export class CaptureAnalysisService {
   private currentModelId: string | null = null;
 
   constructor(
-    @inject(TOKENS.ILLMModelService) private modelService: ILLMModelService
+    @inject(TOKENS.ILLMModelService) private modelService: ILLMModelService,
+    @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
+    @inject(TOKENS.ICaptureAnalysisRepository) private analysisRepository: ICaptureAnalysisRepository
   ) {}
 
   /**
@@ -138,8 +140,8 @@ export class CaptureAnalysisService {
       }
 
       // Load the model
-      const modelConfig = modelService.getModelConfig(modelId);
-      const modelPath = modelService.getModelPath(modelId);
+      const modelConfig = this.modelService.getModelConfig(modelId);
+      const modelPath = this.modelService.getModelPath(modelId);
 
       console.log('[CaptureAnalysisService] Loading model from:', modelPath);
       const modelLoaded = await this.llamaBackend.loadModel(modelPath, modelConfig.promptTemplate);
@@ -191,14 +193,8 @@ export class CaptureAnalysisService {
     }
 
     try {
-      // Get repositories
-      const captureRepository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-      const analysisRepository = container.resolve<ICaptureAnalysisRepository>(
-        TOKENS.ICaptureAnalysisRepository
-      );
-
       // Get the capture
-      const capture = await captureRepository.findById(captureId);
+      const capture = await this.captureRepository.findById(captureId);
 
       if (!capture) {
         console.error('[CaptureAnalysisService] Capture not found:', captureId);
@@ -227,7 +223,7 @@ export class CaptureAnalysisService {
 
       if (analysisType === 'highlights' || analysisType === 'action_items') {
         // Check if summary already exists
-        let summaryContent = await analysisRepository.get(captureId, 'summary');
+        let summaryContent = await this.analysisRepository.get(captureId, 'summary');
 
         if (!summaryContent) {
           // Generate summary first
@@ -272,7 +268,7 @@ export class CaptureAnalysisService {
       console.log('[CaptureAnalysisService] LLM result:', result.text.substring(0, 100) + '...');
 
       // Save the analysis
-      const analysis = await analysisRepository.save({
+      const analysis = await this.analysisRepository.save({
         captureId,
         analysisType,
         content: result.text,
@@ -304,30 +300,21 @@ export class CaptureAnalysisService {
    * Get all analyses for a capture
    */
   async getAnalyses(captureId: string): Promise<Record<AnalysisType, CaptureAnalysis | null>> {
-    const analysisRepository = container.resolve<ICaptureAnalysisRepository>(
-      TOKENS.ICaptureAnalysisRepository
-    );
-    return analysisRepository.getAllAsMap(captureId);
+    return this.analysisRepository.getAllAsMap(captureId);
   }
 
   /**
    * Get a specific analysis
    */
   async getAnalysis(captureId: string, analysisType: AnalysisType): Promise<CaptureAnalysis | null> {
-    const analysisRepository = container.resolve<ICaptureAnalysisRepository>(
-      TOKENS.ICaptureAnalysisRepository
-    );
-    return analysisRepository.get(captureId, analysisType);
+    return this.analysisRepository.get(captureId, analysisType);
   }
 
   /**
    * Delete an analysis
    */
   async deleteAnalysis(captureId: string, analysisType: AnalysisType): Promise<void> {
-    const analysisRepository = container.resolve<ICaptureAnalysisRepository>(
-      TOKENS.ICaptureAnalysisRepository
-    );
-    await analysisRepository.delete(captureId, analysisType);
+    await this.analysisRepository.delete(captureId, analysisType);
   }
 
   /**

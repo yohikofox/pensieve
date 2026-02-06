@@ -3,69 +3,90 @@
  *
  * Collapsible card containing all AI analysis sections
  * Story 5.1 - Refactoring: Extract analysis card responsibility
- * Story 5.4 - Refactored to consume stores directly instead of props
+ * Story 5.4 - Autonomous component: calls hooks directly, no prop drilling
  */
 
-import React from "react";
-import { View, Text, StyleSheet, Pressable, TouchableOpacity, ActivityIndicator } from "react-native";
+import React, { useEffect } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TouchableOpacity,
+  ActivityIndicator,
+} from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { colors } from "../../design-system/tokens";
 import { NavigationIcons, ActionIcons } from "../../design-system/icons";
+import { AlertDialog, useToast } from "../../design-system/components";
 import { ANALYSIS_TYPES } from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { ANALYSIS_LABELS } from "../../contexts/Normalization/services/analysisPrompts";
 import { AnalysisSection } from "./AnalysisSection";
 import { ActionItemsList } from "./ActionItemsList";
 import { IdeasSection } from "./IdeasSection";
-import type { CaptureAnalysis, AnalysisType } from "../../contexts/capture/domain/CaptureAnalysis.model";
+import type { AnalysisType } from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCurrentTextEditor } from "../../stores/textEditorStore";
-
-interface ActionItemsHook {
-  actionItems: any[] | null;
-  savingActionIndex: number | null;
-  savedActionIndex: number | null;
-  addingToCalendarIndex: number | null;
-  addedToCalendarIndex: number | null;
-  handleOpenDatePicker: (index: number) => void;
-  handleOpenContactPicker: (index: number) => void;
-  handleAddToCalendar: (index: number, item: any) => void;
-  setSavedActionIndex: (index: number | null) => void;
-}
-
-interface IdeasHook {
-  ideas: any[];
-  ideasLoading: boolean;
-}
-
-interface AnalysesHook {
-  analyses: Record<string, CaptureAnalysis | null>;
-  analysisLoading: Record<string, boolean>;
-  isAnyAnalysisLoading: boolean;
-  handleGenerateAnalysis: (type: AnalysisType) => Promise<void>;
-  handleAnalyzeAll: () => Promise<void>;
-}
+import { useAnalyses } from "../../hooks/useAnalyses";
+import { useActionItems } from "../../hooks/useActionItems";
+import { useIdeas } from "../../hooks/useIdeas";
+import {
+  useCurrentActionItems,
+  useActionItemsStore,
+} from "../../stores/actionItemsStore";
 
 interface AnalysisCardProps {
-  actionItemsHook: ActionItemsHook;
-  ideasHook: IdeasHook;
-  analysesHook: AnalysesHook;
+  startAnalysis?: boolean;
+  highlightIdeaId?: string;
+  highlightTodoId?: string;
 }
 
 export function AnalysisCard({
-  actionItemsHook,
-  ideasHook,
-  analysesHook,
+  startAnalysis,
+  highlightIdeaId,
+  highlightTodoId,
 }: AnalysisCardProps) {
+  // Autonomous - calls hooks directly
+  const analysesHook = useAnalyses();
+  const actionItemsHook = useActionItems();
+  const ideasHook = useIdeas();
+  const toast = useToast();
+
   const capture = useCaptureDetailStore((state) => state.capture);
+  const isReady = useCaptureDetailStore((state) => state.isReady);
   const showAnalysis = useCaptureDetailStore((state) => state.showAnalysis);
-  const setShowAnalysis = useCaptureDetailStore((state) => state.setShowAnalysis);
+  const setShowAnalysis = useCaptureDetailStore(
+    (state) => state.setShowAnalysis,
+  );
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
   const { editedText } = useCurrentTextEditor(capture?.id || "");
+  const captureId = capture?.id || "";
 
-  const { analyses, analysisLoading, isAnyAnalysisLoading, handleGenerateAnalysis, handleAnalyzeAll } = analysesHook;
+  // Read Google Calendar dialog state from store
+  const { showCalendarDialog } = useCurrentActionItems(captureId);
+  const setShowCalendarDialog = useActionItemsStore(
+    (state) => state.setShowCalendarDialog,
+  );
+
+  const {
+    analyses,
+    analysisLoading,
+    isAnyAnalysisLoading,
+    handleGenerateAnalysis,
+    handleAnalyzeAll,
+  } = analysesHook;
+
+  useEffect(() => {
+    if (startAnalysis && isReady) {
+      setShowAnalysis(true);
+    }
+  }, [startAnalysis, isReady]);
+
+  // Component manages its own visibility - only show for ready captures
+  if (!isReady) return null;
 
   const handleToggleAnalysis = () => setShowAnalysis(!showAnalysis);
 
@@ -79,10 +100,7 @@ export function AnalysisCard({
         },
       ]}
     >
-      <Pressable
-        style={styles.analysisHeader}
-        onPress={handleToggleAnalysis}
-      >
+      <Pressable style={styles.analysisHeader} onPress={handleToggleAnalysis}>
         <View style={styles.analysisTitleRow}>
           <Feather
             name="cpu"
@@ -101,9 +119,7 @@ export function AnalysisCard({
           </Text>
         </View>
         <Feather
-          name={
-            showAnalysis ? NavigationIcons.down : NavigationIcons.forward
-          }
+          name={showAnalysis ? NavigationIcons.down : NavigationIcons.forward}
           size={16}
           color={isDark ? colors.primary[400] : colors.primary[600]}
         />
@@ -170,9 +186,7 @@ export function AnalysisCard({
                             color={colors.neutral[0]}
                           />
                           <Text style={styles.analyzeAllButtonText}>
-                            {allGenerated
-                              ? "Tout réanalyser"
-                              : "Analyser"}
+                            {allGenerated ? "Tout réanalyser" : "Analyser"}
                           </Text>
                         </View>
                       )}
@@ -243,13 +257,9 @@ export function AnalysisCard({
                         },
                       ]}
                       onPress={() =>
-                        handleGenerateAnalysis(
-                          ANALYSIS_TYPES.ACTION_ITEMS,
-                        )
+                        handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)
                       }
-                      disabled={
-                        analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]
-                      }
+                      disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
                     >
                       {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
                         <ActivityIndicator
@@ -261,9 +271,7 @@ export function AnalysisCard({
                           name={ActionIcons.refresh}
                           size={16}
                           color={
-                            isDark
-                              ? colors.primary[400]
-                              : colors.primary[600]
+                            isDark ? colors.primary[400] : colors.primary[600]
                           }
                         />
                       ) : (
@@ -283,23 +291,32 @@ export function AnalysisCard({
                     </TouchableOpacity>
                   )}
                 </View>
-                {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && actionItemsHook.actionItems && actionItemsHook.actionItems.length > 0 ? (
+                {analyses[ANALYSIS_TYPES.ACTION_ITEMS] &&
+                actionItemsHook.actionItems &&
+                actionItemsHook.actionItems.length > 0 ? (
                   <ActionItemsList
                     actionItems={actionItemsHook.actionItems}
                     isDark={isDark}
                     themeColors={themeColors}
                     savingActionIndex={actionItemsHook.savingActionIndex}
                     savedActionIndex={actionItemsHook.savedActionIndex}
-                    addingToCalendarIndex={actionItemsHook.addingToCalendarIndex}
+                    addingToCalendarIndex={
+                      actionItemsHook.addingToCalendarIndex
+                    }
                     addedToCalendarIndex={actionItemsHook.addedToCalendarIndex}
                     onOpenDatePicker={actionItemsHook.handleOpenDatePicker}
-                    onOpenContactPicker={actionItemsHook.handleOpenContactPicker}
+                    onOpenContactPicker={
+                      actionItemsHook.handleOpenContactPicker
+                    }
                     onAddToCalendar={actionItemsHook.handleAddToCalendar}
-                    onSavedIndicatorHidden={() => actionItemsHook.setSavedActionIndex(null)}
+                    onSavedIndicatorHidden={() =>
+                      actionItemsHook.setSavedActionIndex(null)
+                    }
+                    highlightTodoId={highlightTodoId}
                   />
                 ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
                   <Text style={styles.analysisResult} selectable>
-                    {analyses[ANALYSIS_TYPES.ACTION_ITEMS].content}
+                    {analyses[ANALYSIS_TYPES.ACTION_ITEMS]?.content ?? ""}
                   </Text>
                 ) : null}
               </View>
@@ -314,11 +331,36 @@ export function AnalysisCard({
                 isDark={isDark}
                 themeColors={themeColors}
                 onGenerate={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
+                highlightIdeaId={highlightIdeaId}
+                highlightTodoId={highlightTodoId}
               />
             </>
           )}
         </View>
       )}
+
+      {/* Google Calendar connection dialog */}
+      <AlertDialog
+        visible={showCalendarDialog}
+        onClose={() => setShowCalendarDialog(captureId, false)}
+        title="Google Calendar non connecté"
+        message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
+        icon="calendar"
+        variant="warning"
+        confirmAction={{
+          label: "OK",
+          onPress: () => {
+            setShowCalendarDialog(captureId, false);
+            toast.info(
+              "Allez dans Paramètres > Intégrations > Google Calendar",
+            );
+          },
+        }}
+        cancelAction={{
+          label: "Annuler",
+          onPress: () => setShowCalendarDialog(captureId, false),
+        }}
+      />
     </View>
   );
 }

@@ -16,7 +16,9 @@ import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 export function MetadataSection() {
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const showMetadata = useCaptureDetailStore((state) => state.showMetadata);
-  const setShowMetadata = useCaptureDetailStore((state) => state.setShowMetadata);
+  const setShowMetadata = useCaptureDetailStore(
+    (state) => state.setShowMetadata,
+  );
 
   const { themeColors } = useCaptureTheme();
 
@@ -37,24 +39,15 @@ export function MetadataSection() {
         onPress={() => setShowMetadata(!showMetadata)}
       >
         <View style={styles.metadataTitleRow}>
-          <Feather
-            name="info"
-            size={16}
-            color={themeColors.textSecondary}
-          />
+          <Feather name="info" size={16} color={themeColors.textSecondary} />
           <Text
-            style={[
-              styles.metadataTitle,
-              { color: themeColors.textSecondary },
-            ]}
+            style={[styles.metadataTitle, { color: themeColors.textSecondary }]}
           >
             Métadonnées de transcription
           </Text>
         </View>
         <Feather
-          name={
-            showMetadata ? NavigationIcons.down : NavigationIcons.forward
-          }
+          name={showMetadata ? NavigationIcons.down : NavigationIcons.forward}
           size={16}
           color={themeColors.textTertiary}
         />
@@ -121,7 +114,8 @@ export function MetadataSection() {
                   ) /
                     1000) *
                     10,
-                ) / 10}s
+                ) / 10}
+                s
               </Text>
             </View>
           )}
@@ -175,7 +169,8 @@ export function MetadataSection() {
                   parseFloat(
                     metadata[METADATA_KEYS.WHISPER_NO_SPEECH_PROB]?.value!,
                   ) * 100,
-                )}%
+                )}
+                %
               </Text>
             </View>
           )}

@@ -1,8 +1,12 @@
 /**
  * useAnalyses Hook
  *
+ * Completely autonomous hook for LLM analysis management.
+ * Reads all data from stores, no parameters needed.
+ *
  * Manages LLM analysis generation (Summary, Highlights, Action Items, Ideas)
  * Story 5.1 - Refactoring: Extract analysis responsibility from CaptureDetailScreen
+ * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
  */
 
 import { useState } from "react";
@@ -13,13 +17,10 @@ import type {
   AnalysisType,
 } from "../contexts/capture/domain/CaptureAnalysis.model";
 import { ANALYSIS_TYPES } from "../contexts/capture/domain/CaptureAnalysis.model";
-import type { ToastService } from "../contexts/common/ui/toast/ToastService";
-
-interface UseAnalysesParams {
-  captureId: string;
-  toast: ToastService;
-  ensureTextSaved: () => Promise<void>;
-}
+import { useTextEditor } from "./useTextEditor";
+import { useCaptureDetailStore } from "../stores/captureDetailStore";
+import { useAnalysesStore, useCurrentAnalyses } from "../stores/analysesStore";
+import { useToast } from "../design-system/components";
 
 interface UseAnalysesReturn {
   analyses: Record<AnalysisType, CaptureAnalysis | null>;
@@ -28,31 +29,22 @@ interface UseAnalysesReturn {
   isAnyAnalysisLoading: boolean;
   handleGenerateAnalysis: (type: AnalysisType) => Promise<void>;
   handleAnalyzeAll: () => Promise<void>;
-  setAnalyses: React.Dispatch<React.SetStateAction<Record<AnalysisType, CaptureAnalysis | null>>>;
+  setAnalyses: (analyses: Record<AnalysisType, CaptureAnalysis | null>) => void;
 }
 
-export function useAnalyses({
-  captureId,
-  toast,
-  ensureTextSaved,
-}: UseAnalysesParams): UseAnalysesReturn {
-  const [analyses, setAnalyses] = useState<
-    Record<AnalysisType, CaptureAnalysis | null>
-  >({
-    [ANALYSIS_TYPES.SUMMARY]: null,
-    [ANALYSIS_TYPES.HIGHLIGHTS]: null,
-    [ANALYSIS_TYPES.ACTION_ITEMS]: null,
-    [ANALYSIS_TYPES.IDEAS]: null,
-  });
+export function useAnalyses(): UseAnalysesReturn {
+  // Read everything from stores - autonomous hook
+  const capture = useCaptureDetailStore((state) => state.capture);
+  const toast = useToast();
+  const { ensureTextSaved } = useTextEditor();
 
-  const [analysisLoading, setAnalysisLoading] = useState<
-    Record<AnalysisType, boolean>
-  >({
-    [ANALYSIS_TYPES.SUMMARY]: false,
-    [ANALYSIS_TYPES.HIGHLIGHTS]: false,
-    [ANALYSIS_TYPES.ACTION_ITEMS]: false,
-    [ANALYSIS_TYPES.IDEAS]: false,
-  });
+  const captureId = capture?.id || "";
+
+  // Use store for shared state
+  const { analyses, analysisLoading } = useCurrentAnalyses(captureId);
+  const setAnalysis = useAnalysesStore((state) => state.setAnalysis);
+  const setAnalysesInStore = useAnalysesStore((state) => state.setAnalyses);
+  const setAnalysisLoading = useAnalysesStore((state) => state.setAnalysisLoading);
 
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
@@ -60,7 +52,7 @@ export function useAnalyses({
 
   const handleGenerateAnalysis = async (type: AnalysisType) => {
     console.log("[useAnalyses] handleGenerateAnalysis called for:", type);
-    setAnalysisLoading((prev) => ({ ...prev, [type]: true }));
+    setAnalysisLoading(captureId, type, true);
     setAnalysisError(null);
 
     try {
@@ -73,7 +65,7 @@ export function useAnalyses({
       console.log("[useAnalyses] Analysis result:", result);
 
       if (result.success) {
-        setAnalyses((prev) => ({ ...prev, [type]: result.analysis }));
+        setAnalysis(captureId, type, result.analysis);
       } else {
         setAnalysisError(result.error);
         toast.error(result.error ?? "Erreur d'analyse");
@@ -85,19 +77,17 @@ export function useAnalyses({
       setAnalysisError(errorMsg);
       toast.error(errorMsg);
     } finally {
-      setAnalysisLoading((prev) => ({ ...prev, [type]: false }));
+      setAnalysisLoading(captureId, type, false);
     }
   };
 
   const handleAnalyzeAll = async () => {
     console.log("[useAnalyses] handleAnalyzeAll called");
     // Set all loading states
-    setAnalysisLoading({
-      [ANALYSIS_TYPES.SUMMARY]: true,
-      [ANALYSIS_TYPES.HIGHLIGHTS]: true,
-      [ANALYSIS_TYPES.ACTION_ITEMS]: true,
-      [ANALYSIS_TYPES.IDEAS]: true,
-    });
+    setAnalysisLoading(captureId, ANALYSIS_TYPES.SUMMARY, true);
+    setAnalysisLoading(captureId, ANALYSIS_TYPES.HIGHLIGHTS, true);
+    setAnalysisLoading(captureId, ANALYSIS_TYPES.ACTION_ITEMS, true);
+    setAnalysisLoading(captureId, ANALYSIS_TYPES.IDEAS, true);
     setAnalysisError(null);
 
     try {
@@ -128,7 +118,7 @@ export function useAnalyses({
         }
       }
 
-      setAnalyses(newAnalyses);
+      setAnalysesInStore(captureId, newAnalyses);
 
       if (hasError) {
         toast.warning("Certaines analyses ont échoué. Vérifiez les logs.");
@@ -140,12 +130,10 @@ export function useAnalyses({
       setAnalysisError(errorMsg);
       toast.error(errorMsg);
     } finally {
-      setAnalysisLoading({
-        [ANALYSIS_TYPES.SUMMARY]: false,
-        [ANALYSIS_TYPES.HIGHLIGHTS]: false,
-        [ANALYSIS_TYPES.ACTION_ITEMS]: false,
-        [ANALYSIS_TYPES.IDEAS]: false,
-      });
+      setAnalysisLoading(captureId, ANALYSIS_TYPES.SUMMARY, false);
+      setAnalysisLoading(captureId, ANALYSIS_TYPES.HIGHLIGHTS, false);
+      setAnalysisLoading(captureId, ANALYSIS_TYPES.ACTION_ITEMS, false);
+      setAnalysisLoading(captureId, ANALYSIS_TYPES.IDEAS, false);
     }
   };
 
@@ -156,6 +144,7 @@ export function useAnalyses({
     isAnyAnalysisLoading,
     handleGenerateAnalysis,
     handleAnalyzeAll,
-    setAnalyses,
+    setAnalyses: (newAnalyses: Record<AnalysisType, CaptureAnalysis | null>) =>
+      setAnalysesInStore(captureId, newAnalyses),
   };
 }

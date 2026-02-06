@@ -25,24 +25,26 @@ import { TranscriptionSync } from "../audio/TranscriptionSync";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCurrentTextEditor } from "../../stores/textEditorStore";
+import { useTextEditor } from "../../hooks/useTextEditor";
 
-export interface ContentSectionProps {
-  onTextChange: (text: string) => void;
-}
-
-export function ContentSection({
-  onTextChange,
-}: ContentSectionProps) {
+export function ContentSection() {
   const capture = useCaptureDetailStore((state) => state.capture);
   const metadata = useCaptureDetailStore((state) => state.metadata);
-  const showOriginalContent = useCaptureDetailStore((state) => state.showOriginalContent);
-  const setShowOriginalContent = useCaptureDetailStore((state) => state.setShowOriginalContent);
+  const showOriginalContent = useCaptureDetailStore(
+    (state) => state.showOriginalContent,
+  );
+  const setShowOriginalContent = useCaptureDetailStore(
+    (state) => state.setShowOriginalContent,
+  );
   const audioPosition = useCaptureDetailStore((state) => state.audioPosition);
   const audioDuration = useCaptureDetailStore((state) => state.audioDuration);
-  const setAudioPosition = useCaptureDetailStore((state) => state.setAudioPosition);
+  const setAudioPosition = useCaptureDetailStore(
+    (state) => state.setAudioPosition,
+  );
 
   const { themeColors, isDark } = useCaptureTheme();
   const { editedText, hasChanges } = useCurrentTextEditor(capture?.id || "");
+  const { handleTextChange } = useTextEditor();
 
   // Internal ref - no need to expose to parent
   const textInputRef = useRef<TextInput>(null);
@@ -56,12 +58,11 @@ export function ContentSection({
   const handleAudioSeek = (positionMs: number) => {
     setAudioPosition(positionMs);
   };
-  const isAudio = capture.type === "audio";
+  const isAudio = useCaptureDetailStore((state) => state.isAudio);
+  const isReady = useCaptureDetailStore((state) => state.isReady);
   const hasText = editedText.length > 0;
   const isEditable =
-    capture.state === "ready" ||
-    capture.state === "failed" ||
-    capture.type === "text";
+    isReady || capture.state === "failed" || capture.type === "text";
 
   // Check if content has been AI-enhanced
   const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
@@ -80,9 +81,7 @@ export function ContentSection({
       {/* Header with title and badges */}
       <View style={styles.contentHeader}>
         <View style={styles.contentTitleRow}>
-          <Text
-            style={[styles.contentTitle, { color: themeColors.textMuted }]}
-          >
+          <Text style={[styles.contentTitle, { color: themeColors.textMuted }]}>
             {isAudio ? "TRANSCRIPTION" : "CONTENU"}
           </Text>
 
@@ -92,9 +91,7 @@ export function ContentSection({
               style={[
                 styles.aiEnhancedBadge,
                 {
-                  backgroundColor: isDark
-                    ? colors.success[900]
-                    : "#E8F5E9",
+                  backgroundColor: isDark ? colors.success[900] : "#E8F5E9",
                 },
               ]}
             >
@@ -107,9 +104,7 @@ export function ContentSection({
                 style={[
                   styles.aiEnhancedBadgeText,
                   {
-                    color: isDark
-                      ? colors.success[400]
-                      : colors.success[600],
+                    color: isDark ? colors.success[400] : colors.success[600],
                   },
                 ]}
               >
@@ -141,9 +136,7 @@ export function ContentSection({
                 style={[
                   styles.toggleVersionText,
                   {
-                    color: isDark
-                      ? colors.neutral[300]
-                      : colors.neutral[600],
+                    color: isDark ? colors.neutral[300] : colors.neutral[600],
                   },
                 ]}
               >
@@ -162,16 +155,14 @@ export function ContentSection({
       </View>
 
       {/* Content Display/Edit Area */}
+
       {isEditable && hasText && !showOriginalContent ? (
         // Editable TextInput
         <TextInput
           ref={textInputRef}
-          style={[
-            styles.contentTextInput,
-            { color: themeColors.textPrimary },
-          ]}
+          style={[styles.contentTextInput, { color: themeColors.textPrimary }]}
           value={displayText}
-          onChangeText={onTextChange}
+          onChangeText={handleTextChange}
           multiline
           autoCorrect={true}
           spellCheck={true}
@@ -208,16 +199,13 @@ export function ContentSection({
       ) : (
         // Placeholder for empty/processing captures
         <Text
-          style={[
-            styles.placeholderText,
-            { color: themeColors.textMuted },
-          ]}
+          style={[styles.placeholderText, { color: themeColors.textMuted }]}
         >
           {capture.state === "processing"
             ? "Transcription en cours..."
             : capture.state === "failed"
               ? "La transcription a échoué"
-              : capture.state === "ready" && isAudio
+              : isReady && isAudio
                 ? "Aucun audio détecté dans l'enregistrement"
                 : "Aucun contenu disponible"}
         </Text>

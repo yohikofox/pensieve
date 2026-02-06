@@ -1,9 +1,14 @@
 /**
  * useReprocessing Hook
  *
+ * Completely autonomous hook for reprocessing operations.
+ * Reads all data from stores, no parameters needed except optional callback.
+ *
  * Manages reprocessing operations for captures:
  * - Re-transcribe: Re-run Whisper transcription
  * - Re-post-process: Re-run LLM post-processing
+ *
+ * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
  */
 
 import { useState } from "react";
@@ -14,14 +19,8 @@ import type { ICaptureMetadataRepository } from "../contexts/capture/domain/ICap
 import { METADATA_KEYS } from "../contexts/capture/domain/CaptureMetadata.model";
 import { TranscriptionQueueService } from "../contexts/Normalization/services/TranscriptionQueueService";
 import { PostProcessingService } from "../contexts/Normalization/services/PostProcessingService";
-import type { useToast } from "../design-system/components";
-import type { Capture } from "../contexts/capture/domain/Capture.model";
-
-interface UseReprocessingParams {
-  capture: Capture | null;
-  toast: ReturnType<typeof useToast>;
-  onReloadCapture: () => Promise<void>;
-}
+import { useToast } from "../design-system/components";
+import { useCaptureDetailStore } from "../stores/captureDetailStore";
 
 interface ReprocessingState {
   transcribe: boolean;
@@ -34,11 +33,12 @@ interface UseReprocessingReturn {
   handleRePostProcess: () => Promise<void>;
 }
 
-export function useReprocessing({
-  capture,
-  toast,
-  onReloadCapture,
-}: UseReprocessingParams): UseReprocessingReturn {
+export function useReprocessing(
+  onReloadCapture?: () => Promise<void>
+): UseReprocessingReturn {
+  // Read everything from stores - autonomous hook
+  const capture = useCaptureDetailStore((state) => state.capture);
+  const toast = useToast();
   const [reprocessing, setReprocessing] = useState<ReprocessingState>({
     transcribe: false,
     postProcess: false,
@@ -78,8 +78,8 @@ export function useReprocessing({
 
       toast.success("La capture a été remise en queue pour transcription");
 
-      // Reload capture to see new state
-      await onReloadCapture();
+      // Reload capture to see new state (if callback provided)
+      await onReloadCapture?.();
     } catch (error) {
       console.error("[useReprocessing] Re-transcribe failed:", error);
       toast.error("Impossible de relancer la transcription");
@@ -144,8 +144,8 @@ export function useReprocessing({
 
       toast.success("Post-traitement terminé");
 
-      // Reload capture to see new text
-      await onReloadCapture();
+      // Reload capture to see new text (if callback provided)
+      await onReloadCapture?.();
     } catch (error) {
       console.error("[useReprocessing] Re-post-process failed:", error);
       toast.error("Impossible de relancer le post-traitement");

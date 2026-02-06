@@ -17,6 +17,7 @@ import { colors } from '../../../design-system/tokens';
 
 interface InlineTodoListProps {
   ideaId: string;
+  highlightTodoId?: string;
 }
 
 /**
@@ -27,7 +28,7 @@ interface InlineTodoListProps {
  * AC6: Todo detail popover on tap
  * AC7: Consistent styling across feed
  */
-export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId }) => {
+export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId, highlightTodoId }) => {
   const { isDark } = useTheme();
 
   // Subtask 3.2: Fetch todos using useTodos hook
@@ -113,6 +114,7 @@ export const InlineTodoList: React.FC<InlineTodoListProps> = ({ ideaId }) => {
             todo={todo}
             onToggle={handleToggle}
             onTap={handleTodoTap}
+            isHighlighted={todo.id === highlightTodoId}
           />
         ))}
       </View>

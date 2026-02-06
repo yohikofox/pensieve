@@ -3,7 +3,7 @@
  *
  * Quick actions card for post-processing and re-transcription
  * Story 5.1 - Refactoring: Extract quick actions responsibility
- * Story 5.4 - Refactored to consume stores directly instead of props
+ * Story 5.4 - Autonomous component: uses hooks directly, no prop drilling
  */
 
 import React from "react";
@@ -16,22 +16,13 @@ import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCurrentTextEditor } from "../../stores/textEditorStore";
+import { useReprocessing } from "../../hooks/useReprocessing";
 
-interface ActionsSectionProps {
-  reprocessing: {
-    transcribe: boolean;
-    postProcess: boolean;
-  };
-  onReTranscribe: () => void;
-  onRePostProcess: () => void;
-}
-
-export function ActionsSection({
-  reprocessing,
-  onReTranscribe,
-  onRePostProcess,
-}: ActionsSectionProps) {
+export function ActionsSection() {
+  // Autonomous hook - reads from stores
+  const { reprocessing, handleReTranscribe, handleRePostProcess } = useReprocessing();
   const capture = useCaptureDetailStore((state) => state.capture);
+  const isAudio = useCaptureDetailStore((state) => state.isAudio);
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
@@ -39,15 +30,14 @@ export function ActionsSection({
 
   if (!capture) return null;
 
-  const isAudioCapture = capture.type === "audio";
   const isTextCapture = capture.type === "text";
   const hasRawTranscript = !!metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
   const hasBeenPostProcessed = !!metadata[METADATA_KEYS.LLM_MODEL]?.value;
   const canPostProcess =
-    (isAudioCapture && hasRawTranscript) || (isTextCapture && editedText);
+    (isAudio && hasRawTranscript) || (isTextCapture && editedText);
   const showPostProcessButton =
     canPostProcess && (!hasBeenPostProcessed || debugMode);
-  const showReTranscribeButton = isAudioCapture && debugMode;
+  const showReTranscribeButton = isAudio && debugMode;
 
   // Only show section if there are actions available
   if (!showPostProcessButton && !showReTranscribeButton) return null;
@@ -93,7 +83,7 @@ export function ActionsSection({
               styles.quickActionButton,
               { backgroundColor: themeColors.actionButtonBg },
             ]}
-            onPress={onRePostProcess}
+            onPress={handleRePostProcess}
             disabled={reprocessing.postProcess}
           >
             {reprocessing.postProcess ? (
@@ -147,7 +137,7 @@ export function ActionsSection({
                 marginTop: 12,
               },
             ]}
-            onPress={onReTranscribe}
+            onPress={handleReTranscribe}
             disabled={reprocessing.transcribe}
           >
             {reprocessing.transcribe ? (

@@ -3,7 +3,7 @@
  *
  * Bottom action bar with Copy, Share, Delete, and Save buttons
  * Story 5.1 - Refactoring: Extract action bar responsibility
- * Story 5.4 - Refactored to consume stores directly instead of props
+ * Story 5.4 - Autonomous component: calls hooks directly, no prop drilling
  */
 
 import React from "react";
@@ -14,25 +14,17 @@ import { ActionIcons, StatusIcons } from "../../design-system/icons";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCurrentTextEditor } from "../../stores/textEditorStore";
+import { useTextEditor } from "../../hooks/useTextEditor";
+import { useDeleteCapture } from "../../hooks/useDeleteCapture";
 
-interface ActionBarProps {
-  onCopy: () => void;
-  onShare: () => void;
-  onDelete: () => void;
-  onSave: () => void;
-  onDiscardChanges: () => void;
-}
+export function ActionBar() {
+  // Autonomous - calls hooks directly
+  const { handleDelete } = useDeleteCapture();
 
-export function ActionBar({
-  onCopy,
-  onShare,
-  onDelete,
-  onSave,
-  onDiscardChanges,
-}: ActionBarProps) {
   const capture = useCaptureDetailStore((state) => state.capture);
   const { themeColors, isDark } = useCaptureTheme();
   const { editedText, hasChanges, isSaving, copied } = useCurrentTextEditor(capture?.id || "");
+  const { handleSave, handleCopy, handleShare, handleDiscardChanges } = useTextEditor();
 
   const hasText = editedText.length > 0;
   return (
@@ -53,7 +45,7 @@ export function ActionBar({
               styles.discardButton,
               { backgroundColor: isDark ? colors.neutral[700] : "#F2F2F7" },
             ]}
-            onPress={onDiscardChanges}
+            onPress={handleDiscardChanges}
           >
             <Feather
               name="rotate-ccw"
@@ -69,7 +61,7 @@ export function ActionBar({
 
           <TouchableOpacity
             style={[styles.actionButton, styles.saveButton]}
-            onPress={onSave}
+            onPress={handleSave}
             disabled={isSaving}
           >
             {isSaving ? (
@@ -92,7 +84,7 @@ export function ActionBar({
             <>
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={onCopy}
+                onPress={handleCopy}
               >
                 <Feather
                   name={copied ? StatusIcons.success : ActionIcons.copy}
@@ -108,7 +100,7 @@ export function ActionBar({
 
               <TouchableOpacity
                 style={styles.actionButton}
-                onPress={onShare}
+                onPress={handleShare}
               >
                 <Feather
                   name={ActionIcons.share}
@@ -126,7 +118,7 @@ export function ActionBar({
 
           <TouchableOpacity
             style={[styles.actionButton, styles.deleteButton]}
-            onPress={onDelete}
+            onPress={handleDelete}
           >
             <Feather
               name={ActionIcons.delete}

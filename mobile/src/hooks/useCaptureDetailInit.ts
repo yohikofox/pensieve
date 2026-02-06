@@ -12,32 +12,24 @@ import { container } from "tsyringe";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { ICaptureRepository } from "../contexts/capture/domain/ICaptureRepository";
 import type { ICaptureMetadataRepository } from "../contexts/capture/domain/ICaptureMetadataRepository";
-import type { Capture } from "../contexts/capture/domain/Capture.model";
-import type { CaptureMetadata } from "../contexts/capture/domain/CaptureMetadata.model";
 import { CaptureAnalysisService } from "../contexts/Normalization/services/CaptureAnalysisService";
 import { TranscriptionModelService } from "../contexts/Normalization/services/TranscriptionModelService";
 import { TranscriptionEngineService } from "../contexts/Normalization/services/TranscriptionEngineService";
-
-export interface UseCaptureDetailInitParams {
-  captureId: string;
-  onCaptureLoaded: (capture: Capture | null) => void;
-  onMetadataLoaded: (metadata: Record<string, CaptureMetadata>) => void;
-  onLoadingChange: (loading: boolean) => void;
-  onModelAvailabilityChange: (available: boolean | null) => void;
-  onEngineTypeChange: (isNative: boolean) => void;
-}
+import { useCaptureDetailStore } from "../stores/captureDetailStore";
+import { useAnalysesStore } from "../stores/analysesStore";
 
 export interface UseCaptureDetailInitReturn {
   loading: boolean;
   error: Error | null;
-  loadCapture: () => Promise<void>;
   hasModelAvailable: boolean | null;
   isNativeEngine: boolean;
-  existingAnalyses: any | null;
 }
 
 /**
  * Hook that manages capture detail initialization
+ *
+ * Autonomous hook - reads and writes directly to stores
+ * Also exposes captureId and reloadCapture in store for useCaptureDetailListener
  *
  * Consolidates:
  * - Initial capture loading
@@ -46,76 +38,76 @@ export interface UseCaptureDetailInitReturn {
  * - Model availability check
  * - Transcription engine type check
  *
- * @param params - Initialization parameters and callbacks
- * @returns Initialization state and loadCapture function
+ * @param captureId - ID of the capture to load
+ * @returns Initialization state
  *
  * @example
  * ```tsx
- * const init = useCaptureDetailInit({
- *   captureId,
- *   onCaptureLoaded: setCapture,
- *   onMetadataLoaded: setMetadata,
- *   onAnalysesLoaded: analysesHook.setAnalyses,
- *   onLoadingChange: setLoading,
- *   onModelAvailabilityChange: setHasModelAvailable,
- *   onEngineTypeChange: setIsNativeEngine,
- * });
+ * const init = useCaptureDetailInit(captureId);
  *
  * if (init.loading) return <LoadingSpinner />;
  * if (init.error) return <ErrorDisplay error={init.error} />;
  * ```
  */
 export function useCaptureDetailInit(
-  params: UseCaptureDetailInitParams
+  captureId: string,
 ): UseCaptureDetailInitReturn {
-  const {
-    captureId,
-    onCaptureLoaded,
-    onMetadataLoaded,
-    onLoadingChange,
-    onModelAvailabilityChange,
-    onEngineTypeChange,
-  } = params;
+  // Autonomous - reads and writes directly to stores
+  const setStoreCapture = useCaptureDetailStore((state) => state.setCapture);
+  const setStoreMetadata = useCaptureDetailStore((state) => state.setMetadata);
+  const setStoreLoading = useCaptureDetailStore((state) => state.setLoading);
+  const setCaptureId = useCaptureDetailStore((state) => state.setCaptureId);
+  const setReloadCapture = useCaptureDetailStore(
+    (state) => state.setReloadCapture,
+  );
+  const setStoreHasModelAvailable = useCaptureDetailStore(
+    (state) => state.setHasModelAvailable,
+  );
+  const setStoreIsNativeEngine = useCaptureDetailStore(
+    (state) => state.setIsNativeEngine,
+  );
 
-  const [loading, setLoading] = useState(true);
+  // Local state for init-specific data that's not in the detail store
   const [error, setError] = useState<Error | null>(null);
-  const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
-  const [isNativeEngine, setIsNativeEngine] = useState(false);
-  const [existingAnalyses, setExistingAnalyses] = useState<any | null>(null);
+
+  // Read from store for return values
+  const loading = useCaptureDetailStore((state) => state.loading);
+  const hasModelAvailable = useCaptureDetailStore(
+    (state) => state.hasModelAvailable,
+  );
+  const isNativeEngine = useCaptureDetailStore((state) => state.isNativeEngine);
 
   /**
    * Load capture and metadata from repositories
    */
   const loadCapture = useCallback(async () => {
     try {
-      setLoading(true);
-      onLoadingChange(true);
+      setStoreLoading(true);
       setError(null);
 
       const repository = container.resolve<ICaptureRepository>(
-        TOKENS.ICaptureRepository
+        TOKENS.ICaptureRepository,
       );
       const metadataRepository = container.resolve<ICaptureMetadataRepository>(
-        TOKENS.ICaptureMetadataRepository
+        TOKENS.ICaptureMetadataRepository,
       );
 
       // Load capture
       const result = await repository.findById(captureId);
-      onCaptureLoaded(result);
+      setStoreCapture(result);
 
       // Load metadata
       const captureMetadata = await metadataRepository.getAllAsMap(captureId);
-      onMetadataLoaded(captureMetadata);
+      setStoreMetadata(captureMetadata);
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       console.error("[useCaptureDetailInit] Failed to load capture:", error);
       setError(error);
-      onCaptureLoaded(null);
+      setStoreCapture(null);
     } finally {
-      setLoading(false);
-      onLoadingChange(false);
+      setStoreLoading(false);
     }
-  }, [captureId, onCaptureLoaded, onMetadataLoaded, onLoadingChange]);
+  }, [captureId, setStoreCapture, setStoreMetadata, setStoreLoading]);
 
   /**
    * Load existing analyses for the capture
@@ -124,7 +116,10 @@ export function useCaptureDetailInit(
     try {
       const analysisService = container.resolve(CaptureAnalysisService);
       const analyses = await analysisService.getAnalyses(captureId);
-      setExistingAnalyses(analyses);
+
+      // Write directly to analysesStore (autonomous pattern)
+      const setAnalyses = useAnalysesStore.getState().setAnalyses;
+      setAnalyses(captureId, analyses);
     } catch (err) {
       console.error("[useCaptureDetailInit] Failed to load analyses:", err);
     }
@@ -138,17 +133,15 @@ export function useCaptureDetailInit(
       const modelService = container.resolve(TranscriptionModelService);
       const bestModel = await modelService.getBestAvailableModel();
       const available = bestModel !== null;
-      setHasModelAvailable(available);
-      onModelAvailabilityChange(available);
+      setStoreHasModelAvailable(available);
     } catch (err) {
       console.error(
         "[useCaptureDetailInit] Failed to check model availability:",
-        err
+        err,
       );
-      setHasModelAvailable(null); // Unknown state
-      onModelAvailabilityChange(null);
+      setStoreHasModelAvailable(null); // Unknown state
     }
-  }, [onModelAvailabilityChange]);
+  }, [setStoreHasModelAvailable]);
 
   /**
    * Check transcription engine type (native vs Whisper)
@@ -157,17 +150,12 @@ export function useCaptureDetailInit(
     try {
       const engineService = container.resolve(TranscriptionEngineService);
       const isNative = await engineService.isNativeEngineSelected();
-      setIsNativeEngine(isNative);
-      onEngineTypeChange(isNative);
+      setStoreIsNativeEngine(isNative);
     } catch (err) {
-      console.error(
-        "[useCaptureDetailInit] Failed to check engine type:",
-        err
-      );
-      setIsNativeEngine(false); // Default to Whisper on error
-      onEngineTypeChange(false);
+      console.error("[useCaptureDetailInit] Failed to check engine type:", err);
+      setStoreIsNativeEngine(false); // Default to Whisper on error
     }
-  }, [onEngineTypeChange]);
+  }, [setStoreIsNativeEngine]);
 
   // Effect 1: Initial capture load
   useEffect(() => {
@@ -189,12 +177,21 @@ export function useCaptureDetailInit(
     checkEngineType();
   }, [checkEngineType]);
 
+  // Effect 5: Expose captureId and reloadCapture in store for useCaptureDetailListener
+  useEffect(() => {
+    setCaptureId(captureId);
+    setReloadCapture(loadCapture);
+
+    return () => {
+      setCaptureId(null);
+      setReloadCapture(null);
+    };
+  }, [captureId, loadCapture, setCaptureId, setReloadCapture]);
+
   return {
     loading,
     error,
-    loadCapture,
     hasModelAvailable,
     isNativeEngine,
-    existingAnalyses,
   };
 }

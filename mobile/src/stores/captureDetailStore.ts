@@ -12,8 +12,14 @@ import type { CaptureMetadata } from "../contexts/capture/domain/CaptureMetadata
 interface CaptureDetailState {
   // Core data
   capture: Capture | null;
+  isAudio: boolean; // Commonly used check: capture.type === "audio"
+  isReady: boolean; // Commonly used check: capture.state === "ready"
   metadata: Record<string, CaptureMetadata>;
   loading: boolean;
+
+  // Listener coordination (for autonomous useCaptureDetailListener)
+  captureId: string | null;
+  reloadCapture: (() => Promise<void>) | null;
 
   // UI states
   showRawTranscript: boolean;
@@ -33,6 +39,8 @@ interface CaptureDetailState {
   setCapture: (capture: Capture | null) => void;
   setMetadata: (metadata: Record<string, CaptureMetadata>) => void;
   setLoading: (loading: boolean) => void;
+  setCaptureId: (id: string | null) => void;
+  setReloadCapture: (fn: (() => Promise<void>) | null) => void;
   setShowRawTranscript: (show: boolean) => void;
   setShowMetadata: (show: boolean) => void;
   setShowOriginalContent: (show: boolean) => void;
@@ -48,8 +56,12 @@ interface CaptureDetailState {
 
 const initialState = {
   capture: null,
+  isAudio: false,
+  isReady: false,
   metadata: {},
   loading: true,
+  captureId: null,
+  reloadCapture: null,
   showRawTranscript: false,
   showMetadata: false,
   showOriginalContent: false,
@@ -63,9 +75,15 @@ const initialState = {
 export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
   ...initialState,
 
-  setCapture: (capture) => set({ capture }),
+  setCapture: (capture) => set({
+    capture,
+    isAudio: capture?.type === "audio",
+    isReady: capture?.state === "ready"
+  }),
   setMetadata: (metadata) => set({ metadata }),
   setLoading: (loading) => set({ loading }),
+  setCaptureId: (id) => set({ captureId: id }),
+  setReloadCapture: (fn) => set({ reloadCapture: fn }),
   setShowRawTranscript: (show) => set({ showRawTranscript: show }),
   setShowMetadata: (show) => set({ showMetadata: show }),
   setShowOriginalContent: (show) => set({ showOriginalContent: show }),

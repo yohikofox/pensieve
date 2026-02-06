@@ -16,6 +16,7 @@ export { ActionsSection } from "./ActionsSection";
 export { ContactPickerModal } from "./ContactPickerModal";
 export { ActionBar } from "./ActionBar";
 export { AnalysisCard } from "./AnalysisCard";
+export { DeleteCaptureDialog } from "./DeleteCaptureDialog";
 export { DatePickerModal } from "./DatePickerModal";
 export { CaptureDetailLoading } from "./CaptureDetailLoading";
 export { CaptureDetailError } from "./CaptureDetailError";

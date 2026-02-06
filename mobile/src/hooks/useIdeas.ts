@@ -1,8 +1,12 @@
 /**
  * useIdeas Hook
  *
+ * Completely autonomous hook for ideas loading.
+ * Reads all data from stores, no parameters needed.
+ *
  * Manages structured ideas loading for a capture
  * Story 5.1 - Task 10.4: Structured ideas display
+ * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
  */
 
 import { useState, useEffect } from "react";
@@ -11,18 +15,16 @@ import { TOKENS } from "../infrastructure/di/tokens";
 import type { IThoughtRepository } from "../contexts/knowledge/domain/IThoughtRepository";
 import type { IIdeaRepository } from "../contexts/knowledge/domain/IIdeaRepository";
 import type { Idea } from "../contexts/knowledge/domain/Idea.model";
-import type { Capture } from "../contexts/capture/domain/Capture.model";
-
-interface UseIdeasParams {
-  capture: Capture | null;
-}
+import { useCaptureDetailStore } from "../stores/captureDetailStore";
 
 interface UseIdeasReturn {
   ideas: Idea[];
   ideasLoading: boolean;
 }
 
-export function useIdeas({ capture }: UseIdeasParams): UseIdeasReturn {
+export function useIdeas(): UseIdeasReturn {
+  // Read everything from stores - autonomous hook
+  const capture = useCaptureDetailStore((state) => state.capture);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [ideasLoading, setIdeasLoading] = useState(false);
 

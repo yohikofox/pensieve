@@ -41,6 +41,7 @@ interface ActionItemsListProps {
   onOpenContactPicker: (index: number) => void;
   onAddToCalendar: (index: number, item: ActionItem) => void;
   onSavedIndicatorHidden: () => void;
+  highlightTodoId?: string;
 }
 
 export function ActionItemsList({
@@ -55,6 +56,7 @@ export function ActionItemsList({
   onOpenContactPicker,
   onAddToCalendar,
   onSavedIndicatorHidden,
+  highlightTodoId,
 }: ActionItemsListProps) {
   return (
     <View style={styles.container}>

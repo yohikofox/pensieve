@@ -1,13 +1,14 @@
 /**
  * useCaptureDetailListener Hook
  *
- * Listens to EventBus events for a specific capture and triggers reload callback.
- * Replaces polling with event-driven updates.
+ * Autonomous hook that listens to EventBus events for the current capture
+ * and triggers reload. Reads captureId and reloadCapture from store.
  *
  * Usage:
  * ```tsx
  * function CaptureDetailScreen() {
- *   useCaptureDetailListener(captureId, loadCapture);
+ *   useCaptureDetailInit(captureId);  // Sets up store
+ *   useCaptureDetailListener();        // Reads from store - autonomous
  * }
  * ```
  */
@@ -15,6 +16,7 @@
 import { useEffect } from 'react';
 import { container } from 'tsyringe';
 import { EventBus } from '../contexts/shared/events/EventBus';
+import { useCaptureDetailStore } from '../stores/captureDetailStore';
 import type {
   QueueItemCompletedEvent,
   QueueItemFailedEvent,
@@ -26,17 +28,17 @@ import type {
 } from '../contexts/capture/events/CaptureEvents';
 
 /**
- * Hook that listens to events for a specific capture and triggers reload
- * @param captureId - ID of the capture to monitor
- * @param onReload - Callback to reload capture data
+ * Autonomous hook that listens to events for the current capture and triggers reload
+ * Reads captureId and reloadCapture from the store (set by useCaptureDetailInit)
  */
-export function useCaptureDetailListener(
-  captureId: string,
-  onReload?: () => void | Promise<void>
-) {
+export function useCaptureDetailListener() {
+  // Read from store - autonomous pattern
+  const captureId = useCaptureDetailStore((state) => state.captureId);
+  const reloadCapture = useCaptureDetailStore((state) => state.reloadCapture);
+
   useEffect(() => {
-    if (!onReload) {
-      // Listener is active but has no reload callback yet
+    if (!captureId || !reloadCapture) {
+      // Listener is waiting for init to set up the store
       return;
     }
 
@@ -48,7 +50,7 @@ export function useCaptureDetailListener(
     const handleStarted = (event: QueueItemStartedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] 🚀 Transcription started - reloading');
-        onReload();
+        reloadCapture();
       }
     };
 
@@ -56,7 +58,7 @@ export function useCaptureDetailListener(
     const handleCompleted = (event: QueueItemCompletedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] 📝 Transcription completed - reloading');
-        onReload();
+        reloadCapture();
       }
     };
 
@@ -64,7 +66,7 @@ export function useCaptureDetailListener(
     const handleFailed = (event: QueueItemFailedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] ❌ Transcription failed - reloading');
-        onReload();
+        reloadCapture();
       }
     };
 
@@ -72,7 +74,7 @@ export function useCaptureDetailListener(
     const handleUpdated = (event: CaptureUpdatedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] 📝 Capture updated - reloading');
-        onReload();
+        reloadCapture();
       }
     };
 
@@ -100,5 +102,5 @@ export function useCaptureDetailListener(
       console.log('[CaptureDetailListener] 🛑 Stopping listeners');
       subscriptions.forEach(sub => sub.unsubscribe());
     };
-  }, [captureId, onReload]);
+  }, [captureId, reloadCapture]);
 }

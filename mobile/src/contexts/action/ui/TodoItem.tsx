@@ -20,6 +20,7 @@ interface TodoItemProps {
   todo: Todo;
   onToggle: (todoId: string) => void;
   onTap: (todo: Todo) => void;
+  isHighlighted?: boolean;
 }
 
 /**
@@ -28,7 +29,7 @@ interface TodoItemProps {
  * AC5: Completed todo visual state (strikethrough, dimmed)
  * AC8: Checkbox toggle with haptic feedback
  */
-export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => {
+export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap, isHighlighted = false }) => {
   const { isDark } = useTheme();
 
   // Determine if todo is completed
@@ -87,6 +88,10 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap }) => 
         styles.container,
         { backgroundColor: bgColor },
         isCompleted && styles.completedContainer,
+        isHighlighted && styles.highlightedContainer,
+        isHighlighted && {
+          backgroundColor: isDark ? '#4f46e5' : '#eef2ff',
+        },
       ]}
       onPress={() => onTap(todo)}
       activeOpacity={0.7}
@@ -172,6 +177,10 @@ const styles = StyleSheet.create({
   },
   completedContainer: {
     opacity: 0.6, // Subtask 4.6: AC5 - dimmed
+  },
+  highlightedContainer: {
+    borderWidth: 1,
+    borderColor: '#4f46e5',
   },
   checkboxContainer: {
     marginRight: 12,

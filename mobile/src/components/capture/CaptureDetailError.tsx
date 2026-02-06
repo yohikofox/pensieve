@@ -7,13 +7,14 @@
  * Extracted from CaptureDetailScreen.tsx to improve organization.
  */
 
-import React from "react";
+import React, { PropsWithChildren } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { StandardLayout } from "../layouts";
 import { StatusIcons } from "../../design-system/icons";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
+import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 
 export interface CaptureDetailErrorProps {
   onGoBack: () => void;
@@ -21,8 +22,13 @@ export interface CaptureDetailErrorProps {
 
 export function CaptureDetailError({
   onGoBack,
-}: CaptureDetailErrorProps) {
+  children,
+}: PropsWithChildren<CaptureDetailErrorProps>) {
+  const capture = useCaptureDetailStore((state) => state.capture);
   const { themeColors } = useCaptureTheme();
+
+  if (capture) return <>{children}</>; // Only show error if capture is not found
+
   return (
     <StandardLayout>
       <View style={styles.errorContainer}>

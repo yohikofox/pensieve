@@ -40,6 +40,8 @@ interface IdeasSectionProps {
     analysisBorder: string;
   };
   onGenerate: () => void;
+  highlightIdeaId?: string;
+  highlightTodoId?: string;
 }
 
 export function IdeasSection({
@@ -51,6 +53,8 @@ export function IdeasSection({
   isDark,
   themeColors,
   onGenerate,
+  highlightIdeaId,
+  highlightTodoId,
 }: IdeasSectionProps) {
   return (
     <View
@@ -134,7 +138,12 @@ export function IdeasSection({
       ) : ideas.length > 0 ? (
         <View style={styles.ideasContainer}>
           {ideas.map((idea) => (
-            <IdeaItem key={idea.id} idea={idea} />
+            <IdeaItem
+              key={idea.id}
+              idea={idea}
+              isHighlighted={idea.id === highlightIdeaId}
+              highlightTodoId={highlightTodoId}
+            />
           ))}
         </View>
       ) : analysis ? (

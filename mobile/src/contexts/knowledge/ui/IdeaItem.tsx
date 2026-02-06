@@ -13,26 +13,37 @@ import type { Idea } from '../domain/Idea.model';
 
 interface IdeaItemProps {
   idea: Idea;
+  isHighlighted?: boolean;
+  highlightTodoId?: string;
 }
 
 /**
  * IdeaItem - Single idea display with inline todos (AC1, AC7)
  * Displays idea text with InlineTodoList component below
+ * Optional highlighting when scrolled from navigation
  */
-export const IdeaItem: React.FC<IdeaItemProps> = ({ idea }) => {
+export const IdeaItem: React.FC<IdeaItemProps> = ({ idea, isHighlighted = false, highlightTodoId }) => {
   const { isDark } = useTheme();
 
   const textColor = isDark ? '#f9fafb' : '#111827';
 
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        isHighlighted && styles.highlightedContainer,
+        isHighlighted && {
+          backgroundColor: isDark ? '#4f46e5' : '#eef2ff',
+        },
+      ]}
+    >
       {/* Idea text (AC1) */}
       <Text style={[styles.ideaText, { color: textColor }]}>
         {idea.text}
       </Text>
 
       {/* Inline todos (AC1) - Displayed below idea */}
-      <InlineTodoList ideaId={idea.id} />
+      <InlineTodoList ideaId={idea.id} highlightTodoId={highlightTodoId} />
     </View>
   );
 };
@@ -40,6 +51,11 @@ export const IdeaItem: React.FC<IdeaItemProps> = ({ idea }) => {
 const styles = StyleSheet.create({
   container: {
     marginBottom: 12,
+  },
+  highlightedContainer: {
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    borderRadius: 6,
   },
   ideaText: {
     fontSize: 15,

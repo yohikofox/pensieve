@@ -15,269 +15,114 @@
 
 import React, { useEffect } from "react";
 import { View, ScrollView } from "react-native";
-import { AlertDialog, useToast } from "../../design-system/components";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
-import { ANALYSIS_TYPES } from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useNavigation } from "@react-navigation/native";
 import { useCaptureDetailListener } from "../../hooks/useCaptureDetailListener";
-import { useActionItems } from "../../hooks/useActionItems";
-import { useReprocessing } from "../../hooks/useReprocessing";
-import { useIdeas } from "../../hooks/useIdeas";
-import { useDeleteCapture } from "../../hooks/useDeleteCapture";
-import { useTextEditor } from "../../hooks/useTextEditor";
-import { useAnalyses } from "../../hooks/useAnalyses";
 import {
   ReprocessingCard,
   CaptureHeader,
   MetadataSection,
   RawTranscriptSection,
   ActionsSection,
-  ContactPickerModal,
   ActionBar,
   AnalysisCard,
-  DatePickerModal,
   CaptureDetailLoading,
   CaptureDetailError,
   CaptureAudioPlayerSection,
   ContentSection,
+  DeleteCaptureDialog,
 } from "../../components/capture";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 
 export interface CaptureDetailContentProps {
   captureId: string;
   startAnalysis?: boolean;
+  highlightIdeaId?: string;
+  highlightTodoId?: string;
 }
 
 export function CaptureDetailContent({
   captureId,
   startAnalysis,
+  highlightIdeaId,
+  highlightTodoId,
 }: CaptureDetailContentProps) {
   const navigation = useNavigation();
 
   // Zustand store for capture detail state
-  const capture = useCaptureDetailStore((state) => state.capture);
   const loading = useCaptureDetailStore((state) => state.loading);
-
-  const setCapture = useCaptureDetailStore((state) => state.setCapture);
-  const setMetadata = useCaptureDetailStore((state) => state.setMetadata);
-  const setLoading = useCaptureDetailStore((state) => state.setLoading);
+  const isReady = useCaptureDetailStore((state) => state.isReady);
   const setShowAnalysis = useCaptureDetailStore(
     (state) => state.setShowAnalysis,
   );
-  const setHasModelAvailable = useCaptureDetailStore(
-    (state) => state.setHasModelAvailable,
-  );
-  const setIsNativeEngine = useCaptureDetailStore(
-    (state) => state.setIsNativeEngine,
-  );
 
-  // Toast
-  const toast = useToast();
+  // Initialization hook - autonomous, reads and writes to stores
+  // Also exposes captureId and reloadCapture in store for useCaptureDetailListener
+  useCaptureDetailInit(captureId);
 
-  // Initialization hook - consolidates capture loading, analyses, and engine checks
-  const init = useCaptureDetailInit({
-    captureId,
-    onCaptureLoaded: setCapture,
-    onMetadataLoaded: setMetadata,
-    onLoadingChange: setLoading,
-    onModelAvailabilityChange: setHasModelAvailable,
-    onEngineTypeChange: setIsNativeEngine,
-  });
+  // Event-driven updates - autonomous, reads from store
+  useCaptureDetailListener();
 
-  // Text editor hook - completely autonomous, reads from stores
-  const textEditorHook = useTextEditor();
-
-  // Analyses hook - manages LLM analysis generation (defined before actionItemsHook)
-  const analysesHook = useAnalyses({
-    captureId,
-    toast,
-    ensureTextSaved: textEditorHook.ensureTextSaved,
-  });
-
-  // Action items hook - manages all action items state and logic
-  const actionItemsHook = useActionItems({
-    captureId,
-    actionItemsAnalysis: analysesHook.analyses[ANALYSIS_TYPES.ACTION_ITEMS],
-    toast,
-    onAnalysisUpdate: (updatedAnalysis) => {
-      analysesHook.setAnalyses((prev) => ({
-        ...prev,
-        [ANALYSIS_TYPES.ACTION_ITEMS]: updatedAnalysis,
-      }));
-    },
-  });
-
-  // Reprocessing hook - manages re-transcribe and re-post-process
-  const reprocessingHook = useReprocessing({
-    capture,
-    toast,
-    onReloadCapture: init.loadCapture,
-  });
-
-  // Ideas hook - manages structured ideas loading
-  const ideasHook = useIdeas({
-    capture,
-  });
-
-  // Delete hook - manages capture deletion and confirmation dialog
-  const deleteHook = useDeleteCapture({
-    captureId,
-    toast,
-    onDeleted: () => navigation.goBack(),
-  });
-
-  // Initialize analyses when loaded by init hook
+  // Auto-expand analysis section if highlighting an idea or todo
   useEffect(() => {
-    if (init.existingAnalyses) {
-      analysesHook.setAnalyses(init.existingAnalyses);
-    }
-  }, [init.existingAnalyses]);
-
-  // Auto-expand analysis section if startAnalysis is true
-  // Wait for loading to complete (ensures editedText is set)
-  useEffect(() => {
-    if (startAnalysis && capture?.state === "ready" && !loading) {
+    if ((highlightIdeaId || highlightTodoId) && isReady) {
       setShowAnalysis(true);
     }
-  }, [startAnalysis, capture?.state, loading]);
+  }, [highlightIdeaId, highlightTodoId, isReady, setShowAnalysis]);
 
-  // Event-driven updates (replaces polling)
-  useCaptureDetailListener(captureId, init.loadCapture);
+  // Note: Delete dialog managed by DeleteCaptureDialog component (autonomous)
 
   if (loading) {
     return <CaptureDetailLoading />;
   }
 
-  if (!capture) {
-    return (
-      <CaptureDetailError
-        onGoBack={() => navigation.goBack()}
-      />
-    );
-  }
-
   return (
-    <StandardLayout>
-      <View style={styles.container}>
-        <ScrollView
-          style={styles.scrollView}
-          contentContainerStyle={styles.content}
-        >
-          {/* Header Info */}
-          <CaptureHeader />
+    <CaptureDetailError onGoBack={() => navigation.goBack()}>
+      <StandardLayout>
+        <View style={styles.container}>
+          <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.content}
+          >
+            {/* Header Info */}
+            <CaptureHeader />
 
-          {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
-          <CaptureAudioPlayerSection />
+            {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
+            <CaptureAudioPlayerSection />
 
-          {/* Content */}
-          <ContentSection
-            onTextChange={textEditorHook.handleTextChange}
-          />
+            {/* Content */}
+            <ContentSection />
 
-          {/* Raw Transcript (before LLM) - Show when different from final text */}
-          <RawTranscriptSection />
+            {/* Raw Transcript (before LLM) - Show when different from final text */}
+            {/* <RawTranscriptSection /> */}
 
-          {/* Metadata Section */}
-          <MetadataSection />
+            {/* Metadata Section */}
+            {/* <MetadataSection /> */}
 
-          {/* Actions Section - Quick actions for captures */}
-          <ActionsSection
-            reprocessing={reprocessingHook.reprocessing}
-            onReTranscribe={reprocessingHook.handleReTranscribe}
-            onRePostProcess={reprocessingHook.handleRePostProcess}
-          />
+            {/* Actions Section - Quick actions for captures - Autonomous */}
+            {/* <ActionsSection /> */}
 
-          {/* Analysis Section - Show for ready audio captures AND all text notes with content */}
-          {capture.state === "ready" && (
-            <AnalysisCard
-              actionItemsHook={actionItemsHook}
-              ideasHook={ideasHook}
-              analysesHook={analysesHook}
-            />
-          )}
+            {/* Analysis Section - Autonomous, calls hooks directly */}
+            {/* <AnalysisCard
+              startAnalysis={startAnalysis}
+              highlightIdeaId={highlightIdeaId}
+              highlightTodoId={highlightTodoId}
+            /> */}
 
-          {/* Reprocess Section - Debug tools for audio captures (debug mode only) */}
-          {isAudio && capture.state === "ready" && (
-            <ReprocessingCard
-              reprocessing={reprocessingHook.reprocessing}
-              onReTranscribe={reprocessingHook.handleReTranscribe}
-              onRePostProcess={reprocessingHook.handleRePostProcess}
-            />
-          )}
-        </ScrollView>
+            {/* Reprocess Section - Debug tools (manages own visibility) */}
+            {/* <ReprocessingCard /> */}
+          </ScrollView>
 
-        {/* Date Picker Modal - Fonctionne sur iOS et Android */}
-        <DatePickerModal
-          visible={actionItemsHook.showDatePicker}
-          selectedDate={actionItemsHook.selectedDate}
-          onConfirm={actionItemsHook.handleDateConfirm}
-          onCancel={actionItemsHook.handleDateCancel}
-        />
+          {/* Action Bar - Autonomous */}
+          {/* <ActionBar /> */}
 
-        {/* Contact Picker Modal */}
-        <ContactPickerModal
-          visible={actionItemsHook.showContactPicker}
-          loadingContacts={actionItemsHook.loadingContacts}
-          contactSearchQuery={actionItemsHook.contactSearchQuery}
-          filteredContacts={actionItemsHook.filteredContacts}
-          onClose={actionItemsHook.handleContactPickerCancel}
-          onSearchChange={actionItemsHook.setContactSearchQuery}
-          onSelectContact={actionItemsHook.handleSelectContact}
-        />
-
-        {/* Action Bar */}
-        <ActionBar
-          onCopy={textEditorHook.handleCopy}
-          onShare={textEditorHook.handleShare}
-          onDelete={deleteHook.handleDelete}
-          onSave={textEditorHook.handleSave}
-          onDiscardChanges={textEditorHook.handleDiscardChanges}
-        />
-
-        {/* Delete confirmation dialog */}
-        <AlertDialog
-          visible={deleteHook.showDeleteDialog}
-          onClose={deleteHook.cancelDelete}
-          title="Supprimer cette capture ?"
-          message="Cette action est irréversible."
-          icon="trash-2"
-          variant="danger"
-          confirmAction={{
-            label: "Supprimer",
-            onPress: deleteHook.confirmDelete,
-          }}
-          cancelAction={{
-            label: "Annuler",
-            onPress: deleteHook.cancelDelete,
-          }}
-        />
-
-        {/* Google Calendar connection dialog */}
-        <AlertDialog
-          visible={actionItemsHook.showCalendarDialog}
-          onClose={() => actionItemsHook.setShowCalendarDialog(false)}
-          title="Google Calendar non connecté"
-          message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
-          icon="calendar"
-          variant="warning"
-          confirmAction={{
-            label: "OK",
-            onPress: () => {
-              actionItemsHook.setShowCalendarDialog(false);
-              toast.info(
-                "Allez dans Paramètres > Intégrations > Google Calendar",
-              );
-            },
-          }}
-          cancelAction={{
-            label: "Annuler",
-            onPress: () => actionItemsHook.setShowCalendarDialog(false),
-          }}
-        />
-      </View>
-    </StandardLayout>
+          {/* Delete confirmation dialog - Autonomous */}
+          {/* <DeleteCaptureDialog /> */}
+        </View>
+      </StandardLayout>
+    </CaptureDetailError>
   );
 }

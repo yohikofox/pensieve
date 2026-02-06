@@ -6,7 +6,7 @@
  * - Re-post-process with LLM
  * - Display current processing status
  *
- * Story 5.4: Refactored to consume stores directly instead of props.
+ * Story 5.4: Autonomous component - uses hooks directly, no prop drilling
  */
 
 import React, { useState } from "react";
@@ -24,27 +24,20 @@ import { CaptureIcons, NavigationIcons } from "../../design-system/icons";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
+import { useReprocessing } from "../../hooks/useReprocessing";
 
-interface ReprocessingCardProps {
-  reprocessing: {
-    transcribe: boolean;
-    postProcess: boolean;
-  };
-  onReTranscribe: () => void;
-  onRePostProcess: () => void;
-}
-
-export function ReprocessingCard({
-  reprocessing,
-  onReTranscribe,
-  onRePostProcess,
-}: ReprocessingCardProps) {
+export function ReprocessingCard() {
+  // Autonomous hook - reads from stores
+  const { reprocessing, handleReTranscribe, handleRePostProcess } = useReprocessing();
   const capture = useCaptureDetailStore((state) => state.capture);
+  const isAudio = useCaptureDetailStore((state) => state.isAudio);
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const { themeColors, isDark } = useCaptureTheme();
   const [showReprocess, setShowReprocess] = useState(false);
 
+  // Component manages its own visibility conditions
   if (!capture) return null;
+  if (!isAudio || capture.state !== "ready") return null;
 
   return (
     <View
@@ -237,7 +230,7 @@ export function ReprocessingCard({
               styles.button,
               { backgroundColor: themeColors.reprocessButtonTranscribe },
             ]}
-            onPress={onReTranscribe}
+            onPress={handleReTranscribe}
             disabled={reprocessing.transcribe}
           >
             {reprocessing.transcribe ? (
@@ -268,7 +261,7 @@ export function ReprocessingCard({
               styles.button,
               { backgroundColor: themeColors.reprocessButtonPostProcess },
             ]}
-            onPress={onRePostProcess}
+            onPress={handleRePostProcess}
             disabled={
               reprocessing.postProcess ||
               !metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value

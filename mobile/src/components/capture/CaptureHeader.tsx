@@ -12,7 +12,11 @@ import { useNavigation } from "@react-navigation/native";
 import { container } from "tsyringe";
 import { colors } from "../../design-system/tokens";
 import { Button, useToast } from "../../design-system/components";
-import { CaptureIcons, StatusIcons, ActionIcons } from "../../design-system/icons";
+import {
+  CaptureIcons,
+  StatusIcons,
+  ActionIcons,
+} from "../../design-system/icons";
 import { formatDate, formatDuration } from "../../utils/formatters";
 import { TranscriptionQueueService } from "../../contexts/Normalization/services/TranscriptionQueueService";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
@@ -21,17 +25,22 @@ import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
 export function CaptureHeader() {
   const capture = useCaptureDetailStore((state) => state.capture);
-  const hasModelAvailable = useCaptureDetailStore((state) => state.hasModelAvailable);
+  const hasModelAvailable = useCaptureDetailStore(
+    (state) => state.hasModelAvailable,
+  );
   const isNativeEngine = useCaptureDetailStore((state) => state.isNativeEngine);
 
-  const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
+  const autoTranscriptionEnabled = useSettingsStore(
+    (state) => state.autoTranscriptionEnabled,
+  );
   const { themeColors, isDark } = useCaptureTheme();
   const navigation = useNavigation();
   const toast = useToast();
 
   if (!capture) return null;
 
-  const isAudio = capture.type === "audio";
+  const isAudio = useCaptureDetailStore((state) => state.isAudio);
+  const isReady = useCaptureDetailStore((state) => state.isReady);
 
   const handleStartTranscription = async () => {
     try {
@@ -39,7 +48,7 @@ export function CaptureHeader() {
       await queueService.enqueue({
         captureId: capture.id,
         audioPath: capture.rawContent || "",
-        audioDuration: capture.duration,
+        audioDuration: capture.duration ?? undefined,
       });
       toast.success("Transcription lancée");
     } catch (error) {
@@ -184,7 +193,7 @@ export function CaptureHeader() {
           )}
 
           {/* Ready */}
-          {capture.state === "ready" && (
+          {isReady && (
             <View
               style={[
                 styles.statusBadge,
