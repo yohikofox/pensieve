@@ -11,11 +11,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { container } from 'tsyringe';
 import { ITodoRepository } from '../domain/ITodoRepository';
+import { TOKENS } from '../../../infrastructure/di/tokens';
 
 const QUERY_KEY = ['todos', 'count', 'active'];
 
 export const useActiveTodoCount = () => {
-  const todoRepository = container.resolve<ITodoRepository>('ITodoRepository');
+  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
 
   return useQuery({
     queryKey: QUERY_KEY,

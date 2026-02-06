@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { container } from 'tsyringe';
 import { ITodoRepository } from '../domain/ITodoRepository';
+import { TOKENS } from '../../../infrastructure/di/tokens';
 
 /**
  * Hook to get filtered todo counts for filter badges
@@ -15,7 +16,7 @@ export interface UseFilteredTodoCountsReturn {
 }
 
 export const useFilteredTodoCounts = (): UseFilteredTodoCountsReturn => {
-  const todoRepository = container.resolve<ITodoRepository>('TodoRepository');
+  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
 
   // Query all todos count
   const allCount = useQuery({
