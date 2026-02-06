@@ -10,11 +10,11 @@
  */
 
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
-import { container } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { ICaptureAnalysisRepository } from '../../capture/domain/ICaptureAnalysisRepository';
+import type { ILLMModelService } from '../domain/ILLMModelService';
 import {
   type CaptureAnalysis,
   type AnalysisType,
@@ -22,7 +22,6 @@ import {
 } from '../../capture/domain/CaptureAnalysis.model';
 import { getPreparedSystemPrompt } from './analysisPrompts';
 import { LlamaRnBackend } from './postprocessing/LlamaRnBackend';
-import { LLMModelService } from './LLMModelService';
 
 export interface AnalysisResult {
   analysis: CaptureAnalysis;
@@ -43,7 +42,9 @@ export class CaptureAnalysisService {
   private initializationPromise: Promise<boolean> | null = null;
   private currentModelId: string | null = null;
 
-  constructor() {}
+  constructor(
+    @inject(TOKENS.ILLMModelService) private modelService: ILLMModelService
+  ) {}
 
   /**
    * Initialize the service
@@ -56,9 +57,8 @@ export class CaptureAnalysisService {
     }
 
     // Check if model selection has changed
-    const modelService = container.resolve(LLMModelService);
-    const selectedModelId = await modelService.getBestAvailableModelForTask('analysis', 'llamarn')
-      || await modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
+    const selectedModelId = await this.modelService.getBestAvailableModelForTask('analysis', 'llamarn')
+      || await this.modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
 
     if (this.isInitialized && this.llamaBackend?.isModelLoaded()) {
       // Check if the selected model is different from the loaded one
@@ -85,28 +85,25 @@ export class CaptureAnalysisService {
     try {
       console.log('[CaptureAnalysisService] Starting initialization...');
 
-      // Get model service to find a downloaded model
-      const modelService = container.resolve(LLMModelService);
-
       // Check if post-processing is enabled
-      const enabled = await modelService.isPostProcessingEnabled();
+      const enabled = await this.modelService.isPostProcessingEnabled();
       if (!enabled) {
         console.warn('[CaptureAnalysisService] Post-processing not enabled in settings');
         return false;
       }
 
       // Get the best available model for analysis task
-      const modelId = await modelService.getBestAvailableModelForTask('analysis', 'llamarn');
+      const modelId = await this.modelService.getBestAvailableModelForTask('analysis', 'llamarn');
       if (!modelId) {
         // Fallback to postProcessing model if no analysis-specific model
-        const fallbackModelId = await modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
+        const fallbackModelId = await this.modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
         if (!fallbackModelId) {
           console.warn('[CaptureAnalysisService] No LLM model downloaded for analysis');
           return false;
         }
         console.log('[CaptureAnalysisService] Using postProcessing model as fallback:', fallbackModelId);
-        const modelConfig = modelService.getModelConfig(fallbackModelId);
-        const modelPath = modelService.getModelPath(fallbackModelId);
+        const modelConfig = this.modelService.getModelConfig(fallbackModelId);
+        const modelPath = this.modelService.getModelPath(fallbackModelId);
 
         // Create and initialize the backend
         this.llamaBackend = new LlamaRnBackend();

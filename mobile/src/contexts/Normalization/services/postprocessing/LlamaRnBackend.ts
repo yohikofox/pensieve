@@ -20,7 +20,7 @@ import {
   extractModelIdFromPath,
   POSTPROCESSING_USER_PROMPT,
 } from './IPostProcessingBackend';
-import { type PromptTemplate } from '../LLMModelService';
+import type { PromptTemplate } from '../../domain/ILLMModelService';
 
 // llama.rn types (will be available after npm install)
 interface LlamaContext {

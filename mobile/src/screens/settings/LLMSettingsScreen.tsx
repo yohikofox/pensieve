@@ -24,15 +24,16 @@ import {
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { LLMModelCard } from '../../components/llm/LLMModelCard';
-import {
-  LLMModelService,
-  type LLMModelId,
-  type LLMModelConfig,
-  type LLMTask,
-} from '../../contexts/Normalization/services/LLMModelService';
+import type {
+  ILLMModelService,
+  LLMModelId,
+  LLMModelConfig,
+  LLMTask,
+} from '../../contexts/Normalization/domain/ILLMModelService';
 import { NPUDetectionService, type NPUInfo } from '../../contexts/Normalization/services/NPUDetectionService';
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import { type HuggingFaceUser } from '../../contexts/Normalization/services/HuggingFaceAuthService';
@@ -40,6 +41,7 @@ import { debugPromptManager } from '../../contexts/Normalization/services/postpr
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useLLMSettingsScreenStore, hasDownloadedModels } from '../../stores/llmSettingsScreenStore';
 import { useTheme } from '../../hooks/useTheme';
+import { StandardLayout } from '../../components/layouts';
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -137,7 +139,7 @@ export function LLMSettingsScreen() {
   const toast = useToast();
 
   // Get services from DI container (singleton instances)
-  const modelService = useMemo(() => container.resolve(LLMModelService), []);
+  const modelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
   const npuDetection = useMemo(() => container.resolve(NPUDetectionService), []);
   const authService = modelService.getAuthService();
 
@@ -407,8 +409,9 @@ export function LLMSettingsScreen() {
   }, [toast]);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
-      {/* Header */}
+    <StandardLayout useSafeArea={false}>
+      <ScrollView style={styles.container}>
+        {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Amélioration IA</Text>
         <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
@@ -781,7 +784,8 @@ export function LLMSettingsScreen() {
           </View>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 }
 

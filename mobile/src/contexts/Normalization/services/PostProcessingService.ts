@@ -15,12 +15,13 @@
  */
 
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
+import { inject, injectable } from 'tsyringe';
 import { type IPostProcessingBackend, type PostProcessingResult } from './postprocessing/IPostProcessingBackend';
 import { LlamaRnBackend } from './postprocessing/LlamaRnBackend';
 import { MediaPipeBackend } from './postprocessing/MediaPipeBackend';
-import { LLMModelService, type LLMModelId, type LLMBackendType } from './LLMModelService';
+import type { ILLMModelService, LLMModelId, LLMBackendType } from '../domain/ILLMModelService';
 import { NPUDetectionService, type NPUInfo } from './NPUDetectionService';
+import { TOKENS } from '../../../infrastructure/di/tokens';
 
 export interface PostProcessingConfig {
   /** Whether post-processing is enabled */
@@ -40,8 +41,8 @@ export class PostProcessingService {
   private isReady: boolean = false;
 
   constructor(
-    private modelService: LLMModelService,
-    private npuDetection: NPUDetectionService
+    @inject(TOKENS.ILLMModelService) private modelService: ILLMModelService,
+    @inject(NPUDetectionService) private npuDetection: NPUDetectionService
   ) {}
 
   /**

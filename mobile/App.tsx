@@ -1,44 +1,50 @@
-import 'reflect-metadata';
-import './global.css';
-import './src/i18n';
-import React, { useEffect } from 'react';
-import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
-import { StatusBar } from 'expo-status-bar';
-import { Appearance } from 'react-native';
-import { colorScheme as nwColorScheme } from 'nativewind';
-import { useAuthListener } from './src/contexts/identity/hooks/useAuthListener';
-import { useDeepLinkAuth } from './src/contexts/identity/hooks/useDeepLinkAuth';
-import { useLLMSettingsListener } from './src/hooks/useLLMSettingsListener';
-import { AuthNavigator } from './src/navigation/AuthNavigator';
-import { MainNavigator } from './src/navigation/MainNavigator';
-import { lightNavigationTheme, darkNavigationTheme } from './src/navigation/theme';
-import { ThemeProvider, useThemeContext } from './src/contexts/theme/ThemeProvider';
-import { useSettingsStore } from './src/stores/settingsStore';
-import { AppState, type AppStateStatus } from 'react-native';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { LoadingView, ToastProvider } from './src/design-system/components';
-import { registerServices } from './src/infrastructure/di/container';
-import { container } from 'tsyringe';
-import { TOKENS } from './src/infrastructure/di/tokens';
-import { type ICrashRecoveryService } from './src/contexts/capture/domain/ICrashRecoveryService';
+import "reflect-metadata";
+import "./global.css";
+import "./src/i18n";
+import React, { useEffect } from "react";
+import {
+  NavigationContainer,
+  useNavigationContainerRef,
+} from "@react-navigation/native";
+import { StatusBar } from "expo-status-bar";
+import { Appearance } from "react-native";
+import { colorScheme as nwColorScheme } from "nativewind";
+import { useAuthListener } from "./src/contexts/identity/hooks/useAuthListener";
+import { useDeepLinkAuth } from "./src/contexts/identity/hooks/useDeepLinkAuth";
+import { useLLMSettingsListener } from "./src/hooks/useLLMSettingsListener";
+import { AuthNavigator } from "./src/navigation/AuthNavigator";
+import { MainNavigator } from "./src/navigation/MainNavigator";
+import { useNavigationTheme } from "./src/hooks/useNavigationTheme";
+import {
+  ThemeProvider,
+  useThemeContext,
+} from "./src/contexts/theme/ThemeProvider";
+import { useSettingsStore } from "./src/stores/settingsStore";
+import { AppState, type AppStateStatus } from "react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
+import { LoadingView, ToastProvider } from "./src/design-system/components";
+import { registerServices } from "./src/infrastructure/di/container";
+import { container } from "tsyringe";
+import { TOKENS } from "./src/infrastructure/di/tokens";
+import { type ICrashRecoveryService } from "./src/contexts/capture/domain/ICrashRecoveryService";
+import type { ILLMModelService } from "./src/contexts/Normalization/domain/ILLMModelService";
 import {
   showCrashRecoveryNotification,
   requestNotificationPermissions,
   setupNotificationResponseHandler,
-} from './src/shared/utils/notificationUtils';
-import NetInfo from '@react-native-community/netinfo';
-import { TranscriptionQueueProcessor } from './src/contexts/Normalization/processors/TranscriptionQueueProcessor';
-import { TranscriptionWorker } from './src/contexts/Normalization/workers/TranscriptionWorker';
-import { registerTranscriptionBackgroundTask } from './src/contexts/Normalization/tasks/transcriptionBackgroundTask';
-import { LLMModelService } from './src/contexts/Normalization/services/LLMModelService';
-import { NPUDetectionService } from './src/contexts/Normalization/services/NPUDetectionService';
-import { WaveformExtractionService } from './src/contexts/capture/services/WaveformExtractionService';
-import { DevPanelProvider } from './src/components/dev/DevPanelContext';
-import { DevPanel } from './src/components/dev/DevPanel';
-import { CalibrationGridWrapper } from './src/components/debug';
-import { NetworkProvider } from './src/contexts/NetworkContext';
-import { deepLinkService } from './src/services/deep-linking/DeepLinkService';
-import { QueryProvider } from './src/providers/QueryProvider';
+} from "./src/shared/utils/notificationUtils";
+import NetInfo from "@react-native-community/netinfo";
+import { TranscriptionQueueProcessor } from "./src/contexts/Normalization/processors/TranscriptionQueueProcessor";
+import { TranscriptionWorker } from "./src/contexts/Normalization/workers/TranscriptionWorker";
+import { registerTranscriptionBackgroundTask } from "./src/contexts/Normalization/tasks/transcriptionBackgroundTask";
+import { NPUDetectionService } from "./src/contexts/Normalization/services/NPUDetectionService";
+import { WaveformExtractionService } from "./src/contexts/capture/services/WaveformExtractionService";
+import { DevPanelProvider } from "./src/components/dev/DevPanelContext";
+import { DevPanel } from "./src/components/dev/DevPanel";
+import { CalibrationGridWrapper } from "./src/components/debug";
+import { NetworkProvider } from "./src/contexts/NetworkContext";
+import { deepLinkService } from "./src/services/deep-linking/DeepLinkService";
+import { QueryProvider } from "./src/providers/QueryProvider";
 
 // Initialize IoC container with production services
 registerServices();
@@ -47,15 +53,24 @@ registerServices();
 // This ensures NativeWind's dark: classes are set correctly from the start
 (() => {
   const storedPreference = useSettingsStore.getState().themePreference;
-  const systemScheme = Appearance.getColorScheme() ?? 'light';
-  const targetScheme = storedPreference === 'system' ? systemScheme : storedPreference;
-  console.log('[App] Sync theme init:', targetScheme, '(preference:', storedPreference, ', system:', systemScheme, ')');
+  const systemScheme = Appearance.getColorScheme() ?? "light";
+  const targetScheme =
+    storedPreference === "system" ? systemScheme : storedPreference;
+  console.log(
+    "[App] Sync theme init:",
+    targetScheme,
+    "(preference:",
+    storedPreference,
+    ", system:",
+    systemScheme,
+    ")",
+  );
   nwColorScheme.set(targetScheme);
 })();
 
 // Configure NetInfo for real internet reachability detection
 NetInfo.configure({
-  reachabilityUrl: 'https://clients3.google.com/generate_204',
+  reachabilityUrl: "https://clients3.google.com/generate_204",
   reachabilityTest: async (response) => response.status === 204,
   reachabilityShortTimeout: 5 * 1000, // 5s
   reachabilityLongTimeout: 60 * 1000, // 60s
@@ -68,12 +83,12 @@ NetInfo.configure({
  */
 function AppContent() {
   const { user, loading } = useAuthListener();
-  const { colorScheme, isDark } = useThemeContext();
+
   useDeepLinkAuth(); // Handle deep link authentication (requires ToastProvider)
   useLLMSettingsListener(); // Sync LLM settings from service to store
 
-  // Select navigation theme based on current color scheme
-  const navigationTheme = isDark ? darkNavigationTheme : lightNavigationTheme;
+  // Get navigation theme based on current color scheme
+  const navigationTheme = useNavigationTheme();
 
   // Note: Database initialization happens automatically via database/index.ts auto-init
   // No manual initialization needed here
@@ -85,9 +100,9 @@ function AppContent() {
   useEffect(() => {
     // Wait for navigation to be ready
     if (navigationRef.current) {
-      console.log('[App] Initializing deep link service...');
+      console.log("[App] Initializing deep link service...");
       const cleanup = deepLinkService.initialize(navigationRef.current);
-      console.log('[App] ✅ Deep link service initialized');
+      console.log("[App] ✅ Deep link service initialized");
 
       return cleanup;
     }
@@ -99,8 +114,11 @@ function AppContent() {
     const checkCrashRecovery = async () => {
       try {
         // Resolve by token as registered in container.ts
-        const crashRecoveryService = container.resolve<ICrashRecoveryService>(TOKENS.ICrashRecoveryService);
-        const recovered = await crashRecoveryService.recoverIncompleteRecordings();
+        const crashRecoveryService = container.resolve<ICrashRecoveryService>(
+          TOKENS.ICrashRecoveryService,
+        );
+        const recovered =
+          await crashRecoveryService.recoverIncompleteRecordings();
 
         // Show notification if any recordings were recovered
         if (recovered.length > 0) {
@@ -108,7 +126,7 @@ function AppContent() {
         }
       } catch (error) {
         // Silent fail - don't block app startup for crash recovery issues
-        console.error('[App] Crash recovery check failed:', error);
+        console.error("[App] Crash recovery check failed:", error);
       }
     };
 
@@ -120,21 +138,25 @@ function AppContent() {
     const recoverDownloads = async () => {
       try {
         // Resolve service from DI container (singleton)
-        const modelService = container.resolve(LLMModelService);
+        const modelService = container.resolve<ILLMModelService>(TOKENS.ILLMModelService);
 
         // Initialize service (auth + downloader config)
         await modelService.initialize();
 
         // Recover interrupted downloads
-        const recoveredModels = await modelService.recoverInterruptedDownloads();
+        const recoveredModels =
+          await modelService.recoverInterruptedDownloads();
 
         if (recoveredModels.length > 0) {
-          console.log('[App] Recovered interrupted downloads:', recoveredModels);
+          console.log(
+            "[App] Recovered interrupted downloads:",
+            recoveredModels,
+          );
           // TODO: Show toast notification if we want to inform user
         }
       } catch (error) {
         // Silent fail - don't block app startup
-        console.error('[App] Download recovery failed:', error);
+        console.error("[App] Download recovery failed:", error);
       }
     };
 
@@ -146,9 +168,12 @@ function AppContent() {
     const setupNotifications = async () => {
       try {
         const granted = await requestNotificationPermissions();
-        console.log('[App] Notification permissions:', granted ? 'granted' : 'denied');
+        console.log(
+          "[App] Notification permissions:",
+          granted ? "granted" : "denied",
+        );
       } catch (error) {
-        console.error('[App] Notification setup failed:', error);
+        console.error("[App] Notification setup failed:", error);
       }
     };
 
@@ -156,7 +181,10 @@ function AppContent() {
 
     // Setup notification response handler (when user taps notification)
     const cleanup = setupNotificationResponseHandler((captureId) => {
-      console.log('[App] User tapped transcription notification for:', captureId);
+      console.log(
+        "[App] User tapped transcription notification for:",
+        captureId,
+      );
       // TODO: Navigate to capture detail when implemented
     });
 
@@ -169,41 +197,52 @@ function AppContent() {
     const queueProcessor = container.resolve(TranscriptionQueueProcessor);
     const waveformService = container.resolve(WaveformExtractionService);
     const worker = container.resolve(TranscriptionWorker);
-    let appStateListener: ReturnType<typeof AppState.addEventListener> | null = null;
+    let appStateListener: ReturnType<typeof AppState.addEventListener> | null =
+      null;
 
     const initializeTranscription = async () => {
       try {
-        console.log('[App] Initializing transcription services...');
+        console.log("[App] Initializing transcription services...");
 
         // Start event listener (auto-enqueue captures)
         queueProcessor.start();
-        console.log('[App] ✅ TranscriptionQueueProcessor started');
+        console.log("[App] ✅ TranscriptionQueueProcessor started");
 
         // Start waveform extraction service (auto-extract on capture)
         waveformService.start();
-        console.log('[App] ✅ WaveformExtractionService started');
+        console.log("[App] ✅ WaveformExtractionService started");
 
         // Start foreground worker (process queue)
         await worker.start();
-        console.log('[App] ✅ TranscriptionWorker started');
+        console.log("[App] ✅ TranscriptionWorker started");
 
         // Register background task (15-min periodic checks)
         await registerTranscriptionBackgroundTask();
-        console.log('[App] ✅ Background transcription task registered');
+        console.log("[App] ✅ Background transcription task registered");
 
         // Handle app lifecycle (foreground/background)
-        appStateListener = AppState.addEventListener('change', async (nextAppState: AppStateStatus) => {
-          if (nextAppState === 'background') {
-            console.log('[App] App backgrounding - pausing transcription worker');
-            await worker.pause();
-          } else if (nextAppState === 'active') {
-            console.log('[App] App foregrounding - resuming transcription worker');
-            await worker.resume();
-          }
-        });
+        appStateListener = AppState.addEventListener(
+          "change",
+          async (nextAppState: AppStateStatus) => {
+            if (nextAppState === "background") {
+              console.log(
+                "[App] App backgrounding - pausing transcription worker",
+              );
+              await worker.pause();
+            } else if (nextAppState === "active") {
+              console.log(
+                "[App] App foregrounding - resuming transcription worker",
+              );
+              await worker.resume();
+            }
+          },
+        );
       } catch (error) {
         // Silent fail - don't block app startup
-        console.error('[App] Transcription services initialization failed:', error);
+        console.error(
+          "[App] Transcription services initialization failed:",
+          error,
+        );
       }
     };
 
@@ -211,7 +250,7 @@ function AppContent() {
 
     // Cleanup on unmount (called correctly by useEffect)
     return () => {
-      console.log('[App] Cleaning up transcription services...');
+      console.log("[App] Cleaning up transcription services...");
       queueProcessor.stop();
       waveformService.stop();
       worker.stop();
@@ -244,7 +283,7 @@ function AppWithStatusBar() {
 
   return (
     <>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
+      <StatusBar style={isDark ? "light" : "dark"} />
       <AppContent />
     </>
   );

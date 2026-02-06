@@ -21,7 +21,7 @@
  */
 
 import "reflect-metadata";
-import { container, inject, injectable } from "tsyringe";
+import { inject, injectable } from "tsyringe";
 import { File, Paths } from "expo-file-system";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
@@ -31,7 +31,10 @@ import {
   type DownloadTask,
 } from "@kesha-antonov/react-native-background-downloader";
 import { NPUDetectionService } from "./NPUDetectionService";
-import { HuggingFaceAuthService } from "./HuggingFaceAuthService";
+import type { IHuggingFaceAuthService } from "../domain/IHuggingFaceAuthService";
+import type { HuggingFaceAuthService } from "./HuggingFaceAuthService";
+import type { ILLMModelService, LLMTask, DownloadProgress } from "../domain/ILLMModelService";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 import {
   MODEL_CONFIGS,
   type LLMModelId,
@@ -42,8 +45,9 @@ import {
   type LLMModelCategory,
 } from "./llmModelsConfig";
 
-/** LLM task types for task-specific model selection */
-export type LLMTask = "postProcessing" | "analysis";
+// Re-export types for external use
+export type { LLMTask, DownloadProgress };
+export type { LLMModelId, LLMModelConfig, PromptTemplate, DeviceCompatibility, LLMBackendType, LLMModelCategory };
 
 const SELECTED_MODEL_KEY = "@pensieve/selected_llm_model"; // Legacy, kept for migration
 const POSTPROCESSING_ENABLED_KEY = "@pensieve/postprocessing_enabled";
@@ -55,36 +59,24 @@ const TASK_MODEL_KEYS: Record<LLMTask, string> = {
   analysis: "@pensieve/llm_model_analysis",
 };
 
-export interface DownloadProgress {
-  totalBytesWritten: number;
-  totalBytesExpectedToWrite: number;
-  progress: number; // 0-1
-}
-
 /** Type for resumable downloads */
-export interface ResumableDownload {
+interface ResumableDownload {
   task: DownloadTask;
   modelId: LLMModelId;
   status: 'downloading' | 'paused';
 }
 
-// Re-export types for external use
-export type { LLMModelId, LLMModelConfig, PromptTemplate, DeviceCompatibility, LLMBackendType, LLMModelCategory };
-
 @injectable()
-export class LLMModelService {
+export class LLMModelService implements ILLMModelService {
   private cachedDeviceType: DeviceCompatibility | null = null;
-  private authService: HuggingFaceAuthService;
 
   /** Map of active downloads for pause/resume support */
   private activeDownloads: Map<LLMModelId, ResumableDownload> = new Map();
 
   constructor(
     @inject(NPUDetectionService) private npuDetectionService: NPUDetectionService,
-  ) {
-    // Resolve HuggingFaceAuthService from container to ensure singleton is used
-    this.authService = container.resolve(HuggingFaceAuthService);
-  }
+    @inject(TOKENS.IHuggingFaceAuthService) private authService: IHuggingFaceAuthService,
+  ) {}
 
   /**
    * Initialize the service (including auth and downloader config)
@@ -102,7 +94,7 @@ export class LLMModelService {
    * Get the auth service for UI components
    */
   getAuthService(): HuggingFaceAuthService {
-    return this.authService;
+    return this.authService as HuggingFaceAuthService;
   }
 
   /**

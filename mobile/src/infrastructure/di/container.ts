@@ -48,6 +48,8 @@ import { LLMModelService } from '../../contexts/Normalization/services/LLMModelS
 import { PostProcessingService } from '../../contexts/Normalization/services/PostProcessingService';
 import { HuggingFaceAuthService } from '../../contexts/Normalization/services/HuggingFaceAuthService';
 import { CaptureAnalysisService } from '../../contexts/Normalization/services/CaptureAnalysisService';
+import type { IHuggingFaceAuthService } from '../../contexts/Normalization/domain/IHuggingFaceAuthService';
+import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMModelService';
 
 // Native Speech Recognition
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
@@ -116,10 +118,10 @@ export function registerServices() {
   container.registerSingleton(TranscriptionQueueProcessor);
 
   // Post-processing Services (LLM enhancement)
-  container.registerSingleton(HuggingFaceAuthService);
+  container.registerSingleton<IHuggingFaceAuthService>(TOKENS.IHuggingFaceAuthService, HuggingFaceAuthService);
   container.registerSingleton(NPUDetectionService);
   container.registerSingleton(DeviceCapabilitiesService); // Task 7.3
-  container.registerSingleton(LLMModelService);
+  container.registerSingleton<ILLMModelService>(TOKENS.ILLMModelService, LLMModelService);
   container.registerSingleton(PostProcessingService);
   container.registerSingleton(CaptureAnalysisService);
   container.registerSingleton(TranscriptionWorker);

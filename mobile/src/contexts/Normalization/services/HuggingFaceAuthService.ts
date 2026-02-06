@@ -17,6 +17,7 @@ import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import type { IHuggingFaceAuthService, HuggingFaceUser, AuthState } from '../domain/IHuggingFaceAuthService';
 
 // Complete any pending auth sessions when app loads
 WebBrowser.maybeCompleteAuthSession();
@@ -42,23 +43,11 @@ const TOKEN_KEY = 'hf_access_token';
 const REFRESH_TOKEN_KEY = 'hf_refresh_token';
 const USER_KEY = 'hf_user_info';
 
-export interface HuggingFaceUser {
-  id: string;
-  name: string;
-  fullname: string;
-  email?: string;
-  avatarUrl?: string;
-}
-
-export interface AuthState {
-  isAuthenticated: boolean;
-  user: HuggingFaceUser | null;
-  isLoading: boolean;
-  error: string | null;
-}
+// Re-export types from interface
+export type { HuggingFaceUser, AuthState };
 
 @injectable()
-export class HuggingFaceAuthService {
+export class HuggingFaceAuthService implements IHuggingFaceAuthService {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private user: HuggingFaceUser | null = null;

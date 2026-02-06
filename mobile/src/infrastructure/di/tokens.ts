@@ -30,4 +30,8 @@ export const TOKENS = {
   IStorageMonitorService: Symbol.for('IStorageMonitorService'),
   IRetentionPolicyService: Symbol.for('IRetentionPolicyService'),
   IEncryptionService: Symbol.for('IEncryptionService'),
+
+  // LLM Services (Post-Processing)
+  IHuggingFaceAuthService: Symbol.for('IHuggingFaceAuthService'),
+  ILLMModelService: Symbol.for('ILLMModelService'),
 };

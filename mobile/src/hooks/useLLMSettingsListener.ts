@@ -15,12 +15,13 @@
 
 import { useEffect } from 'react';
 import { container } from 'tsyringe';
-import { LLMModelService } from '../contexts/Normalization/services/LLMModelService';
+import { TOKENS } from '../infrastructure/di/tokens';
+import type { ILLMModelService } from '../contexts/Normalization/domain/ILLMModelService';
 import { useSettingsStore } from '../stores/settingsStore';
 
 export function useLLMSettingsListener() {
   useEffect(() => {
-    const modelService = container.resolve(LLMModelService);
+    const modelService = container.resolve<ILLMModelService>(TOKENS.ILLMModelService);
 
     // Load initial state from service (source of truth)
     const loadSettings = async () => {
