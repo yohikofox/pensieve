@@ -52,21 +52,27 @@ export const useFilterState = (): UseFilterStateReturn => {
 
   // Update filter and persist to AsyncStorage (AC8)
   const setFilter = async (newFilter: FilterType): Promise<void> => {
+    const previousFilter = filter;
     setFilterState(newFilter);
     try {
       await AsyncStorage.setItem(FILTER_STORAGE_KEY, newFilter);
     } catch (error) {
       console.error('Failed to save filter preference:', error);
+      // Rollback state on persistence failure
+      setFilterState(previousFilter);
     }
   };
 
   // Update sort and persist to AsyncStorage (AC8)
   const setSort = async (newSort: SortType): Promise<void> => {
+    const previousSort = sort;
     setSortState(newSort);
     try {
       await AsyncStorage.setItem(SORT_STORAGE_KEY, newSort);
     } catch (error) {
       console.error('Failed to save sort preference:', error);
+      // Rollback state on persistence failure
+      setSortState(previousSort);
     }
   };
 

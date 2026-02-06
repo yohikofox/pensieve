@@ -295,13 +295,41 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
-   * Find all active todos with source context (Thought + Idea)
+   * Count all todos grouped by status (optimized single query)
+   * Story 5.3 - Code Review Fix #5: Performance optimization
+   * @returns Object with counts: { all, active, completed }
+   */
+  async countAllByStatus(): Promise<{ all: number; active: number; completed: number }> {
+    const result = database.execute(
+      `SELECT
+        COUNT(*) as all_count,
+        SUM(CASE WHEN status = 'todo' THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count
+       FROM todos`
+    );
+
+    const rows = result.rows || [];
+    if (rows.length === 0) {
+      return { all: 0, active: 0, completed: 0 };
+    }
+
+    const row = rows[0];
+    return {
+      all: (row.all_count as number) || 0,
+      active: (row.active_count as number) || 0,
+      completed: (row.completed_count as number) || 0,
+    };
+  }
+
+  /**
+   * Find all todos with source context (Thought + Idea)
    * Story 5.2 - AC6, Task 7: Source preview in Actions tab
+   * Story 5.3 - Fix: Return ALL todos (active + completed) for filters
    *
    * Optimized query with LEFT JOIN to fetch Thought and Idea in one query
    * Avoids N+1 queries for better performance
    *
-   * @returns Array of todos with thought and idea data
+   * @returns Array of ALL todos with thought and idea data (active + completed)
    */
   async findAllWithSource(): Promise<TodoWithSource[]> {
     const result = database.execute(
@@ -325,8 +353,8 @@ export class TodoRepository implements ITodoRepository {
        FROM todos t
        LEFT JOIN thoughts th ON t.thought_id = th.id
        LEFT JOIN ideas i ON t.idea_id = i.id
-       WHERE t.status = 'todo'
        ORDER BY
+         CASE WHEN t.status = 'todo' THEN 0 ELSE 1 END ASC,
          CASE WHEN t.deadline IS NULL THEN 1 ELSE 0 END ASC,
          t.deadline ASC,
          CASE t.priority

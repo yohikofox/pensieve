@@ -6,6 +6,7 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
 /**
  * Hook to get filtered todo counts for filter badges
  * Story 5.3 - AC1, Task 3: Count todos for filter badges
+ * Story 5.3 - Code Review Fix #5: Optimized with single SQL query
  * Uses React Query for caching and automatic refetch on cache invalidation
  */
 export interface UseFilteredTodoCountsReturn {
@@ -18,34 +19,17 @@ export interface UseFilteredTodoCountsReturn {
 export const useFilteredTodoCounts = (): UseFilteredTodoCountsReturn => {
   const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
 
-  // Query all todos count
-  const allCount = useQuery({
-    queryKey: ['todos', 'count', 'all'],
-    queryFn: async () => {
-      const todos = await todoRepository.findAll();
-      return todos.length;
-    },
-    staleTime: 1 * 60 * 1000, // 1 minute cache
-  });
-
-  // Query active todos count
-  const activeCount = useQuery({
-    queryKey: ['todos', 'count', 'active'],
-    queryFn: () => todoRepository.countByStatus('todo'),
-    staleTime: 1 * 60 * 1000, // 1 minute cache
-  });
-
-  // Query completed todos count
-  const completedCount = useQuery({
-    queryKey: ['todos', 'count', 'completed'],
-    queryFn: () => todoRepository.countByStatus('completed'),
+  // Single optimized query for all counts (Story 5.3 - Fix #5)
+  const counts = useQuery({
+    queryKey: ['todos', 'count', 'all-grouped'],
+    queryFn: () => todoRepository.countAllByStatus(),
     staleTime: 1 * 60 * 1000, // 1 minute cache
   });
 
   return {
-    all: allCount.data ?? 0,
-    active: activeCount.data ?? 0,
-    completed: completedCount.data ?? 0,
-    isLoading: allCount.isLoading || activeCount.isLoading || completedCount.isLoading,
+    all: counts.data?.all ?? 0,
+    active: counts.data?.active ?? 0,
+    completed: counts.data?.completed ?? 0,
+    isLoading: counts.isLoading,
   };
 };

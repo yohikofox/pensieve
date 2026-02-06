@@ -18,7 +18,6 @@ export interface FilteredEmptyStateProps {
 }
 
 interface EmptyStateContent {
-  icon: string;
   title: string;
   message: string;
   actionLabel?: string;
@@ -27,19 +26,16 @@ interface EmptyStateContent {
 
 const EMPTY_STATE_CONTENT: Record<FilterType, EmptyStateContent> = {
   all: {
-    icon: '📝',
     title: 'Aucune action',
     message: "Vous n'avez aucune action pour le moment.\nLes actions extraites de vos pensées apparaîtront ici.",
   },
   active: {
-    icon: '🎉',
     title: 'Tout est fait !',
     message: 'Toutes vos actions sont terminées.\nProfitez de ce moment !',
     actionLabel: 'Voir les actions complétées',
     actionFilter: 'completed',
   },
   completed: {
-    icon: '✅',
     title: 'Aucune action complétée',
     message: "Vous n'avez pas encore complété d'actions.\nCommencez par en accomplir une !",
     actionLabel: 'Voir les actions à faire',
@@ -55,9 +51,6 @@ export const FilteredEmptyState: React.FC<FilteredEmptyStateProps> = ({
 
   return (
     <View style={styles.container}>
-      {/* Icon */}
-      <Text style={styles.icon}>{content.icon}</Text>
-
       {/* Title */}
       <Text style={styles.title}>{content.title}</Text>
 
@@ -87,16 +80,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 32,
     paddingVertical: 64,
   },
-  icon: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
   title: {
     fontSize: 24,
     fontWeight: '700',
     color: '#111827',
     textAlign: 'center',
     marginBottom: 12,
+    marginTop: 32,
   },
   message: {
     fontSize: 16,

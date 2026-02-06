@@ -45,11 +45,18 @@ import { FilteredEmptyState } from '../../contexts/action/ui/FilteredEmptyState'
 import { ActionsTodoCard } from '../../contexts/action/ui/ActionsTodoCard';
 import { TodoSection } from '../../contexts/action/utils/groupTodosByDeadline';
 import { TodoWithSource } from '../../contexts/action/domain/ITodoRepository';
+import { ErrorBoundary } from '../../components/ErrorBoundary';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
 const ESTIMATED_ITEM_HEIGHT = 120;
 const SECTION_HEADER_HEIGHT = 40;
+
+// Animation constants (Story 5.3 - Code Review Fix #8)
+const FADE_IN_DURATION = 300;
+const FADE_OUT_DURATION = 200;
+const TRANSITION_DAMPING = 15;
+const TRANSITION_STIFFNESS = 150;
 
 interface EnrichedTodo extends TodoWithSource {
   sourcePreview?: string;
@@ -67,9 +74,11 @@ export const ActionsScreen = () => {
   const [isSortMenuVisible, setSortMenuVisible] = useState(false);
 
   // Scroll position persistence (Story 5.2 - AC8)
+  // Story 5.3 - Fix #9: Track previous list type to reset scroll on switch
   const sectionListRef = useRef<SectionList>(null);
   const flatListRef = useRef<FlatList>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
+  const previousIsSections = useRef<boolean>(isSections);
 
   // Restore scroll position on focus
   useFocusEffect(
@@ -136,6 +145,14 @@ export const ActionsScreen = () => {
   // Check if sorted data is sections or flat list
   const isSections = isSectionData(sortedData);
 
+  // Story 5.3 - Fix #9: Reset scroll offset when switching list type
+  React.useEffect(() => {
+    if (previousIsSections.current !== isSections) {
+      setScrollOffset(0);
+      previousIsSections.current = isSections;
+    }
+  }, [isSections]);
+
   // getItemLayout for performance
   const getItemLayout = (
     _data: any,
@@ -154,7 +171,7 @@ export const ActionsScreen = () => {
     setScrollOffset(offset);
   };
 
-  // Loading state
+  // Loading state (Story 5.3 - Fix #6: Wait for filter preferences to load)
   if (isLoading || isFilterLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -164,32 +181,43 @@ export const ActionsScreen = () => {
   }
 
   // Render header (filter tabs + sort button)
+  // Story 5.3 - Fix #7: Error boundary for filter components
   const renderHeader = () => (
-    <View>
-      <FilterTabs
-        activeFilter={filter}
-        onFilterChange={setFilter}
-        counts={counts}
-      />
-      <View style={styles.sortButtonContainer}>
-        <TouchableOpacity
-          style={styles.sortButton}
-          onPress={() => setSortMenuVisible(true)}
-          accessibilityRole="button"
-          accessibilityLabel="Trier les actions"
-        >
-          <Text style={styles.sortButtonText}>⇅ Trier</Text>
-        </TouchableOpacity>
+    <ErrorBoundary
+      fallback={
+        <View style={styles.errorFallback}>
+          <Text style={styles.errorText}>
+            Erreur dans les filtres. Utilisation des filtres par défaut.
+          </Text>
+        </View>
+      }
+    >
+      <View>
+        <FilterTabs
+          activeFilter={filter}
+          onFilterChange={setFilter}
+          counts={counts}
+        />
+        <View style={styles.sortButtonContainer}>
+          <TouchableOpacity
+            style={styles.sortButton}
+            onPress={() => setSortMenuVisible(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Trier les actions"
+          >
+            <Text style={styles.sortButtonText}>⇅ Trier</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </ErrorBoundary>
   );
 
   // Render todo card with animations (Story 5.3 - Task 10)
   const renderTodoCard = (todo: EnrichedTodo) => (
     <Animated.View
-      entering={FadeIn.duration(300)}
-      exiting={FadeOut.duration(200)}
-      layout={LinearTransition.springify().damping(15).stiffness(150)}
+      entering={FadeIn.duration(FADE_IN_DURATION)}
+      exiting={FadeOut.duration(FADE_OUT_DURATION)}
+      layout={LinearTransition.springify().damping(TRANSITION_DAMPING).stiffness(TRANSITION_STIFFNESS)}
     >
       <ActionsTodoCard
         todo={todo}
@@ -337,5 +365,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B7280',
     textTransform: 'uppercase',
+  },
+  errorFallback: {
+    padding: 16,
+    backgroundColor: '#FEF2F2',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FCA5A5',
+  },
+  errorText: {
+    color: '#DC2626',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

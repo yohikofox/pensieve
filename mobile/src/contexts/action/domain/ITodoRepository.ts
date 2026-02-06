@@ -100,10 +100,18 @@ export interface ITodoRepository {
   countByStatus(status: 'todo' | 'completed'): Promise<number>;
 
   /**
-   * Find all active todos with source context (Thought + Idea)
+   * Count all todos grouped by status (optimized single query)
+   * Story 5.3 - Code Review Fix #5: Performance optimization
+   * @returns Object with counts: { all, active, completed }
+   */
+  countAllByStatus(): Promise<{ all: number; active: number; completed: number }>;
+
+  /**
+   * Find all todos with source context (Thought + Idea)
    * Story 5.2 - AC6, Task 7: Source preview in Actions tab
+   * Story 5.3 - Fix: Returns ALL todos (active + completed) for filters
    * Optimized query with LEFT JOIN to avoid N+1 queries
-   * @returns Array of todos with thought and idea data
+   * @returns Array of ALL todos with thought and idea data
    */
   findAllWithSource(): Promise<TodoWithSource[]>;
 }
