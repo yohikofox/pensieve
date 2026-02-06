@@ -50,6 +50,7 @@ import { TodoWithSource } from '../../contexts/action/domain/ITodoRepository';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../design-system/tokens';
+import { StandardLayout } from '../../components/layouts';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
@@ -299,25 +300,28 @@ export const ActionsScreen = () => {
   // Empty state (Story 5.3 - AC9: Contextual empty states)
   if (!filteredTodos || filteredTodos.length === 0) {
     return (
-      <View style={styles.container}>
-        {renderHeader()}
-        <FilteredEmptyState filter={filter} onFilterChange={setFilter} />
-        <SortMenu
-          visible={isSortMenuVisible}
-          onClose={() => setSortMenuVisible(false)}
-          activeSort={sort}
-          onSortChange={setSort}
-        />
-      </View>
+      <StandardLayout>
+        <View style={styles.container}>
+          {renderHeader()}
+          <FilteredEmptyState filter={filter} onFilterChange={setFilter} />
+          <SortMenu
+            visible={isSortMenuVisible}
+            onClose={() => setSortMenuVisible(false)}
+            activeSort={sort}
+            onSortChange={setSort}
+          />
+        </View>
+      </StandardLayout>
     );
   }
 
   // Render SectionList (for 'default' sort) with animations (Story 5.3 - Task 10)
   if (isSections) {
     return (
-      <View style={styles.container}>
-        {renderHeader()}
-        <SectionList
+      <StandardLayout>
+        <View style={styles.container}>
+          {renderHeader()}
+          <SectionList
           ref={sectionListRef}
           style={styles.list}
           sections={sortedData as TodoSection[]}
@@ -347,15 +351,17 @@ export const ActionsScreen = () => {
           activeSort={sort}
           onSortChange={setSort}
         />
-      </View>
+        </View>
+      </StandardLayout>
     );
   }
 
   // Render FlatList (for other sorts: priority, createdDate, alphabetical) with animations (Story 5.3 - Task 10)
   return (
-    <View style={styles.container}>
-      {renderHeader()}
-      <FlatList
+    <StandardLayout>
+      <View style={styles.container}>
+        {renderHeader()}
+        <FlatList
         ref={flatListRef}
         style={styles.list}
         data={sortedData as EnrichedTodo[]}
@@ -379,7 +385,8 @@ export const ActionsScreen = () => {
         activeSort={sort}
         onSortChange={setSort}
       />
-    </View>
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -387,13 +394,11 @@ const createStyles = (isDark: boolean) =>
   StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
     },
     centerContainer: {
       flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
     },
     loadingText: {
       color: isDark ? colors.neutral[400] : colors.neutral[500],

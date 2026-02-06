@@ -9,6 +9,7 @@ import {
 import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StandardLayout } from '../../../components/layouts';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -87,10 +88,11 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Create Account</Text>
+    <StandardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>Create Account</Text>
 
-      <TextInput
+        <TextInput
         style={styles.input}
         placeholder="Email"
         value={email}
@@ -144,7 +146,8 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
           <Text style={styles.loginLink}>Sign In</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -152,7 +155,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
     justifyContent: 'center',
   },
   title: {

@@ -68,6 +68,7 @@ import { OfflineBanner } from '../../components/common/OfflineBanner';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
 import { FLATLIST_PERFORMANCE } from '../../constants/performance';
 import { FlatListPerformanceMonitor, measureAsync } from '../../utils/performanceMonitor';
+import { StandardLayout } from '../../components/layouts';
 
 // Override with extended param list that includes startAnalysis
 type CapturesStackParamListExtended = {
@@ -619,13 +620,13 @@ export function CapturesListScreen() {
   if (isLoading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className="flex-1 bg-bg-screen" style={{ padding: 16 }}>
+        <StandardLayout noPadding={false} style={{ padding: 16 }}>
           <SkeletonCaptureCard delay={0} />
           <SkeletonCaptureCard delay={100} />
           <SkeletonCaptureCard delay={200} />
           <SkeletonCaptureCard delay={300} />
           <SkeletonCaptureCard delay={400} />
-        </View>
+        </StandardLayout>
       </GestureHandlerRootView>
     );
   }
@@ -635,7 +636,7 @@ export function CapturesListScreen() {
   if (captures.length === 0) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View className="flex-1 bg-bg-screen">
+        <StandardLayout>
           {/* Story 3.1 AC3: Offline indicator */}
           <OfflineBanner />
 
@@ -705,14 +706,14 @@ export function CapturesListScreen() {
               )}
             </View>
           </View>
-        </View>
+        </StandardLayout>
       </GestureHandlerRootView>
     );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1 bg-bg-screen">
+      <StandardLayout>
         {/* Story 3.1 AC3: Offline indicator */}
         <OfflineBanner />
 
@@ -823,8 +824,7 @@ export function CapturesListScreen() {
               : []
           }
         />
-
-      </View>
+      </StandardLayout>
     </GestureHandlerRootView>
   );
 }

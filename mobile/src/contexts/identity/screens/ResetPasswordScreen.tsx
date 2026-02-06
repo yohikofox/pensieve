@@ -10,6 +10,7 @@ import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StandardLayout } from '../../../components/layouts';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -80,10 +81,11 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Reset Password</Text>
+    <StandardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>Reset Password</Text>
 
-      <TextInput
+        <TextInput
         style={styles.input}
         placeholder="New Password"
         value={newPassword}
@@ -119,7 +121,8 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
           {loading ? 'Resetting...' : 'Reset Password'}
         </Text>
       </TouchableOpacity>
-    </View>
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -127,7 +130,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
     justifyContent: 'center',
   },
   title: {

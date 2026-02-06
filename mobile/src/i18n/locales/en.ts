@@ -147,6 +147,8 @@ export default {
     appearance: {
       theme: 'Theme',
       themeSubtitle: 'Choose the application theme',
+      brightnessMode: 'Brightness Mode',
+      colorScheme: 'Color Scheme',
       themeOptions: {
         light: 'Light',
         dark: 'Dark',
@@ -156,6 +158,16 @@ export default {
         light: 'Light appearance, ideal for daytime',
         dark: 'Dark appearance, easier on the eyes',
         system: 'Automatically follows device theme',
+      },
+      colorSchemeOptions: {
+        blue: 'Blue',
+        green: 'Green',
+        monochrome: 'Monochrome',
+      },
+      colorSchemeDescriptions: {
+        blue: 'Default tech blue theme',
+        green: 'Nature-inspired green theme',
+        monochrome: 'Grayscale minimalist theme',
       },
     },
     transcription: {

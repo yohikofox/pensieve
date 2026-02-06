@@ -9,6 +9,7 @@ import { TodoDetailPopover } from '../../contexts/action/ui/TodoDetailPopover';
 import type { Todo } from '../../contexts/action/domain/Todo.model';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../design-system/tokens';
+import { StandardLayout } from '../../components/layouts';
 
 export const TodoDetailPopoverTestScreen: React.FC = () => {
   const { isDark } = useTheme();
@@ -30,22 +31,24 @@ export const TodoDetailPopoverTestScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>TodoDetailPopover Test Screen</Text>
+    <StandardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>TodoDetailPopover Test Screen</Text>
 
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => setVisible(true)}
-      >
-        <Text style={styles.buttonText}>Open TodoDetailPopover</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={() => setVisible(true)}
+        >
+          <Text style={styles.buttonText}>Open TodoDetailPopover</Text>
+        </TouchableOpacity>
 
-      <TodoDetailPopover
-        visible={visible}
-        todo={mockTodo}
-        onClose={() => setVisible(false)}
-      />
-    </View>
+        <TodoDetailPopover
+          visible={visible}
+          todo={mockTodo}
+          onClose={() => setVisible(false)}
+        />
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -55,7 +58,6 @@ const createStyles = (isDark: boolean) =>
       flex: 1,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
       padding: 20,
     },
     title: {

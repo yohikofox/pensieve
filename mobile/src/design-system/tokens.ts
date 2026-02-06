@@ -6,33 +6,93 @@
 // ============================================
 // COULEURS - Palette de base
 // ============================================
+
+// Color Scheme Types
+export type ColorScheme = 'blue' | 'green' | 'monochrome';
+
 export const colors = {
-  // Palette primaire
+  // Palette primaire - Bleu (default)
   primary: {
     50: '#EBF5FF',
     100: '#E1EFFE',
     200: '#C3DDFD',
     300: '#A4CAFE',
     400: '#76A9FA',
-    500: '#3B82F6', // Primary
+    500: '#3B82F6', // Primary Blue
     600: '#2563EB',
     700: '#1D4ED8',
     800: '#1E40AF',
     900: '#1E3A8A',
   },
 
-  // Palette secondaire (Rose/Corail)
+  // Palette primaire - Vert (nature)
+  primaryGreen: {
+    50: '#ECFDF5',
+    100: '#D1FAE5',
+    200: '#A7F3D0',
+    300: '#6EE7B7',
+    400: '#34D399',
+    500: '#10B981', // Primary Green
+    600: '#059669',
+    700: '#047857',
+    800: '#065F46',
+    900: '#064E3B',
+  },
+
+  // Palette primaire - Monochrome (noir/blanc/gris)
+  primaryMonochrome: {
+    50: '#F9FAFB',
+    100: '#F3F4F6',
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    400: '#9CA3AF',
+    500: '#6B7280', // Primary Monochrome
+    600: '#4B5563',
+    700: '#374151',
+    800: '#1F2937',
+    900: '#111827',
+  },
+
+  // Palette secondaire - Rose/Corail (pour Blue scheme)
   secondary: {
     50: '#FFF1F2',
     100: '#FFE4E6',
     200: '#FECDD3',
     300: '#FDA4AF',
     400: '#FB7185',
-    500: '#F43F5E', // Secondary
+    500: '#F43F5E', // Secondary Rose
     600: '#E11D48',
     700: '#BE123C',
     800: '#9F1239',
     900: '#881337',
+  },
+
+  // Palette secondaire - Orange/Terre (pour Green scheme)
+  secondaryGreen: {
+    50: '#FFF7ED',
+    100: '#FFEDD5',
+    200: '#FED7AA',
+    300: '#FDBA74',
+    400: '#FB923C',
+    500: '#F97316', // Secondary Orange
+    600: '#EA580C',
+    700: '#C2410C',
+    800: '#9A3412',
+    900: '#7C2D12',
+  },
+
+  // Palette secondaire - Gris (pour Monochrome scheme)
+  secondaryMonochrome: {
+    50: '#F9FAFB',
+    100: '#F3F4F6',
+    200: '#E5E7EB',
+    300: '#D1D5DB',
+    400: '#9CA3AF',
+    500: '#9CA3AF', // Secondary Gris clair (light mode)
+    600: '#6B7280',
+    700: '#4B5563',
+    800: '#374151',
+    900: '#374151', // Secondary Gris foncé (dark mode)
   },
 
   // Neutres
@@ -381,3 +441,83 @@ export const zIndex = {
   popover: 60,
   tooltip: 70,
 } as const;
+
+// ============================================
+// COLOR SCHEME HELPERS
+// ============================================
+
+/**
+ * Get the primary color palette for a given color scheme
+ */
+export function getPrimaryPaletteForColorScheme(scheme: ColorScheme) {
+  switch (scheme) {
+    case 'blue':
+      return colors.primary;
+    case 'green':
+      return colors.primaryGreen;
+    case 'monochrome':
+      return colors.primaryMonochrome;
+    default:
+      return colors.primary;
+  }
+}
+
+/**
+ * Get the secondary color palette for a given color scheme
+ */
+export function getSecondaryPaletteForColorScheme(scheme: ColorScheme) {
+  switch (scheme) {
+    case 'blue':
+      return colors.secondary;
+    case 'green':
+      return colors.secondaryGreen;
+    case 'monochrome':
+      return colors.secondaryMonochrome;
+    default:
+      return colors.secondary;
+  }
+}
+
+/**
+ * Get tinted background colors for a given color scheme
+ */
+export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: boolean) {
+  switch (scheme) {
+    case 'blue':
+      return {
+        screen: isDark ? '#0F1629' : '#EBF5FF',     // Teinte bleue
+        card: isDark ? '#1E2A47' : '#FFFFFF',
+        elevated: isDark ? '#1E2A47' : '#FFFFFF',
+        input: isDark ? '#1E2A47' : '#FFFFFF',
+        subtle: isDark ? '#2D3E5F' : '#E1EFFE',
+        inverse: isDark ? '#F3F4F6' : '#111827',
+      };
+    case 'green':
+      return {
+        screen: isDark ? '#0A1F17' : '#ECFDF5',     // Teinte verte
+        card: isDark ? '#1A3A2E' : '#FFFFFF',
+        elevated: isDark ? '#1A3A2E' : '#FFFFFF',
+        input: isDark ? '#1A3A2E' : '#FFFFFF',
+        subtle: isDark ? '#2A4A3E' : '#D1FAE5',
+        inverse: isDark ? '#F3F4F6' : '#111827',
+      };
+    case 'monochrome':
+      return {
+        screen: isDark ? colors.neutral[900] : colors.neutral[100],  // Gris pur
+        card: isDark ? colors.neutral[800] : colors.neutral[0],
+        elevated: isDark ? colors.neutral[800] : colors.neutral[0],
+        input: isDark ? colors.neutral[800] : colors.neutral[0],
+        subtle: isDark ? colors.neutral[700] : colors.neutral[50],
+        inverse: isDark ? colors.neutral[100] : colors.neutral[900],
+      };
+    default:
+      return {
+        screen: isDark ? colors.neutral[900] : colors.neutral[100],
+        card: isDark ? colors.neutral[800] : colors.neutral[0],
+        elevated: isDark ? colors.neutral[800] : colors.neutral[0],
+        input: isDark ? colors.neutral[800] : colors.neutral[0],
+        subtle: isDark ? colors.neutral[700] : colors.neutral[50],
+        inverse: isDark ? colors.neutral[100] : colors.neutral[900],
+      };
+  }
+}

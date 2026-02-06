@@ -9,6 +9,7 @@ import {
 import { useToast } from '../../../design-system/components';
 import { supabase } from '../../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { StandardLayout } from '../../../components/layouts';
 
 type AuthStackParamList = {
   Login: undefined;
@@ -56,14 +57,15 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Forgot Password</Text>
-      <Text style={styles.subtitle}>
-        Enter your email address and we'll send you a link to reset your
-        password.
-      </Text>
+    <StandardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>Forgot Password</Text>
+        <Text style={styles.subtitle}>
+          Enter your email address and we'll send you a link to reset your
+          password.
+        </Text>
 
-      <TextInput
+        <TextInput
         style={styles.input}
         placeholder="Email"
         value={email}
@@ -90,7 +92,8 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
       >
         <Text style={styles.backButtonText}>Back to Login</Text>
       </TouchableOpacity>
-    </View>
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -98,7 +101,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: '#fff',
     justifyContent: 'center',
   },
   title: {

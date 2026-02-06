@@ -6,39 +6,46 @@
  */
 
 import { DefaultTheme, DarkTheme, type Theme } from '@react-navigation/native';
-import { colors, typography } from '../design-system/tokens';
+import {
+  colors,
+  typography,
+  getPrimaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+  type ColorScheme,
+} from '../design-system/tokens';
 
 /**
- * Light theme based on design system
+ * Get navigation theme based on color scheme
  */
-export const lightNavigationTheme: Theme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    primary: colors.primary[500],
-    background: colors.neutral[100],
-    card: colors.neutral[0],
-    text: colors.neutral[900],
-    border: colors.neutral[200],
-    notification: colors.error[500],
-  },
-};
+export function getNavigationTheme(isDark: boolean, colorScheme: ColorScheme = 'blue'): Theme {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
+
+  return {
+    ...baseTheme,
+    colors: {
+      ...baseTheme.colors,
+      primary: primaryPalette[isDark ? 400 : 500],
+      background: backgrounds.screen,
+      card: backgrounds.card,
+      text: isDark ? colors.neutral[50] : colors.neutral[900],
+      border: isDark ? colors.neutral[700] : colors.neutral[200],
+      notification: colors.error[isDark ? 400 : 500],
+    },
+  };
+}
 
 /**
- * Dark theme based on design system
+ * Light theme based on design system (default blue)
  */
-export const darkNavigationTheme: Theme = {
-  ...DarkTheme,
-  colors: {
-    ...DarkTheme.colors,
-    primary: colors.primary[400],
-    background: colors.neutral[900],
-    card: colors.neutral[800],
-    text: colors.neutral[50],
-    border: colors.neutral[700],
-    notification: colors.error[400],
-  },
-};
+export const lightNavigationTheme: Theme = getNavigationTheme(false, 'blue');
+
+/**
+ * Dark theme based on design system (default blue)
+ */
+export const darkNavigationTheme: Theme = getNavigationTheme(true, 'blue');
 
 /**
  * @deprecated Use lightNavigationTheme instead
@@ -46,38 +53,36 @@ export const darkNavigationTheme: Theme = {
 export const navigationTheme = lightNavigationTheme;
 
 /**
- * Tab bar style configuration (Light theme)
+ * Get tab bar style configuration based on color scheme
  */
-export const lightTabBarStyle = {
-  activeTintColor: colors.primary[500],
-  inactiveTintColor: colors.neutral[400],
-  style: {
-    backgroundColor: colors.neutral[0],
-    borderTopColor: colors.neutral[200],
-    borderTopWidth: 1,
-  },
-  labelStyle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as '500',
-  },
-};
+export function getTabBarStyle(isDark: boolean, colorScheme: ColorScheme = 'blue') {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return {
+    activeTintColor: primaryPalette[isDark ? 400 : 500],
+    inactiveTintColor: isDark ? colors.neutral[500] : colors.neutral[400],
+    style: {
+      backgroundColor: backgrounds.card,
+      borderTopColor: isDark ? colors.neutral[700] : colors.neutral[200],
+      borderTopWidth: 1,
+    },
+    labelStyle: {
+      fontSize: typography.fontSize.xs,
+      fontWeight: typography.fontWeight.medium as '500',
+    },
+  };
+}
 
 /**
- * Tab bar style configuration (Dark theme)
+ * Tab bar style configuration (Light theme - default blue)
  */
-export const darkTabBarStyle = {
-  activeTintColor: colors.primary[400],
-  inactiveTintColor: colors.neutral[500],
-  style: {
-    backgroundColor: colors.neutral[800],
-    borderTopColor: colors.neutral[700],
-    borderTopWidth: 1,
-  },
-  labelStyle: {
-    fontSize: typography.fontSize.xs,
-    fontWeight: typography.fontWeight.medium as '500',
-  },
-};
+export const lightTabBarStyle = getTabBarStyle(false, 'blue');
+
+/**
+ * Tab bar style configuration (Dark theme - default blue)
+ */
+export const darkTabBarStyle = getTabBarStyle(true, 'blue');
 
 /**
  * @deprecated Use lightTabBarStyle instead
@@ -85,48 +90,53 @@ export const darkTabBarStyle = {
 export const tabBarStyle = lightTabBarStyle;
 
 /**
- * Stack navigator screen options (Light theme)
+ * Get stack navigator screen options based on color scheme
  */
-export const lightStackScreenOptions = {
-  headerStyle: {
-    backgroundColor: colors.neutral[0],
-  },
-  headerTintColor: colors.primary[500],
-  headerTitleStyle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold as '600',
-    color: colors.neutral[900],
-  },
-  headerShadowVisible: false,
-  headerBackTitleStyle: {
-    fontSize: typography.fontSize.base,
-  },
-  contentStyle: {
-    backgroundColor: colors.neutral[100],
-  },
-};
+export function getStackScreenOptions(isDark: boolean, colorScheme: ColorScheme = 'blue') {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return {
+    headerStyle: {
+      backgroundColor: backgrounds.card,
+      // Custom shadow for better visual separation
+      shadowColor: isDark ? '#fff' : '#000',
+      shadowOffset: {
+        width: 0,
+        height: 8,
+      },
+      shadowOpacity: isDark ? 0.3 : 0.2,
+      shadowRadius: 12,
+      elevation: 16, // Android
+      // Add bottom border as fallback for better separation
+      borderBottomWidth: isDark ? 3 : 0,
+      borderBottomColor: isDark ? '#FF0000' : 'transparent',
+    },
+    headerTintColor: primaryPalette[isDark ? 400 : 500],
+    headerTitleStyle: {
+      fontSize: typography.fontSize.lg,
+      fontWeight: typography.fontWeight.semibold as '600',
+      color: isDark ? colors.neutral[50] : colors.neutral[900],
+    },
+    headerShadowVisible: true,
+    headerBackTitleStyle: {
+      fontSize: typography.fontSize.base,
+    },
+    contentStyle: {
+      backgroundColor: backgrounds.screen,
+    },
+  };
+}
 
 /**
- * Stack navigator screen options (Dark theme)
+ * Stack navigator screen options (Light theme - default blue)
  */
-export const darkStackScreenOptions = {
-  headerStyle: {
-    backgroundColor: colors.neutral[800],
-  },
-  headerTintColor: colors.primary[400],
-  headerTitleStyle: {
-    fontSize: typography.fontSize.lg,
-    fontWeight: typography.fontWeight.semibold as '600',
-    color: colors.neutral[50],
-  },
-  headerShadowVisible: false,
-  headerBackTitleStyle: {
-    fontSize: typography.fontSize.base,
-  },
-  contentStyle: {
-    backgroundColor: colors.neutral[900],
-  },
-};
+export const lightStackScreenOptions = getStackScreenOptions(false, 'blue');
+
+/**
+ * Stack navigator screen options (Dark theme - default blue)
+ */
+export const darkStackScreenOptions = getStackScreenOptions(true, 'blue');
 
 /**
  * @deprecated Use lightStackScreenOptions instead

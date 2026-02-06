@@ -10,16 +10,21 @@ import React, { createContext, useContext, useEffect, type ReactNode } from 'rea
 import { View, useColorScheme as useDeviceColorScheme } from 'react-native';
 import { colorScheme as nwColorScheme } from 'nativewind';
 import { useSettingsStore, type ThemePreference } from '../../stores/settingsStore';
-import { lightTheme, darkTheme } from '../../design-system/theme';
+import { getThemeVars } from '../../design-system/theme';
+import type { ColorScheme } from '../../design-system/tokens';
 
 // Theme context type
 interface ThemeContextType {
-  /** Current active color scheme ('light' | 'dark') */
+  /** Current active brightness mode ('light' | 'dark') */
   colorScheme: 'light' | 'dark';
-  /** User's preference ('light' | 'dark' | 'system') */
+  /** User's theme preference ('light' | 'dark' | 'system') */
   themePreference: ThemePreference;
+  /** User's color scheme preference ('blue' | 'green' | 'monochrome') */
+  colorSchemePreference: ColorScheme;
   /** Set the theme preference */
   setTheme: (preference: ThemePreference) => void;
+  /** Set the color scheme preference */
+  setColorScheme: (scheme: ColorScheme) => void;
   /** Convenience boolean for dark mode checks */
   isDark: boolean;
 }
@@ -33,7 +38,9 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const deviceColorScheme = useDeviceColorScheme();
   const themePreference = useSettingsStore((state) => state.themePreference);
+  const colorSchemePreference = useSettingsStore((state) => state.colorScheme);
   const setThemePreference = useSettingsStore((state) => state.setThemePreference);
+  const setColorSchemePreference = useSettingsStore((state) => state.setColorScheme);
 
   // Calculate effective theme
   const effectiveTheme: 'light' | 'dark' =
@@ -43,25 +50,32 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
 
   // Also sync with NativeWind's colorScheme for dark: classes (if any still exist)
   useEffect(() => {
-    console.log('[ThemeProvider] Theme changed to:', effectiveTheme, '(preference:', themePreference, ', device:', deviceColorScheme, ')');
+    console.log('[ThemeProvider] Theme changed to:', effectiveTheme, '(preference:', themePreference, ', colorScheme:', colorSchemePreference, ', device:', deviceColorScheme, ')');
     nwColorScheme.set(effectiveTheme);
-  }, [effectiveTheme, themePreference, deviceColorScheme]);
+  }, [effectiveTheme, themePreference, colorSchemePreference, deviceColorScheme]);
 
   const setTheme = (preference: ThemePreference) => {
     console.log('[ThemeProvider] setTheme:', preference);
     setThemePreference(preference);
   };
 
+  const setColorScheme = (scheme: ColorScheme) => {
+    console.log('[ThemeProvider] setColorScheme:', scheme);
+    setColorSchemePreference(scheme);
+  };
+
   const contextValue: ThemeContextType = {
     colorScheme: effectiveTheme,
     themePreference,
+    colorSchemePreference,
     setTheme,
+    setColorScheme,
     isDark: effectiveTheme === 'dark',
   };
 
   // Apply theme CSS variables via View wrapper
   // This is the key mechanism that makes theme-aware colors work
-  const themeVars = effectiveTheme === 'dark' ? darkTheme : lightTheme;
+  const themeVars = getThemeVars(effectiveTheme, colorSchemePreference);
 
   return (
     <ThemeContext.Provider value={contextValue}>

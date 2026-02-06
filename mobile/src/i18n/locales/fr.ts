@@ -147,6 +147,8 @@ export default {
     appearance: {
       theme: 'Thème',
       themeSubtitle: "Choisir le thème de l'application",
+      brightnessMode: 'Mode de luminosité',
+      colorScheme: 'Palette de couleurs',
       themeOptions: {
         light: 'Clair',
         dark: 'Sombre',
@@ -156,6 +158,16 @@ export default {
         light: 'Apparence claire, idéale pour la journée',
         dark: 'Apparence sombre, repose les yeux',
         system: "Suit automatiquement le thème de l'appareil",
+      },
+      colorSchemeOptions: {
+        blue: 'Bleu',
+        green: 'Vert',
+        monochrome: 'Monochrome',
+      },
+      colorSchemeDescriptions: {
+        blue: 'Thème bleu technologique par défaut',
+        green: "Thème vert inspiré de la nature",
+        monochrome: 'Thème minimaliste en niveaux de gris',
       },
     },
     transcription: {

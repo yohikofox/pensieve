@@ -6,7 +6,13 @@
  */
 
 import { vars } from 'nativewind';
-import { colors } from './tokens';
+import {
+  colors,
+  getPrimaryPaletteForColorScheme,
+  getSecondaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+  type ColorScheme,
+} from './tokens';
 
 /**
  * Convert hex color to RGB values string (for CSS variables)
@@ -21,22 +27,29 @@ function hexToRgbValues(hex: string): string {
 /**
  * Semantic color tokens that change based on theme
  * These are the CSS variable names used in tailwind.config.js
+ *
+ * @param colorScheme - The color scheme to use for primary colors
  */
-export const lightTheme = vars({
-  // Backgrounds
-  '--color-bg-screen': hexToRgbValues(colors.neutral[100]),
-  '--color-bg-card': hexToRgbValues(colors.neutral[0]),
-  '--color-bg-elevated': hexToRgbValues(colors.neutral[0]),
-  '--color-bg-input': hexToRgbValues(colors.neutral[0]),
-  '--color-bg-subtle': hexToRgbValues(colors.neutral[50]),
-  '--color-bg-inverse': hexToRgbValues(colors.neutral[900]),
+export function createLightTheme(colorScheme: ColorScheme = 'blue') {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const secondaryPalette = getSecondaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, false);
+
+  return vars({
+  // Backgrounds (tinted per color scheme)
+  '--color-bg-screen': hexToRgbValues(backgrounds.screen),
+  '--color-bg-card': hexToRgbValues(backgrounds.card),
+  '--color-bg-elevated': hexToRgbValues(backgrounds.elevated),
+  '--color-bg-input': hexToRgbValues(backgrounds.input),
+  '--color-bg-subtle': hexToRgbValues(backgrounds.subtle),
+  '--color-bg-inverse': hexToRgbValues(backgrounds.inverse),
 
   // Text
   '--color-text-primary': hexToRgbValues(colors.neutral[900]),
   '--color-text-secondary': hexToRgbValues(colors.neutral[500]),
   '--color-text-tertiary': hexToRgbValues(colors.neutral[400]),
   '--color-text-inverse': hexToRgbValues(colors.neutral[0]),
-  '--color-text-link': hexToRgbValues(colors.primary[500]),
+  '--color-text-link': hexToRgbValues(primaryPalette[500]),
 
   // Borders
   '--color-border-default': hexToRgbValues(colors.neutral[200]),
@@ -44,14 +57,14 @@ export const lightTheme = vars({
   '--color-border-strong': hexToRgbValues(colors.neutral[300]),
 
   // Primary action colors
-  '--color-primary': hexToRgbValues(colors.primary[500]),
-  '--color-primary-hover': hexToRgbValues(colors.primary[600]),
-  '--color-primary-subtle': hexToRgbValues(colors.primary[100]),
-  '--color-primary-text': hexToRgbValues(colors.primary[500]),
+  '--color-primary': hexToRgbValues(primaryPalette[500]),
+  '--color-primary-hover': hexToRgbValues(primaryPalette[600]),
+  '--color-primary-subtle': hexToRgbValues(primaryPalette[100]),
+  '--color-primary-text': hexToRgbValues(primaryPalette[500]),
 
-  // Secondary colors
-  '--color-secondary': hexToRgbValues(colors.secondary[500]),
-  '--color-secondary-subtle': hexToRgbValues(colors.secondary[100]),
+  // Secondary colors (vary per color scheme)
+  '--color-secondary': hexToRgbValues(secondaryPalette[500]),
+  '--color-secondary-subtle': hexToRgbValues(secondaryPalette[100]),
 
   // Status colors - Success
   '--color-success': hexToRgbValues(colors.success[500]),
@@ -80,24 +93,30 @@ export const lightTheme = vars({
   // Icon colors
   '--color-icon-default': hexToRgbValues(colors.neutral[500]),
   '--color-icon-subtle': hexToRgbValues(colors.neutral[400]),
-  '--color-icon-primary': hexToRgbValues(colors.primary[500]),
-});
+  '--color-icon-primary': hexToRgbValues(primaryPalette[500]),
+  });
+}
 
-export const darkTheme = vars({
-  // Backgrounds
-  '--color-bg-screen': hexToRgbValues(colors.neutral[900]),
-  '--color-bg-card': hexToRgbValues(colors.neutral[800]),
-  '--color-bg-elevated': hexToRgbValues(colors.neutral[800]),
-  '--color-bg-input': hexToRgbValues(colors.neutral[800]),
-  '--color-bg-subtle': hexToRgbValues(colors.neutral[700]),
-  '--color-bg-inverse': hexToRgbValues(colors.neutral[100]),
+export function createDarkTheme(colorScheme: ColorScheme = 'blue') {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const secondaryPalette = getSecondaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, true);
+
+  return vars({
+  // Backgrounds (tinted per color scheme)
+  '--color-bg-screen': hexToRgbValues(backgrounds.screen),
+  '--color-bg-card': hexToRgbValues(backgrounds.card),
+  '--color-bg-elevated': hexToRgbValues(backgrounds.elevated),
+  '--color-bg-input': hexToRgbValues(backgrounds.input),
+  '--color-bg-subtle': hexToRgbValues(backgrounds.subtle),
+  '--color-bg-inverse': hexToRgbValues(backgrounds.inverse),
 
   // Text
   '--color-text-primary': hexToRgbValues(colors.neutral[50]),
   '--color-text-secondary': hexToRgbValues(colors.neutral[400]),
   '--color-text-tertiary': hexToRgbValues(colors.neutral[500]),
   '--color-text-inverse': hexToRgbValues(colors.neutral[900]),
-  '--color-text-link': hexToRgbValues(colors.primary[400]),
+  '--color-text-link': hexToRgbValues(primaryPalette[400]),
 
   // Borders
   '--color-border-default': hexToRgbValues(colors.neutral[700]),
@@ -105,14 +124,14 @@ export const darkTheme = vars({
   '--color-border-strong': hexToRgbValues(colors.neutral[600]),
 
   // Primary action colors
-  '--color-primary': hexToRgbValues(colors.primary[500]),
-  '--color-primary-hover': hexToRgbValues(colors.primary[400]),
-  '--color-primary-subtle': hexToRgbValues(colors.primary[900]),
-  '--color-primary-text': hexToRgbValues(colors.primary[400]),
+  '--color-primary': hexToRgbValues(primaryPalette[500]),
+  '--color-primary-hover': hexToRgbValues(primaryPalette[400]),
+  '--color-primary-subtle': hexToRgbValues(primaryPalette[900]),
+  '--color-primary-text': hexToRgbValues(primaryPalette[400]),
 
-  // Secondary colors
-  '--color-secondary': hexToRgbValues(colors.secondary[500]),
-  '--color-secondary-subtle': hexToRgbValues(colors.secondary[900]),
+  // Secondary colors (vary per color scheme)
+  '--color-secondary': hexToRgbValues(secondaryPalette[500]),
+  '--color-secondary-subtle': hexToRgbValues(secondaryPalette[900]),
 
   // Status colors - Success
   '--color-success': hexToRgbValues(colors.success[500]),
@@ -141,12 +160,22 @@ export const darkTheme = vars({
   // Icon colors
   '--color-icon-default': hexToRgbValues(colors.neutral[400]),
   '--color-icon-subtle': hexToRgbValues(colors.neutral[500]),
-  '--color-icon-primary': hexToRgbValues(colors.primary[400]),
-});
+  '--color-icon-primary': hexToRgbValues(primaryPalette[400]),
+  });
+}
 
 /**
- * Get theme vars based on color scheme
+ * Get theme vars based on brightness mode and color scheme
  */
-export function getThemeVars(colorScheme: 'light' | 'dark') {
-  return colorScheme === 'dark' ? darkTheme : lightTheme;
+export function getThemeVars(
+  brightnessMode: 'light' | 'dark',
+  colorScheme: ColorScheme = 'blue'
+) {
+  return brightnessMode === 'dark'
+    ? createDarkTheme(colorScheme)
+    : createLightTheme(colorScheme);
 }
+
+// Export default themes for backward compatibility
+export const lightTheme = createLightTheme('blue');
+export const darkTheme = createDarkTheme('blue');

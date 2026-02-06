@@ -26,6 +26,7 @@ import { GoogleCalendarService, type GoogleAuthState } from '../../services/Goog
 import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
 import { colors } from '../../design-system/tokens';
 import { Card, Button, AlertDialog, useToast } from '../../design-system/components';
+import { StandardLayout } from '../../components/layouts';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'SettingsMain'>;
 
@@ -399,7 +400,8 @@ export const SettingsScreen = () => {
 
   return (
     <>
-      <ScrollView className="flex-1 bg-bg-screen">
+      <StandardLayout useSafeArea={false}>
+        <ScrollView className="flex-1">
         {/* Appearance Section */}
         <Card variant="elevated" className="mt-5 mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
@@ -703,7 +705,8 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
           )}
         </Card>
-      </ScrollView>
+        </ScrollView>
+      </StandardLayout>
 
       {/* Password Confirmation Modal */}
       <Modal

@@ -22,6 +22,7 @@ import {
 } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { TranscriptionEngineType } from '../../contexts/Normalization/services/ITranscriptionEngine';
 import { useTheme } from '../../hooks/useTheme';
+import { StandardLayout } from '../../components/layouts';
 import { colors } from '../../design-system/tokens';
 
 // Theme-aware colors
@@ -87,8 +88,9 @@ export function TranscriptionEngineSettingsScreen() {
   }
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
-      <View style={styles.header}>
+    <StandardLayout useSafeArea={false}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Moteur de transcription</Text>
         <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
           Choisissez le moteur utilisé pour convertir vos enregistrements audio en texte.
@@ -181,7 +183,8 @@ export function TranscriptionEngineSettingsScreen() {
           Quel que soit le moteur choisi, vos enregistrements restent sur votre appareil.
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 }
 

@@ -11,12 +11,11 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { useColorScheme } from 'nativewind';
 import { LoginScreen } from '../contexts/identity/screens/LoginScreen';
 import { RegisterScreen } from '../contexts/identity/screens/RegisterScreen';
 import { ForgotPasswordScreen } from '../contexts/identity/screens/ForgotPasswordScreen';
 import { ResetPasswordScreen } from '../contexts/identity/screens/ResetPasswordScreen';
-import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
+import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -29,8 +28,7 @@ const Stack = createNativeStackNavigator<AuthStackParamList>();
 
 export const AuthNavigator = () => {
   const { t } = useTranslation();
-  const { colorScheme } = useColorScheme();
-  const stackScreenOptions = colorScheme === 'dark' ? darkStackScreenOptions : lightStackScreenOptions;
+  const stackScreenOptions = useStackScreenOptions();
 
   return (
     <Stack.Navigator

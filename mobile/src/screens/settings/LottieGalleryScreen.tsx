@@ -18,6 +18,7 @@ import LottieView from 'lottie-react-native';
 import { Feather } from '@expo/vector-icons';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../design-system/tokens';
+import { StandardLayout } from '../../components/layouts';
 
 interface LottieAnimation {
   id: string;
@@ -73,11 +74,12 @@ export function LottieGalleryScreen() {
   };
 
   return (
-    <ScrollView
-      style={[styles.container, { backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50] }]}
-      contentContainerStyle={styles.contentContainer}
-    >
-      <View style={styles.header}>
+    <StandardLayout useSafeArea={false}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.contentContainer}
+      >
+        <View style={styles.header}>
         <Feather
           name="film"
           size={24}
@@ -193,7 +195,8 @@ export function LottieGalleryScreen() {
           Cet écran est accessible uniquement en mode debug
         </Text>
       </View>
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 }
 

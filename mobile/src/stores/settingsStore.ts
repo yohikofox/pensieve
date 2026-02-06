@@ -13,6 +13,7 @@ import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LLMModelId, LLMTask } from '../contexts/Normalization/services/LLMModelService';
+import type { ColorScheme } from '../design-system/tokens';
 
 // Theme preference type
 export type ThemePreference = 'light' | 'dark' | 'system';
@@ -43,6 +44,9 @@ interface SettingsState {
   // Theme preference - 'light', 'dark', or 'system' (follows OS)
   themePreference: ThemePreference;
 
+  // Color scheme - 'blue' (default), 'green' (nature), or 'monochrome' (grayscale)
+  colorScheme: ColorScheme;
+
   // Audio player type - 'waveform' (default) or 'classic' (Story 3.2b)
   audioPlayerType: AudioPlayerType;
 
@@ -70,6 +74,7 @@ interface SettingsState {
 
   // Actions
   setThemePreference: (preference: ThemePreference) => void;
+  setColorScheme: (scheme: ColorScheme) => void;
   setAudioPlayerType: (type: AudioPlayerType) => void;
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
@@ -90,6 +95,9 @@ export const useSettingsStore = create<SettingsState>()(
       (set, get) => ({
         // Initial state - system theme by default
         themePreference: 'system' as ThemePreference,
+
+        // Initial state - blue color scheme by default
+        colorScheme: 'blue' as ColorScheme,
 
         // Initial state - waveform player by default (Story 3.2b)
         audioPlayerType: 'waveform' as AudioPlayerType,
@@ -124,6 +132,11 @@ export const useSettingsStore = create<SettingsState>()(
         setThemePreference: (preference: ThemePreference) => {
           set({ themePreference: preference });
           console.log('[SettingsStore] Theme preference:', preference);
+        },
+
+        setColorScheme: (scheme: ColorScheme) => {
+          set({ colorScheme: scheme });
+          console.log('[SettingsStore] Color scheme:', scheme);
         },
 
         setAudioPlayerType: (type: AudioPlayerType) => {

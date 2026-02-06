@@ -10,6 +10,7 @@ import { Feather } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from '../../hooks/useTheme';
 import { colors } from '../../design-system/tokens';
+import { StandardLayout } from '../../components/layouts';
 
 export const NewsScreen = () => {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ export const NewsScreen = () => {
   const iconColor = isDark ? colors.neutral[400] : colors.neutral[500];
 
   return (
-    <View className="flex-1 bg-bg-screen">
+    <StandardLayout>
       <View className="flex-1 justify-center items-center px-6">
         <Feather name="rss" size={64} color={iconColor} />
         <Text className="text-2xl font-semibold text-text-primary mt-4 mb-2">
@@ -28,6 +29,6 @@ export const NewsScreen = () => {
           {t('news.comingSoon.description')}
         </Text>
       </View>
-    </View>
+    </StandardLayout>
   );
 };

@@ -11,6 +11,7 @@ import { supabase } from "../../../lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { StandardLayout } from '../../../components/layouts';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -117,8 +118,9 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome to Pensine</Text>
+    <StandardLayout>
+      <View style={styles.container}>
+        <Text style={styles.title}>Welcome to Pensine</Text>
       <Text style={styles.subtitle}>
         Capture your thoughts, incubate your ideas
       </Text>
@@ -192,7 +194,8 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
           <Text style={styles.registerLink}>Sign Up</Text>
         </TouchableOpacity>
       </View>
-    </View>
+      </View>
+    </StandardLayout>
   );
 };
 
@@ -200,7 +203,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
-    backgroundColor: "#fff",
     justifyContent: "center",
   },
   title: {

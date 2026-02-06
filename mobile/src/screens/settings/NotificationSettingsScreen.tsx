@@ -32,6 +32,7 @@ import { Card, useToast } from '../../design-system/components';
 import * as Notifications from 'expo-notifications';
 import { notificationPreferencesStorage } from '../../services/storage/NotificationPreferencesStorage';
 import { useNetworkStatus } from '../../contexts/NetworkContext';
+import { StandardLayout } from '../../components/layouts';
 
 export const NotificationSettingsScreen = () => {
   const { t } = useTranslation();
@@ -262,8 +263,9 @@ export const NotificationSettingsScreen = () => {
   }
 
   return (
-    <ScrollView className="flex-1 bg-bg-screen">
-      {/* Push Notifications Section */}
+    <StandardLayout useSafeArea={false}>
+      <ScrollView className="flex-1">
+        {/* Push Notifications Section */}
       <Card variant="elevated" className="mt-5 mx-4 py-2">
         <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
           {t('settings.notifications.pushSection')}
@@ -355,6 +357,7 @@ export const NotificationSettingsScreen = () => {
           </Text>
         </Card>
       )}
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 };

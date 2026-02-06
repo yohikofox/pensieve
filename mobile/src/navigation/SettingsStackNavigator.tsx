@@ -8,9 +8,11 @@
  * - LLMSettings: LLM post-processing configuration
  */
 
-import React from 'react';
+import React, { useCallback } from 'react';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
+import { useTheme } from '../hooks/useTheme';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { TranscriptionEngineSettingsScreen } from '../screens/settings/TranscriptionEngineSettingsScreen';
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
@@ -19,8 +21,7 @@ import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { NotificationSettingsScreen } from '../screens/settings/NotificationSettingsScreen';
 import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
 import { TodoDetailPopoverTestScreen } from '../screens/__dev__/TodoDetailPopoverTestScreen';
-import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
-import { useTheme } from '../hooks/useTheme';
+import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
@@ -37,8 +38,7 @@ const Stack = createNativeStackNavigator<SettingsStackParamList>();
 
 export function SettingsStackNavigator() {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
-  const stackScreenOptions = isDark ? darkStackScreenOptions : lightStackScreenOptions;
+  const stackScreenOptions = useStackScreenOptions();
 
   return (
     <Stack.Navigator

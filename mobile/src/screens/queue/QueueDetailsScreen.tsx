@@ -25,6 +25,7 @@ import { colors } from '../../design-system/tokens';
 import { Card } from '../../design-system/components';
 import { formatDistanceToNow } from 'date-fns';
 import { fr, enUS } from 'date-fns/locale';
+import { StandardLayout } from '../../components/layouts';
 
 interface QueueItem {
   captureId: string;
@@ -171,9 +172,11 @@ export const QueueDetailsScreen = () => {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-bg-screen justify-center items-center">
-        <ActivityIndicator size="large" color={colors.primary[600]} />
-      </View>
+      <StandardLayout>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.primary[600]} />
+        </View>
+      </StandardLayout>
     );
   }
 
@@ -182,8 +185,8 @@ export const QueueDetailsScreen = () => {
   const queuedItems = queueItems.filter((item) => item.status === 'queued');
 
   return (
-    <ScrollView
-      className="flex-1 bg-bg-screen"
+    <StandardLayout>
+      <ScrollView className="flex-1"
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
@@ -301,6 +304,7 @@ export const QueueDetailsScreen = () => {
           💡 The queue updates automatically. Pull down to refresh manually.
         </Text>
       </Card>
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 };

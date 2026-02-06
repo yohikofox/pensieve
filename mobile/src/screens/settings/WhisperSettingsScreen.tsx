@@ -28,6 +28,7 @@ import {
 } from '../../contexts/Normalization/services/CorrectionLearningService';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
+import { StandardLayout } from '../../components/layouts';
 import { colors } from '../../design-system/tokens';
 
 // Theme-aware colors
@@ -200,8 +201,9 @@ export function WhisperSettingsScreen() {
   }, []);
 
   return (
-    <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
-      <View style={styles.header}>
+    <StandardLayout useSafeArea={false}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Modèle de transcription</Text>
         <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
           Choisissez le modèle Whisper pour convertir vos enregistrements audio en texte.
@@ -336,7 +338,8 @@ export function WhisperSettingsScreen() {
           },
         }}
       />
-    </ScrollView>
+      </ScrollView>
+    </StandardLayout>
   );
 }
 

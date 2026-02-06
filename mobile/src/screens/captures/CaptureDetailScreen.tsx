@@ -33,6 +33,7 @@ import { container } from "tsyringe";
 import { colors } from "../../design-system/tokens";
 import { AlertDialog, useToast, Button } from "../../design-system/components";
 import { useTheme } from "../../hooks/useTheme";
+import { StandardLayout } from '../../components/layouts';
 import {
   CaptureIcons,
   StatusIcons,
@@ -1257,40 +1258,34 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
 
   if (loading) {
     return (
-      <View
-        style={[
-          styles.loadingContainer,
-          { backgroundColor: themeColors.screenBg },
-        ]}
-      >
-        <ActivityIndicator size="large" color={colors.primary[500]} />
-      </View>
+      <StandardLayout>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+        </View>
+      </StandardLayout>
     );
   }
 
   if (!capture) {
     return (
-      <View
-        style={[
-          styles.errorContainer,
-          { backgroundColor: themeColors.screenBg },
-        ]}
-      >
-        <Feather
-          name={StatusIcons.error}
-          size={48}
-          color={themeColors.textTertiary}
-        />
-        <Text style={[styles.errorText, { color: themeColors.textMuted }]}>
-          Capture introuvable
-        </Text>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.backButtonText}>Retour</Text>
-        </TouchableOpacity>
-      </View>
+      <StandardLayout>
+        <View style={styles.errorContainer}>
+          <Feather
+            name={StatusIcons.error}
+            size={48}
+            color={themeColors.textTertiary}
+          />
+          <Text style={[styles.errorText, { color: themeColors.textMuted }]}>
+            Capture introuvable
+          </Text>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.backButtonText}>Retour</Text>
+          </TouchableOpacity>
+        </View>
+      </StandardLayout>
     );
   }
 
@@ -1302,8 +1297,9 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
     capture.type === "text";
 
   return (
-    <View style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
-      <ScrollView
+    <StandardLayout>
+      <View style={styles.container}>
+        <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
       >
@@ -3509,26 +3505,24 @@ export function CaptureDetailScreen({ route, navigation }: Props) {
           onPress: () => setShowCalendarDialog(false),
         }}
       />
-    </View>
+      </View>
+    </StandardLayout>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F2F2F7",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2F2F7",
   },
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F2F2F7",
     padding: 24,
   },
   errorText: {

@@ -21,16 +21,14 @@ import { CapturesStackNavigator } from './CapturesStackNavigator';
 import { SettingsStackNavigator } from './SettingsStackNavigator';
 import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
 import { TabBarIcon, TabIcons } from './components';
-import { lightTabBarStyle, darkTabBarStyle } from './theme';
-import { useTheme } from '../hooks/useTheme';
+import { useTabBarStyle } from '../hooks/useNavigationTheme';
 import { useActiveTodoCount } from '../contexts/action/hooks/useActiveTodoCount';
 
 const Tab = createBottomTabNavigator();
 
 export const MainNavigator = () => {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
-  const tabBarStyle = isDark ? darkTabBarStyle : lightTabBarStyle;
+  const tabBarStyle = useTabBarStyle();
 
   // Story 5.2 - AC1: Active todo count for badge
   const { data: activeTodoCount } = useActiveTodoCount();

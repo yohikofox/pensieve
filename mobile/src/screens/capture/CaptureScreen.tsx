@@ -37,6 +37,7 @@ import { ModelConfigPrompt } from "../../components/modals/ModelConfigPrompt";
 import { colors, shadows } from "../../design-system/tokens";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { ScreenCalibrationOrigin } from "../../components/debug";
+import { FullScreenLayout } from "../../components/layouts";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ICON_SIZE = (SCREEN_WIDTH - 80) / 3; // 3 icons per row with padding
@@ -160,25 +161,29 @@ const CaptureScreenWithAudioMode = () => {
   // Show permission denied message
   if (permissionDenied) {
     return (
-      <View className="flex-1 bg-bg-screen justify-center items-center">
-        <Text className="text-text-secondary text-center px-5">
-          {t("capture.alerts.permissionDenied")}
-          {"\n"}
-          {t("capture.alerts.permissionHint")}
-        </Text>
-      </View>
+      <FullScreenLayout>
+        <View className="flex-1 justify-center items-center">
+          <Text className="text-text-secondary text-center px-5">
+            {t("capture.alerts.permissionDenied")}
+            {"\n"}
+            {t("capture.alerts.permissionHint")}
+          </Text>
+        </View>
+      </FullScreenLayout>
     );
   }
 
   // Show loading indicator while initializing
   if (!isReady) {
     return (
-      <View className="flex-1 bg-bg-screen justify-center items-center">
-        <ActivityIndicator size="large" color={colors.primary[500]} />
-        <Text className="mt-4 text-text-secondary">
-          {t("capture.recording.initializing")}
-        </Text>
-      </View>
+      <FullScreenLayout>
+        <View className="flex-1 justify-center items-center">
+          <ActivityIndicator size="large" color={colors.primary[500]} />
+          <Text className="mt-4 text-text-secondary">
+            {t("capture.recording.initializing")}
+          </Text>
+        </View>
+      </FullScreenLayout>
     );
   }
 
@@ -648,7 +653,7 @@ const CaptureScreenContent = () => {
   };
 
   return (
-    <View className="flex-1 bg-bg-screen">
+    <FullScreenLayout>
       {/* Screen calibration origin marker for mobile-test framework */}
       <ScreenCalibrationOrigin />
       {/* Header */}
@@ -724,7 +729,7 @@ const CaptureScreenContent = () => {
         onGoToSettings={handleGoToSettings}
         onCancel={handleContinueWithoutTranscription}
       />
-    </View>
+    </FullScreenLayout>
   );
 };
 

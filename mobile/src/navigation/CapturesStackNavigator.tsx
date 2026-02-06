@@ -20,8 +20,7 @@ import { Platform } from 'react-native';
 import { CapturesListScreen } from '../screens/captures/CapturesListScreen';
 import { CaptureDetailScreen } from '../screens/captures/CaptureDetailScreen';
 import { QueueDetailsScreen } from '../screens/queue/QueueDetailsScreen';
-import { lightStackScreenOptions, darkStackScreenOptions } from './theme';
-import { useTheme } from '../hooks/useTheme';
+import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 
 export type CapturesStackParamList = {
   CapturesList: undefined;
@@ -33,8 +32,7 @@ const Stack = createNativeStackNavigator<CapturesStackParamList>();
 
 export function CapturesStackNavigator() {
   const { t } = useTranslation();
-  const { isDark } = useTheme();
-  const stackScreenOptions = isDark ? darkStackScreenOptions : lightStackScreenOptions;
+  const stackScreenOptions = useStackScreenOptions();
 
   return (
     <Stack.Navigator
