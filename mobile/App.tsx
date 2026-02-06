@@ -185,7 +185,8 @@ function AppContent() {
         "[App] User tapped transcription notification for:",
         captureId,
       );
-      // TODO: Navigate to capture detail when implemented
+      // Navigate to capture detail using deep link service
+      deepLinkService.navigateToCapture(captureId);
     });
 
     return cleanup;
