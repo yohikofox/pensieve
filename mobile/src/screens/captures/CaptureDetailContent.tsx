@@ -13,8 +13,8 @@
  * The wrapper (CaptureDetailScreen) handles route params extraction.
  */
 
-import React, { useEffect, useRef } from "react";
-import { View, ScrollView, TextInput } from "react-native";
+import React, { useEffect } from "react";
+import { View, ScrollView } from "react-native";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";
@@ -73,8 +73,6 @@ export function CaptureDetailContent({
   const setIsNativeEngine = useCaptureDetailStore(
     (state) => state.setIsNativeEngine,
   );
-
-  const textInputRef = useRef<TextInput>(null);
 
   // Toast
   const toast = useToast();
@@ -182,7 +180,6 @@ export function CaptureDetailContent({
 
           {/* Content */}
           <ContentSection
-            textInputRef={textInputRef}
             onTextChange={textEditorHook.handleTextChange}
           />
 

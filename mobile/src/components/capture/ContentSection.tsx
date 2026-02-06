@@ -15,7 +15,7 @@
  * Story 5.4: Refactored to consume stores directly instead of props.
  */
 
-import React from "react";
+import React, { useRef } from "react";
 import { View, Text, TextInput, TouchableOpacity } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { colors } from "../../design-system/tokens";
@@ -27,12 +27,10 @@ import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCurrentTextEditor } from "../../stores/textEditorStore";
 
 export interface ContentSectionProps {
-  textInputRef: React.RefObject<TextInput | null>;
   onTextChange: (text: string) => void;
 }
 
 export function ContentSection({
-  textInputRef,
   onTextChange,
 }: ContentSectionProps) {
   const capture = useCaptureDetailStore((state) => state.capture);
@@ -45,6 +43,9 @@ export function ContentSection({
 
   const { themeColors, isDark } = useCaptureTheme();
   const { editedText, hasChanges } = useCurrentTextEditor(capture?.id || "");
+
+  // Internal ref - no need to expose to parent
+  const textInputRef = useRef<TextInput>(null);
 
   if (!capture) return null;
 
