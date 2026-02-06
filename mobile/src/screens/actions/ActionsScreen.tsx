@@ -29,6 +29,7 @@ import {
   SectionListData,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -37,6 +38,7 @@ import { fr } from 'date-fns/locale';
 import { useAllTodosWithSource } from '../../contexts/action/hooks/useAllTodosWithSource';
 import { useFilterState } from '../../contexts/action/hooks/useFilterState';
 import { useFilteredTodoCounts } from '../../contexts/action/hooks/useFilteredTodoCounts';
+import { useBulkDeleteCompleted } from '../../contexts/action/hooks/useBulkDeleteCompleted';
 import { filterTodos } from '../../contexts/action/utils/filterTodos';
 import { sortTodos, isSectionData } from '../../contexts/action/utils/sortTodos';
 import { FilterTabs } from '../../contexts/action/ui/FilterTabs';
@@ -69,6 +71,9 @@ export const ActionsScreen = () => {
   // Story 5.3: Filter and sort state (AC1, AC8)
   const { filter, sort, setFilter, setSort, isLoading: isFilterLoading } = useFilterState();
   const counts = useFilteredTodoCounts();
+
+  // Story 5.4: Bulk delete completed todos (AC10, Task 11)
+  const bulkDeleteCompleted = useBulkDeleteCompleted();
 
   // Sort menu visibility
   const [isSortMenuVisible, setSortMenuVisible] = useState(false);
@@ -171,6 +176,38 @@ export const ActionsScreen = () => {
     setScrollOffset(offset);
   };
 
+  // Story 5.4 - Task 11: Bulk delete handler (AC10)
+  const handleBulkDelete = () => {
+    if (!counts.completed || counts.completed === 0) {
+      return;
+    }
+
+    Alert.alert(
+      'Supprimer les actions complétées',
+      `Êtes-vous sûr de vouloir supprimer ${counts.completed} action${counts.completed > 1 ? 's' : ''} complétée${counts.completed > 1 ? 's' : ''} ?`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: () => {
+            bulkDeleteCompleted.mutate();
+            // Show success feedback (could use a toast library)
+            setTimeout(() => {
+              Alert.alert(
+                'Actions supprimées',
+                `${counts.completed} action${counts.completed > 1 ? 's' : ''} supprimée${counts.completed > 1 ? 's' : ''}`
+              );
+            }, 300);
+          },
+        },
+      ]
+    );
+  };
+
   // Loading state (Story 5.3 - Fix #6: Wait for filter preferences to load)
   if (isLoading || isFilterLoading) {
     return (
@@ -180,8 +217,9 @@ export const ActionsScreen = () => {
     );
   }
 
-  // Render header (filter tabs + sort button)
+  // Render header (filter tabs + sort button + bulk delete)
   // Story 5.3 - Fix #7: Error boundary for filter components
+  // Story 5.4 - Task 11: Bulk delete button (AC10)
   const renderHeader = () => (
     <ErrorBoundary
       fallback={
@@ -207,6 +245,18 @@ export const ActionsScreen = () => {
           >
             <Text style={styles.sortButtonText}>⇅ Trier</Text>
           </TouchableOpacity>
+
+          {/* Story 5.4 - AC10: Bulk delete button (only on "Faites" filter) */}
+          {filter === 'completed' && counts.completed > 0 && (
+            <TouchableOpacity
+              style={styles.deleteAllButton}
+              onPress={handleBulkDelete}
+              accessibilityRole="button"
+              accessibilityLabel="Supprimer toutes les actions complétées"
+            >
+              <Text style={styles.deleteAllButtonText}>🗑️ Tout supprimer</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </ErrorBoundary>
@@ -335,6 +385,8 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   sortButtonContainer: {
+    flexDirection: 'row',
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
@@ -342,6 +394,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   sortButton: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -354,6 +407,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     color: '#374151',
+  },
+  deleteAllButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#FEE2E2',
+  },
+  deleteAllButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#DC2626',
   },
   sectionHeader: {
     backgroundColor: '#F3F4F6',

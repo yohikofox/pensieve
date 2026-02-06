@@ -185,6 +185,20 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
+   * Delete all completed todos (bulk delete)
+   * Story 5.4 - AC10, Task 11: Bulk delete completed todos
+   * @returns Number of todos deleted
+   */
+  async deleteCompleted(): Promise<number> {
+    const result = database.execute(
+      `DELETE FROM todos WHERE status = ?`,
+      ['completed']
+    );
+
+    return result.rowsAffected || 0;
+  }
+
+  /**
    * Toggle todo status between 'todo' and 'completed'
    * AC8, FR19: Checkbox toggle with optimistic UI
    * @param id - Todo UUID

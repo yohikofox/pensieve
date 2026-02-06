@@ -64,6 +64,13 @@ export interface ITodoRepository {
   delete(id: string): Promise<void>;
 
   /**
+   * Delete all completed todos (bulk delete)
+   * Story 5.4 - AC10, Task 11: Bulk delete completed todos
+   * @returns Number of todos deleted
+   */
+  deleteCompleted(): Promise<number>;
+
+  /**
    * Toggle todo status between 'todo' and 'completed'
    * AC8, FR19: Checkbox toggle with optimistic UI
    * @param id - Todo UUID

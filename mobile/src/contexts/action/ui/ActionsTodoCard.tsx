@@ -12,14 +12,16 @@
  * Code Review Fix #7: Haptic feedback respects user preferences
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, Pressable } from 'react-native';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
 import { Todo } from '../domain/Todo.model';
 import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
 import { formatDeadline } from '../utils/formatDeadline';
 import { CompletionAnimation } from './CompletionAnimation';
+import { GardenCelebrationAnimation } from './GardenCelebrationAnimation';
 import { TodoDetailPopover } from './TodoDetailPopover';
 import { useSettingsStore } from '../../../stores/settingsStore';
 
@@ -35,9 +37,23 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   sourceTimestamp,
 }) => {
   const [isDetailVisible, setIsDetailVisible] = useState(false);
-  const [showCompletionAnimation, setShowCompletionAnimation] = useState(false);
+  const [showGardenCelebration, setShowGardenCelebration] = useState(false);
   const toggleStatus = useToggleTodoStatus();
   const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
+
+  // Task 3: Strikethrough animation with Reanimated
+  const opacity = useSharedValue(todo.status === 'completed' ? 0.5 : 1.0);
+
+  useEffect(() => {
+    // Animate opacity when status changes
+    opacity.value = withTiming(todo.status === 'completed' ? 0.5 : 1.0, {
+      duration: 200,
+    });
+  }, [todo.status]);
+
+  const animatedTextStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   const handleToggle = () => {
     // Haptic feedback (Code Review Fix #7: respect user preference)
@@ -45,13 +61,12 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    // Show completion animation if marking as done
+    // Task 4: Trigger celebration animation only when marking complete
     if (todo.status === 'todo') {
-      setShowCompletionAnimation(true);
-      setTimeout(() => setShowCompletionAnimation(false), 1000);
+      setShowGardenCelebration(true);
     }
 
-    // Toggle status
+    // Toggle status (animation handled by CompletionAnimation component)
     toggleStatus.mutate(todo.id);
   };
 
@@ -88,36 +103,39 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
         className="bg-background-0 dark:bg-background-900 p-4 mb-2 rounded-lg active:opacity-80"
       >
         <View className="flex-row items-start">
-          {/* Checkbox */}
+          {/* Checkbox with completion animation */}
           <Pressable
             onPress={handleToggle}
             className="mr-3 mt-0.5"
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <View
-              className={`w-6 h-6 rounded border-2 items-center justify-center ${
-                todo.status === 'completed'
-                  ? 'bg-primary-500 border-primary-500'
-                  : 'border-border-secondary dark:border-border-secondary-dark'
-              }`}
-            >
-              {todo.status === 'completed' && (
-                <Feather name="check" size={16} color="white" />
-              )}
-            </View>
+            <CompletionAnimation isCompleted={todo.status === 'completed'}>
+              <View
+                className={`w-6 h-6 rounded border-2 items-center justify-center ${
+                  todo.status === 'completed'
+                    ? 'bg-primary-500 border-primary-500'
+                    : 'border-border-secondary dark:border-border-secondary-dark'
+                }`}
+              >
+                {todo.status === 'completed' && (
+                  <Feather name="check" size={16} color="white" />
+                )}
+              </View>
+            </CompletionAnimation>
           </Pressable>
 
           {/* Content */}
           <View className="flex-1">
-            {/* Description */}
-            <Text
+            {/* Description with animated strikethrough */}
+            <Animated.Text
+              style={animatedTextStyle}
               className={`text-content-primary dark:text-content-primary-dark text-base mb-1 ${
-                todo.status === 'completed' ? 'line-through opacity-60' : ''
+                todo.status === 'completed' ? 'line-through' : ''
               }`}
               numberOfLines={2}
             >
               {todo.description}
-            </Text>
+            </Animated.Text>
 
             {/* Source Preview */}
             {sourcePreview && (
@@ -157,8 +175,13 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
           </View>
         </View>
 
-        {/* Completion Animation */}
-        {showCompletionAnimation && <CompletionAnimation />}
+        {/* Task 4: Garden Celebration Animation (AC9 - Jardin d'idées) */}
+        {showGardenCelebration && (
+          <GardenCelebrationAnimation
+            trigger={showGardenCelebration}
+            onComplete={() => setShowGardenCelebration(false)}
+          />
+        )}
       </Pressable>
 
       {/* Detail Popover */}

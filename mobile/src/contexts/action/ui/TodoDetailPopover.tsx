@@ -38,7 +38,11 @@ interface TodoDetailPopoverProps {
 }
 
 type CapturesStackParamList = {
-  CaptureDetail: { captureId: string };
+  CaptureDetail: {
+    captureId: string;
+    highlightIdeaId?: string;
+    highlightTodoId?: string;
+  };
 };
 
 type NavigationProp = NativeStackNavigationProp<CapturesStackParamList>;
@@ -161,9 +165,13 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
         return;
       }
 
-      // Capture exists - navigate to detail screen
+      // Capture exists - navigate to detail screen with highlight params (Story 5.4 - AC7, AC8)
       onClose();
-      navigation.navigate('CaptureDetail', { captureId: todo.captureId });
+      navigation.navigate('CaptureDetail', {
+        captureId: todo.captureId,
+        highlightIdeaId: todo.ideaId,
+        highlightTodoId: todo.id,
+      });
     } catch (error) {
       // Navigation or database error
       console.error('[TodoDetailPopover] Error navigating to capture:', error);

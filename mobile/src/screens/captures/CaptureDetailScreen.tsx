@@ -181,7 +181,12 @@ function parseActionItems(content: string): ActionItem[] | null {
 
 type CapturesStackParamList = {
   CapturesList: undefined;
-  CaptureDetail: { captureId: string; startAnalysis?: boolean };
+  CaptureDetail: {
+    captureId: string;
+    startAnalysis?: boolean;
+    highlightIdeaId?: string;
+    highlightTodoId?: string;
+  };
 };
 
 type Props = NativeStackScreenProps<CapturesStackParamList, "CaptureDetail">;
@@ -309,8 +314,21 @@ const getThemeColors = (isDark: boolean) => ({
 });
 
 export function CaptureDetailScreen({ route, navigation }: Props) {
-  const { captureId, startAnalysis } = route.params;
+  const { captureId, startAnalysis, highlightIdeaId, highlightTodoId } = route.params;
   const debugMode = useSettingsStore((state) => state.debugMode);
+
+  // Story 5.4 - AC8: Log highlight params (full implementation pending)
+  React.useEffect(() => {
+    if (highlightIdeaId || highlightTodoId) {
+      console.log('[CaptureDetailScreen] Navigation with highlights:', {
+        highlightIdeaId,
+        highlightTodoId,
+      });
+      // TODO: Implement auto-scroll to highlighted idea
+      // TODO: Implement highlight glow effect
+      // TODO: Implement fade-out after 2-3 seconds
+    }
+  }, [highlightIdeaId, highlightTodoId]);
   const autoTranscriptionEnabled = useSettingsStore(
     (state) => state.autoTranscriptionEnabled,
   );
