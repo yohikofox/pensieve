@@ -1,8 +1,11 @@
 /**
  * useTextEditor Hook
  *
- * Manages text editing, saving, and sharing for capture transcriptions
- * Story 5.1 - Refactoring: Extract text editing responsibility from CaptureDetailScreen
+ * Completely autonomous hook for text editing, saving, and sharing.
+ * Reads all data from stores, no parameters needed except optional callback.
+ *
+ * Story 5.1 - Refactoring: Extract text editing responsibility
+ * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
  */
 
 import { useEffect } from "react";
@@ -12,19 +15,11 @@ import { container } from "tsyringe";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { ICaptureRepository } from "../contexts/capture/domain/ICaptureRepository";
 import type { Capture } from "../contexts/capture/domain/Capture.model";
-import type { CaptureMetadata } from "../contexts/capture/domain/CaptureMetadata.model";
 import { METADATA_KEYS } from "../contexts/capture/domain/CaptureMetadata.model";
 import { CorrectionLearningService } from "../contexts/Normalization/services/CorrectionLearningService";
-import type { ToastService } from "../contexts/common/ui/toast/ToastService";
 import { useTextEditorStore, useCurrentTextEditor } from "../stores/textEditorStore";
-
-interface UseTextEditorParams {
-  captureId: string;
-  capture: Capture | null;
-  metadata: Record<string, CaptureMetadata>;
-  toast: ToastService;
-  onCaptureUpdate: (capture: Capture) => void;
-}
+import { useCaptureDetailStore } from "../stores/captureDetailStore";
+import { useToast } from "../design-system/components";
 
 interface UseTextEditorReturn {
   editedText: string;
@@ -39,14 +34,18 @@ interface UseTextEditorReturn {
   ensureTextSaved: () => Promise<void>;
 }
 
-export function useTextEditor({
-  captureId,
-  capture,
-  metadata,
-  toast,
-  onCaptureUpdate,
-}: UseTextEditorParams): UseTextEditorReturn {
-  // Use store instead of local state
+export function useTextEditor(
+  onCaptureUpdate?: (capture: Capture) => void
+): UseTextEditorReturn {
+  // Read everything from stores - autonomous hook
+  const capture = useCaptureDetailStore((state) => state.capture);
+  const metadata = useCaptureDetailStore((state) => state.metadata);
+  const setCapture = useCaptureDetailStore((state) => state.setCapture);
+  const toast = useToast();
+
+  const captureId = capture?.id || "";
+
+  // Use store for editor state
   const { editedText, hasChanges, isSaving, copied } = useCurrentTextEditor(captureId);
   const setEditedText = useTextEditorStore((state) => state.setEditedText);
   const setHasChanges = useTextEditorStore((state) => state.setHasChanges);
@@ -112,9 +111,13 @@ export function useTextEditor({
         normalizedText: editedText,
       });
 
-      // Update parent state
-      onCaptureUpdate({ ...capture, normalizedText: editedText });
+      // Update store
+      const updatedCapture = { ...capture, normalizedText: editedText };
+      setCapture(updatedCapture);
       setHasChanges(captureId, false);
+
+      // Notify parent if callback provided
+      onCaptureUpdate?.(updatedCapture);
 
       console.log("[useTextEditor] Transcript saved successfully");
     } catch (error) {
@@ -177,9 +180,13 @@ export function useTextEditor({
       normalizedText: editedText,
     });
 
-    // Update parent state
-    onCaptureUpdate({ ...capture, normalizedText: editedText });
+    // Update store
+    const updatedCapture = { ...capture, normalizedText: editedText };
+    setCapture(updatedCapture);
     setHasChanges(captureId, false);
+
+    // Notify parent if callback provided
+    onCaptureUpdate?.(updatedCapture);
   };
 
   return {

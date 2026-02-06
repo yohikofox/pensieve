@@ -87,14 +87,8 @@ export function CaptureDetailContent({
     onEngineTypeChange: setIsNativeEngine,
   });
 
-  // Text editor hook - manages text editing, saving, and sharing
-  const textEditorHook = useTextEditor({
-    captureId,
-    capture,
-    metadata,
-    toast,
-    onCaptureUpdate: setCapture,
-  });
+  // Text editor hook - completely autonomous, reads from stores
+  const textEditorHook = useTextEditor();
 
   // Analyses hook - manages LLM analysis generation (defined before actionItemsHook)
   const analysesHook = useAnalyses({
