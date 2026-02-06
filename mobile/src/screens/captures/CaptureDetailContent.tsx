@@ -13,34 +13,15 @@
  * The wrapper (CaptureDetailScreen) handles route params extraction.
  */
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  ActivityIndicator,
-  TextInput,
-} from "react-native";
-import DateTimePickerModal from "react-native-modal-datetime-picker";
-import { AlertDialog, useToast, Button } from "../../design-system/components";
-import { colors } from "../../design-system/tokens";
-import { useTheme } from "../../hooks/useTheme";
+import React, { useEffect, useRef, useCallback } from "react";
+import { View, ScrollView, TextInput } from "react-native";
+import { AlertDialog, useToast } from "../../design-system/components";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
-import { StandardLayout } from '../../components/layouts';
+import { StandardLayout } from "../../components/layouts";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
-import type {
-  CaptureAnalysis,
-  AnalysisType,
-} from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { ANALYSIS_TYPES } from "../../contexts/capture/domain/CaptureAnalysis.model";
-import {
-  ANALYSIS_LABELS,
-  ANALYSIS_ICONS,
-} from "../../contexts/Normalization/services/analysisPrompts";
-import { GoogleCalendarService } from "../../services/GoogleCalendarService";
 import { useSettingsStore } from "../../stores/settingsStore";
-import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { useNavigation } from "@react-navigation/native";
 import { useCaptureDetailListener } from "../../hooks/useCaptureDetailListener";
 import { useActionItems } from "../../hooks/useActionItems";
@@ -50,10 +31,7 @@ import { useDeleteCapture } from "../../hooks/useDeleteCapture";
 import { useTextEditor } from "../../hooks/useTextEditor";
 import { useAnalyses } from "../../hooks/useAnalyses";
 import {
-  ActionItemsList,
   ReprocessingCard,
-  IdeasSection,
-  AnalysisSection,
   CaptureHeader,
   MetadataSection,
   RawTranscriptSection,
@@ -67,67 +45,39 @@ import {
   AudioPlayerSection,
   ContentSection,
 } from "../../components/capture";
-import { formatDate, formatDuration } from "../../utils/formatters";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 
 export interface CaptureDetailContentProps {
   captureId: string;
   startAnalysis?: boolean;
-  highlightIdeaId?: string;
-  highlightTodoId?: string;
 }
 
 export function CaptureDetailContent({
   captureId,
   startAnalysis,
-  highlightIdeaId,
-  highlightTodoId,
 }: CaptureDetailContentProps) {
   const navigation = useNavigation();
-  const debugMode = useSettingsStore((state) => state.debugMode);
-
-  // Story 5.4 - AC8: Log highlight params (full implementation pending)
-  React.useEffect(() => {
-    if (highlightIdeaId || highlightTodoId) {
-      console.log('[CaptureDetailScreen] Navigation with highlights:', {
-        highlightIdeaId,
-        highlightTodoId,
-      });
-      // TODO: Implement auto-scroll to highlighted idea
-      // TODO: Implement highlight glow effect
-      // TODO: Implement fade-out after 2-3 seconds
-    }
-  }, [highlightIdeaId, highlightTodoId]);
-  const autoTranscriptionEnabled = useSettingsStore(
-    (state) => state.autoTranscriptionEnabled,
-  );
-  const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
-  const { themeColors, isDark, colorSchemePreference } = useCaptureTheme();
+  const { themeColors } = useCaptureTheme();
 
   // Zustand store for capture detail state
   const capture = useCaptureDetailStore((state) => state.capture);
-  const metadata = useCaptureDetailStore((state) => state.metadata);
   const loading = useCaptureDetailStore((state) => state.loading);
-  const showRawTranscript = useCaptureDetailStore((state) => state.showRawTranscript);
-  const showMetadata = useCaptureDetailStore((state) => state.showMetadata);
-  const showOriginalContent = useCaptureDetailStore((state) => state.showOriginalContent);
-  const showAnalysis = useCaptureDetailStore((state) => state.showAnalysis);
-  const hasModelAvailable = useCaptureDetailStore((state) => state.hasModelAvailable);
-  const isNativeEngine = useCaptureDetailStore((state) => state.isNativeEngine);
-  const audioPosition = useCaptureDetailStore((state) => state.audioPosition);
-  const audioDuration = useCaptureDetailStore((state) => state.audioDuration);
 
   const setCapture = useCaptureDetailStore((state) => state.setCapture);
   const setMetadata = useCaptureDetailStore((state) => state.setMetadata);
   const setLoading = useCaptureDetailStore((state) => state.setLoading);
-  const setShowRawTranscript = useCaptureDetailStore((state) => state.setShowRawTranscript);
-  const setShowMetadata = useCaptureDetailStore((state) => state.setShowMetadata);
-  const setShowOriginalContent = useCaptureDetailStore((state) => state.setShowOriginalContent);
-  const setShowAnalysis = useCaptureDetailStore((state) => state.setShowAnalysis);
-  const setHasModelAvailable = useCaptureDetailStore((state) => state.setHasModelAvailable);
-  const setIsNativeEngine = useCaptureDetailStore((state) => state.setIsNativeEngine);
-  const setAudioPosition = useCaptureDetailStore((state) => state.setAudioPosition);
-  const setAudioDuration = useCaptureDetailStore((state) => state.setAudioDuration);
+  const setShowAnalysis = useCaptureDetailStore(
+    (state) => state.setShowAnalysis,
+  );
+  const setHasModelAvailable = useCaptureDetailStore(
+    (state) => state.setHasModelAvailable,
+  );
+  const setIsNativeEngine = useCaptureDetailStore(
+    (state) => state.setIsNativeEngine,
+  );
+  const setAudioPosition = useCaptureDetailStore(
+    (state) => state.setAudioPosition,
+  );
 
   const textInputRef = useRef<TextInput>(null);
 
@@ -199,7 +149,6 @@ export function CaptureDetailContent({
     }
   }, [init.existingAnalyses]);
 
-
   // Auto-expand analysis section if startAnalysis is true
   // Wait for loading to complete (ensures editedText is set)
   useEffect(() => {
@@ -208,31 +157,13 @@ export function CaptureDetailContent({
     }
   }, [startAnalysis, capture?.state, loading]);
 
-  // Debug: log capture state for analysis section
-  useEffect(() => {
-    if (capture) {
-      console.log("[CaptureDetailScreen] Capture loaded:", {
-        id: capture.id,
-        state: capture.state,
-        hasNormalizedText: !!capture.normalizedText,
-        normalizedTextLength: capture.normalizedText?.length || 0,
-        editedTextLength: textEditorHook.editedText?.length || 0,
-        showAnalysis,
-      });
-    }
-  }, [capture, showAnalysis, textEditorHook.editedText]);
-
   // Event-driven updates (replaces polling)
   useCaptureDetailListener(captureId, init.loadCapture);
 
   // Audio player callbacks (Story 3.2b - AC2)
   const handleAudioPositionChange = useCallback((positionMs: number) => {
     setAudioPosition(positionMs);
-  }, []);
-
-  const handleAudioSeek = useCallback((positionMs: number) => {
-    setAudioPosition(positionMs);
-  }, []);
+  }, [setAudioPosition]);
 
   if (loading) {
     return <CaptureDetailLoading />;
@@ -248,182 +179,131 @@ export function CaptureDetailContent({
   }
 
   const isAudio = capture.type === "audio";
-  const hasText = textEditorHook.editedText.length > 0;
-  const isEditable =
-    capture.state === "ready" ||
-    capture.state === "failed" ||
-    capture.type === "text";
 
   return (
     <StandardLayout>
       <View style={styles.container}>
         <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-      >
-        {/* Header Info */}
-        <CaptureHeader themeColors={themeColors} />
+          style={styles.scrollView}
+          contentContainerStyle={styles.content}
+        >
+          {/* Header Info */}
+          <CaptureHeader themeColors={themeColors} />
 
-        {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
-        {isAudio && capture.rawContent && (
-          <AudioPlayerSection
-            audioUri={capture.rawContent}
-            captureId={capture.id}
-            metadata={metadata}
-            audioPlayerType={audioPlayerType}
-            themeColors={themeColors}
-            onPositionChange={handleAudioPositionChange}
-            onPlaybackEnd={() => setAudioPosition(0)}
+          {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
+          {isAudio && capture.rawContent && (
+            <AudioPlayerSection
+              onPositionChange={handleAudioPositionChange}
+              onPlaybackEnd={() => setAudioPosition(0)}
+            />
+          )}
+
+          {/* Content */}
+          <ContentSection
+            textInputRef={textInputRef}
+            onTextChange={textEditorHook.handleTextChange}
           />
-        )}
 
-        {/* Content */}
-        <ContentSection
-          capture={capture}
-          metadata={metadata}
-          themeColors={themeColors}
-          isDark={isDark}
-          editedText={textEditorHook.editedText}
-          hasChanges={textEditorHook.hasChanges}
-          textInputRef={textInputRef}
-          onTextChange={textEditorHook.handleTextChange}
-          showOriginalContent={showOriginalContent}
-          onToggleOriginalContent={() =>
-            setShowOriginalContent(!showOriginalContent)
-          }
-          audioPosition={audioPosition}
-          audioDuration={audioDuration}
-          onAudioSeek={handleAudioSeek}
-        />
+          {/* Raw Transcript (before LLM) - Show when different from final text */}
+          <RawTranscriptSection themeColors={themeColors} />
 
-        {/* Raw Transcript (before LLM) - Show when different from final text */}
-        <RawTranscriptSection themeColors={themeColors} />
+          {/* Metadata Section */}
+          <MetadataSection themeColors={themeColors} />
 
-        {/* Metadata Section */}
-        <MetadataSection themeColors={themeColors} />
-
-        {/* Actions Section - Quick actions for captures */}
-        <ActionsSection
-          themeColors={themeColors}
-          isDark={isDark}
-          debugMode={debugMode}
-          editedText={textEditorHook.editedText}
-          reprocessing={reprocessingHook.reprocessing}
-          onReTranscribe={reprocessingHook.handleReTranscribe}
-          onRePostProcess={reprocessingHook.handleRePostProcess}
-        />
-
-        {/* Analysis Section - Show for ready audio captures AND all text notes with content */}
-        {(capture.state === "ready" ||
-          (capture.type === "text" && textEditorHook.editedText)) && (
-          <AnalysisCard
-            themeColors={themeColors}
-            isDark={isDark}
-            debugMode={debugMode}
-            editedText={textEditorHook.editedText}
-            showAnalysis={showAnalysis}
-            onToggleAnalysis={() => {
-              console.log(
-                "[CaptureDetailScreen] Analysis header pressed, showAnalysis:",
-                !showAnalysis,
-              );
-              setShowAnalysis(!showAnalysis);
-            }}
-            actionItemsHook={actionItemsHook}
-            ideasHook={ideasHook}
-            analysesHook={analysesHook}
-          />
-        )}
-
-        {/* Reprocess Section - Debug tools for audio captures (debug mode only) */}
-        {debugMode && isAudio && capture.state === "ready" && (
-          <ReprocessingCard
-            capture={capture}
-            metadata={metadata}
+          {/* Actions Section - Quick actions for captures */}
+          <ActionsSection
             reprocessing={reprocessingHook.reprocessing}
             onReTranscribe={reprocessingHook.handleReTranscribe}
             onRePostProcess={reprocessingHook.handleRePostProcess}
-            isDark={isDark}
-            themeColors={themeColors}
           />
-        )}
-      </ScrollView>
 
-      {/* Date Picker Modal - Fonctionne sur iOS et Android */}
-      <DatePickerModal
-        visible={actionItemsHook.showDatePicker}
-        selectedDate={actionItemsHook.selectedDate}
-        onConfirm={actionItemsHook.handleDateConfirm}
-        onCancel={actionItemsHook.handleDateCancel}
-      />
+          {/* Analysis Section - Show for ready audio captures AND all text notes with content */}
+          {capture.state === "ready" && (
+            <AnalysisCard
+              actionItemsHook={actionItemsHook}
+              ideasHook={ideasHook}
+              analysesHook={analysesHook}
+            />
+          )}
 
-      {/* Contact Picker Modal */}
-      <ContactPickerModal
-        visible={actionItemsHook.showContactPicker}
-        themeColors={themeColors}
-        loadingContacts={actionItemsHook.loadingContacts}
-        contactSearchQuery={actionItemsHook.contactSearchQuery}
-        filteredContacts={actionItemsHook.filteredContacts}
-        onClose={actionItemsHook.handleContactPickerCancel}
-        onSearchChange={actionItemsHook.setContactSearchQuery}
-        onSelectContact={actionItemsHook.handleSelectContact}
-      />
+          {/* Reprocess Section - Debug tools for audio captures (debug mode only) */}
+          {isAudio && capture.state === "ready" && (
+            <ReprocessingCard
+              reprocessing={reprocessingHook.reprocessing}
+              onReTranscribe={reprocessingHook.handleReTranscribe}
+              onRePostProcess={reprocessingHook.handleRePostProcess}
+            />
+          )}
+        </ScrollView>
 
-      {/* Action Bar */}
-      <ActionBar
-        themeColors={themeColors}
-        isDark={isDark}
-        hasText={hasText}
-        hasChanges={textEditorHook.hasChanges}
-        isSaving={textEditorHook.isSaving}
-        copied={textEditorHook.copied}
-        onCopy={textEditorHook.handleCopy}
-        onShare={textEditorHook.handleShare}
-        onDelete={deleteHook.handleDelete}
-        onSave={textEditorHook.handleSave}
-        onDiscardChanges={textEditorHook.handleDiscardChanges}
-      />
+        {/* Date Picker Modal - Fonctionne sur iOS et Android */}
+        <DatePickerModal
+          visible={actionItemsHook.showDatePicker}
+          selectedDate={actionItemsHook.selectedDate}
+          onConfirm={actionItemsHook.handleDateConfirm}
+          onCancel={actionItemsHook.handleDateCancel}
+        />
 
-      {/* Delete confirmation dialog */}
-      <AlertDialog
-        visible={deleteHook.showDeleteDialog}
-        onClose={deleteHook.cancelDelete}
-        title="Supprimer cette capture ?"
-        message="Cette action est irréversible."
-        icon="trash-2"
-        variant="danger"
-        confirmAction={{
-          label: "Supprimer",
-          onPress: deleteHook.confirmDelete,
-        }}
-        cancelAction={{
-          label: "Annuler",
-          onPress: deleteHook.cancelDelete,
-        }}
-      />
+        {/* Contact Picker Modal */}
+        <ContactPickerModal
+          visible={actionItemsHook.showContactPicker}
+          loadingContacts={actionItemsHook.loadingContacts}
+          contactSearchQuery={actionItemsHook.contactSearchQuery}
+          filteredContacts={actionItemsHook.filteredContacts}
+          onClose={actionItemsHook.handleContactPickerCancel}
+          onSearchChange={actionItemsHook.setContactSearchQuery}
+          onSelectContact={actionItemsHook.handleSelectContact}
+        />
 
-      {/* Google Calendar connection dialog */}
-      <AlertDialog
-        visible={actionItemsHook.showCalendarDialog}
-        onClose={() => actionItemsHook.setShowCalendarDialog(false)}
-        title="Google Calendar non connecté"
-        message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
-        icon="calendar"
-        variant="warning"
-        confirmAction={{
-          label: "OK",
-          onPress: () => {
-            setShowCalendarDialog(false);
-            toast.info(
-              "Allez dans Paramètres > Intégrations > Google Calendar",
-            );
-          },
-        }}
-        cancelAction={{
-          label: "Annuler",
-          onPress: () => setShowCalendarDialog(false),
-        }}
-      />
+        {/* Action Bar */}
+        <ActionBar
+          onCopy={textEditorHook.handleCopy}
+          onShare={textEditorHook.handleShare}
+          onDelete={deleteHook.handleDelete}
+          onSave={textEditorHook.handleSave}
+          onDiscardChanges={textEditorHook.handleDiscardChanges}
+        />
+
+        {/* Delete confirmation dialog */}
+        <AlertDialog
+          visible={deleteHook.showDeleteDialog}
+          onClose={deleteHook.cancelDelete}
+          title="Supprimer cette capture ?"
+          message="Cette action est irréversible."
+          icon="trash-2"
+          variant="danger"
+          confirmAction={{
+            label: "Supprimer",
+            onPress: deleteHook.confirmDelete,
+          }}
+          cancelAction={{
+            label: "Annuler",
+            onPress: deleteHook.cancelDelete,
+          }}
+        />
+
+        {/* Google Calendar connection dialog */}
+        <AlertDialog
+          visible={actionItemsHook.showCalendarDialog}
+          onClose={() => actionItemsHook.setShowCalendarDialog(false)}
+          title="Google Calendar non connecté"
+          message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
+          icon="calendar"
+          variant="warning"
+          confirmAction={{
+            label: "OK",
+            onPress: () => {
+              actionItemsHook.setShowCalendarDialog(false);
+              toast.info(
+                "Allez dans Paramètres > Intégrations > Google Calendar",
+              );
+            },
+          }}
+          cancelAction={{
+            label: "Annuler",
+            onPress: () => actionItemsHook.setShowCalendarDialog(false),
+          }}
+        />
       </View>
     </StandardLayout>
   );

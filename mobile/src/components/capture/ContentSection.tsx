@@ -12,6 +12,7 @@
  * - Unsaved changes indicator
  *
  * Extracted from CaptureDetailScreen.tsx to reduce complexity.
+ * Story 5.4: Refactored to consume stores directly instead of props.
  */
 
 import React from "react";
@@ -21,47 +22,39 @@ import { colors } from "../../design-system/tokens";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import { TranscriptionSync } from "../audio/TranscriptionSync";
-import type { ThemeColors } from "../../hooks/useCaptureTheme";
-import type { Capture } from "../../contexts/capture/domain/Capture.model";
-import type { CaptureMetadata } from "../../contexts/capture/domain/CaptureMetadata.model";
+import { useCaptureDetailStore } from "../../stores/captureDetailStore";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
+import { useCurrentTextEditor } from "../../stores/textEditorStore";
 
 export interface ContentSectionProps {
-  capture: Capture;
-  metadata: Record<string, CaptureMetadata>;
-  themeColors: ThemeColors;
-  isDark: boolean;
-
-  // Text editing
-  editedText: string;
-  hasChanges: boolean;
-  textInputRef: React.RefObject<TextInput>;
+  textInputRef: React.RefObject<TextInput | null>;
   onTextChange: (text: string) => void;
-
-  // Original/AI toggle
-  showOriginalContent: boolean;
-  onToggleOriginalContent: () => void;
-
-  // Audio sync
-  audioPosition: number;
-  audioDuration: number;
-  onAudioSeek: (positionMs: number) => void;
 }
 
 export function ContentSection({
-  capture,
-  metadata,
-  themeColors,
-  isDark,
-  editedText,
-  hasChanges,
   textInputRef,
   onTextChange,
-  showOriginalContent,
-  onToggleOriginalContent,
-  audioPosition,
-  audioDuration,
-  onAudioSeek,
 }: ContentSectionProps) {
+  const capture = useCaptureDetailStore((state) => state.capture);
+  const metadata = useCaptureDetailStore((state) => state.metadata);
+  const showOriginalContent = useCaptureDetailStore((state) => state.showOriginalContent);
+  const setShowOriginalContent = useCaptureDetailStore((state) => state.setShowOriginalContent);
+  const audioPosition = useCaptureDetailStore((state) => state.audioPosition);
+  const audioDuration = useCaptureDetailStore((state) => state.audioDuration);
+  const setAudioPosition = useCaptureDetailStore((state) => state.setAudioPosition);
+
+  const { themeColors, isDark } = useCaptureTheme();
+  const { editedText, hasChanges } = useCurrentTextEditor(capture?.id || "");
+
+  if (!capture) return null;
+
+  const handleToggleOriginalContent = () => {
+    setShowOriginalContent(!showOriginalContent);
+  };
+
+  const handleAudioSeek = (positionMs: number) => {
+    setAudioPosition(positionMs);
+  };
   const isAudio = capture.type === "audio";
   const hasText = editedText.length > 0;
   const isEditable =
@@ -136,7 +129,7 @@ export function ContentSection({
                   backgroundColor: isDark ? colors.neutral[700] : "#F2F2F7",
                 },
               ]}
-              onPress={onToggleOriginalContent}
+              onPress={handleToggleOriginalContent}
             >
               <Feather
                 name={showOriginalContent ? "eye" : "eye-off"}
@@ -194,7 +187,7 @@ export function ContentSection({
             transcription={displayText}
             currentPosition={audioPosition}
             duration={audioDuration || capture.duration || 0}
-            onSeek={onAudioSeek}
+            onSeek={handleAudioSeek}
           />
         ) : (
           <Text

@@ -1,119 +1,79 @@
 /**
- * Zustand Store for Capture Detail Screen
+ * CaptureDetailStore
  *
- * Centralized store for single capture detail state.
- * Event-driven architecture - no polling.
- *
- * Architecture: Un écran = un store
+ * Zustand store managing the state of the current capture being viewed
+ * Centralizes capture data, metadata, and UI states for CaptureDetailScreen
  */
 
-import { create } from 'zustand';
-import { devtools } from 'zustand/middleware';
-import { container } from 'tsyringe';
-import type { Capture } from '../contexts/capture/domain/Capture.model';
-import type { ICaptureRepository } from '../contexts/capture/domain/ICaptureRepository';
-import type { ICaptureMetadataRepository } from '../contexts/capture/domain/ICaptureMetadataRepository';
-import type { ICaptureAnalysisRepository } from '../contexts/capture/domain/ICaptureAnalysisRepository';
-import { TOKENS } from '../infrastructure/di/tokens';
-import type { CaptureMetadata } from '../contexts/capture/domain/CaptureMetadata.model';
-import type { CaptureAnalysis } from '../contexts/capture/domain/CaptureAnalysis.model';
+import { create } from "zustand";
+import type { Capture } from "../contexts/capture/domain/Capture.model";
+import type { CaptureMetadata } from "../contexts/capture/domain/CaptureMetadata.model";
 
 interface CaptureDetailState {
-  // State
+  // Core data
   capture: Capture | null;
-  metadata: Record<string, CaptureMetadata>; // Full metadata objects
-  metadataMap: Record<string, string | null>; // Simple key-value map (legacy format)
-  analyses: Record<string, CaptureAnalysis | null>; // Analyses by type
-  isLoading: boolean;
-  error: Error | null;
+  metadata: Record<string, CaptureMetadata>;
+  loading: boolean;
+
+  // UI states
+  showRawTranscript: boolean;
+  showMetadata: boolean;
+  showOriginalContent: boolean;
+  showAnalysis: boolean;
+
+  // Audio player state
+  audioPosition: number; // in milliseconds
+  audioDuration: number; // in milliseconds
+
+  // Model availability (Story 2.7)
+  hasModelAvailable: boolean | null;
+  isNativeEngine: boolean;
 
   // Actions
-  loadCapture: (captureId: string) => Promise<void>;
-  updateCapture: (captureId: string) => Promise<void>;
-  clearCapture: () => void;
+  setCapture: (capture: Capture | null) => void;
+  setMetadata: (metadata: Record<string, CaptureMetadata>) => void;
+  setLoading: (loading: boolean) => void;
+  setShowRawTranscript: (show: boolean) => void;
+  setShowMetadata: (show: boolean) => void;
+  setShowOriginalContent: (show: boolean) => void;
+  setShowAnalysis: (show: boolean) => void;
+  setAudioPosition: (position: number) => void;
+  setAudioDuration: (duration: number) => void;
+  setHasModelAvailable: (available: boolean | null) => void;
+  setIsNativeEngine: (isNative: boolean) => void;
+
+  // Reset state (when leaving detail screen)
+  reset: () => void;
 }
 
-export const useCaptureDetailStore = create<CaptureDetailState>()(
-  devtools(
-    (set, get) => ({
-      // State initial
-      capture: null,
-      metadata: {},
-      metadataMap: {},
-      analyses: {},
-      isLoading: false,
-      error: null,
+const initialState = {
+  capture: null,
+  metadata: {},
+  loading: true,
+  showRawTranscript: false,
+  showMetadata: false,
+  showOriginalContent: false,
+  showAnalysis: false,
+  audioPosition: 0,
+  audioDuration: 0,
+  hasModelAvailable: null,
+  isNativeEngine: false,
+};
 
-      // Load complete capture with metadata and analyses
-      loadCapture: async (captureId: string) => {
-        try {
-          set({ isLoading: true, error: null });
+export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
+  ...initialState,
 
-          const captureRepo = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
-          const metadataRepo = container.resolve<ICaptureMetadataRepository>(TOKENS.ICaptureMetadataRepository);
-          const analysisRepo = container.resolve<ICaptureAnalysisRepository>(TOKENS.ICaptureAnalysisRepository);
+  setCapture: (capture) => set({ capture }),
+  setMetadata: (metadata) => set({ metadata }),
+  setLoading: (loading) => set({ loading }),
+  setShowRawTranscript: (show) => set({ showRawTranscript: show }),
+  setShowMetadata: (show) => set({ showMetadata: show }),
+  setShowOriginalContent: (show) => set({ showOriginalContent: show }),
+  setShowAnalysis: (show) => set({ showAnalysis: show }),
+  setAudioPosition: (position) => set({ audioPosition: position }),
+  setAudioDuration: (duration) => set({ audioDuration: duration }),
+  setHasModelAvailable: (available) => set({ hasModelAvailable: available }),
+  setIsNativeEngine: (isNative) => set({ isNativeEngine: isNative }),
 
-          const [capture, metadata, analysesList] = await Promise.all([
-            captureRepo.findById(captureId),
-            metadataRepo.getAllAsMap(captureId),
-            analysisRepo.findByCaptureId(captureId),
-          ]);
-
-          // Convert metadata to simple map (legacy format)
-          const metadataMap: Record<string, string | null> = {};
-          Object.entries(metadata || {}).forEach(([key, meta]) => {
-            metadataMap[key] = meta.value;
-          });
-
-          // Convert analyses array to map by type
-          const analysesMap: Record<string, CaptureAnalysis | null> = {};
-          (analysesList || []).forEach(analysis => {
-            analysesMap[analysis.type] = analysis;
-          });
-
-          set({
-            capture: capture || null,
-            metadata: metadata || {},
-            metadataMap,
-            analyses: analysesMap,
-            isLoading: false,
-          });
-
-          console.log('[CaptureDetailStore] ✓ Loaded capture:', captureId);
-        } catch (error) {
-          console.error('[CaptureDetailStore] Load failed:', error);
-          set({ error: error as Error, isLoading: false });
-        }
-      },
-
-      // Update capture (called by event listener)
-      updateCapture: async (captureId: string) => {
-        const currentCapture = get().capture;
-
-        // Only update if it's the current capture
-        if (!currentCapture || currentCapture.id !== captureId) {
-          return;
-        }
-
-        // Reload everything
-        await get().loadCapture(captureId);
-      },
-
-      // Clear on unmount
-      clearCapture: () => {
-        set({
-          capture: null,
-          metadata: {},
-          metadataMap: {},
-          analyses: {},
-          isLoading: false,
-          error: null,
-        });
-        console.log('[CaptureDetailStore] ✓ Cleared');
-      },
-    }),
-    {
-      name: 'capture-detail-store',
-    }
-  )
-);
+  reset: () => set(initialState),
+}));

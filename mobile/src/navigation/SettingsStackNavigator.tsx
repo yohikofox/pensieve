@@ -8,11 +8,9 @@
  * - LLMSettings: LLM post-processing configuration
  */
 
-import React, { useCallback } from 'react';
-import { View } from 'react-native';
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { useTheme } from '../hooks/useTheme';
 import { SettingsScreen } from '../screens/settings/SettingsScreen';
 import { TranscriptionEngineSettingsScreen } from '../screens/settings/TranscriptionEngineSettingsScreen';
 import { WhisperSettingsScreen } from '../screens/settings/WhisperSettingsScreen';
@@ -22,6 +20,7 @@ import { NotificationSettingsScreen } from '../screens/settings/NotificationSett
 import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
 import { TodoDetailPopoverTestScreen } from '../screens/__dev__/TodoDetailPopoverTestScreen';
 import { useStackScreenOptions } from '../hooks/useNavigationTheme';
+import { CustomStackHeader } from './components';
 
 export type SettingsStackParamList = {
   SettingsMain: undefined;
@@ -44,6 +43,7 @@ export function SettingsStackNavigator() {
     <Stack.Navigator
       screenOptions={{
         ...stackScreenOptions,
+        headerShown: false, // Use Tab Navigator header for root screen
         headerBackTitle: t('common.back'),
       }}
     >
@@ -60,6 +60,7 @@ export function SettingsStackNavigator() {
         options={{
           title: t('navigation.headers.transcriptionEngine'),
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -68,6 +69,7 @@ export function SettingsStackNavigator() {
         options={{
           title: t('navigation.headers.whisperModel'),
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -76,6 +78,7 @@ export function SettingsStackNavigator() {
         options={{
           title: t('navigation.headers.aiEnhancement'),
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -84,6 +87,7 @@ export function SettingsStackNavigator() {
         options={{
           title: t('navigation.headers.theme'),
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -92,6 +96,7 @@ export function SettingsStackNavigator() {
         options={{
           title: t('navigation.headers.notificationSettings'),
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -100,6 +105,7 @@ export function SettingsStackNavigator() {
         options={{
           title: 'Lottie Animations',
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
       <Stack.Screen
@@ -108,6 +114,7 @@ export function SettingsStackNavigator() {
         options={{
           title: 'TodoDetailPopover Test',
           headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
         }}
       />
     </Stack.Navigator>

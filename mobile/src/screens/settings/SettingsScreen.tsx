@@ -75,7 +75,7 @@ export const SettingsScreen = () => {
   const getAudioPlayerLabel = (type: AudioPlayerType): string => {
     const labels: Record<AudioPlayerType, string> = {
       waveform: 'Lecteur minimaliste',
-      classic: 'Lecteur complet',
+      simple: 'Lecteur complet',
     };
     return labels[type];
   };
@@ -791,7 +791,7 @@ export const SettingsScreen = () => {
 
             <TouchableOpacity
               className="flex-row items-center py-3 px-4"
-              onPress={() => handleAudioPlayerTypeSelect('classic')}
+              onPress={() => handleAudioPlayerTypeSelect('simple')}
             >
               <View className="flex-1">
                 <Text className="text-lg text-text-primary">
@@ -801,7 +801,7 @@ export const SettingsScreen = () => {
                   Contrôles avancés avec boutons ±15s
                 </Text>
               </View>
-              {audioPlayerType === 'classic' && (
+              {audioPlayerType === 'simple' && (
                 <Feather name="check" size={24} color={colors.primary[600]} />
               )}
             </TouchableOpacity>

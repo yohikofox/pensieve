@@ -13,14 +13,15 @@
  *   - Android: Hardware back button + edge swipe
  */
 
-import React from 'react';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
-import { CapturesListScreen } from '../screens/captures/CapturesListScreen';
-import { CaptureDetailScreen } from '../screens/captures/CaptureDetailScreen';
-import { QueueDetailsScreen } from '../screens/queue/QueueDetailsScreen';
-import { useStackScreenOptions } from '../hooks/useNavigationTheme';
+import React from "react";
+import { createNativeStackNavigator } from "@react-navigation/native-stack";
+import { useTranslation } from "react-i18next";
+import { Platform } from "react-native";
+import { CapturesListScreen } from "../screens/captures/CapturesListScreen";
+import { CaptureDetailScreen } from "../screens/captures/CaptureDetailScreen";
+import { QueueDetailsScreen } from "../screens/queue/QueueDetailsScreen";
+import { useStackScreenOptions } from "../hooks/useNavigationTheme";
+import { CustomStackHeader } from "./components";
 
 export type CapturesStackParamList = {
   CapturesList: undefined;
@@ -38,40 +39,43 @@ export function CapturesStackNavigator() {
     <Stack.Navigator
       screenOptions={{
         ...stackScreenOptions,
-        headerBackTitle: t('common.back'),
+        headerShown: false, // Stack navigator handles its own headers
+        headerBackTitle: t("common.back"),
       }}
     >
       <Stack.Screen
         name="CapturesList"
         component={CapturesListScreen}
         options={{
-          title: t('navigation.headers.captures'),
+          title: t("navigation.headers.captures"),
         }}
       />
       <Stack.Screen
         name="CaptureDetail"
         component={CaptureDetailScreen}
         options={{
-          title: t('navigation.headers.captureDetail'),
+          title: t("navigation.headers.captureDetail"),
           headerShown: true,
+
+          header: (props) => <CustomStackHeader {...props} />,
 
           // Story 3.4 AC2: Hero transition animation (Option B - LayoutAnimation)
           // The 300ms timing is controlled by LayoutAnimation in CapturesListScreen.handleCapturePress
-          animation: 'default', // Smooth slide transition
-          presentation: Platform.OS === 'ios' ? 'card' : 'modal',
+          animation: "default", // Smooth slide transition
+          presentation: Platform.OS === "ios" ? "card" : "modal",
 
           // Story 3.4 AC6: Platform-specific navigation gestures
           gestureEnabled: true, // Enable swipe-back gesture
-          fullScreenGestureEnabled: Platform.OS === 'ios', // iOS: swipe from anywhere on screen
-          gestureDirection: 'horizontal', // Horizontal swipe for back navigation
-          animationTypeForReplace: 'push', // Smooth transition when replacing screen
+          fullScreenGestureEnabled: Platform.OS === "ios", // iOS: swipe from anywhere on screen
+          gestureDirection: "horizontal", // Horizontal swipe for back navigation
+          animationTypeForReplace: "push", // Smooth transition when replacing screen
         }}
       />
       <Stack.Screen
         name="QueueDetails"
         component={QueueDetailsScreen}
         options={{
-          title: 'Queue Status', // TODO: Add translation
+          title: "Queue Status", // TODO: Add translation
           headerShown: true,
           gestureEnabled: true,
         }}

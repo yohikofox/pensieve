@@ -31,6 +31,9 @@ import {
   borderRadius,
   typography,
   componentSizes,
+  getPrimaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+  type ColorScheme,
 } from "../../design-system/tokens";
 import { useTheme } from "../../hooks/useTheme";
 import { useWaveformService } from "../../contexts/capture/hooks/useWaveformService";
@@ -54,22 +57,27 @@ const SPEED_OPTIONS = [0.5, 1, 1.5, 2];
  * Theme-adaptive colors for WaveformPlayer
  * Matches the card style used in CaptureDetailScreen
  */
-const getThemeColors = (isDark: boolean) => ({
-  // Container: Matches card background from CaptureDetailScreen
-  containerBg: isDark ? colors.neutral[900] : colors.neutral[50],
+const getThemeColors = (isDark: boolean, colorScheme: ColorScheme = "blue") => {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
 
-  // Play button: Inverted from container for contrast
-  playButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
-  playButtonIcon: isDark ? colors.neutral[900] : colors.neutral[0],
+  return {
+    // Container: Adapts to color scheme like other cards
+    containerBg: backgrounds.card,
 
-  // Speed button: Same as play button for consistency
-  speedButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
-  speedButtonText: isDark ? colors.neutral[900] : colors.neutral[0],
+    // Play button: Inverted from container for contrast
+    playButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
+    playButtonIcon: isDark ? colors.neutral[900] : colors.neutral[0],
 
-  // Waveform bars: Primary color for played, subtle for unplayed
-  waveformPlayed: isDark ? colors.primary[400] : colors.primary[500],
-  waveformUnplayed: isDark ? colors.neutral[600] : colors.neutral[300],
-});
+    // Speed button: Same as play button for consistency
+    speedButtonBg: isDark ? colors.neutral[0] : colors.neutral[800],
+    speedButtonText: isDark ? colors.neutral[900] : colors.neutral[0],
+
+    // Waveform bars: Primary color for played, subtle for unplayed
+    waveformPlayed: isDark ? primaryPalette[400] : primaryPalette[500],
+    waveformUnplayed: isDark ? colors.neutral[600] : colors.neutral[300],
+  };
+};
 
 export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   audioUri,
@@ -93,8 +101,8 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   const status = useAudioPlayerStatus(player);
 
   // Theme support
-  const { isDark } = useTheme();
-  const themeColors = getThemeColors(isDark);
+  const { isDark, colorSchemePreference } = useTheme();
+  const themeColors = getThemeColors(isDark, colorSchemePreference);
 
   // Get waveform service with proper DI
   const waveformService = useWaveformService();

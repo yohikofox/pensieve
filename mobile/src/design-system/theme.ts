@@ -133,29 +133,29 @@ export function createDarkTheme(colorScheme: ColorScheme = 'blue') {
   '--color-secondary': hexToRgbValues(secondaryPalette[500]),
   '--color-secondary-subtle': hexToRgbValues(secondaryPalette[900]),
 
-  // Status colors - Success
+  // Status colors - Success (texte et bordure alignés en dark mode)
   '--color-success': hexToRgbValues(colors.success[500]),
-  '--color-success-bg': hexToRgbValues(colors.success[900]),
-  '--color-success-text': hexToRgbValues(colors.success[300]),
-  '--color-success-border': hexToRgbValues(colors.success[700]),
+  '--color-success-bg': hexToRgbValues(colors.success[900]), // Background sombre
+  '--color-success-text': hexToRgbValues(colors.success[400]), // Même niveau que la bordure
+  '--color-success-border': hexToRgbValues(colors.success[400]), // Bordure claire et visible
 
-  // Status colors - Warning
+  // Status colors - Warning (texte et bordure alignés en dark mode)
   '--color-warning': hexToRgbValues(colors.warning[500]),
-  '--color-warning-bg': hexToRgbValues(colors.warning[900]),
-  '--color-warning-text': hexToRgbValues(colors.warning[300]),
-  '--color-warning-border': hexToRgbValues(colors.warning[700]),
+  '--color-warning-bg': hexToRgbValues(colors.warning[900]), // Background sombre
+  '--color-warning-text': hexToRgbValues(colors.warning[400]), // Même niveau que la bordure
+  '--color-warning-border': hexToRgbValues(colors.warning[400]), // Bordure claire et visible
 
-  // Status colors - Error
+  // Status colors - Error (texte et bordure alignés en dark mode)
   '--color-error': hexToRgbValues(colors.error[500]),
-  '--color-error-bg': hexToRgbValues(colors.error[900]),
-  '--color-error-text': hexToRgbValues(colors.error[300]),
-  '--color-error-border': hexToRgbValues(colors.error[700]),
+  '--color-error-bg': hexToRgbValues(colors.error[900]), // Background sombre
+  '--color-error-text': hexToRgbValues(colors.error[400]), // Même niveau que la bordure
+  '--color-error-border': hexToRgbValues(colors.error[400]), // Bordure claire et visible
 
-  // Status colors - Info
+  // Status colors - Info (texte et bordure alignés en dark mode)
   '--color-info': hexToRgbValues(colors.info[500]),
-  '--color-info-bg': hexToRgbValues(colors.info[900]),
-  '--color-info-text': hexToRgbValues(colors.info[300]),
-  '--color-info-border': hexToRgbValues(colors.info[700]),
+  '--color-info-bg': hexToRgbValues(colors.info[900]), // Background sombre
+  '--color-info-text': hexToRgbValues(colors.info[400]), // Même niveau que la bordure
+  '--color-info-border': hexToRgbValues(colors.info[400]), // Bordure claire et visible
 
   // Icon colors
   '--color-icon-default': hexToRgbValues(colors.neutral[400]),

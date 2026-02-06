@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
 import { OfflineIndicator } from "../contexts/capture/ui/OfflineIndicator";
 import { TabBarIcon } from "./components";
-import { useTabBarStyle } from "../hooks/useNavigationTheme";
+import { useTabBarStyle, useTabHeaderOptions } from "../hooks/useNavigationTheme";
 import { useActiveTodoCount } from "../contexts/action/hooks/useActiveTodoCount";
 import { tabScreens, type TabScreenConfig } from "../screens/registry";
 
@@ -25,6 +25,7 @@ const Tab = createBottomTabNavigator();
 export const MainNavigator = () => {
   const { t } = useTranslation();
   const tabBarStyle = useTabBarStyle();
+  const tabHeaderOptions = useTabHeaderOptions();
 
   // Dynamic badge count for Actions tab
   const { data: activeTodoCount } = useActiveTodoCount();
@@ -84,6 +85,7 @@ export const MainNavigator = () => {
       <Tab.Navigator
         initialRouteName="Capture"
         screenOptions={{
+          ...tabHeaderOptions,
           headerShown: true,
           tabBarActiveTintColor: tabBarStyle.activeTintColor,
           tabBarInactiveTintColor: tabBarStyle.inactiveTintColor,

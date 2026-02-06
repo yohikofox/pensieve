@@ -12,9 +12,9 @@
  * ```
  */
 
-import React, { type ReactNode } from 'react';
-import { View, type ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { type ReactNode } from "react";
+import { View, type ViewStyle } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 interface StandardLayoutProps {
   /** Screen content */
@@ -32,7 +32,7 @@ interface StandardLayoutProps {
 
 export function StandardLayout({
   children,
-  useSafeArea = true,
+  useSafeArea = false,
   style,
   noPadding = true,
 }: StandardLayoutProps) {
@@ -41,10 +41,7 @@ export function StandardLayout({
   return (
     <Wrapper
       className="flex-1 bg-bg-screen"
-      style={[
-        !noPadding && { paddingHorizontal: 16, paddingTop: 20 },
-        style,
-      ]}
+      style={[!noPadding && { paddingHorizontal: 16, paddingTop: 20 }, style]}
     >
       {children}
     </Wrapper>

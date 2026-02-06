@@ -19,7 +19,7 @@ import type { ColorScheme } from '../design-system/tokens';
 export type ThemePreference = 'light' | 'dark' | 'system';
 
 // Audio player type (Story 3.2b)
-export type AudioPlayerType = 'waveform' | 'classic';
+export type AudioPlayerType = 'waveform' | 'simple';
 
 // Debug button position (anchored to edge)
 export interface DebugButtonPosition {
@@ -47,7 +47,7 @@ interface SettingsState {
   // Color scheme - 'blue' (default), 'green' (nature), or 'monochrome' (grayscale)
   colorScheme: ColorScheme;
 
-  // Audio player type - 'waveform' (default) or 'classic' (Story 3.2b)
+  // Audio player type - 'waveform' (default) or 'simple' (Story 3.2b)
   audioPlayerType: AudioPlayerType;
 
   // Debug mode - enables all debug features (WAV player, etc.)

@@ -11,6 +11,7 @@ import { useTheme } from './useTheme';
 import {
   getNavigationTheme,
   getTabBarStyle,
+  getTabHeaderOptions,
   getStackScreenOptions,
 } from '../navigation/theme';
 
@@ -49,6 +50,27 @@ export function useTabBarStyle() {
 
   return useMemo(
     () => getTabBarStyle(isDark, colorSchemePreference),
+    [isDark, colorSchemePreference]
+  );
+}
+
+/**
+ * Get tab header options based on current theme and color scheme
+ *
+ * Usage in MainNavigator:
+ * ```tsx
+ * const tabHeaderOptions = useTabHeaderOptions();
+ * <Tab.Navigator screenOptions={{
+ *   ...tabHeaderOptions,
+ *   headerShown: true,
+ * }}>
+ * ```
+ */
+export function useTabHeaderOptions() {
+  const { isDark, colorSchemePreference } = useTheme();
+
+  return useMemo(
+    () => getTabHeaderOptions(isDark, colorSchemePreference),
     [isDark, colorSchemePreference]
   );
 }

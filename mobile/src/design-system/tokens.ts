@@ -491,6 +491,11 @@ export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: b
         input: isDark ? '#1E2A47' : '#FFFFFF',
         subtle: isDark ? '#2D3E5F' : '#E1EFFE',
         inverse: isDark ? '#F3F4F6' : '#111827',
+        // Nouvelles variations pour hiérarchie visuelle
+        header: isDark ? '#0A1220' : '#DBEAFE',     // Header avec teinte bleue, plus sombre/clair
+        cardDarker: isDark ? '#0F1629' : '#F3F4F6', // Card plus sombre
+        cardLighter: isDark ? '#2D3E5F' : '#FFFFFF', // Card plus claire
+        overlay: isDark ? '#050B14' : '#E5E7EB',    // Overlay très sombre/clair
       };
     case 'green':
       return {
@@ -500,6 +505,11 @@ export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: b
         input: isDark ? '#1A3A2E' : '#FFFFFF',
         subtle: isDark ? '#2A4A3E' : '#D1FAE5',
         inverse: isDark ? '#F3F4F6' : '#111827',
+        // Nouvelles variations pour hiérarchie visuelle
+        header: isDark ? '#051510' : '#D1FAE5',     // Header avec teinte verte, plus sombre/clair
+        cardDarker: isDark ? '#0A1F17' : '#F3F4F6', // Card plus sombre
+        cardLighter: isDark ? '#2A4A3E' : '#FFFFFF', // Card plus claire
+        overlay: isDark ? '#020A07' : '#E5E7EB',    // Overlay très sombre/clair
       };
     case 'monochrome':
       return {
@@ -509,6 +519,11 @@ export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: b
         input: isDark ? colors.neutral[800] : colors.neutral[0],
         subtle: isDark ? colors.neutral[700] : colors.neutral[50],
         inverse: isDark ? colors.neutral[100] : colors.neutral[900],
+        // Nouvelles variations pour hiérarchie visuelle
+        header: isDark ? colors.neutral[950] : colors.neutral[50],   // Header gris, plus sombre/clair
+        cardDarker: isDark ? colors.neutral[900] : colors.neutral[100], // Card plus sombre
+        cardLighter: isDark ? colors.neutral[700] : colors.neutral[0], // Card plus claire
+        overlay: isDark ? '#000000' : colors.neutral[200],           // Overlay très sombre/clair
       };
     default:
       return {
@@ -518,6 +533,11 @@ export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: b
         input: isDark ? colors.neutral[800] : colors.neutral[0],
         subtle: isDark ? colors.neutral[700] : colors.neutral[50],
         inverse: isDark ? colors.neutral[100] : colors.neutral[900],
+        // Nouvelles variations pour hiérarchie visuelle
+        header: isDark ? colors.neutral[950] : colors.neutral[50],
+        cardDarker: isDark ? colors.neutral[900] : colors.neutral[100],
+        cardLighter: isDark ? colors.neutral[700] : colors.neutral[0],
+        overlay: isDark ? '#000000' : colors.neutral[200],
       };
   }
 }

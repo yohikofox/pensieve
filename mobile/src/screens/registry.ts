@@ -11,15 +11,25 @@
  * - DRY: No repetitive tab rendering code in MainNavigator
  */
 
-import { ComponentType } from 'react';
-import { BottomTabNavigationOptions } from '@react-navigation/bottom-tabs';
-import { NewsScreen } from './news/NewsScreen';
-import { CapturesStackNavigator } from '../navigation/CapturesStackNavigator';
-import { CaptureScreen } from './capture/CaptureScreen';
-import { ActionsScreen } from './actions/ActionsScreen';
-import { ProjectsScreen } from './projects/ProjectsScreen';
-import { SettingsStackNavigator } from '../navigation/SettingsStackNavigator';
-import { TabIcons } from '../navigation/components';
+import { ComponentType } from "react";
+import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
+import { NewsScreen } from "./news/NewsScreen";
+import { CapturesStackNavigator } from "../navigation/CapturesStackNavigator";
+import { CaptureScreen } from "./capture/CaptureScreen";
+import { ActionsScreen } from "./actions/ActionsScreen";
+import { ProjectsScreen } from "./projects/ProjectsScreen";
+import { SettingsStackNavigator } from "../navigation/SettingsStackNavigator";
+import { TabIcons } from "../navigation/components";
+
+/**
+ * Layout configuration for screens using StandardLayout
+ */
+export interface LayoutConfig {
+  /** Use SafeAreaView wrapper (default: auto-detect from headerShown) */
+  useSafeArea?: boolean;
+  /** Disable default padding (default: true) */
+  noPadding?: boolean;
+}
 
 /**
  * Tab Screen Configuration Interface
@@ -29,13 +39,16 @@ export interface TabScreenConfig {
   component: ComponentType<any>;
 
   /** Icon name - Feather icon name (e.g., 'rss', 'inbox') */
-  icon: typeof TabIcons[keyof typeof TabIcons];
+  icon: (typeof TabIcons)[keyof typeof TabIcons];
 
   /** Badge count (optional, for dynamic badges like Actions) */
   badge?: number;
 
   /** Additional navigation options */
   options?: Partial<BottomTabNavigationOptions>;
+
+  /** Layout configuration for StandardLayout wrapper */
+  layout?: LayoutConfig;
 
   /** i18n translation keys */
   i18n: {
@@ -58,67 +71,91 @@ export interface TabScreenConfig {
 export const tabScreens = {
   News: {
     component: NewsScreen,
-    icon: 'rss',
+    icon: "rss",
+    layout: {
+      // Header is shown by tab navigator, no need for SafeAreaView
+      useSafeArea: false,
+    },
     i18n: {
-      title: 'navigation.headers.news',
-      tabLabel: 'navigation.tabs.news',
-      accessibilityLabel: 'navigation.accessibility.news.label',
+      title: "navigation.headers.news",
+      tabLabel: "navigation.tabs.news",
+      accessibilityLabel: "navigation.accessibility.news.label",
     },
   },
 
   Captures: {
     component: CapturesStackNavigator,
-    icon: 'inbox',
+    icon: "inbox",
     options: {
-      headerShown: false, // Stack navigator handles its own headers
+      headerShown: true, // Stack navigator handles its own headers
+    },
+    layout: {
+      useSafeArea: false,
     },
     i18n: {
-      tabLabel: 'navigation.tabs.captures',
-      accessibilityLabel: 'navigation.accessibility.captures.label',
+      tabLabel: "navigation.tabs.captures",
+      accessibilityLabel: "navigation.accessibility.captures.label",
     },
   },
 
   Capture: {
     component: CaptureScreen,
-    icon: 'plus-circle',
+    icon: "plus-circle",
+    layout: {
+      // Header is shown by tab navigator, no need for SafeAreaView
+      useSafeArea: false,
+    },
     i18n: {
-      title: 'navigation.headers.capture',
-      tabLabel: 'navigation.tabs.capture',
-      accessibilityLabel: 'navigation.accessibility.capture.label',
+      title: "navigation.headers.capture",
+      tabLabel: "navigation.tabs.capture",
+      accessibilityLabel: "navigation.accessibility.capture.label",
     },
   },
 
   Actions: {
     component: ActionsScreen,
-    icon: 'check-square',
+    icon: "check-square",
+    layout: {
+      // Header is shown by tab navigator, no need for SafeAreaView
+      useSafeArea: false,
+    },
     // Badge is set dynamically in MainNavigator via useActiveTodoCount hook
     i18n: {
-      title: 'navigation.headers.actions',
-      tabLabel: 'navigation.tabs.actions',
-      accessibilityLabel: 'navigation.accessibility.actions.label',
-      accessibilityLabelWithCount: 'navigation.accessibility.actions.labelWithCount',
+      title: "navigation.headers.actions",
+      tabLabel: "navigation.tabs.actions",
+      accessibilityLabel: "navigation.accessibility.actions.label",
+      accessibilityLabelWithCount:
+        "navigation.accessibility.actions.labelWithCount",
     },
   },
 
   Projects: {
     component: ProjectsScreen,
-    icon: 'folder',
+    icon: "folder",
+    layout: {
+      // Header is shown by tab navigator, no need for SafeAreaView
+      useSafeArea: false,
+    },
     i18n: {
-      title: 'navigation.headers.projects',
-      tabLabel: 'navigation.tabs.projects',
-      accessibilityLabel: 'navigation.accessibility.projects.label',
+      title: "navigation.headers.projects",
+      tabLabel: "navigation.tabs.projects",
+      accessibilityLabel: "navigation.accessibility.projects.label",
     },
   },
 
   Settings: {
     component: SettingsStackNavigator,
-    icon: 'sliders',
+    icon: "sliders",
     options: {
-      headerShown: false, // Stack navigator handles its own headers
+      headerShown: true, // Show Tab Navigator header for root screen
+    },
+    layout: {
+      useSafeArea: false,
     },
     i18n: {
-      tabLabel: 'navigation.tabs.settings',
-      accessibilityLabel: 'navigation.accessibility.settings.label',
+      title: "navigation.headers.settings",
+      tabLabel: "navigation.tabs.settings",
+      accessibilityLabel: "navigation.accessibility.settings.label",
     },
   },
 } as const;
