@@ -90,10 +90,19 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 
   // Subtask 6.3: Save changes
   const handleSave = async () => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // CODE REVIEW FIX #8: Validate description is not empty
+    const trimmedDescription = description.trim();
+    if (trimmedDescription === '') {
+      Alert.alert(
+        'Description requise',
+        'La description de l\'action ne peut pas être vide.',
+        [{ text: 'OK', style: 'default' }]
+      );
+      return;
+    }
 
     const changes: Partial<Todo> = {};
-    if (description !== todo.description) changes.description = description;
+    if (trimmedDescription !== todo.description) changes.description = trimmedDescription;
     if (priority !== todo.priority) changes.priority = priority;
     if (deadline !== todo.deadline) changes.deadline = deadline;
 
@@ -106,6 +115,9 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
     if (isCompleted !== (todo.status === 'completed')) {
       toggleStatus.mutate(todo.id);
     }
+
+    // CODE REVIEW FIX #12: Haptic AFTER successful save (not before)
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
     onClose();
   };
@@ -137,8 +149,9 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 
   // Subtask 6.6: Toggle complete/incomplete
   const handleToggleComplete = async (value: boolean) => {
-    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    // CODE REVIEW FIX #12: Set state first, then haptic feedback
     setIsCompleted(value);
+    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
   };
 
   // Subtask 6.7-6.8 + 7.7: Navigate to source Idea/Capture (FR20) with error handling
@@ -166,10 +179,11 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
       }
 
       // Capture exists - navigate to detail screen with highlight params (Story 5.4 - AC7, AC8)
+      // CODE REVIEW FIX #3: Only pass highlightIdeaId if ideaId is defined
       onClose();
       navigation.navigate('CaptureDetail', {
         captureId: todo.captureId,
-        highlightIdeaId: todo.ideaId,
+        ...(todo.ideaId && { highlightIdeaId: todo.ideaId }),
         highlightTodoId: todo.id,
       });
     } catch (error) {

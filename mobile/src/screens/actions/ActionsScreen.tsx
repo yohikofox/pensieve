@@ -182,9 +182,11 @@ export const ActionsScreen = () => {
       return;
     }
 
+    const deletedCount = counts.completed;
+
     Alert.alert(
       'Supprimer les actions complétées',
-      `Êtes-vous sûr de vouloir supprimer ${counts.completed} action${counts.completed > 1 ? 's' : ''} complétée${counts.completed > 1 ? 's' : ''} ?`,
+      `Êtes-vous sûr de vouloir supprimer ${deletedCount} action${deletedCount > 1 ? 's' : ''} complétée${deletedCount > 1 ? 's' : ''} ?`,
       [
         {
           text: 'Annuler',
@@ -194,14 +196,25 @@ export const ActionsScreen = () => {
           text: 'Supprimer',
           style: 'destructive',
           onPress: () => {
-            bulkDeleteCompleted.mutate();
-            // Show success feedback (could use a toast library)
-            setTimeout(() => {
-              Alert.alert(
-                'Actions supprimées',
-                `${counts.completed} action${counts.completed > 1 ? 's' : ''} supprimée${counts.completed > 1 ? 's' : ''}`
-              );
-            }, 300);
+            // CODE REVIEW FIX #6: Show success alert only on successful mutation
+            bulkDeleteCompleted.mutate(undefined, {
+              onSuccess: (actualDeletedCount) => {
+                setTimeout(() => {
+                  Alert.alert(
+                    'Actions supprimées',
+                    `${actualDeletedCount} action${actualDeletedCount > 1 ? 's' : ''} supprimée${actualDeletedCount > 1 ? 's' : ''}`
+                  );
+                }, 300);
+              },
+              onError: (error) => {
+                console.error('[ActionsScreen] Bulk delete failed:', error);
+                Alert.alert(
+                  'Erreur',
+                  'Impossible de supprimer les actions. Veuillez réessayer.',
+                  [{ text: 'OK', style: 'default' }]
+                );
+              },
+            });
           },
         },
       ]

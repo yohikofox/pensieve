@@ -144,8 +144,8 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     top: -30,
-    left: '50%',
-    marginLeft: -3, // Center horizontally (shoot width / 2)
+    // CODE REVIEW FIX #11: Improved centering using alignSelf instead of magic numbers
+    alignSelf: 'center',
     alignItems: 'center',
     justifyContent: 'flex-end',
     height: 40,

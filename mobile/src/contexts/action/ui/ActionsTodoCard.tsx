@@ -13,7 +13,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable } from 'react-native';
+import { View, Text, Pressable, Alert } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
@@ -51,23 +51,44 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     });
   }, [todo.status]);
 
+  // CODE REVIEW FIX #7: Cleanup celebration animation on unmount
+  useEffect(() => {
+    return () => {
+      // Reset celebration state if component unmounts during animation
+      setShowGardenCelebration(false);
+    };
+  }, []);
+
   const animatedTextStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
   }));
 
   const handleToggle = () => {
-    // Haptic feedback (Code Review Fix #7: respect user preference)
-    if (hapticFeedbackEnabled) {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    }
+    const wasCompleted = todo.status === 'completed';
 
-    // Task 4: Trigger celebration animation only when marking complete
-    if (todo.status === 'todo') {
-      setShowGardenCelebration(true);
-    }
+    // CODE REVIEW FIX #2 + #9: Haptic and animation AFTER successful mutation
+    toggleStatus.mutate(todo.id, {
+      onSuccess: () => {
+        // Haptic feedback (respect user preference)
+        if (hapticFeedbackEnabled) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        }
 
-    // Toggle status (animation handled by CompletionAnimation component)
-    toggleStatus.mutate(todo.id);
+        // Trigger celebration animation only when marking complete (not on uncomplete)
+        if (!wasCompleted) {
+          setShowGardenCelebration(true);
+        }
+      },
+      onError: (error) => {
+        // CODE REVIEW FIX #2: Error handling with user feedback
+        console.error('[ActionsTodoCard] Failed to toggle todo status:', error);
+        Alert.alert(
+          'Erreur',
+          'Impossible de modifier le statut de l\'action. Veuillez réessayer.',
+          [{ text: 'OK', style: 'default' }]
+        );
+      },
+    });
   };
 
   const handleCardPress = () => {

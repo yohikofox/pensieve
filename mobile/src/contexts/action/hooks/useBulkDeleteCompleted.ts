@@ -24,6 +24,12 @@ export const useBulkDeleteCompleted = (): UseMutationResult<number, Error, void>
     mutationFn: () => todoRepository.deleteCompleted(),
 
     onSuccess: (deletedCount) => {
+      // CODE REVIEW FIX #10: Early return if no todos were deleted (avoid unnecessary invalidation)
+      if (deletedCount === 0) {
+        console.log('[useBulkDeleteCompleted] No completed todos to delete');
+        return;
+      }
+
       // Invalidate all todos queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['todos'] });
 
