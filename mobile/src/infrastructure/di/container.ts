@@ -12,6 +12,10 @@ import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { TOKENS } from './tokens';
 
+// Infrastructure Services
+import { LoggerService } from '../logging/LoggerService';
+import type { ILogger } from '../logging/ILogger';
+
 // Repositories
 import { CaptureRepository } from '../../contexts/capture/data/CaptureRepository';
 import { CaptureMetadataRepository } from '../../contexts/capture/data/CaptureMetadataRepository';
@@ -79,6 +83,9 @@ export function registerServices() {
     console.log('[DI Container] Services already registered, skipping');
     return;
   }
+
+  // Infrastructure Services
+  container.registerSingleton<ILogger>(TOKENS.ILogger, LoggerService);
 
   // Event Infrastructure (ADR-019)
   // Register EventBus singleton instance (shared message bus)

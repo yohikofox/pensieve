@@ -9,6 +9,9 @@
  */
 
 export const TOKENS = {
+  // Infrastructure Services
+  ILogger: Symbol.for('ILogger'),
+
   // Domain Repositories
   ICaptureRepository: Symbol.for('ICaptureRepository'),
   ICaptureMetadataRepository: Symbol.for('ICaptureMetadataRepository'),

@@ -45,13 +45,13 @@ import { CalibrationGridWrapper } from "./src/components/debug";
 import { NetworkProvider } from "./src/contexts/NetworkContext";
 import { deepLinkService } from "./src/services/deep-linking/DeepLinkService";
 import { QueryProvider } from "./src/providers/QueryProvider";
-import { createLogger } from "./src/utils/logger";
+import type { ILogger } from "./src/infrastructure/logging/ILogger";
 
 // Initialize IoC container with production services
 registerServices();
 
-// Create scoped logger for App
-const log = createLogger('App');
+// Resolve logger from DI container and create scoped instance
+const log = container.resolve<ILogger>(TOKENS.ILogger).createScope('App');
 
 // Synchronously initialize theme BEFORE first render
 // This ensures NativeWind's dark: classes are set correctly from the start
