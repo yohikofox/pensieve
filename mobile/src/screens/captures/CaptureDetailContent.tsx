@@ -13,7 +13,7 @@
  * The wrapper (CaptureDetailScreen) handles route params extraction.
  */
 
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, ScrollView, TextInput } from "react-native";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
@@ -72,9 +72,6 @@ export function CaptureDetailContent({
   );
   const setIsNativeEngine = useCaptureDetailStore(
     (state) => state.setIsNativeEngine,
-  );
-  const setAudioPosition = useCaptureDetailStore(
-    (state) => state.setAudioPosition,
   );
 
   const textInputRef = useRef<TextInput>(null);
@@ -158,11 +155,6 @@ export function CaptureDetailContent({
   // Event-driven updates (replaces polling)
   useCaptureDetailListener(captureId, init.loadCapture);
 
-  // Audio player callbacks (Story 3.2b - AC2)
-  const handleAudioPositionChange = useCallback((positionMs: number) => {
-    setAudioPosition(positionMs);
-  }, [setAudioPosition]);
-
   if (loading) {
     return <CaptureDetailLoading />;
   }
@@ -188,12 +180,7 @@ export function CaptureDetailContent({
           <CaptureHeader />
 
           {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
-          {isAudio && capture.rawContent && (
-            <AudioPlayerSection
-              onPositionChange={handleAudioPositionChange}
-              onPlaybackEnd={() => setAudioPosition(0)}
-            />
-          )}
+          {isAudio && capture.rawContent && <AudioPlayerSection />}
 
           {/* Content */}
           <ContentSection

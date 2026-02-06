@@ -18,8 +18,8 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
 export interface AudioPlayerSectionProps {
-  onPositionChange: (positionMs: number) => void;
-  onPlaybackEnd: () => void;
+  onPositionChange?: (positionMs: number) => void;
+  onPlaybackEnd?: () => void;
 }
 
 export function AudioPlayerSection({
@@ -28,10 +28,23 @@ export function AudioPlayerSection({
 }: AudioPlayerSectionProps) {
   const capture = useCaptureDetailStore((state) => state.capture);
   const metadata = useCaptureDetailStore((state) => state.metadata);
+  const setAudioPosition = useCaptureDetailStore((state) => state.setAudioPosition);
   const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
   const { themeColors } = useCaptureTheme();
 
   if (!capture?.rawContent) return null;
+
+  // Handle position change - update store + notify parent if callback provided
+  const handlePositionChange = (positionMs: number) => {
+    setAudioPosition(positionMs);
+    onPositionChange?.(positionMs);
+  };
+
+  // Handle playback end - reset position + notify parent if callback provided
+  const handlePlaybackEnd = () => {
+    setAudioPosition(0);
+    onPlaybackEnd?.();
+  };
 
   return (
     <View style={[styles.audioCard, { backgroundColor: themeColors.cardBg }]}>
@@ -40,14 +53,14 @@ export function AudioPlayerSection({
           audioUri={capture.rawContent}
           captureId={capture.id}
           metadata={metadata}
-          onPositionChange={onPositionChange}
-          onPlaybackEnd={onPlaybackEnd}
+          onPositionChange={handlePositionChange}
+          onPlaybackEnd={handlePlaybackEnd}
         />
       ) : (
         <AudioPlayer
           audioUri={capture.rawContent}
-          onPositionChange={onPositionChange}
-          onPlaybackEnd={onPlaybackEnd}
+          onPositionChange={handlePositionChange}
+          onPlaybackEnd={handlePlaybackEnd}
         />
       )}
     </View>
