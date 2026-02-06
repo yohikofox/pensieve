@@ -13,17 +13,16 @@ import { Feather } from "@expo/vector-icons";
 import { StandardLayout } from "../layouts";
 import { StatusIcons } from "../../design-system/icons";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
-import type { ThemeColors } from "../../hooks/useCaptureTheme";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
 export interface CaptureDetailErrorProps {
-  themeColors: ThemeColors;
   onGoBack: () => void;
 }
 
 export function CaptureDetailError({
-  themeColors,
   onGoBack,
 }: CaptureDetailErrorProps) {
+  const { themeColors } = useCaptureTheme();
   return (
     <StandardLayout>
       <View style={styles.errorContainer}>

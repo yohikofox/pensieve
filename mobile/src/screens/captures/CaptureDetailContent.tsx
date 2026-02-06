@@ -16,7 +16,6 @@
 import React, { useEffect, useRef, useCallback } from "react";
 import { View, ScrollView, TextInput } from "react-native";
 import { AlertDialog, useToast } from "../../design-system/components";
-import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";
 import { styles } from "../../styles/CaptureDetailScreen.styles";
@@ -57,7 +56,6 @@ export function CaptureDetailContent({
   startAnalysis,
 }: CaptureDetailContentProps) {
   const navigation = useNavigation();
-  const { themeColors } = useCaptureTheme();
 
   // Zustand store for capture detail state
   const capture = useCaptureDetailStore((state) => state.capture);
@@ -172,7 +170,6 @@ export function CaptureDetailContent({
   if (!capture) {
     return (
       <CaptureDetailError
-        themeColors={themeColors}
         onGoBack={() => navigation.goBack()}
       />
     );
@@ -188,7 +185,7 @@ export function CaptureDetailContent({
           contentContainerStyle={styles.content}
         >
           {/* Header Info */}
-          <CaptureHeader themeColors={themeColors} />
+          <CaptureHeader />
 
           {/* Audio Player (Story 3.2b - AC2) - User can choose player type in Settings */}
           {isAudio && capture.rawContent && (
@@ -205,10 +202,10 @@ export function CaptureDetailContent({
           />
 
           {/* Raw Transcript (before LLM) - Show when different from final text */}
-          <RawTranscriptSection themeColors={themeColors} />
+          <RawTranscriptSection />
 
           {/* Metadata Section */}
-          <MetadataSection themeColors={themeColors} />
+          <MetadataSection />
 
           {/* Actions Section - Quick actions for captures */}
           <ActionsSection

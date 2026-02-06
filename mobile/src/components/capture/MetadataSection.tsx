@@ -11,25 +11,14 @@ import { Feather } from "@expo/vector-icons";
 import { NavigationIcons } from "../../design-system/icons";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
-interface ThemeColors {
-  metadataBg: string;
-  metadataBorder: string;
-  metadataContentBg: string;
-  textPrimary: string;
-  textSecondary: string;
-  textTertiary: string;
-  borderDefault: string;
-}
-
-interface MetadataSectionProps {
-  themeColors: ThemeColors;
-}
-
-export function MetadataSection({ themeColors }: MetadataSectionProps) {
+export function MetadataSection() {
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const showMetadata = useCaptureDetailStore((state) => state.showMetadata);
   const setShowMetadata = useCaptureDetailStore((state) => state.setShowMetadata);
+
+  const { themeColors } = useCaptureTheme();
 
   if (Object.keys(metadata).length === 0) return null;
 

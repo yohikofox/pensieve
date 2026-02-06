@@ -17,29 +17,15 @@ import { formatDate, formatDuration } from "../../utils/formatters";
 import { TranscriptionQueueService } from "../../contexts/Normalization/services/TranscriptionQueueService";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
-import { useTheme } from "../../hooks/useTheme";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
-interface ThemeColors {
-  cardBg: string;
-  textPrimary: string;
-  textMuted: string;
-  statusPendingBg: string;
-  statusProcessingBg: string;
-  statusReadyBg: string;
-  statusFailedBg: string;
-}
-
-interface CaptureHeaderProps {
-  themeColors: ThemeColors;
-}
-
-export function CaptureHeader({ themeColors }: CaptureHeaderProps) {
+export function CaptureHeader() {
   const capture = useCaptureDetailStore((state) => state.capture);
   const hasModelAvailable = useCaptureDetailStore((state) => state.hasModelAvailable);
   const isNativeEngine = useCaptureDetailStore((state) => state.isNativeEngine);
-  
+
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
-  const { isDark } = useTheme();
+  const { themeColors, isDark } = useCaptureTheme();
   const navigation = useNavigation();
   const toast = useToast();
 

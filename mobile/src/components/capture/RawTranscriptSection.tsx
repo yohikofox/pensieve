@@ -12,27 +12,15 @@ import { colors } from "../../design-system/tokens";
 import { CaptureIcons, NavigationIcons } from "../../design-system/icons";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
-import { useTheme } from "../../hooks/useTheme";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
-interface ThemeColors {
-  metadataBg: string;
-  metadataBorder: string;
-  metadataContentBg: string;
-  textSecondary: string;
-  textTertiary: string;
-}
-
-interface RawTranscriptSectionProps {
-  themeColors: ThemeColors;
-}
-
-export function RawTranscriptSection({ themeColors }: RawTranscriptSectionProps) {
+export function RawTranscriptSection() {
   const capture = useCaptureDetailStore((state) => state.capture);
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const showRawTranscript = useCaptureDetailStore((state) => state.showRawTranscript);
   const setShowRawTranscript = useCaptureDetailStore((state) => state.setShowRawTranscript);
-  
-  const { isDark } = useTheme();
+
+  const { themeColors, isDark } = useCaptureTheme();
 
   if (!capture) return null;
 
