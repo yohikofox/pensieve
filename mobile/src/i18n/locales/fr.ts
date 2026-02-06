@@ -315,6 +315,28 @@ export default {
       theme: 'Thème',
       notificationSettings: 'Notifications',
     },
+    accessibility: {
+      news: {
+        label: 'Actualités, onglet de navigation',
+      },
+      captures: {
+        label: 'Captures, onglet de navigation. Affiche la liste de toutes vos captures',
+      },
+      capture: {
+        label: 'Capturer, onglet de navigation. Ouvre les outils de capture',
+      },
+      actions: {
+        label: 'Actions, onglet de navigation. Affiche vos actions à faire',
+        labelWithCount: 'Actions, onglet de navigation. {{count}} action en attente',
+        labelWithCount_plural: 'Actions, onglet de navigation. {{count}} actions en attente',
+      },
+      projects: {
+        label: 'Projets, onglet de navigation. Organisez vos captures en projets',
+      },
+      settings: {
+        label: 'Réglages, onglet de navigation. Configurez l\'application',
+      },
+    },
   },
 
   time: {

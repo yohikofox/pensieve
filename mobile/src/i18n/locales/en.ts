@@ -280,6 +280,7 @@ export default {
       news: 'News',
       captures: 'Captures',
       capture: 'Capture',
+      actions: 'Actions',
       projects: 'Projects',
       settings: 'Settings',
     },
@@ -287,6 +288,7 @@ export default {
       news: 'News',
       captures: 'My Captures',
       capture: 'Capture',
+      actions: 'My Actions',
       projects: 'Projects',
       settings: 'Settings',
       captureDetail: 'Detail',
@@ -295,6 +297,28 @@ export default {
       aiEnhancement: 'AI Enhancement',
       theme: 'Theme',
       notificationSettings: 'Notifications',
+    },
+    accessibility: {
+      news: {
+        label: 'News tab, navigation button',
+      },
+      captures: {
+        label: 'Captures tab, navigation button. View all your captures',
+      },
+      capture: {
+        label: 'Capture tab, navigation button. Open capture tools',
+      },
+      actions: {
+        label: 'Actions tab, navigation button. View your to-do actions',
+        labelWithCount: 'Actions tab, navigation button. {{count}} action pending',
+        labelWithCount_plural: 'Actions tab, navigation button. {{count}} actions pending',
+      },
+      projects: {
+        label: 'Projects tab, navigation button. Organize your captures into projects',
+      },
+      settings: {
+        label: 'Settings tab, navigation button. Configure the app',
+      },
     },
   },
 

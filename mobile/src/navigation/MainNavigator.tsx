@@ -1,28 +1,24 @@
 /**
  * MainNavigator - Bottom Tab Navigation
  *
- * Main navigation with five tabs:
- * - News: News feed and updates (coming soon)
- * - Captures: List of all captures
- * - Capture: Recording/capture screen
- * - Projects: Project organization (coming soon)
- * - Settings: App settings
+ * Main navigation with tab bar.
+ * Screen configurations are defined in src/screens/registry.ts
+ *
+ * Architecture:
+ * - Each screen owns its icon, labels, and options (registry pattern)
+ * - MainNavigator is responsible for rendering and shared behaviors
+ * - Dynamic data (badges, counts) is injected via hooks
  */
 
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { useTranslation } from 'react-i18next';
-import * as Haptics from 'expo-haptics';
-import { CaptureScreen } from '../screens/capture/CaptureScreen';
-import { ProjectsScreen } from '../screens/projects/ProjectsScreen';
-import { NewsScreen } from '../screens/news/NewsScreen';
-import { ActionsScreen } from '../screens/actions/ActionsScreen';
-import { CapturesStackNavigator } from './CapturesStackNavigator';
-import { SettingsStackNavigator } from './SettingsStackNavigator';
-import { OfflineIndicator } from '../contexts/capture/ui/OfflineIndicator';
-import { TabBarIcon, TabIcons } from './components';
-import { useTabBarStyle } from '../hooks/useNavigationTheme';
-import { useActiveTodoCount } from '../contexts/action/hooks/useActiveTodoCount';
+import React, { useCallback, useMemo } from "react";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { useTranslation } from "react-i18next";
+import * as Haptics from "expo-haptics";
+import { OfflineIndicator } from "../contexts/capture/ui/OfflineIndicator";
+import { TabBarIcon } from "./components";
+import { useTabBarStyle } from "../hooks/useNavigationTheme";
+import { useActiveTodoCount } from "../contexts/action/hooks/useActiveTodoCount";
+import { tabScreens, type TabScreenConfig } from "../screens/registry";
 
 const Tab = createBottomTabNavigator();
 
@@ -30,8 +26,58 @@ export const MainNavigator = () => {
   const { t } = useTranslation();
   const tabBarStyle = useTabBarStyle();
 
-  // Story 5.2 - AC1: Active todo count for badge
+  // Dynamic badge count for Actions tab
   const { data: activeTodoCount } = useActiveTodoCount();
+  const todoCount = activeTodoCount ?? 0;
+
+  // Memoized haptic feedback handler
+  const handleTabPress = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, []);
+
+  // Memoized tab press listeners (shared by all tabs)
+  const tabPressListener = useMemo(
+    () => ({
+      tabPress: handleTabPress,
+    }),
+    [handleTabPress],
+  );
+
+  // Helper: Create tab bar icon renderer with optional badge
+  const createIconRenderer = useCallback(
+    (iconName: TabScreenConfig["icon"], badge?: number) => {
+      return ({
+        color,
+        size,
+        focused,
+      }: {
+        color: string;
+        size: number;
+        focused: boolean;
+      }) => (
+        <TabBarIcon
+          name={iconName}
+          color={color}
+          size={size}
+          focused={focused}
+          badge={badge}
+        />
+      );
+    },
+    [],
+  );
+
+  // Helper: Get accessibility label with optional count
+  const getAccessibilityLabel = useCallback(
+    (screenName: string, config: TabScreenConfig, count?: number) => {
+      // Special case: Actions tab with dynamic count
+      if (screenName === "Actions" && count !== undefined && count > 0) {
+        return t(config.i18n.accessibilityLabelWithCount!, { count });
+      }
+      return t(config.i18n.accessibilityLabel);
+    },
+    [t],
+  );
 
   return (
     <>
@@ -45,109 +91,40 @@ export const MainNavigator = () => {
           tabBarStyle: tabBarStyle.style,
         }}
       >
-        <Tab.Screen
-          name="News"
-          component={NewsScreen}
-          options={{
-            title: t('navigation.headers.news'),
-            tabBarLabel: t('navigation.tabs.news'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.news}
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Captures"
-          component={CapturesStackNavigator}
-          options={{
-            headerShown: false, // Stack navigator handles its own headers
-            tabBarLabel: t('navigation.tabs.captures'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.captures}
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Capture"
-          component={CaptureScreen}
-          options={{
-            title: t('navigation.headers.capture'),
-            tabBarLabel: t('navigation.tabs.capture'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.capture}
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Actions"
-          component={ActionsScreen}
-          options={{
-            title: t('navigation.headers.actions'),
-            tabBarLabel: t('navigation.tabs.actions'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.actions}
-                color={color}
-                size={size}
-                focused={focused}
-                badge={activeTodoCount}
-              />
-            ),
-          }}
-          listeners={{
-            // Story 5.2 - Subtask 1.6: Haptic feedback on tab press
-            tabPress: () => {
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            },
-          }}
-        />
-        <Tab.Screen
-          name="Projects"
-          component={ProjectsScreen}
-          options={{
-            title: t('navigation.headers.projects'),
-            tabBarLabel: t('navigation.tabs.projects'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.projects}
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
-        <Tab.Screen
-          name="Settings"
-          component={SettingsStackNavigator}
-          options={{
-            headerShown: false, // Stack navigator handles its own headers
-            tabBarLabel: t('navigation.tabs.settings'),
-            tabBarIcon: ({ color, size, focused }) => (
-              <TabBarIcon
-                name={TabIcons.settings}
-                color={color}
-                size={size}
-                focused={focused}
-              />
-            ),
-          }}
-        />
+        {Object.entries(tabScreens).map(([name, config]) => {
+          // Type assertion: config satisfies TabScreenConfig
+          const screenConfig = config as TabScreenConfig;
+
+          // Inject dynamic badge for Actions tab
+          const badge = name === "Actions" ? todoCount : screenConfig.badge;
+
+          return (
+            <Tab.Screen
+              key={name}
+              name={name}
+              component={screenConfig.component}
+              options={{
+                // Merge screen-specific options (if any)
+                ...(screenConfig.options ?? {}),
+                // Title (only if not hidden by headerShown: false)
+                title: screenConfig.i18n.title
+                  ? t(screenConfig.i18n.title)
+                  : undefined,
+                // Tab bar label
+                tabBarLabel: t(screenConfig.i18n.tabLabel),
+                // Tab bar icon with optional badge
+                tabBarIcon: createIconRenderer(screenConfig.icon, badge),
+                // Accessibility label
+                tabBarAccessibilityLabel: getAccessibilityLabel(
+                  name,
+                  screenConfig,
+                  todoCount,
+                ),
+              }}
+              listeners={tabPressListener}
+            />
+          );
+        })}
       </Tab.Navigator>
       <OfflineIndicator />
     </>

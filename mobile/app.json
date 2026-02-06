@@ -28,7 +28,8 @@
       },
       "package": "com.pensine.app",
       "permissions": [
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "VIBRATE"
       ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
