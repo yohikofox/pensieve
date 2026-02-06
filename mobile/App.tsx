@@ -56,8 +56,8 @@ registerServices();
   const systemScheme = Appearance.getColorScheme() ?? "light";
   const targetScheme =
     storedPreference === "system" ? systemScheme : storedPreference;
-  console.log(
-    "[App] Sync theme init:",
+  console.debug(
+    "[App] Theme init:",
     targetScheme,
     "(preference:",
     storedPreference,
@@ -100,9 +100,9 @@ function AppContent() {
   useEffect(() => {
     // Wait for navigation to be ready
     if (navigationRef.current) {
-      console.log("[App] Initializing deep link service...");
+      console.debug("[App] Initializing deep link service...");
       const cleanup = deepLinkService.initialize(navigationRef.current);
-      console.log("[App] ✅ Deep link service initialized");
+      console.debug("[App] ✅ Deep link service initialized");
 
       return cleanup;
     }
@@ -148,7 +148,7 @@ function AppContent() {
           await modelService.recoverInterruptedDownloads();
 
         if (recoveredModels.length > 0) {
-          console.log(
+          console.debug(
             "[App] Recovered interrupted downloads:",
             recoveredModels,
           );
@@ -168,7 +168,7 @@ function AppContent() {
     const setupNotifications = async () => {
       try {
         const granted = await requestNotificationPermissions();
-        console.log(
+        console.debug(
           "[App] Notification permissions:",
           granted ? "granted" : "denied",
         );
@@ -181,7 +181,7 @@ function AppContent() {
 
     // Setup notification response handler (when user taps notification)
     const cleanup = setupNotificationResponseHandler((captureId) => {
-      console.log(
+      console.debug(
         "[App] User tapped transcription notification for:",
         captureId,
       );
@@ -203,35 +203,35 @@ function AppContent() {
 
     const initializeTranscription = async () => {
       try {
-        console.log("[App] Initializing transcription services...");
+        console.debug("[App] Initializing transcription services...");
 
         // Start event listener (auto-enqueue captures)
         queueProcessor.start();
-        console.log("[App] ✅ TranscriptionQueueProcessor started");
+        console.debug("[App] ✅ TranscriptionQueueProcessor started");
 
         // Start waveform extraction service (auto-extract on capture)
         waveformService.start();
-        console.log("[App] ✅ WaveformExtractionService started");
+        console.debug("[App] ✅ WaveformExtractionService started");
 
         // Start foreground worker (process queue)
         await worker.start();
-        console.log("[App] ✅ TranscriptionWorker started");
+        console.debug("[App] ✅ TranscriptionWorker started");
 
         // Register background task (15-min periodic checks)
         await registerTranscriptionBackgroundTask();
-        console.log("[App] ✅ Background transcription task registered");
+        console.debug("[App] ✅ Background transcription task registered");
 
         // Handle app lifecycle (foreground/background)
         appStateListener = AppState.addEventListener(
           "change",
           async (nextAppState: AppStateStatus) => {
             if (nextAppState === "background") {
-              console.log(
+              console.debug(
                 "[App] App backgrounding - pausing transcription worker",
               );
               await worker.pause();
             } else if (nextAppState === "active") {
-              console.log(
+              console.debug(
                 "[App] App foregrounding - resuming transcription worker",
               );
               await worker.resume();
@@ -251,7 +251,7 @@ function AppContent() {
 
     // Cleanup on unmount (called correctly by useEffect)
     return () => {
-      console.log("[App] Cleaning up transcription services...");
+      console.debug("[App] Cleaning up transcription services...");
       queueProcessor.stop();
       waveformService.stop();
       worker.stop();
