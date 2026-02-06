@@ -48,6 +48,8 @@ import { ActionsTodoCard } from '../../contexts/action/ui/ActionsTodoCard';
 import { TodoSection } from '../../contexts/action/utils/groupTodosByDeadline';
 import { TodoWithSource } from '../../contexts/action/domain/ITodoRepository';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
+import { useTheme } from '../../hooks/useTheme';
+import { colors } from '../../design-system/tokens';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
@@ -66,6 +68,7 @@ interface EnrichedTodo extends TodoWithSource {
 }
 
 export const ActionsScreen = () => {
+  const { isDark } = useTheme();
   const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
 
   // Story 5.3: Filter and sort state (AC1, AC8)
@@ -149,6 +152,9 @@ export const ActionsScreen = () => {
 
   // Check if sorted data is sections or flat list
   const isSections = isSectionData(sortedData);
+
+  // Dynamic styles based on theme
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
 
   // Story 5.3 - Fix #9: Reset scroll offset when switching list type
   React.useEffect(() => {
@@ -377,85 +383,86 @@ export const ActionsScreen = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  centerContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FAFAFA',
-  },
-  loadingText: {
-    color: '#6B7280',
-  },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    padding: 16,
-  },
-  sortButtonContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    backgroundColor: '#FFFFFF',
-  },
-  sortButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-  },
-  sortButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#374151',
-  },
-  deleteAllButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    backgroundColor: '#FEE2E2',
-  },
-  deleteAllButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#DC2626',
-  },
-  sectionHeader: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  sectionHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-  },
-  errorFallback: {
-    padding: 16,
-    backgroundColor: '#FEF2F2',
-    borderBottomWidth: 1,
-    borderBottomColor: '#FCA5A5',
-  },
-  errorText: {
-    color: '#DC2626',
-    fontSize: 14,
-    textAlign: 'center',
-  },
-});
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
+    },
+    centerContainer: {
+      flex: 1,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
+    },
+    loadingText: {
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
+    },
+    list: {
+      flex: 1,
+    },
+    listContent: {
+      padding: 16,
+    },
+    sortButtonContainer: {
+      flexDirection: 'row',
+      gap: 8,
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
+      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
+    },
+    sortButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100],
+    },
+    sortButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? colors.neutral[200] : colors.neutral[700],
+    },
+    deleteAllButton: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 16,
+      borderRadius: 8,
+      backgroundColor: isDark ? colors.error[900] : colors.error[100],
+    },
+    deleteAllButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? colors.error[400] : colors.error[600],
+    },
+    sectionHeader: {
+      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[100],
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    sectionHeaderText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
+      textTransform: 'uppercase',
+    },
+    errorFallback: {
+      padding: 16,
+      backgroundColor: isDark ? colors.error[900] : colors.error[50],
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.error[700] : colors.error[300],
+    },
+    errorText: {
+      color: isDark ? colors.error[400] : colors.error[600],
+      fontSize: 14,
+      textAlign: 'center',
+    },
+  });

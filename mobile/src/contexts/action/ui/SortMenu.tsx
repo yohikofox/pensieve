@@ -8,7 +8,7 @@
  * - Modal/bottom sheet presentation
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -20,6 +20,8 @@ import {
 import * as Haptics from 'expo-haptics';
 import { SortType } from '../hooks/useFilterState';
 import { settingsStore } from '../../../stores/settingsStore';
+import { useTheme } from '../../../hooks/useTheme';
+import { colors } from '../../../design-system/tokens';
 
 export interface SortMenuProps {
   visible: boolean;
@@ -63,6 +65,9 @@ export const SortMenu: React.FC<SortMenuProps> = ({
   activeSort,
   onSortChange,
 }) => {
+  const { isDark } = useTheme();
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
+
   const handleSortSelect = async (sort: SortType) => {
     // Haptic feedback (check user preference)
     if (settingsStore.hapticFeedbackEnabled) {
@@ -130,94 +135,95 @@ export const SortMenu: React.FC<SortMenuProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  backdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  container: {
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    paddingBottom: 34, // Safe area inset
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    // Elevation for Android
-    elevation: 5,
-  },
-  header: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: '#D1D5DB',
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111827',
-  },
-  options: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  option: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    backgroundColor: '#F9FAFB',
-    marginVertical: 4,
-  },
-  optionActive: {
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-  },
-  optionContent: {
-    flex: 1,
-  },
-  optionLabel: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 4,
-  },
-  optionLabelActive: {
-    color: '#4F46E5',
-  },
-  optionDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-  },
-  checkmark: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: '#6366F1',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 12,
-  },
-  checkmarkIcon: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-});
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    backdrop: {
+      flex: 1,
+      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
+      justifyContent: 'flex-end',
+    },
+    container: {
+      justifyContent: 'flex-end',
+    },
+    sheet: {
+      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
+      borderTopLeftRadius: 20,
+      borderTopRightRadius: 20,
+      paddingBottom: 34, // Safe area inset
+      // Shadow for iOS
+      shadowColor: colors.neutral[1000],
+      shadowOffset: { width: 0, height: -2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 8,
+      // Elevation for Android
+      elevation: 5,
+    },
+    header: {
+      alignItems: 'center',
+      paddingTop: 12,
+      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
+    },
+    handle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: isDark ? colors.neutral[600] : colors.neutral[300],
+      marginBottom: 12,
+    },
+    title: {
+      fontSize: 18,
+      fontWeight: '700',
+      color: isDark ? colors.neutral[100] : colors.neutral[900],
+    },
+    options: {
+      paddingHorizontal: 16,
+      paddingVertical: 8,
+    },
+    option: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 16,
+      paddingHorizontal: 16,
+      borderRadius: 12,
+      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[50],
+      marginVertical: 4,
+    },
+    optionActive: {
+      backgroundColor: isDark ? colors.primary[900] : colors.primary[50],
+      borderWidth: 1.5,
+      borderColor: isDark ? colors.primary[400] : colors.primary[500],
+    },
+    optionContent: {
+      flex: 1,
+    },
+    optionLabel: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: isDark ? colors.neutral[200] : colors.neutral[700],
+      marginBottom: 4,
+    },
+    optionLabelActive: {
+      color: isDark ? colors.primary[300] : colors.primary[600],
+    },
+    optionDescription: {
+      fontSize: 14,
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
+    },
+    checkmark: {
+      width: 24,
+      height: 24,
+      borderRadius: 12,
+      backgroundColor: isDark ? colors.primary[500] : colors.primary[500],
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginLeft: 12,
+    },
+    checkmarkIcon: {
+      fontSize: 14,
+      fontWeight: '700',
+      color: colors.neutral[0],
+    },
+  });

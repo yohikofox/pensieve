@@ -8,11 +8,13 @@
  * - Haptic feedback on press
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { FilterType } from '../hooks/useFilterState';
 import { settingsStore } from '../../../stores/settingsStore';
+import { useTheme } from '../../../hooks/useTheme';
+import { colors } from '../../../design-system/tokens';
 
 export interface FilterTabsProps {
   activeFilter: FilterType;
@@ -29,6 +31,9 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
   onFilterChange,
   counts,
 }) => {
+  const { isDark } = useTheme();
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
+
   const handleTabPress = async (filter: FilterType) => {
     // Haptic feedback (check user preference)
     if (settingsStore.hapticFeedbackEnabled) {
@@ -142,64 +147,65 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 8,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  tab: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#F3F4F6',
-    gap: 6,
-  },
-  tabActive: {
-    backgroundColor: '#EEF2FF',
-    borderWidth: 1.5,
-    borderColor: '#6366F1',
-    // Liquid Glass elevated effect
-    shadowColor: '#6366F1',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  tabTextActive: {
-    color: '#4F46E5',
-  },
-  badge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: '#D1D5DB',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-  },
-  badgeActive: {
-    backgroundColor: '#6366F1',
-  },
-  badgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#374151',
-  },
-  badgeTextActive: {
-    color: '#FFFFFF',
-  },
-});
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flexDirection: 'row',
+      paddingHorizontal: 16,
+      paddingVertical: 12,
+      gap: 8,
+      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
+      borderBottomWidth: 1,
+      borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
+    },
+    tab: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 12,
+      borderRadius: 8,
+      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100],
+      gap: 6,
+    },
+    tabActive: {
+      backgroundColor: isDark ? colors.primary[900] : colors.primary[50],
+      borderWidth: 1.5,
+      borderColor: isDark ? colors.primary[400] : colors.primary[500],
+      // Liquid Glass elevated effect
+      shadowColor: isDark ? colors.primary[400] : colors.primary[500],
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: isDark ? 0.3 : 0.1,
+      shadowRadius: 4,
+      elevation: 2,
+    },
+    tabText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: isDark ? colors.neutral[300] : colors.neutral[500],
+    },
+    tabTextActive: {
+      color: isDark ? colors.primary[300] : colors.primary[600],
+    },
+    badge: {
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: isDark ? colors.neutral[600] : colors.neutral[300],
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 6,
+    },
+    badgeActive: {
+      backgroundColor: isDark ? colors.primary[500] : colors.primary[500],
+    },
+    badgeText: {
+      fontSize: 12,
+      fontWeight: '700',
+      color: isDark ? colors.neutral[200] : colors.neutral[700],
+    },
+    badgeTextActive: {
+      color: colors.neutral[0],
+    },
+  });

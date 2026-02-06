@@ -3,12 +3,16 @@
  * Used to manually test the component in the app
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { TodoDetailPopover } from '../../contexts/action/ui/TodoDetailPopover';
 import type { Todo } from '../../contexts/action/domain/Todo.model';
+import { useTheme } from '../../hooks/useTheme';
+import { colors } from '../../design-system/tokens';
 
 export const TodoDetailPopoverTestScreen: React.FC = () => {
+  const { isDark } = useTheme();
+  const styles = useMemo(() => createStyles(isDark), [isDark]);
   const [visible, setVisible] = useState(false);
 
   const mockTodo: Todo = {
@@ -45,29 +49,31 @@ export const TodoDetailPopoverTestScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    padding: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 30,
-    textAlign: 'center',
-  },
-  button: {
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 30,
-    paddingVertical: 15,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});
+const createStyles = (isDark: boolean) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      backgroundColor: isDark ? colors.neutral[900] : colors.neutral[50],
+      padding: 20,
+    },
+    title: {
+      fontSize: 24,
+      fontWeight: 'bold',
+      color: isDark ? colors.neutral[100] : colors.neutral[900],
+      marginBottom: 30,
+      textAlign: 'center',
+    },
+    button: {
+      backgroundColor: isDark ? colors.primary[600] : colors.primary[500],
+      paddingHorizontal: 30,
+      paddingVertical: 15,
+      borderRadius: 8,
+    },
+    buttonText: {
+      color: colors.neutral[0],
+      fontSize: 16,
+      fontWeight: '600',
+    },
+  });
