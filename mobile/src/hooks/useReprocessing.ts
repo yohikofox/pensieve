@@ -33,11 +33,11 @@ interface UseReprocessingReturn {
   handleRePostProcess: () => Promise<void>;
 }
 
-export function useReprocessing(
-  onReloadCapture?: () => Promise<void>
-): UseReprocessingReturn {
+export function useReprocessing(): UseReprocessingReturn {
   // Read everything from stores - autonomous hook
   const capture = useCaptureDetailStore((state) => state.capture);
+  const editedText = useCaptureDetailStore((state) => state.editedText);
+  const reloadCapture = useCaptureDetailStore((state) => state.reloadCapture);
   const toast = useToast();
   const [reprocessing, setReprocessing] = useState<ReprocessingState>({
     transcribe: false,
@@ -103,33 +103,45 @@ export function useReprocessing(
       );
       const postProcessingService = container.resolve(PostProcessingService);
 
-      // Get raw transcript from metadata
-      const rawTranscript =
-        (await metadataRepository.get(capture.id, METADATA_KEYS.RAW_TRANSCRIPT))
-          ?.value || null;
+      // Get raw text to post-process
+      // Priority: metadata RAW_TRANSCRIPT > editedText > normalizedText > rawContent
+      let rawTranscript: string | null = null;
+      if (capture.type === "text") {
+        rawTranscript = editedText || capture.rawContent || null;
+      } else {
+        rawTranscript =
+          (await metadataRepository.get(capture.id, METADATA_KEYS.RAW_TRANSCRIPT))
+            ?.value
+          || capture.normalizedText
+          || null;
+      }
 
       if (!rawTranscript) {
-        toast.error("Aucune transcription brute disponible");
+        toast.error("Aucun texte brut disponible pour le post-traitement");
         setReprocessing((prev) => ({ ...prev, postProcess: false }));
         return;
+      }
+
+      // Save RAW_TRANSCRIPT if not already stored (needed for original/AI toggle)
+      const existingRaw = await metadataRepository.get(
+        capture.id,
+        METADATA_KEYS.RAW_TRANSCRIPT,
+      );
+      if (!existingRaw?.value) {
+        await metadataRepository.set(
+          capture.id,
+          METADATA_KEYS.RAW_TRANSCRIPT,
+          rawTranscript,
+        );
       }
 
       // Run post-processing
-      const result = await postProcessingService.postProcess({
-        captureId: capture.id,
-        rawTranscript,
-      });
-
-      if (!result.success) {
-        toast.error(result.error || "Échec du post-traitement");
-        setReprocessing((prev) => ({ ...prev, postProcess: false }));
-        return;
-      }
+      const normalizedText = await postProcessingService.process(rawTranscript);
 
       // Update capture with new normalized text
       await repository.update(capture.id, {
-        normalizedText: result.normalizedText,
-        state: "normalized",
+        normalizedText,
+        state: "ready",
       });
 
       // Update LLM model metadata
@@ -144,8 +156,8 @@ export function useReprocessing(
 
       toast.success("Post-traitement terminé");
 
-      // Reload capture to see new text (if callback provided)
-      await onReloadCapture?.();
+      // Reload capture to see new text
+      await reloadCapture?.();
     } catch (error) {
       console.error("[useReprocessing] Re-post-process failed:", error);
       toast.error("Impossible de relancer le post-traitement");

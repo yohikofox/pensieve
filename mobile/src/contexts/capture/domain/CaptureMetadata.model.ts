@@ -16,6 +16,9 @@ export const METADATA_KEYS = {
   TRANSCRIPT_PROMPT: 'transcript_prompt',
   WHISPER_MODEL: 'whisper_model',
   WHISPER_DURATION_MS: 'whisper_duration_ms',
+  WHISPER_LANGUAGE: 'whisper_language',
+  WHISPER_NO_SPEECH_PROB: 'whisper_no_speech_prob',
+  WHISPER_COMPRESSION_RATIO: 'whisper_compression_ratio',
 
   // LLM post-processing
   LLM_MODEL: 'llm_model',

@@ -47,7 +47,7 @@ const getAnalysisTypeColor = (type: AnalysisType) => {
   }
 };
 
-const getAnalysisTypeIcon = (type: AnalysisType): string => {
+const getAnalysisTypeIcon = (type: AnalysisType): React.ComponentProps<typeof Feather>["name"] => {
   switch (type) {
     case ANALYSIS_TYPES.SUMMARY:
       return "file-text";

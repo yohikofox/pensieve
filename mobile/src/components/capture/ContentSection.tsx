@@ -46,7 +46,9 @@ export function ContentSection() {
   const editedText = useCaptureDetailStore((state) => state.editedText);
   const hasChanges = useCaptureDetailStore((state) => state.hasTextChanges);
   const setEditedText = useCaptureDetailStore((state) => state.setEditedText);
-  const setHasChanges = useCaptureDetailStore((state) => state.setHasTextChanges);
+  const setHasChanges = useCaptureDetailStore(
+    (state) => state.setHasTextChanges,
+  );
 
   // Text change handler with change detection
   const handleTextChange = (text: string) => {
@@ -83,14 +85,14 @@ export function ContentSection() {
   // Check if content has been AI-enhanced
   const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
   const originalText = isAudio ? rawTranscript : capture?.rawContent;
-  const hasBeenEnhanced =
-    !!originalText &&
-    capture?.normalizedText &&
-    originalText !== capture.normalizedText;
+  console.log("🚀 ~ ContentSection ~ originalText:", originalText);
+  console.log("🚀 ~ ContentSection ~ capture:", capture?.normalizedText);
+
+  const hasBeenEnhanced = !!(originalText || capture?.normalizedText);
 
   // Determine which text to display
   const displayText =
-    showOriginalContent && hasBeenEnhanced ? originalText : editedText;
+    showOriginalContent && hasBeenEnhanced ? (originalText ?? "") : editedText;
 
   return (
     <View style={[styles.contentCard, { backgroundColor: themeColors.cardBg }]}>

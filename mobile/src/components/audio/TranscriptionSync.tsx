@@ -17,6 +17,7 @@ import {
   StyleSheet,
 } from 'react-native';
 import { colors, spacing, borderRadius, typography } from '../../design-system/tokens';
+import { useCaptureTheme } from '../../hooks/useCaptureTheme';
 
 interface TranscriptionSyncProps {
   transcription: string;
@@ -40,6 +41,7 @@ export const TranscriptionSync: React.FC<TranscriptionSyncProps> = ({
 }) => {
   const scrollViewRef = useRef<ScrollView>(null);
   const wordRefs = useRef<Map<number, View>>(new Map());
+  const { themeColors, isDark } = useCaptureTheme();
 
   /**
    * Parse transcription into words and calculate timing
@@ -151,8 +153,13 @@ export const TranscriptionSync: React.FC<TranscriptionSyncProps> = ({
             >
               <Text
                 style={[
+                  { color: themeColors.textPrimary },
                   styles.word,
-                  isHighlighted && styles.highlightedWord,
+                  isHighlighted && {
+                    ...styles.highlightedWord,
+                    color: isDark ? colors.primary[300] : colors.primary[600],
+                    backgroundColor: isDark ? `${colors.primary[500]}30` : colors.primary[50],
+                  },
                 ]}
               >
                 {wordTiming.word}
@@ -168,7 +175,6 @@ export const TranscriptionSync: React.FC<TranscriptionSyncProps> = ({
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
-    backgroundColor: colors.neutral[0],
   },
   contentContainer: {
     padding: spacing[4], // 16
@@ -176,20 +182,17 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-
+    gap: spacing[1],
   },
   word: {
-    fontSize: typography.fontSize.lg, // 17 (closest to 16)
-    color: colors.neutral[700],
-    lineHeight: 24, // Custom lineHeight (ratio would be 24/17=1.41)
+    fontSize: typography.fontSize.lg,
+    lineHeight: 24,
   },
   highlightedWord: {
-    fontSize: typography.fontSize.lg, // 17
-    fontWeight: typography.fontWeight.bold, // '700'
-    color: colors.primary[600],
-    backgroundColor: colors.primary[50],
-    paddingHorizontal: spacing[1], // 4
-    paddingVertical: spacing[0.5], // 2
-    borderRadius: borderRadius.sm, // 4
+    fontSize: typography.fontSize.lg,
+    fontWeight: typography.fontWeight.bold,
+    paddingHorizontal: spacing[1],
+    paddingVertical: spacing[0.5],
+    borderRadius: borderRadius.sm,
   },
 });
