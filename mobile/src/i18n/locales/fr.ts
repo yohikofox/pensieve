@@ -114,6 +114,21 @@ export default {
       manual: 'Transcription manuelle',
       queued: 'En attente',
     },
+    header: {
+      audioRecording: 'Enregistrement audio',
+      textNote: 'Note texte',
+      duration: 'Durée',
+      modelRequired: 'Modèle de transcription requis',
+      awaitingTranscription: 'En attente de transcription',
+      manualTranscription: 'Transcription manuelle',
+      transcribing: 'Transcription en cours...',
+      transcriptionComplete: 'Transcription terminée',
+      transcriptionFailed: 'Transcription échouée',
+      downloadModel: 'Télécharger un modèle',
+      startTranscription: 'Lancer la transcription',
+      transcriptionStarted: 'Transcription lancée',
+      transcriptionError: 'Échec du lancement de la transcription',
+    },
   },
 
   captures: {

@@ -12,6 +12,7 @@ import React from "react";
 import { View, Text, StyleSheet, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
+import { useTranslation } from "react-i18next";
 import { container } from "tsyringe";
 import { colors } from "../../design-system/tokens";
 import { Button, useToast } from "../../design-system/components";
@@ -27,6 +28,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
 export function CaptureHeader() {
+  const { t } = useTranslation();
   const capture = useCaptureDetailStore((state) => state.capture);
   const hasModelAvailable = useCaptureDetailStore(
     (state) => state.hasModelAvailable,
@@ -53,10 +55,10 @@ export function CaptureHeader() {
         audioPath: capture.rawContent || "",
         audioDuration: capture.duration ?? undefined,
       });
-      toast.success("Transcription lancée");
+      toast.success(t("capture.header.transcriptionStarted"));
     } catch (error) {
       console.error("[CaptureHeader] Failed to enqueue:", error);
-      toast.error("Échec du lancement de la transcription");
+      toast.error(t("capture.header.transcriptionError"));
     }
   };
 
@@ -94,7 +96,7 @@ export function CaptureHeader() {
             />
           </View>
           <Text style={[styles.typeLabel, { color: themeColors.textPrimary }]}>
-            {isAudio ? "Enregistrement audio" : "Note texte"}
+            {isAudio ? t("capture.header.audioRecording") : t("capture.header.textNote")}
           </Text>
         </View>
 
@@ -106,7 +108,7 @@ export function CaptureHeader() {
         {/* Duration (audio only) */}
         {isAudio && !!capture.duration && (
           <Text style={[styles.duration, { color: themeColors.textMuted }]}>
-            Durée: {formatDuration(capture.duration)}
+            {t("capture.header.duration")}: {formatDuration(capture.duration)}
           </Text>
         )}
 
@@ -141,7 +143,7 @@ export function CaptureHeader() {
                       },
                     ]}
                   >
-                    Modèle de transcription requis
+                    {t("capture.header.modelRequired")}
                   </Text>
                 </View>
               )}
@@ -172,8 +174,8 @@ export function CaptureHeader() {
                     ]}
                   >
                     {autoTranscriptionEnabled
-                      ? "En attente de transcription"
-                      : "Transcription manuelle"}
+                      ? t("capture.header.awaitingTranscription")
+                      : t("capture.header.manualTranscription")}
                   </Text>
                 </View>
               )}
@@ -199,7 +201,7 @@ export function CaptureHeader() {
                     },
                   ]}
                 >
-                  Transcription en cours...
+                  {t("capture.header.transcribing")}
                 </Text>
               </View>
             )}
@@ -226,7 +228,7 @@ export function CaptureHeader() {
                     },
                   ]}
                 >
-                  Transcription terminée
+                  {t("capture.header.transcriptionComplete")}
                 </Text>
               </View>
             )}
@@ -253,7 +255,7 @@ export function CaptureHeader() {
                     },
                   ]}
                 >
-                  Transcription échouée
+                  {t("capture.header.transcriptionFailed")}
                 </Text>
               </View>
             )}
@@ -281,7 +283,7 @@ export function CaptureHeader() {
                 color={isDark ? colors.neutral[100] : colors.neutral[700]}
                 style={{ marginRight: 8 }}
               />
-              Télécharger un modèle
+              {t("capture.header.downloadModel")}
             </Button>
           </View>
         )}
@@ -304,7 +306,7 @@ export function CaptureHeader() {
                 color={colors.neutral[0]}
                 style={{ marginRight: 8 }}
               />
-              Lancer la transcription
+              {t("capture.header.startTranscription")}
             </Button>
           </View>
         )}

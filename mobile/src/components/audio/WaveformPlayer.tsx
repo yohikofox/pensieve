@@ -94,7 +94,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   const [waveformData, setWaveformData] = useState<number[]>([]);
 
   const lastUpdateTime = useRef(Date.now());
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | undefined>(undefined);
 
   // Initialize audio player
   const player = useAudioPlayer(audioUri);
@@ -114,11 +114,10 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
     const extractWaveformData = async () => {
       try {
         // Priority 1: Try to read from cached metadata (instant)
-        if (metadata && metadata[METADATA_KEYS.WAVEFORM_DATA]?.value) {
+        const waveformValue = metadata?.[METADATA_KEYS.WAVEFORM_DATA]?.value;
+        if (waveformValue) {
           console.log("📦 Loading waveform from cache");
-          const cachedData = JSON.parse(
-            metadata[METADATA_KEYS.WAVEFORM_DATA].value,
-          );
+          const cachedData = JSON.parse(waveformValue);
 
           // Normalize cached data
           const maxValue = Math.max(...cachedData);
@@ -441,16 +440,16 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: "row",
     alignItems: "center",
-    // backgroundColor: Applied dynamically with theme
+    // justifyContent: "space-between",
     borderRadius: borderRadius["3xl"], // 24
     paddingVertical: spacing[3], // 12
     paddingHorizontal: spacing[4], // 16
-
+    gap: spacing[2], // 8
     height: 72, // Custom size for audio player
   },
   playButton: {
-    width: componentSizes.icon.xl, // 40
-    height: componentSizes.icon.xl, // 40
+    width: componentSizes.icon.xl2, // 40
+    height: componentSizes.icon.xl2, // 40
     borderRadius: borderRadius.base, // 8
     // backgroundColor: Applied dynamically with theme
     alignItems: "center",
@@ -460,7 +459,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing[0.5],
+    gap: 1,
     height: 48, // Custom height for waveform
   },
   waveformBar: {
@@ -470,9 +469,9 @@ const styles = StyleSheet.create({
     // backgroundColor: Applied dynamically per bar (played/unplayed)
   },
   speedButton: {
-    width: componentSizes.icon.xl, // 40
-    height: componentSizes.icon.xl, // 40
-    borderRadius: borderRadius["2xl"], // 20 (circular)
+    width: componentSizes.icon.xl2, // 40
+    height: componentSizes.icon.xl2, // 40
+    borderRadius: borderRadius["3xl"], // 20 (circular)
     // backgroundColor: Applied dynamically with theme
     alignItems: "center",
     justifyContent: "center",

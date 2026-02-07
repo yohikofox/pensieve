@@ -8,163 +8,163 @@
 // ============================================
 
 // Color Scheme Types
-export type ColorScheme = 'blue' | 'green' | 'monochrome';
+export type ColorScheme = "blue" | "green" | "monochrome";
 
 export const colors = {
   // Palette primaire - Bleu (default)
   primary: {
-    50: '#EBF5FF',
-    100: '#E1EFFE',
-    200: '#C3DDFD',
-    300: '#A4CAFE',
-    400: '#76A9FA',
-    500: '#3B82F6', // Primary Blue
-    600: '#2563EB',
-    700: '#1D4ED8',
-    800: '#1E40AF',
-    900: '#1E3A8A',
+    50: "#EBF5FF",
+    100: "#E1EFFE",
+    200: "#C3DDFD",
+    300: "#A4CAFE",
+    400: "#76A9FA",
+    500: "#3B82F6", // Primary Blue
+    600: "#2563EB",
+    700: "#1D4ED8",
+    800: "#1E40AF",
+    900: "#1E3A8A",
   },
 
   // Palette primaire - Vert (nature)
   primaryGreen: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981', // Primary Green
-    600: '#059669',
-    700: '#047857',
-    800: '#065F46',
-    900: '#064E3B',
+    50: "#ECFDF5",
+    100: "#D1FAE5",
+    200: "#A7F3D0",
+    300: "#6EE7B7",
+    400: "#34D399",
+    500: "#10B981", // Primary Green
+    600: "#059669",
+    700: "#047857",
+    800: "#065F46",
+    900: "#064E3B",
   },
 
   // Palette primaire - Monochrome (noir/blanc/gris)
   primaryMonochrome: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280', // Primary Monochrome
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
+    50: "#F9FAFB",
+    100: "#F3F4F6",
+    200: "#E5E7EB",
+    300: "#D1D5DB",
+    400: "#9CA3AF",
+    500: "#6B7280", // Primary Monochrome
+    600: "#4B5563",
+    700: "#374151",
+    800: "#1F2937",
+    900: "#111827",
   },
 
   // Palette secondaire - Rose/Corail (pour Blue scheme)
   secondary: {
-    50: '#FFF1F2',
-    100: '#FFE4E6',
-    200: '#FECDD3',
-    300: '#FDA4AF',
-    400: '#FB7185',
-    500: '#F43F5E', // Secondary Rose
-    600: '#E11D48',
-    700: '#BE123C',
-    800: '#9F1239',
-    900: '#881337',
+    50: "#FFF1F2",
+    100: "#FFE4E6",
+    200: "#FECDD3",
+    300: "#FDA4AF",
+    400: "#FB7185",
+    500: "#F43F5E", // Secondary Rose
+    600: "#E11D48",
+    700: "#BE123C",
+    800: "#9F1239",
+    900: "#881337",
   },
 
   // Palette secondaire - Orange/Terre (pour Green scheme)
   secondaryGreen: {
-    50: '#FFF7ED',
-    100: '#FFEDD5',
-    200: '#FED7AA',
-    300: '#FDBA74',
-    400: '#FB923C',
-    500: '#F97316', // Secondary Orange
-    600: '#EA580C',
-    700: '#C2410C',
-    800: '#9A3412',
-    900: '#7C2D12',
+    50: "#FFF7ED",
+    100: "#FFEDD5",
+    200: "#FED7AA",
+    300: "#FDBA74",
+    400: "#FB923C",
+    500: "#F97316", // Secondary Orange
+    600: "#EA580C",
+    700: "#C2410C",
+    800: "#9A3412",
+    900: "#7C2D12",
   },
 
   // Palette secondaire - Gris (pour Monochrome scheme)
   secondaryMonochrome: {
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#9CA3AF', // Secondary Gris clair (light mode)
-    600: '#6B7280',
-    700: '#4B5563',
-    800: '#374151',
-    900: '#374151', // Secondary Gris foncé (dark mode)
+    50: "#F9FAFB",
+    100: "#F3F4F6",
+    200: "#E5E7EB",
+    300: "#D1D5DB",
+    400: "#9CA3AF",
+    500: "#9CA3AF", // Secondary Gris clair (light mode)
+    600: "#6B7280",
+    700: "#4B5563",
+    800: "#374151",
+    900: "#374151", // Secondary Gris foncé (dark mode)
   },
 
   // Neutres
   neutral: {
-    0: '#FFFFFF',
-    50: '#F9FAFB',
-    100: '#F3F4F6',
-    200: '#E5E7EB',
-    300: '#D1D5DB',
-    400: '#9CA3AF',
-    500: '#6B7280',
-    600: '#4B5563',
-    700: '#374151',
-    800: '#1F2937',
-    900: '#111827',
-    1000: '#000000',
+    0: "#FFFFFF",
+    50: "#F9FAFB",
+    100: "#F3F4F6",
+    200: "#E5E7EB",
+    300: "#D1D5DB",
+    400: "#9CA3AF",
+    500: "#6B7280",
+    600: "#4B5563",
+    700: "#374151",
+    800: "#1F2937",
+    900: "#111827",
+    1000: "#000000",
   },
 
   // Sémantiques - Success
   success: {
-    50: '#ECFDF5',
-    100: '#D1FAE5',
-    200: '#A7F3D0',
-    300: '#6EE7B7',
-    400: '#34D399',
-    500: '#10B981',
-    600: '#059669',
-    700: '#047857',
-    800: '#065F46',
-    900: '#064E3B',
+    50: "#ECFDF5",
+    100: "#D1FAE5",
+    200: "#A7F3D0",
+    300: "#6EE7B7",
+    400: "#34D399",
+    500: "#10B981",
+    600: "#059669",
+    700: "#047857",
+    800: "#065F46",
+    900: "#064E3B",
   },
 
   // Sémantiques - Warning
   warning: {
-    50: '#FFFBEB',
-    100: '#FEF3C7',
-    200: '#FDE68A',
-    300: '#FCD34D',
-    400: '#FBBF24',
-    500: '#F59E0B',
-    600: '#D97706',
-    700: '#B45309',
-    800: '#92400E',
-    900: '#78350F',
+    50: "#FFFBEB",
+    100: "#FEF3C7",
+    200: "#FDE68A",
+    300: "#FCD34D",
+    400: "#FBBF24",
+    500: "#F59E0B",
+    600: "#D97706",
+    700: "#B45309",
+    800: "#92400E",
+    900: "#78350F",
   },
 
   // Sémantiques - Error
   error: {
-    50: '#FEF2F2',
-    100: '#FEE2E2',
-    200: '#FECACA',
-    300: '#FCA5A5',
-    400: '#F87171',
-    500: '#EF4444',
-    600: '#DC2626',
-    700: '#B91C1C',
-    800: '#991B1B',
-    900: '#7F1D1D',
+    50: "#FEF2F2",
+    100: "#FEE2E2",
+    200: "#FECACA",
+    300: "#FCA5A5",
+    400: "#F87171",
+    500: "#EF4444",
+    600: "#DC2626",
+    700: "#B91C1C",
+    800: "#991B1B",
+    900: "#7F1D1D",
   },
 
   // Sémantiques - Info
   info: {
-    50: '#EFF6FF',
-    100: '#DBEAFE',
-    200: '#BFDBFE',
-    300: '#93C5FD',
-    400: '#60A5FA',
-    500: '#3B82F6',
-    600: '#2563EB',
-    700: '#1D4ED8',
-    800: '#1E40AF',
-    900: '#1E3A8A',
+    50: "#EFF6FF",
+    100: "#DBEAFE",
+    200: "#BFDBFE",
+    300: "#93C5FD",
+    400: "#60A5FA",
+    500: "#3B82F6",
+    600: "#2563EB",
+    700: "#1D4ED8",
+    800: "#1E40AF",
+    900: "#1E3A8A",
   },
 } as const;
 
@@ -267,8 +267,8 @@ export const spacing = {
 // ============================================
 export const typography = {
   fontFamily: {
-    sans: 'System',
-    mono: 'Menlo',
+    sans: "System",
+    mono: "Menlo",
   },
 
   fontSize: {
@@ -277,10 +277,10 @@ export const typography = {
     base: 15,
     lg: 17,
     xl: 20,
-    '2xl': 24,
-    '3xl': 30,
-    '4xl': 36,
-    '5xl': 48,
+    "2xl": 24,
+    "3xl": 30,
+    "4xl": 36,
+    "5xl": 48,
   },
 
   lineHeight: {
@@ -293,10 +293,10 @@ export const typography = {
   },
 
   fontWeight: {
-    normal: '400',
-    medium: '500',
-    semibold: '600',
-    bold: '700',
+    normal: "400",
+    medium: "500",
+    semibold: "600",
+    bold: "700",
   },
 } as const;
 
@@ -310,8 +310,8 @@ export const borderRadius = {
   md: 10,
   lg: 12,
   xl: 16,
-  '2xl': 20,
-  '3xl': 24,
+  "2xl": 20,
+  "3xl": 24,
   full: 9999,
 } as const;
 
@@ -327,7 +327,7 @@ export const borderWidth = {
 // ============================================
 export const shadows = {
   none: {
-    shadowColor: 'transparent',
+    shadowColor: "transparent",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0,
     shadowRadius: 0,
@@ -376,9 +376,21 @@ export const shadows = {
 export const componentSizes = {
   // Boutons
   button: {
-    sm: { height: 32, paddingHorizontal: spacing[3], fontSize: typography.fontSize.sm },
-    md: { height: 44, paddingHorizontal: spacing[4], fontSize: typography.fontSize.base },
-    lg: { height: 52, paddingHorizontal: spacing[5], fontSize: typography.fontSize.lg },
+    sm: {
+      height: 32,
+      paddingHorizontal: spacing[3],
+      fontSize: typography.fontSize.sm,
+    },
+    md: {
+      height: 44,
+      paddingHorizontal: spacing[4],
+      fontSize: typography.fontSize.base,
+    },
+    lg: {
+      height: 52,
+      paddingHorizontal: spacing[5],
+      fontSize: typography.fontSize.lg,
+    },
   },
 
   // Icônes
@@ -388,6 +400,7 @@ export const componentSizes = {
     md: 24,
     lg: 32,
     xl: 40,
+    xl2: 48,
   },
 
   // Cards
@@ -422,9 +435,9 @@ export const animation = {
     slow: 500,
   },
   easing: {
-    easeIn: 'ease-in',
-    easeOut: 'ease-out',
-    easeInOut: 'ease-in-out',
+    easeIn: "ease-in",
+    easeOut: "ease-out",
+    easeInOut: "ease-in-out",
   },
 } as const;
 
@@ -451,11 +464,11 @@ export const zIndex = {
  */
 export function getPrimaryPaletteForColorScheme(scheme: ColorScheme) {
   switch (scheme) {
-    case 'blue':
+    case "blue":
       return colors.primary;
-    case 'green':
+    case "green":
       return colors.primaryGreen;
-    case 'monochrome':
+    case "monochrome":
       return colors.primaryMonochrome;
     default:
       return colors.primary;
@@ -467,11 +480,11 @@ export function getPrimaryPaletteForColorScheme(scheme: ColorScheme) {
  */
 export function getSecondaryPaletteForColorScheme(scheme: ColorScheme) {
   switch (scheme) {
-    case 'blue':
+    case "blue":
       return colors.secondary;
-    case 'green':
+    case "green":
       return colors.secondaryGreen;
-    case 'monochrome':
+    case "monochrome":
       return colors.secondaryMonochrome;
     default:
       return colors.secondary;
@@ -481,49 +494,52 @@ export function getSecondaryPaletteForColorScheme(scheme: ColorScheme) {
 /**
  * Get tinted background colors for a given color scheme
  */
-export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: boolean) {
+export function getBackgroundColorsForColorScheme(
+  scheme: ColorScheme,
+  isDark: boolean,
+) {
   switch (scheme) {
-    case 'blue':
+    case "blue":
       return {
-        screen: isDark ? '#0F1629' : '#EBF5FF',     // Teinte bleue
-        card: isDark ? '#1E2A47' : '#FFFFFF',
-        elevated: isDark ? '#1E2A47' : '#FFFFFF',
-        input: isDark ? '#1E2A47' : '#FFFFFF',
-        subtle: isDark ? '#2D3E5F' : '#E1EFFE',
-        inverse: isDark ? '#F3F4F6' : '#111827',
+        screen: isDark ? "#0F1629" : "#EBF5FF", // Teinte bleue
+        card: isDark ? "#1E2A47" : "#FFFFFF",
+        elevated: isDark ? "#1E2A47" : "#FFFFFF",
+        input: isDark ? "#1E2A47" : "#FFFFFF",
+        subtle: isDark ? "#2D3E5F" : "#E1EFFE",
+        inverse: isDark ? "#F3F4F6" : "#111827",
         // Nouvelles variations pour hiérarchie visuelle
-        header: isDark ? '#0A1220' : '#DBEAFE',     // Header avec teinte bleue, plus sombre/clair
-        cardDarker: isDark ? '#0F1629' : '#F3F4F6', // Card plus sombre
-        cardLighter: isDark ? '#2D3E5F' : '#FFFFFF', // Card plus claire
-        overlay: isDark ? '#050B14' : '#E5E7EB',    // Overlay très sombre/clair
+        header: isDark ? "#0A1220" : "#DBEAFE", // Header avec teinte bleue, plus sombre/clair
+        cardDarker: isDark ? "#0F1629" : "#F3F4F6", // Card plus sombre
+        cardLighter: isDark ? "#2D3E5F" : "#FFFFFF", // Card plus claire
+        overlay: isDark ? "#050B14" : "#E5E7EB", // Overlay très sombre/clair
       };
-    case 'green':
+    case "green":
       return {
-        screen: isDark ? '#0A1F17' : '#ECFDF5',     // Teinte verte
-        card: isDark ? '#1A3A2E' : '#FFFFFF',
-        elevated: isDark ? '#1A3A2E' : '#FFFFFF',
-        input: isDark ? '#1A3A2E' : '#FFFFFF',
-        subtle: isDark ? '#2A4A3E' : '#D1FAE5',
-        inverse: isDark ? '#F3F4F6' : '#111827',
+        screen: isDark ? "#0A1F17" : "#ECFDF5", // Teinte verte
+        card: isDark ? "#1A3A2E" : "#FFFFFF",
+        elevated: isDark ? "#1A3A2E" : "#FFFFFF",
+        input: isDark ? "#1A3A2E" : "#FFFFFF",
+        subtle: isDark ? "#2A4A3E" : "#D1FAE5",
+        inverse: isDark ? "#F3F4F6" : "#111827",
         // Nouvelles variations pour hiérarchie visuelle
-        header: isDark ? '#051510' : '#D1FAE5',     // Header avec teinte verte, plus sombre/clair
-        cardDarker: isDark ? '#0A1F17' : '#F3F4F6', // Card plus sombre
-        cardLighter: isDark ? '#2A4A3E' : '#FFFFFF', // Card plus claire
-        overlay: isDark ? '#020A07' : '#E5E7EB',    // Overlay très sombre/clair
+        header: isDark ? "#051510" : "#D1FAE5", // Header avec teinte verte, plus sombre/clair
+        cardDarker: isDark ? "#0A1F17" : "#F3F4F6", // Card plus sombre
+        cardLighter: isDark ? "#2A4A3E" : "#FFFFFF", // Card plus claire
+        overlay: isDark ? "#020A07" : "#E5E7EB", // Overlay très sombre/clair
       };
-    case 'monochrome':
+    case "monochrome":
       return {
-        screen: isDark ? colors.neutral[900] : colors.neutral[100],  // Gris pur
+        screen: isDark ? colors.neutral[900] : colors.neutral[100], // Gris pur
         card: isDark ? colors.neutral[800] : colors.neutral[0],
         elevated: isDark ? colors.neutral[800] : colors.neutral[0],
         input: isDark ? colors.neutral[800] : colors.neutral[0],
         subtle: isDark ? colors.neutral[700] : colors.neutral[50],
         inverse: isDark ? colors.neutral[100] : colors.neutral[900],
         // Nouvelles variations pour hiérarchie visuelle
-        header: isDark ? colors.neutral[950] : colors.neutral[50],   // Header gris, plus sombre/clair
+        header: isDark ? colors.neutral[950] : colors.neutral[50], // Header gris, plus sombre/clair
         cardDarker: isDark ? colors.neutral[900] : colors.neutral[100], // Card plus sombre
         cardLighter: isDark ? colors.neutral[700] : colors.neutral[0], // Card plus claire
-        overlay: isDark ? '#000000' : colors.neutral[200],           // Overlay très sombre/clair
+        overlay: isDark ? "#000000" : colors.neutral[200], // Overlay très sombre/clair
       };
     default:
       return {
@@ -537,7 +553,7 @@ export function getBackgroundColorsForColorScheme(scheme: ColorScheme, isDark: b
         header: isDark ? colors.neutral[950] : colors.neutral[50],
         cardDarker: isDark ? colors.neutral[900] : colors.neutral[100],
         cardLighter: isDark ? colors.neutral[700] : colors.neutral[0],
-        overlay: isDark ? '#000000' : colors.neutral[200],
+        overlay: isDark ? "#000000" : colors.neutral[200],
       };
   }
 }

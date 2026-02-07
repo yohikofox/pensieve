@@ -114,6 +114,21 @@ export default {
       manual: 'Manual transcription',
       queued: 'Queued',
     },
+    header: {
+      audioRecording: 'Audio recording',
+      textNote: 'Text note',
+      duration: 'Duration',
+      modelRequired: 'Transcription model required',
+      awaitingTranscription: 'Awaiting transcription',
+      manualTranscription: 'Manual transcription',
+      transcribing: 'Transcription in progress...',
+      transcriptionComplete: 'Transcription complete',
+      transcriptionFailed: 'Transcription failed',
+      downloadModel: 'Download a model',
+      startTranscription: 'Start transcription',
+      transcriptionStarted: 'Transcription started',
+      transcriptionError: 'Failed to start transcription',
+    },
   },
 
   captures: {
