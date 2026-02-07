@@ -48,10 +48,36 @@ interface WaveformPlayerProps {
   metadata?: Record<string, CaptureMetadata>; // Optional: capture metadata
   onPlaybackEnd?: () => void;
   onPositionChange?: (positionMs: number) => void;
-  waveformBars?: number; // Number of bars to display (default: 50)
 }
 
 const SPEED_OPTIONS = [0.5, 1, 1.5, 2];
+
+/**
+ * Waveform visualization config
+ * Adjust WAVEFORM_BARS to change the visual density
+ */
+const WAVEFORM_BARS = 40; // Number of bars in the waveform display
+
+/**
+ * Resample waveform data to target number of bars
+ * Uses max value per block for a punchy visual
+ */
+const resampleWaveform = (data: number[], targetBars: number): number[] => {
+  if (data.length <= targetBars) return data;
+
+  const blockSize = data.length / targetBars;
+  const result: number[] = [];
+
+  for (let i = 0; i < targetBars; i++) {
+    const start = Math.floor(i * blockSize);
+    const end = Math.floor((i + 1) * blockSize);
+    const block = data.slice(start, end);
+    // Max per block = punchy look, preserves peaks
+    result.push(Math.max(...block));
+  }
+
+  return result;
+};
 
 /**
  * Theme-adaptive colors for WaveformPlayer
@@ -85,7 +111,6 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
   metadata,
   onPlaybackEnd,
   onPositionChange,
-  waveformBars = 50,
 }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -119,14 +144,23 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
           console.log("📦 Loading waveform from cache");
           const cachedData = JSON.parse(waveformValue);
 
-          // Normalize cached data
-          const maxValue = Math.max(...cachedData);
+          // Resample to target bar count
+          const resampledData = resampleWaveform(cachedData, WAVEFORM_BARS);
+
+          // Normalize to 0-1 range
+          const maxValue = Math.max(...resampledData);
           const normalizedData =
             maxValue > 0
-              ? cachedData.map((v: number) => v / maxValue)
-              : cachedData;
+              ? resampledData.map((v: number) => v / maxValue)
+              : resampledData;
 
-          console.log("✅ Loaded", normalizedData.length, "samples from cache");
+          console.log(
+            "✅ Loaded",
+            cachedData.length,
+            "samples, resampled to",
+            WAVEFORM_BARS,
+            "bars",
+          );
           setWaveformData(normalizedData);
           return;
         }
@@ -136,7 +170,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
           console.warn("⚠️ No captureId provided, cannot save waveform to DB");
           // Fallback to mock data
           const mockData = Array.from(
-            { length: waveformBars },
+            { length: WAVEFORM_BARS },
             () => Math.random() * 0.5 + 0.3,
           );
           setWaveformData(mockData);
@@ -147,7 +181,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
         const normalizedData = await waveformService.extractAndSave(
           captureId,
           audioUri,
-          waveformBars,
+          WAVEFORM_BARS,
         );
 
         console.log("✅ Extracted, saved, and normalized");
@@ -156,7 +190,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
         console.error("Failed to extract waveform:", err);
         // Fallback to mock data if extraction fails
         const mockData = Array.from(
-          { length: waveformBars },
+          { length: WAVEFORM_BARS },
           () => Math.random() * 0.5 + 0.3,
         );
         setWaveformData(mockData);
@@ -164,7 +198,7 @@ export const WaveformPlayer: React.FC<WaveformPlayerProps> = ({
     };
 
     extractWaveformData();
-  }, [audioUri, waveformBars, captureId, metadata]);
+  }, [audioUri, captureId, metadata, waveformService]);
 
   /**
    * Configure audio mode on mount
@@ -459,13 +493,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    gap: 1,
+    justifyContent: "space-between",
     height: 48, // Custom height for waveform
   },
   waveformBar: {
-    flex: 1,
     borderRadius: spacing["px"], // 2
     minHeight: spacing[1], // 4
+    width: 3, // Minimum width for visibility
     // backgroundColor: Applied dynamically per bar (played/unplayed)
   },
   speedButton: {
