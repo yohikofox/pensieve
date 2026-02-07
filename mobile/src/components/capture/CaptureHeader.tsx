@@ -3,6 +3,9 @@
  *
  * Displays capture metadata, type, status badges, and action buttons
  * Story 5.1 - Refactoring: Extract header responsibility from CaptureDetailScreen
+ *
+ * Styling: All styles defined in component (self-contained design)
+ * Pattern: Same as RawTranscriptSection - compact card with header and dynamic theme
  */
 
 import React from "react";
@@ -58,65 +61,186 @@ export function CaptureHeader() {
   };
 
   return (
-    <View style={[styles.headerCard, { backgroundColor: themeColors.cardBg }]}>
-      {/* Type Row */}
-      <View style={styles.typeRow}>
-        <View
-          style={[
-            styles.typeIconContainer,
-            {
-              backgroundColor: isDark
-                ? isAudio
-                  ? colors.primary[900]
-                  : colors.secondary[900]
-                : isAudio
-                  ? colors.primary[100]
-                  : colors.secondary[100],
-            },
-          ]}
-        >
-          <Feather
-            name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
-            size={20}
-            color={isAudio ? colors.primary[500] : colors.secondary[500]}
-          />
+    <View
+      style={[
+        styles.card,
+        {
+          backgroundColor: themeColors.cardBg,
+          borderColor: themeColors.borderDefault,
+        },
+      ]}
+    >
+      <View style={styles.header}>
+        {/* Type Row */}
+        <View style={styles.typeRow}>
+          <View
+            style={[
+              styles.typeIconContainer,
+              {
+                backgroundColor: isDark
+                  ? isAudio
+                    ? colors.primary[900]
+                    : colors.secondary[900]
+                  : isAudio
+                    ? colors.primary[100]
+                    : colors.secondary[100],
+              },
+            ]}
+          >
+            <Feather
+              name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
+              size={20}
+              color={isAudio ? colors.primary[500] : colors.secondary[500]}
+            />
+          </View>
+          <Text style={[styles.typeLabel, { color: themeColors.textPrimary }]}>
+            {isAudio ? "Enregistrement audio" : "Note texte"}
+          </Text>
         </View>
-        <Text style={[styles.typeLabel, { color: themeColors.textPrimary }]}>
-          {isAudio ? "Enregistrement audio" : "Note texte"}
+
+        {/* Date */}
+        <Text style={[styles.date, { color: themeColors.textMuted }]}>
+          {formatDate(capture.createdAt)}
         </Text>
-      </View>
 
-      {/* Date */}
-      <Text style={[styles.date, { color: themeColors.textMuted }]}>
-        {formatDate(capture.createdAt)}
-      </Text>
+        {/* Duration (audio only) */}
+        {isAudio && !!capture.duration && (
+          <Text style={[styles.duration, { color: themeColors.textMuted }]}>
+            Durée: {formatDuration(capture.duration)}
+          </Text>
+        )}
 
-      {/* Duration (audio only) */}
-      {isAudio && !!capture.duration && (
-        <Text style={[styles.duration, { color: themeColors.textMuted }]}>
-          Durée: {formatDuration(capture.duration)}
-        </Text>
-      )}
+        {/* Status Badges (audio only) */}
+        {isAudio && (
+          <View style={styles.statusRow}>
+            {/* Model required badge */}
+            {capture.state === "captured" &&
+              hasModelAvailable === false &&
+              !capture.normalizedText && (
+                <View
+                  style={[
+                    styles.statusBadge,
+                    {
+                      backgroundColor: isDark
+                        ? colors.error[900]
+                        : colors.error[50],
+                    },
+                  ]}
+                >
+                  <Feather
+                    name="alert-circle"
+                    size={14}
+                    color={isDark ? colors.error[400] : colors.error[700]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        marginLeft: 6,
+                        color: isDark ? colors.error[300] : colors.error[700],
+                      },
+                    ]}
+                  >
+                    Modèle de transcription requis
+                  </Text>
+                </View>
+              )}
 
-      {/* Status Badges (audio only) */}
-      {isAudio && (
-        <View style={styles.statusRow}>
-          {/* Model required badge */}
-          {capture.state === "captured" &&
-            hasModelAvailable === false &&
-            !capture.normalizedText && (
+            {/* Waiting for transcription */}
+            {capture.state === "captured" &&
+              (hasModelAvailable === true ||
+                hasModelAvailable === null ||
+                capture.normalizedText) && (
+                <View
+                  style={[
+                    styles.statusBadge,
+                    { backgroundColor: themeColors.statusPendingBg },
+                  ]}
+                >
+                  <Feather
+                    name={StatusIcons.pending}
+                    size={14}
+                    color={isDark ? colors.warning[400] : colors.warning[700]}
+                  />
+                  <Text
+                    style={[
+                      styles.statusText,
+                      {
+                        marginLeft: 6,
+                        color: isDark ? colors.warning[300] : colors.warning[700],
+                      },
+                    ]}
+                  >
+                    {autoTranscriptionEnabled
+                      ? "En attente de transcription"
+                      : "Transcription manuelle"}
+                  </Text>
+                </View>
+              )}
+
+            {/* Processing */}
+            {capture.state === "processing" && (
               <View
                 style={[
                   styles.statusBadge,
-                  {
-                    backgroundColor: isDark
-                      ? colors.error[900]
-                      : colors.error[50],
-                  },
+                  { backgroundColor: themeColors.statusProcessingBg },
+                ]}
+              >
+                <ActivityIndicator
+                  size="small"
+                  color={isDark ? colors.info[400] : colors.info[600]}
+                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      marginLeft: 8,
+                      color: isDark ? colors.info[300] : colors.info[700],
+                    },
+                  ]}
+                >
+                  Transcription en cours...
+                </Text>
+              </View>
+            )}
+
+            {/* Ready */}
+            {isReady && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: themeColors.statusReadyBg },
                 ]}
               >
                 <Feather
-                  name="alert-circle"
+                  name={StatusIcons.success}
+                  size={14}
+                  color={isDark ? colors.success[400] : colors.success[700]}
+                />
+                <Text
+                  style={[
+                    styles.statusText,
+                    {
+                      marginLeft: 6,
+                      color: isDark ? colors.success[300] : colors.success[700],
+                    },
+                  ]}
+                >
+                  Transcription terminée
+                </Text>
+              </View>
+            )}
+
+            {/* Failed */}
+            {capture.state === "failed" && (
+              <View
+                style={[
+                  styles.statusBadge,
+                  { backgroundColor: themeColors.statusFailedBg },
+                ]}
+              >
+                <Feather
+                  name={StatusIcons.error}
                   size={14}
                   color={isDark ? colors.error[400] : colors.error[700]}
                 />
@@ -129,124 +253,13 @@ export function CaptureHeader() {
                     },
                   ]}
                 >
-                  Modèle de transcription requis
+                  Transcription échouée
                 </Text>
               </View>
             )}
-
-          {/* Waiting for transcription */}
-          {capture.state === "captured" &&
-            (hasModelAvailable === true ||
-              hasModelAvailable === null ||
-              capture.normalizedText) && (
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: themeColors.statusPendingBg },
-                ]}
-              >
-                <Feather
-                  name={StatusIcons.pending}
-                  size={14}
-                  color={isDark ? colors.warning[400] : colors.warning[700]}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      marginLeft: 6,
-                      color: isDark ? colors.warning[300] : colors.warning[700],
-                    },
-                  ]}
-                >
-                  {autoTranscriptionEnabled
-                    ? "En attente de transcription"
-                    : "Transcription manuelle"}
-                </Text>
-              </View>
-            )}
-
-          {/* Processing */}
-          {capture.state === "processing" && (
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: themeColors.statusProcessingBg },
-              ]}
-            >
-              <ActivityIndicator
-                size="small"
-                color={isDark ? colors.info[400] : colors.info[600]}
-              />
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    marginLeft: 8,
-                    color: isDark ? colors.info[300] : colors.info[700],
-                  },
-                ]}
-              >
-                Transcription en cours...
-              </Text>
-            </View>
-          )}
-
-          {/* Ready */}
-          {isReady && (
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: themeColors.statusReadyBg },
-              ]}
-            >
-              <Feather
-                name={StatusIcons.success}
-                size={14}
-                color={isDark ? colors.success[400] : colors.success[700]}
-              />
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    marginLeft: 6,
-                    color: isDark ? colors.success[300] : colors.success[700],
-                  },
-                ]}
-              >
-                Transcription terminée
-              </Text>
-            </View>
-          )}
-
-          {/* Failed */}
-          {capture.state === "failed" && (
-            <View
-              style={[
-                styles.statusBadge,
-                { backgroundColor: themeColors.statusFailedBg },
-              ]}
-            >
-              <Feather
-                name={StatusIcons.error}
-                size={14}
-                color={isDark ? colors.error[400] : colors.error[700]}
-              />
-              <Text
-                style={[
-                  styles.statusText,
-                  {
-                    marginLeft: 6,
-                    color: isDark ? colors.error[300] : colors.error[700],
-                  },
-                ]}
-              >
-                Transcription échouée
-              </Text>
-            </View>
-          )}
-        </View>
-      )}
+          </View>
+        )}
+      </View>
 
       {/* Configure Model Button */}
       {isAudio &&
@@ -254,7 +267,7 @@ export function CaptureHeader() {
         !isNativeEngine &&
         hasModelAvailable === false &&
         !capture.normalizedText && (
-          <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
+          <View style={styles.actionContainer}>
             <Button
               variant="secondary"
               size="md"
@@ -279,7 +292,7 @@ export function CaptureHeader() {
         !capture.normalizedText &&
         (isNativeEngine ||
           (!autoTranscriptionEnabled && hasModelAvailable === true)) && (
-          <View style={{ marginTop: 16, paddingHorizontal: 20 }}>
+          <View style={styles.actionContainer}>
             <Button
               variant="primary"
               size="md"
@@ -300,14 +313,19 @@ export function CaptureHeader() {
 }
 
 const styles = StyleSheet.create({
-  headerCard: {
-    padding: 16,
-    marginBottom: 8,
+  card: {
+    borderWidth: 1,
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  header: {
+    padding: 12,
   },
   typeRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    gap: 10,
+    marginBottom: 4,
   },
   typeIconContainer: {
     width: 36,
@@ -315,7 +333,6 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
   },
   typeLabel: {
     fontSize: 16,
@@ -327,7 +344,7 @@ const styles = StyleSheet.create({
   },
   duration: {
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 4,
   },
   statusRow: {
     marginTop: 8,
@@ -339,9 +356,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     marginBottom: 8,
+    gap: 6,
   },
   statusText: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  actionContainer: {
+    borderTopWidth: 1,
+    borderTopColor: "#E0E0E0",
+    padding: 12,
   },
 });

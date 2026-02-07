@@ -361,7 +361,6 @@ export function AnalysisCard({
 
 const styles = StyleSheet.create({
   analysisCard: {
-    marginTop: 8,
     borderWidth: 1,
     borderRadius: 8,
     overflow: "hidden",
@@ -428,7 +427,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 8,
     alignItems: "center",
-    marginBottom: 16,
   },
   analyzeAllContent: {
     flexDirection: "row",

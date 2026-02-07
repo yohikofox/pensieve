@@ -45,78 +45,13 @@ export const styles = StyleSheet.create({
   content: {
     padding: 16,
   },
-  headerCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  typeRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  typeIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    marginRight: 10,
-  },
-  typeLabel: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#000",
-  },
-  date: {
-    fontSize: 14,
-    color: "#8E8E93",
-    marginBottom: 4,
-  },
-  duration: {
-    fontSize: 14,
-    color: "#8E8E93",
-    marginBottom: 12,
-  },
-  statusRow: {
-    marginTop: 8,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignSelf: "flex-start",
-  },
-  statusPending: {
-    backgroundColor: "#FFF3E0",
-  },
-  statusProcessing: {
-    backgroundColor: "#E3F2FD",
-  },
-  statusReady: {
-    backgroundColor: "#E8F5E9",
-  },
-  statusFailed: {
-    backgroundColor: "#FFEBEE",
-  },
-  statusText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#333",
+  contentStack: {
+    flex: 1,
+    gap: 16,
   },
   audioCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
-    marginBottom: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
@@ -124,7 +59,6 @@ export const styles = StyleSheet.create({
     elevation: 3,
   },
   contentCard: {
-    backgroundColor: "#FFFFFF",
     borderRadius: 12,
     padding: 16,
     shadowColor: "#000",
@@ -206,7 +140,6 @@ export const styles = StyleSheet.create({
   rawTranscriptCard: {
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
-    marginTop: 16,
     borderWidth: 1,
     borderColor: "#E0E0E0",
     overflow: "hidden",
@@ -257,7 +190,6 @@ export const styles = StyleSheet.create({
   metadataCard: {
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
-    marginTop: 16,
     borderWidth: 1,
     borderColor: "#E0E0E0",
     overflow: "hidden",

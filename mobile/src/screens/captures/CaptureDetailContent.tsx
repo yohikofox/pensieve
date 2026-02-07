@@ -76,33 +76,35 @@ export function CaptureDetailContent({
             style={styles.scrollView}
             contentContainerStyle={styles.content}
           >
-            {/* Header Info */}
-            <CaptureHeader />
+            <View style={styles.contentStack}>
+              {/* Header Info */}
+              <CaptureHeader />
 
-            {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
-            <CaptureAudioPlayerSection />
+              {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
+              <CaptureAudioPlayerSection />
 
-            {/* Content */}
-            <ContentSection />
+              {/* Content */}
+              <ContentSection />
 
-            {/* Raw Transcript (before LLM) - Show when different from final text */}
-            <RawTranscriptSection />
+              {/* Raw Transcript (before LLM) - Show when different from final text */}
+              <RawTranscriptSection />
 
-            {/* Metadata Section */}
-            <MetadataSection />
+              {/* Metadata Section */}
+              <MetadataSection />
 
-            {/* Actions Section - Quick actions for captures - Autonomous */}
-            <ActionsSection />
+              {/* Actions Section - Quick actions for captures - Autonomous */}
+              <ActionsSection />
 
-            {/* Analysis Section - Autonomous, calls hooks directly */}
-            <AnalysisCard
-              startAnalysis={startAnalysis}
-              highlightIdeaId={highlightIdeaId}
-              highlightTodoId={highlightTodoId}
-            />
+              {/* Analysis Section - Autonomous, calls hooks directly */}
+              <AnalysisCard
+                startAnalysis={startAnalysis}
+                highlightIdeaId={highlightIdeaId}
+                highlightTodoId={highlightTodoId}
+              />
 
-            {/* Reprocess Section - Debug tools (manages own visibility) */}
-            <ReprocessingCard />
+              {/* Reprocess Section - Debug tools (manages own visibility) */}
+              <ReprocessingCard />
+            </View>
           </ScrollView>
 
           {/* Action Bar - Autonomous */}
