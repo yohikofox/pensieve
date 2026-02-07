@@ -13,7 +13,7 @@
  * The wrapper (CaptureDetailScreen) handles route params extraction.
  */
 
-import React, { useEffect } from "react";
+import React from "react";
 import { View, ScrollView } from "react-native";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";
@@ -54,10 +54,6 @@ export function CaptureDetailContent({
 
   // Zustand store for capture detail state
   const loading = useCaptureDetailStore((state) => state.loading);
-  const isReady = useCaptureDetailStore((state) => state.isReady);
-  const setShowAnalysis = useCaptureDetailStore(
-    (state) => state.setShowAnalysis,
-  );
 
   // Initialization hook - autonomous, reads and writes to stores
   // Also exposes captureId and reloadCapture in store for useCaptureDetailListener
@@ -65,13 +61,6 @@ export function CaptureDetailContent({
 
   // Event-driven updates - autonomous, reads from store
   useCaptureDetailListener();
-
-  // Auto-expand analysis section if highlighting an idea or todo
-  useEffect(() => {
-    if ((highlightIdeaId || highlightTodoId) && isReady) {
-      setShowAnalysis(true);
-    }
-  }, [highlightIdeaId, highlightTodoId, isReady, setShowAnalysis]);
 
   // Note: Delete dialog managed by DeleteCaptureDialog component (autonomous)
 
@@ -97,30 +86,30 @@ export function CaptureDetailContent({
             <ContentSection />
 
             {/* Raw Transcript (before LLM) - Show when different from final text */}
-            {/* <RawTranscriptSection /> */}
+            <RawTranscriptSection />
 
             {/* Metadata Section */}
-            {/* <MetadataSection /> */}
+            <MetadataSection />
 
             {/* Actions Section - Quick actions for captures - Autonomous */}
-            {/* <ActionsSection /> */}
+            <ActionsSection />
 
             {/* Analysis Section - Autonomous, calls hooks directly */}
-            {/* <AnalysisCard
+            <AnalysisCard
               startAnalysis={startAnalysis}
               highlightIdeaId={highlightIdeaId}
               highlightTodoId={highlightTodoId}
-            /> */}
+            />
 
             {/* Reprocess Section - Debug tools (manages own visibility) */}
-            {/* <ReprocessingCard /> */}
+            <ReprocessingCard />
           </ScrollView>
 
           {/* Action Bar - Autonomous */}
-          {/* <ActionBar /> */}
+          <ActionBar />
 
           {/* Delete confirmation dialog - Autonomous */}
-          {/* <DeleteCaptureDialog /> */}
+          <DeleteCaptureDialog />
         </View>
       </StandardLayout>
     </CaptureDetailError>

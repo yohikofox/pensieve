@@ -1,11 +1,11 @@
 /**
  * useTextEditor Hook
  *
- * Completely autonomous hook for text editing, saving, and sharing.
- * Reads all data from stores, no parameters needed except optional callback.
+ * Autonomous hook for text editing, saving, and sharing.
+ * Reads/writes to unified captureDetailStore.
  *
  * Story 5.1 - Refactoring: Extract text editing responsibility
- * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
+ * Story 5.4 - Unified store: no more captureId indexing
  */
 
 import { useEffect } from "react";
@@ -17,7 +17,6 @@ import type { ICaptureRepository } from "../contexts/capture/domain/ICaptureRepo
 import type { Capture } from "../contexts/capture/domain/Capture.model";
 import { METADATA_KEYS } from "../contexts/capture/domain/CaptureMetadata.model";
 import { CorrectionLearningService } from "../contexts/Normalization/services/CorrectionLearningService";
-import { useTextEditorStore, useCurrentTextEditor } from "../stores/textEditorStore";
 import { useCaptureDetailStore } from "../stores/captureDetailStore";
 import { useToast } from "../design-system/components";
 
@@ -35,22 +34,27 @@ interface UseTextEditorReturn {
 }
 
 export function useTextEditor(
-  onCaptureUpdate?: (capture: Capture) => void
+  onCaptureUpdate?: (capture: Capture) => void,
 ): UseTextEditorReturn {
-  // Read everything from stores - autonomous hook
+  const toast = useToast();
+
+  // Read from unified store
+  const captureId = useCaptureDetailStore((state) => state.captureId);
   const capture = useCaptureDetailStore((state) => state.capture);
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const setCapture = useCaptureDetailStore((state) => state.setCapture);
-  const toast = useToast();
 
-  const captureId = capture?.id || "";
+  // Text editor state from unified store
+  const editedText = useCaptureDetailStore((state) => state.editedText);
+  const hasChanges = useCaptureDetailStore((state) => state.hasTextChanges);
+  const isSaving = useCaptureDetailStore((state) => state.isSavingText);
+  const copied = useCaptureDetailStore((state) => state.textCopied);
 
-  // Use store for editor state
-  const { editedText, hasChanges, isSaving, copied } = useCurrentTextEditor(captureId);
-  const setEditedText = useTextEditorStore((state) => state.setEditedText);
-  const setHasChanges = useTextEditorStore((state) => state.setHasChanges);
-  const setIsSaving = useTextEditorStore((state) => state.setIsSaving);
-  const setCopied = useTextEditorStore((state) => state.setCopied);
+  // Store setters
+  const setEditedText = useCaptureDetailStore((state) => state.setEditedText);
+  const setHasChanges = useCaptureDetailStore((state) => state.setHasTextChanges);
+  const setIsSaving = useCaptureDetailStore((state) => state.setIsSavingText);
+  const setCopied = useCaptureDetailStore((state) => state.setTextCopied);
 
   // Initialize edited text when capture loads
   useEffect(() => {
@@ -64,9 +68,9 @@ export function useTextEditor(
       (isAudioCapture ? "" : capture.rawContent) ||
       "";
 
-    setEditedText(captureId, initialText);
-    setHasChanges(captureId, false);
-  }, [capture, metadata, captureId, setEditedText, setHasChanges]);
+    setEditedText(initialText);
+    setHasChanges(false);
+  }, [capture, metadata, setEditedText, setHasChanges]);
 
   const getOriginalText = (): string => {
     if (!capture) return "";
@@ -81,15 +85,15 @@ export function useTextEditor(
   };
 
   const handleTextChange = (text: string) => {
-    setEditedText(captureId, text);
+    setEditedText(text);
     const originalText = getOriginalText();
-    setHasChanges(captureId, text !== originalText);
+    setHasChanges(text !== originalText);
   };
 
   const handleSave = async () => {
-    if (!capture || !hasChanges) return;
+    if (!capture || !captureId || !hasChanges) return;
 
-    setIsSaving(captureId, true);
+    setIsSaving(true);
     Keyboard.dismiss();
 
     try {
@@ -97,7 +101,7 @@ export function useTextEditor(
         TOKENS.ICaptureRepository,
       );
 
-      // Learn from corrections before saving (passive vocabulary learning)
+      // Learn from corrections before saving
       const originalText = getOriginalText();
       if (originalText !== editedText) {
         await CorrectionLearningService.learn(
@@ -114,9 +118,8 @@ export function useTextEditor(
       // Update store
       const updatedCapture = { ...capture, normalizedText: editedText };
       setCapture(updatedCapture);
-      setHasChanges(captureId, false);
+      setHasChanges(false);
 
-      // Notify parent if callback provided
       onCaptureUpdate?.(updatedCapture);
 
       console.log("[useTextEditor] Transcript saved successfully");
@@ -124,14 +127,14 @@ export function useTextEditor(
       console.error("[useTextEditor] Failed to save transcript:", error);
       toast.error("Impossible de sauvegarder les modifications");
     } finally {
-      setIsSaving(captureId, false);
+      setIsSaving(false);
     }
   };
 
   const handleDiscardChanges = () => {
     const originalText = getOriginalText();
-    setEditedText(captureId, originalText);
-    setHasChanges(captureId, false);
+    setEditedText(originalText);
+    setHasChanges(false);
     Keyboard.dismiss();
   };
 
@@ -139,8 +142,8 @@ export function useTextEditor(
     if (!capture) return;
 
     await Clipboard.setStringAsync(editedText);
-    setCopied(captureId, true);
-    setTimeout(() => setCopied(captureId, false), 2000);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleShare = async () => {
@@ -157,10 +160,8 @@ export function useTextEditor(
   };
 
   const ensureTextSaved = async () => {
-    if (!capture) return;
+    if (!capture || !captureId) return;
 
-    // For text captures, always ensure normalizedText is set (even if no changes)
-    // This handles old notes created before normalizedText was set automatically
     const needsSave =
       hasChanges ||
       (capture.type === "text" && !capture.normalizedText && editedText);
@@ -183,9 +184,8 @@ export function useTextEditor(
     // Update store
     const updatedCapture = { ...capture, normalizedText: editedText };
     setCapture(updatedCapture);
-    setHasChanges(captureId, false);
+    setHasChanges(false);
 
-    // Notify parent if callback provided
     onCaptureUpdate?.(updatedCapture);
   };
 

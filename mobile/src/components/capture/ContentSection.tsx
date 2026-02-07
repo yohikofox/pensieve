@@ -24,8 +24,6 @@ import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.mod
 import { TranscriptionSync } from "../audio/TranscriptionSync";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
-import { useCurrentTextEditor } from "../../stores/textEditorStore";
-import { useTextEditor } from "../../hooks/useTextEditor";
 
 export function ContentSection() {
   const capture = useCaptureDetailStore((state) => state.capture);
@@ -43,8 +41,26 @@ export function ContentSection() {
   );
 
   const { themeColors, isDark } = useCaptureTheme();
-  const { editedText, hasChanges } = useCurrentTextEditor(capture?.id || "");
-  const { handleTextChange } = useTextEditor();
+
+  // Direct store access - no wrapper hooks
+  const editedText = useCaptureDetailStore((state) => state.editedText);
+  const hasChanges = useCaptureDetailStore((state) => state.hasTextChanges);
+  const setEditedText = useCaptureDetailStore((state) => state.setEditedText);
+  const setHasChanges = useCaptureDetailStore((state) => state.setHasTextChanges);
+
+  // Text change handler with change detection
+  const handleTextChange = (text: string) => {
+    setEditedText(text);
+    // Compare with original to detect changes
+    const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value || null;
+    const isAudioCapture = capture?.type === "audio";
+    const originalText =
+      capture?.normalizedText ||
+      rawTranscript ||
+      (isAudioCapture ? "" : capture?.rawContent) ||
+      "";
+    setHasChanges(text !== originalText);
+  };
 
   // Internal ref - no need to expose to parent
   const textInputRef = useRef<TextInput>(null);

@@ -3,7 +3,7 @@
  *
  * Collapsible card containing all AI analysis sections
  * Story 5.1 - Refactoring: Extract analysis card responsibility
- * Story 5.4 - Autonomous component: calls hooks directly, no prop drilling
+ * Story 5.4 - Unified store: reads directly from captureDetailStore
  */
 
 import React, { useEffect } from "react";
@@ -24,18 +24,12 @@ import { ANALYSIS_LABELS } from "../../contexts/Normalization/services/analysisP
 import { AnalysisSection } from "./AnalysisSection";
 import { ActionItemsList } from "./ActionItemsList";
 import { IdeasSection } from "./IdeasSection";
-import type { AnalysisType } from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
-import { useCurrentTextEditor } from "../../stores/textEditorStore";
 import { useAnalyses } from "../../hooks/useAnalyses";
 import { useActionItems } from "../../hooks/useActionItems";
 import { useIdeas } from "../../hooks/useIdeas";
-import {
-  useCurrentActionItems,
-  useActionItemsStore,
-} from "../../stores/actionItemsStore";
 
 interface AnalysisCardProps {
   startAnalysis?: boolean;
@@ -48,28 +42,28 @@ export function AnalysisCard({
   highlightIdeaId,
   highlightTodoId,
 }: AnalysisCardProps) {
-  // Autonomous - calls hooks directly
+  // Autonomous hooks - read from unified store
   const analysesHook = useAnalyses();
   const actionItemsHook = useActionItems();
   const ideasHook = useIdeas();
   const toast = useToast();
 
-  const capture = useCaptureDetailStore((state) => state.capture);
+  // Direct store access - no more wrapper hooks
   const isReady = useCaptureDetailStore((state) => state.isReady);
   const showAnalysis = useCaptureDetailStore((state) => state.showAnalysis);
   const setShowAnalysis = useCaptureDetailStore(
     (state) => state.setShowAnalysis,
   );
-  const debugMode = useSettingsStore((state) => state.debugMode);
-  const { themeColors, isDark } = useCaptureTheme();
-  const { editedText } = useCurrentTextEditor(capture?.id || "");
-  const captureId = capture?.id || "";
-
-  // Read Google Calendar dialog state from store
-  const { showCalendarDialog } = useCurrentActionItems(captureId);
-  const setShowCalendarDialog = useActionItemsStore(
+  const editedText = useCaptureDetailStore((state) => state.editedText);
+  const showCalendarDialog = useCaptureDetailStore(
+    (state) => state.showCalendarDialog,
+  );
+  const setShowCalendarDialog = useCaptureDetailStore(
     (state) => state.setShowCalendarDialog,
   );
+
+  const debugMode = useSettingsStore((state) => state.debugMode);
+  const { themeColors, isDark } = useCaptureTheme();
 
   const {
     analyses,
@@ -80,12 +74,12 @@ export function AnalysisCard({
   } = analysesHook;
 
   useEffect(() => {
-    if (startAnalysis && isReady) {
+    if ((startAnalysis || highlightIdeaId || highlightTodoId) && isReady) {
       setShowAnalysis(true);
     }
-  }, [startAnalysis, isReady]);
+  }, [startAnalysis, highlightIdeaId, highlightTodoId, isReady]);
 
-  // Component manages its own visibility - only show for ready captures
+  // Only show for ready captures
   if (!isReady) return null;
 
   const handleToggleAnalysis = () => setShowAnalysis(!showAnalysis);
@@ -162,7 +156,7 @@ export function AnalysisCard({
             </View>
           ) : (
             <>
-              {/* Analyze All Button - Show if not all generated, or in debug mode for regeneration */}
+              {/* Analyze All Button */}
               {(() => {
                 const allGenerated =
                   analyses[ANALYSIS_TYPES.SUMMARY] &&
@@ -195,6 +189,7 @@ export function AnalysisCard({
                 }
                 return null;
               })()}
+
               {/* Summary Section */}
               <AnalysisSection
                 analysisType={ANALYSIS_TYPES.SUMMARY}
@@ -244,7 +239,6 @@ export function AnalysisCard({
                       {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
                     </Text>
                   </View>
-                  {/* Show button: loading, or no data, or debug mode for regeneration */}
                   {(analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ||
                     !analyses[ANALYSIS_TYPES.ACTION_ITEMS] ||
                     debugMode) && (
@@ -342,7 +336,7 @@ export function AnalysisCard({
       {/* Google Calendar connection dialog */}
       <AlertDialog
         visible={showCalendarDialog}
-        onClose={() => setShowCalendarDialog(captureId, false)}
+        onClose={() => setShowCalendarDialog(false)}
         title="Google Calendar non connecté"
         message="Connectez votre compte Google dans les paramètres pour ajouter des événements à votre calendrier."
         icon="calendar"
@@ -350,7 +344,7 @@ export function AnalysisCard({
         confirmAction={{
           label: "OK",
           onPress: () => {
-            setShowCalendarDialog(captureId, false);
+            setShowCalendarDialog(false);
             toast.info(
               "Allez dans Paramètres > Intégrations > Google Calendar",
             );
@@ -358,7 +352,7 @@ export function AnalysisCard({
         }}
         cancelAction={{
           label: "Annuler",
-          onPress: () => setShowCalendarDialog(captureId, false),
+          onPress: () => setShowCalendarDialog(false),
         }}
       />
     </View>

@@ -16,7 +16,6 @@ import { CaptureAnalysisService } from "../contexts/Normalization/services/Captu
 import { TranscriptionModelService } from "../contexts/Normalization/services/TranscriptionModelService";
 import { TranscriptionEngineService } from "../contexts/Normalization/services/TranscriptionEngineService";
 import { useCaptureDetailStore } from "../stores/captureDetailStore";
-import { useAnalysesStore } from "../stores/analysesStore";
 
 export interface UseCaptureDetailInitReturn {
   loading: boolean;
@@ -109,6 +108,9 @@ export function useCaptureDetailInit(
     }
   }, [captureId, setStoreCapture, setStoreMetadata, setStoreLoading]);
 
+  // Store setter for analyses
+  const setAnalyses = useCaptureDetailStore((state) => state.setAnalyses);
+
   /**
    * Load existing analyses for the capture
    */
@@ -117,13 +119,12 @@ export function useCaptureDetailInit(
       const analysisService = container.resolve(CaptureAnalysisService);
       const analyses = await analysisService.getAnalyses(captureId);
 
-      // Write directly to analysesStore (autonomous pattern)
-      const setAnalyses = useAnalysesStore.getState().setAnalyses;
-      setAnalyses(captureId, analyses);
+      // Write directly to unified store (autonomous pattern)
+      setAnalyses(analyses);
     } catch (err) {
       console.error("[useCaptureDetailInit] Failed to load analyses:", err);
     }
-  }, [captureId]);
+  }, [captureId, setAnalyses]);
 
   /**
    * Check if transcription model is available

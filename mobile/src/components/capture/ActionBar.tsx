@@ -13,7 +13,6 @@ import { colors } from "../../design-system/tokens";
 import { ActionIcons, StatusIcons } from "../../design-system/icons";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
-import { useCurrentTextEditor } from "../../stores/textEditorStore";
 import { useTextEditor } from "../../hooks/useTextEditor";
 import { useDeleteCapture } from "../../hooks/useDeleteCapture";
 
@@ -23,7 +22,13 @@ export function ActionBar() {
 
   const capture = useCaptureDetailStore((state) => state.capture);
   const { themeColors, isDark } = useCaptureTheme();
-  const { editedText, hasChanges, isSaving, copied } = useCurrentTextEditor(capture?.id || "");
+
+  // Direct store access - no wrapper hooks
+  const editedText = useCaptureDetailStore((state) => state.editedText);
+  const hasChanges = useCaptureDetailStore((state) => state.hasTextChanges);
+  const isSaving = useCaptureDetailStore((state) => state.isSavingText);
+  const copied = useCaptureDetailStore((state) => state.textCopied);
+
   const { handleSave, handleCopy, handleShare, handleDiscardChanges } = useTextEditor();
 
   const hasText = editedText.length > 0;

@@ -15,7 +15,6 @@ import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.mod
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
-import { useCurrentTextEditor } from "../../stores/textEditorStore";
 import { useReprocessing } from "../../hooks/useReprocessing";
 
 export function ActionsSection() {
@@ -26,7 +25,9 @@ export function ActionsSection() {
   const metadata = useCaptureDetailStore((state) => state.metadata);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
-  const { editedText } = useCurrentTextEditor(capture?.id || "");
+
+  // Direct store access - no wrapper hooks
+  const editedText = useCaptureDetailStore((state) => state.editedText);
 
   if (!capture) return null;
 

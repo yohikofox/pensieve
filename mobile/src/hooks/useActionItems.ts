@@ -1,8 +1,8 @@
 /**
  * useActionItems Hook
  *
- * Completely autonomous hook for action items management.
- * Reads all data from stores, no parameters needed.
+ * Autonomous hook for action items management.
+ * Reads/writes to unified captureDetailStore.
  *
  * Manages action items lifecycle:
  * - Parsing from LLM analysis
@@ -11,7 +11,7 @@
  * - Contact selection
  * - Google Calendar integration
  *
- * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
+ * Story 5.4 - Unified store: no more captureId indexing
  */
 
 import { useEffect } from "react";
@@ -19,7 +19,6 @@ import * as Contacts from "expo-contacts";
 import { container } from "tsyringe";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { ICaptureAnalysisRepository } from "../contexts/capture/domain/ICaptureAnalysisRepository";
-import type { CaptureAnalysis } from "../contexts/capture/domain/CaptureAnalysis.model";
 import { ANALYSIS_TYPES } from "../contexts/capture/domain/CaptureAnalysis.model";
 import {
   parseActionItems,
@@ -28,9 +27,6 @@ import {
 import { GoogleCalendarService } from "../services/GoogleCalendarService";
 import { useToast } from "../design-system/components";
 import { useCaptureDetailStore } from "../stores/captureDetailStore";
-import { useCurrentAnalyses } from "../stores/analysesStore";
-import { useAnalysesStore } from "../stores/analysesStore";
-import { useActionItemsStore, useCurrentActionItems } from "../stores/actionItemsStore";
 
 interface UseActionItemsReturn {
   // State
@@ -63,61 +59,58 @@ interface UseActionItemsReturn {
 }
 
 export function useActionItems(): UseActionItemsReturn {
-  // Read everything from stores - autonomous hook
-  const capture = useCaptureDetailStore((state) => state.capture);
   const toast = useToast();
 
-  const captureId = capture?.id || "";
-
-  // Get action items analysis from store
-  const { analyses } = useCurrentAnalyses(captureId);
+  // Read from unified store - direct selectors
+  const captureId = useCaptureDetailStore((state) => state.captureId);
+  const analyses = useCaptureDetailStore((state) => state.analyses);
   const actionItemsAnalysis = analyses[ANALYSIS_TYPES.ACTION_ITEMS];
-  const setAnalysis = useAnalysesStore((state) => state.setAnalysis);
 
-  // Get action items state from store
-  const {
-    actionItems,
-    showDatePicker,
-    showContactPicker,
-    showCalendarDialog,
-    selectedDate,
-    editingActionIndex,
-    savingActionIndex,
-    savedActionIndex,
-    addingToCalendarIndex,
-    addedToCalendarIndex,
-    contacts,
-    contactSearchQuery,
-    loadingContacts,
-  } = useCurrentActionItems(captureId);
+  // Action items state
+  const actionItems = useCaptureDetailStore((state) => state.actionItems);
+  const showDatePicker = useCaptureDetailStore((state) => state.showDatePicker);
+  const showContactPicker = useCaptureDetailStore((state) => state.showContactPicker);
+  const showCalendarDialog = useCaptureDetailStore((state) => state.showCalendarDialog);
+  const selectedDate = useCaptureDetailStore((state) => state.selectedDate);
+  const editingActionIndex = useCaptureDetailStore((state) => state.editingActionIndex);
+  const savingActionIndex = useCaptureDetailStore((state) => state.savingActionIndex);
+  const savedActionIndex = useCaptureDetailStore((state) => state.savedActionIndex);
+  const addingToCalendarIndex = useCaptureDetailStore((state) => state.addingToCalendarIndex);
+  const addedToCalendarIndex = useCaptureDetailStore((state) => state.addedToCalendarIndex);
+  const contacts = useCaptureDetailStore((state) => state.contacts);
+  const contactSearchQuery = useCaptureDetailStore((state) => state.contactSearchQuery);
+  const loadingContacts = useCaptureDetailStore((state) => state.loadingContacts);
 
   // Store setters
-  const setActionItemsInStore = useActionItemsStore((state) => state.setActionItems);
-  const setShowDatePicker = useActionItemsStore((state) => state.setShowDatePicker);
-  const setShowContactPicker = useActionItemsStore((state) => state.setShowContactPicker);
-  const setShowCalendarDialog = useActionItemsStore((state) => state.setShowCalendarDialog);
-  const setSelectedDate = useActionItemsStore((state) => state.setSelectedDate);
-  const setEditingActionIndex = useActionItemsStore((state) => state.setEditingActionIndex);
-  const setSavingActionIndex = useActionItemsStore((state) => state.setSavingActionIndex);
-  const setSavedActionIndex = useActionItemsStore((state) => state.setSavedActionIndex);
-  const setAddingToCalendarIndex = useActionItemsStore((state) => state.setAddingToCalendarIndex);
-  const setAddedToCalendarIndex = useActionItemsStore((state) => state.setAddedToCalendarIndex);
-  const setContacts = useActionItemsStore((state) => state.setContacts);
-  const setContactSearchQuery = useActionItemsStore((state) => state.setContactSearchQuery);
-  const setLoadingContacts = useActionItemsStore((state) => state.setLoadingContacts);
+  const setActionItemsInStore = useCaptureDetailStore((state) => state.setActionItems);
+  const setShowDatePicker = useCaptureDetailStore((state) => state.setShowDatePicker);
+  const setShowContactPicker = useCaptureDetailStore((state) => state.setShowContactPicker);
+  const setShowCalendarDialog = useCaptureDetailStore((state) => state.setShowCalendarDialog);
+  const setSelectedDate = useCaptureDetailStore((state) => state.setSelectedDate);
+  const setEditingActionIndex = useCaptureDetailStore((state) => state.setEditingActionIndex);
+  const setSavingActionIndex = useCaptureDetailStore((state) => state.setSavingActionIndex);
+  const setSavedActionIndex = useCaptureDetailStore((state) => state.setSavedActionIndex);
+  const setAddingToCalendarIndex = useCaptureDetailStore((state) => state.setAddingToCalendarIndex);
+  const setAddedToCalendarIndex = useCaptureDetailStore((state) => state.setAddedToCalendarIndex);
+  const setContacts = useCaptureDetailStore((state) => state.setContacts);
+  const setContactSearchQueryInStore = useCaptureDetailStore((state) => state.setContactSearchQuery);
+  const setLoadingContacts = useCaptureDetailStore((state) => state.setLoadingContacts);
+  const setAnalysis = useCaptureDetailStore((state) => state.setAnalysis);
 
   // Sync action items when analysis changes
   useEffect(() => {
     if (actionItemsAnalysis) {
       const parsed = parseActionItems(actionItemsAnalysis.content);
-      setActionItemsInStore(captureId, parsed);
+      setActionItemsInStore(parsed);
     }
-  }, [actionItemsAnalysis, captureId, setActionItemsInStore]);
+  }, [actionItemsAnalysis, setActionItemsInStore]);
 
   // Save action items to database
   const saveActionItems = async (items: ActionItem[], itemIndex: number) => {
-    setSavingActionIndex(captureId, itemIndex);
-    setSavedActionIndex(captureId, null);
+    if (!captureId) return;
+
+    setSavingActionIndex(itemIndex);
+    setSavedActionIndex(null);
 
     try {
       const analysisRepository = container.resolve<ICaptureAnalysisRepository>(
@@ -135,7 +128,7 @@ export function useActionItems(): UseActionItemsReturn {
 
       // Update analysis in store
       if (actionItemsAnalysis) {
-        setAnalysis(captureId, ANALYSIS_TYPES.ACTION_ITEMS, {
+        setAnalysis(ANALYSIS_TYPES.ACTION_ITEMS, {
           ...actionItemsAnalysis,
           content,
           updatedAt: new Date(),
@@ -144,18 +137,17 @@ export function useActionItems(): UseActionItemsReturn {
 
       console.log("[useActionItems] Action items saved");
 
-      // Show saved indicator
-      setSavingActionIndex(captureId, null);
-      setSavedActionIndex(captureId, itemIndex);
+      setSavingActionIndex(null);
+      setSavedActionIndex(itemIndex);
     } catch (error) {
       console.error("[useActionItems] Failed to save action items:", error);
-      setSavingActionIndex(captureId, null);
+      setSavingActionIndex(null);
     }
   };
 
   // Handler to open date picker
   const handleOpenDatePicker = (index: number) => {
-    setEditingActionIndex(captureId, index);
+    setEditingActionIndex(index);
     if (actionItems?.[index]?.deadline_date) {
       const match = actionItems[index].deadline_date!.match(
         /^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/,
@@ -163,7 +155,6 @@ export function useActionItems(): UseActionItemsReturn {
       if (match) {
         const [, day, month, year, hours, minutes] = match;
         setSelectedDate(
-          captureId,
           new Date(
             parseInt(year, 10),
             parseInt(month, 10) - 1,
@@ -173,12 +164,12 @@ export function useActionItems(): UseActionItemsReturn {
           ),
         );
       } else {
-        setSelectedDate(captureId, new Date());
+        setSelectedDate(new Date());
       }
     } else {
-      setSelectedDate(captureId, new Date());
+      setSelectedDate(new Date());
     }
-    setShowDatePicker(captureId, true);
+    setShowDatePicker(true);
   };
 
   // Handler for date confirmation
@@ -195,30 +186,29 @@ export function useActionItems(): UseActionItemsReturn {
       updatedItems[editingActionIndex] = {
         ...updatedItems[editingActionIndex],
         deadline_date: dateStr,
-        deadline_text: null, // Clear text when a specific date is set
+        deadline_text: null,
       };
-      setActionItemsInStore(captureId, updatedItems);
-      setSelectedDate(captureId, date);
+      setActionItemsInStore(updatedItems);
+      setSelectedDate(date);
 
-      // Auto-save
       saveActionItems(updatedItems, editingActionIndex);
     }
-    setShowDatePicker(captureId, false);
-    setEditingActionIndex(captureId, null);
+    setShowDatePicker(false);
+    setEditingActionIndex(null);
   };
 
   // Handler for date picker cancel
   const handleDateCancel = () => {
-    setShowDatePicker(captureId, false);
-    setEditingActionIndex(captureId, null);
+    setShowDatePicker(false);
+    setEditingActionIndex(null);
   };
 
   // Handler to open contact picker
   const handleOpenContactPicker = async (index: number) => {
-    setEditingActionIndex(captureId, index);
-    setContactSearchQuery(captureId, "");
-    setLoadingContacts(captureId, true);
-    setShowContactPicker(captureId, true);
+    setEditingActionIndex(index);
+    setContactSearchQueryInStore("");
+    setLoadingContacts(true);
+    setShowContactPicker(true);
 
     try {
       const { status } = await Contacts.requestPermissionsAsync();
@@ -226,8 +216,8 @@ export function useActionItems(): UseActionItemsReturn {
         toast.warning(
           "L'accès aux contacts est nécessaire pour cette fonctionnalité",
         );
-        setShowContactPicker(captureId, false);
-        setLoadingContacts(captureId, false);
+        setShowContactPicker(false);
+        setLoadingContacts(false);
         return;
       }
 
@@ -240,13 +230,13 @@ export function useActionItems(): UseActionItemsReturn {
         sort: Contacts.SortTypes.FirstName,
       });
 
-      setContacts(captureId, data);
+      setContacts(data);
     } catch (error) {
       console.error("[useActionItems] Failed to load contacts:", error);
       toast.error("Impossible de charger les contacts");
-      setShowContactPicker(captureId, false);
+      setShowContactPicker(false);
     } finally {
-      setLoadingContacts(captureId, false);
+      setLoadingContacts(false);
     }
   };
 
@@ -259,40 +249,37 @@ export function useActionItems(): UseActionItemsReturn {
         ...updatedItems[currentIndex],
         target: contact.name || "Contact sans nom",
       };
-      setActionItemsInStore(captureId, updatedItems);
+      setActionItemsInStore(updatedItems);
 
-      // Auto-save
       saveActionItems(updatedItems, currentIndex);
     }
-    setShowContactPicker(captureId, false);
-    setEditingActionIndex(captureId, null);
-    setContactSearchQuery(captureId, "");
+    setShowContactPicker(false);
+    setEditingActionIndex(null);
+    setContactSearchQueryInStore("");
   };
 
   // Handler for contact picker cancel
   const handleContactPickerCancel = () => {
-    setShowContactPicker(captureId, false);
-    setEditingActionIndex(captureId, null);
-    setContactSearchQuery(captureId, "");
+    setShowContactPicker(false);
+    setEditingActionIndex(null);
+    setContactSearchQueryInStore("");
   };
 
   // Handler for adding action item to Google Calendar
   const handleAddToCalendar = async (index: number, item: ActionItem) => {
     if (!item.deadline_date) return;
 
-    // Check if Google is connected
     const isConnected = await GoogleCalendarService.isConnected();
 
     if (!isConnected) {
-      setShowCalendarDialog(captureId, true);
+      setShowCalendarDialog(true);
       return;
     }
 
-    setAddingToCalendarIndex(captureId, index);
-    setAddedToCalendarIndex(captureId, null);
+    setAddingToCalendarIndex(index);
+    setAddedToCalendarIndex(null);
 
     try {
-      // Parse the date from "JJ-MM-AAAA, HH:mm" format
       const match = item.deadline_date.match(
         /^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/,
       );
@@ -318,21 +305,20 @@ export function useActionItems(): UseActionItemsReturn {
       });
 
       if (result.success) {
-        setAddingToCalendarIndex(captureId, null);
-        setAddedToCalendarIndex(captureId, index);
+        setAddingToCalendarIndex(null);
+        setAddedToCalendarIndex(index);
 
-        // Clear indicator after 2 seconds
         setTimeout(() => {
-          setAddedToCalendarIndex(captureId, null);
+          setAddedToCalendarIndex(null);
         }, 2000);
       } else {
         toast.error(result.error || "Impossible de créer l'événement");
-        setAddingToCalendarIndex(captureId, null);
+        setAddingToCalendarIndex(null);
       }
     } catch (error) {
       console.error("[useActionItems] Add to calendar error:", error);
       toast.error("Impossible de créer l'événement");
-      setAddingToCalendarIndex(captureId, null);
+      setAddingToCalendarIndex(null);
     }
   };
 
@@ -368,7 +354,7 @@ export function useActionItems(): UseActionItemsReturn {
     handleSelectContact,
     handleContactPickerCancel,
     handleAddToCalendar,
-    setContactSearchQuery,
+    setContactSearchQuery: setContactSearchQueryInStore,
     setShowCalendarDialog,
     setSavedActionIndex,
   };

@@ -1,15 +1,14 @@
 /**
  * useIdeas Hook
  *
- * Completely autonomous hook for ideas loading.
- * Reads all data from stores, no parameters needed.
+ * Autonomous hook for ideas loading.
+ * Reads/writes to unified captureDetailStore.
  *
- * Manages structured ideas loading for a capture
  * Story 5.1 - Task 10.4: Structured ideas display
- * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
+ * Story 5.4 - Unified store: no more captureId indexing
  */
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { container } from "tsyringe";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { IThoughtRepository } from "../contexts/knowledge/domain/IThoughtRepository";
@@ -23,14 +22,16 @@ interface UseIdeasReturn {
 }
 
 export function useIdeas(): UseIdeasReturn {
-  // Read everything from stores - autonomous hook
-  const capture = useCaptureDetailStore((state) => state.capture);
-  const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [ideasLoading, setIdeasLoading] = useState(false);
+  // Read from unified store
+  const captureId = useCaptureDetailStore((state) => state.captureId);
+  const ideas = useCaptureDetailStore((state) => state.ideas);
+  const ideasLoading = useCaptureDetailStore((state) => state.ideasLoading);
+  const setIdeas = useCaptureDetailStore((state) => state.setIdeas);
+  const setIdeasLoading = useCaptureDetailStore((state) => state.setIdeasLoading);
 
   useEffect(() => {
     const loadIdeas = async () => {
-      if (!capture) {
+      if (!captureId) {
         setIdeas([]);
         return;
       }
@@ -46,7 +47,7 @@ export function useIdeas(): UseIdeasReturn {
         );
 
         // Find thought associated with this capture
-        const thought = await thoughtRepository.findByCaptureId(capture.id);
+        const thought = await thoughtRepository.findByCaptureId(captureId);
 
         if (thought) {
           // Load ideas by thoughtId
@@ -57,14 +58,14 @@ export function useIdeas(): UseIdeasReturn {
         }
       } catch (error) {
         console.error("[useIdeas] Failed to load ideas:", error);
-        setIdeas([]); // Fail gracefully
+        setIdeas([]);
       } finally {
         setIdeasLoading(false);
       }
     };
 
     loadIdeas();
-  }, [capture]);
+  }, [captureId, setIdeas, setIdeasLoading]);
 
   return {
     ideas,

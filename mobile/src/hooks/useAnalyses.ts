@@ -1,12 +1,11 @@
 /**
  * useAnalyses Hook
  *
- * Completely autonomous hook for LLM analysis management.
- * Reads all data from stores, no parameters needed.
+ * Autonomous hook for LLM analysis management.
+ * Reads/writes to unified captureDetailStore.
  *
- * Manages LLM analysis generation (Summary, Highlights, Action Items, Ideas)
- * Story 5.1 - Refactoring: Extract analysis responsibility from CaptureDetailScreen
- * Story 5.4 - Autonomous hook: reads from stores, no prop drilling
+ * Story 5.1 - Refactoring: Extract analysis responsibility
+ * Story 5.4 - Unified store: no more captureId indexing
  */
 
 import { useState } from "react";
@@ -19,7 +18,6 @@ import type {
 import { ANALYSIS_TYPES } from "../contexts/capture/domain/CaptureAnalysis.model";
 import { useTextEditor } from "./useTextEditor";
 import { useCaptureDetailStore } from "../stores/captureDetailStore";
-import { useAnalysesStore, useCurrentAnalyses } from "../stores/analysesStore";
 import { useToast } from "../design-system/components";
 
 interface UseAnalysesReturn {
@@ -33,30 +31,29 @@ interface UseAnalysesReturn {
 }
 
 export function useAnalyses(): UseAnalysesReturn {
-  // Read everything from stores - autonomous hook
-  const capture = useCaptureDetailStore((state) => state.capture);
   const toast = useToast();
   const { ensureTextSaved } = useTextEditor();
 
-  const captureId = capture?.id || "";
-
-  // Use store for shared state
-  const { analyses, analysisLoading } = useCurrentAnalyses(captureId);
-  const setAnalysis = useAnalysesStore((state) => state.setAnalysis);
-  const setAnalysesInStore = useAnalysesStore((state) => state.setAnalyses);
-  const setAnalysisLoading = useAnalysesStore((state) => state.setAnalysisLoading);
+  // Read from unified store - direct selectors, no wrapper
+  const captureId = useCaptureDetailStore((state) => state.captureId);
+  const analyses = useCaptureDetailStore((state) => state.analyses);
+  const analysisLoading = useCaptureDetailStore((state) => state.analysisLoading);
+  const setAnalysis = useCaptureDetailStore((state) => state.setAnalysis);
+  const setAnalysesInStore = useCaptureDetailStore((state) => state.setAnalyses);
+  const setAnalysisLoading = useCaptureDetailStore((state) => state.setAnalysisLoading);
 
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const isAnyAnalysisLoading = Object.values(analysisLoading).some(Boolean);
 
   const handleGenerateAnalysis = async (type: AnalysisType) => {
+    if (!captureId) return;
+
     console.log("[useAnalyses] handleGenerateAnalysis called for:", type);
-    setAnalysisLoading(captureId, type, true);
+    setAnalysisLoading(type, true);
     setAnalysisError(null);
 
     try {
-      // Save text to DB if there are unsaved changes (needed for analysis)
       await ensureTextSaved();
 
       const analysisService = container.resolve(CaptureAnalysisService);
@@ -65,7 +62,7 @@ export function useAnalyses(): UseAnalysesReturn {
       console.log("[useAnalyses] Analysis result:", result);
 
       if (result.success) {
-        setAnalysis(captureId, type, result.analysis);
+        setAnalysis(type, result.analysis);
       } else {
         setAnalysisError(result.error);
         toast.error(result.error ?? "Erreur d'analyse");
@@ -77,27 +74,26 @@ export function useAnalyses(): UseAnalysesReturn {
       setAnalysisError(errorMsg);
       toast.error(errorMsg);
     } finally {
-      setAnalysisLoading(captureId, type, false);
+      setAnalysisLoading(type, false);
     }
   };
 
   const handleAnalyzeAll = async () => {
+    if (!captureId) return;
+
     console.log("[useAnalyses] handleAnalyzeAll called");
-    // Set all loading states
-    setAnalysisLoading(captureId, ANALYSIS_TYPES.SUMMARY, true);
-    setAnalysisLoading(captureId, ANALYSIS_TYPES.HIGHLIGHTS, true);
-    setAnalysisLoading(captureId, ANALYSIS_TYPES.ACTION_ITEMS, true);
-    setAnalysisLoading(captureId, ANALYSIS_TYPES.IDEAS, true);
+    setAnalysisLoading(ANALYSIS_TYPES.SUMMARY, true);
+    setAnalysisLoading(ANALYSIS_TYPES.HIGHLIGHTS, true);
+    setAnalysisLoading(ANALYSIS_TYPES.ACTION_ITEMS, true);
+    setAnalysisLoading(ANALYSIS_TYPES.IDEAS, true);
     setAnalysisError(null);
 
     try {
-      // Save text to DB if there are unsaved changes (needed for analysis)
       await ensureTextSaved();
 
       const analysisService = container.resolve(CaptureAnalysisService);
       const results = await analysisService.analyzeAll(captureId);
 
-      // Update analyses with successful results
       const newAnalyses: Record<AnalysisType, CaptureAnalysis | null> = {
         [ANALYSIS_TYPES.SUMMARY]: null,
         [ANALYSIS_TYPES.HIGHLIGHTS]: null,
@@ -118,7 +114,7 @@ export function useAnalyses(): UseAnalysesReturn {
         }
       }
 
-      setAnalysesInStore(captureId, newAnalyses);
+      setAnalysesInStore(newAnalyses);
 
       if (hasError) {
         toast.warning("Certaines analyses ont échoué. Vérifiez les logs.");
@@ -130,10 +126,10 @@ export function useAnalyses(): UseAnalysesReturn {
       setAnalysisError(errorMsg);
       toast.error(errorMsg);
     } finally {
-      setAnalysisLoading(captureId, ANALYSIS_TYPES.SUMMARY, false);
-      setAnalysisLoading(captureId, ANALYSIS_TYPES.HIGHLIGHTS, false);
-      setAnalysisLoading(captureId, ANALYSIS_TYPES.ACTION_ITEMS, false);
-      setAnalysisLoading(captureId, ANALYSIS_TYPES.IDEAS, false);
+      setAnalysisLoading(ANALYSIS_TYPES.SUMMARY, false);
+      setAnalysisLoading(ANALYSIS_TYPES.HIGHLIGHTS, false);
+      setAnalysisLoading(ANALYSIS_TYPES.ACTION_ITEMS, false);
+      setAnalysisLoading(ANALYSIS_TYPES.IDEAS, false);
     }
   };
 
@@ -144,7 +140,6 @@ export function useAnalyses(): UseAnalysesReturn {
     isAnyAnalysisLoading,
     handleGenerateAnalysis,
     handleAnalyzeAll,
-    setAnalyses: (newAnalyses: Record<AnalysisType, CaptureAnalysis | null>) =>
-      setAnalysesInStore(captureId, newAnalyses),
+    setAnalyses: setAnalysesInStore,
   };
 }
