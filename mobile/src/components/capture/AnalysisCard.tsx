@@ -24,6 +24,9 @@ import { ANALYSIS_LABELS } from "../../contexts/Normalization/services/analysisP
 import { AnalysisSection } from "./AnalysisSection";
 import { ActionItemsList } from "./ActionItemsList";
 import { IdeasSection } from "./IdeasSection";
+import { AnalysisTypesList } from "./AnalysisTypesList";
+import { DatePickerModal } from "./DatePickerModal";
+import { ContactPickerModal } from "./ContactPickerModal";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
@@ -190,144 +193,112 @@ export function AnalysisCard({
                 return null;
               })()}
 
-              {/* Summary Section */}
-              <AnalysisSection
-                analysisType={ANALYSIS_TYPES.SUMMARY}
-                analysis={analyses[ANALYSIS_TYPES.SUMMARY]}
-                analysisLoading={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
-                debugMode={debugMode}
+              {/* Analysis Types Overview */}
+              <AnalysisTypesList
+                analyses={analyses}
+                analysisLoading={analysisLoading}
+                onGenerateAnalysis={handleGenerateAnalysis}
                 isDark={isDark}
                 themeColors={themeColors}
-                onGenerate={() =>
-                  handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)
-                }
               />
 
-              {/* Highlights Section */}
-              <AnalysisSection
-                analysisType={ANALYSIS_TYPES.HIGHLIGHTS}
-                analysis={analyses[ANALYSIS_TYPES.HIGHLIGHTS]}
-                analysisLoading={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
-                debugMode={debugMode}
-                isDark={isDark}
-                themeColors={themeColors}
-                onGenerate={() =>
-                  handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)
-                }
-              />
+              {/* Detailed Sections - shown when content is generated */}
+              {analyses[ANALYSIS_TYPES.SUMMARY] && (
+                <AnalysisSection
+                  analysisType={ANALYSIS_TYPES.SUMMARY}
+                  analysis={analyses[ANALYSIS_TYPES.SUMMARY]}
+                  analysisLoading={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
+                  debugMode={debugMode}
+                  isDark={isDark}
+                  themeColors={themeColors}
+                  onGenerate={() =>
+                    handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)
+                  }
+                />
+              )}
 
-              {/* Action Items Section */}
-              <View
-                style={[
-                  styles.analysisSection,
-                  { borderBottomColor: themeColors.borderDefault },
-                ]}
-              >
-                <View style={styles.analysisSectionHeader}>
-                  <View style={styles.analysisSectionTitleRow}>
-                    <Feather
-                      name="check-square"
-                      size={16}
-                      color={colors.success[500]}
-                    />
-                    <Text
-                      style={[
-                        styles.analysisSectionTitle,
-                        { color: themeColors.textPrimary },
-                      ]}
-                    >
-                      {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
-                    </Text>
+              {analyses[ANALYSIS_TYPES.HIGHLIGHTS] && (
+                <AnalysisSection
+                  analysisType={ANALYSIS_TYPES.HIGHLIGHTS}
+                  analysis={analyses[ANALYSIS_TYPES.HIGHLIGHTS]}
+                  analysisLoading={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
+                  debugMode={debugMode}
+                  isDark={isDark}
+                  themeColors={themeColors}
+                  onGenerate={() =>
+                    handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)
+                  }
+                />
+              )}
+
+              {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (
+                <View
+                  style={[
+                    styles.analysisSection,
+                    { borderBottomColor: themeColors.borderDefault },
+                  ]}
+                >
+                  <View style={styles.analysisSectionHeader}>
+                    <View style={styles.analysisSectionTitleRow}>
+                      <Feather
+                        name="check-square"
+                        size={16}
+                        color={colors.success[500]}
+                      />
+                      <Text
+                        style={[
+                          styles.analysisSectionTitle,
+                          { color: themeColors.textPrimary },
+                        ]}
+                      >
+                        {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
+                      </Text>
+                    </View>
                   </View>
-                  {(analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ||
-                    !analyses[ANALYSIS_TYPES.ACTION_ITEMS] ||
-                    debugMode) && (
-                    <TouchableOpacity
-                      style={[
-                        styles.generateButton,
-                        {
-                          backgroundColor: themeColors.actionItemTagBg,
-                          borderColor: themeColors.analysisBorder,
-                        },
-                      ]}
-                      onPress={() =>
-                        handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)
+                  {actionItemsHook.actionItems &&
+                  actionItemsHook.actionItems.length > 0 ? (
+                    <ActionItemsList
+                      actionItems={actionItemsHook.actionItems}
+                      isDark={isDark}
+                      themeColors={themeColors}
+                      savingActionIndex={actionItemsHook.savingActionIndex}
+                      savedActionIndex={actionItemsHook.savedActionIndex}
+                      addingToCalendarIndex={
+                        actionItemsHook.addingToCalendarIndex
                       }
-                      disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
-                    >
-                      {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                        <ActivityIndicator
-                          size="small"
-                          color={colors.primary[500]}
-                        />
-                      ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                        <Feather
-                          name={ActionIcons.refresh}
-                          size={16}
-                          color={
-                            isDark ? colors.primary[400] : colors.primary[600]
-                          }
-                        />
-                      ) : (
-                        <Text
-                          style={[
-                            styles.generateButtonText,
-                            {
-                              color: isDark
-                                ? colors.primary[400]
-                                : colors.primary[600],
-                            },
-                          ]}
-                        >
-                          Générer
-                        </Text>
-                      )}
-                    </TouchableOpacity>
+                      addedToCalendarIndex={actionItemsHook.addedToCalendarIndex}
+                      onOpenDatePicker={actionItemsHook.handleOpenDatePicker}
+                      onOpenContactPicker={
+                        actionItemsHook.handleOpenContactPicker
+                      }
+                      onAddToCalendar={actionItemsHook.handleAddToCalendar}
+                      onSavedIndicatorHidden={() =>
+                        actionItemsHook.setSavedActionIndex(null)
+                      }
+                      highlightTodoId={highlightTodoId}
+                    />
+                  ) : (
+                    <Text style={styles.analysisResult} selectable>
+                      {analyses[ANALYSIS_TYPES.ACTION_ITEMS]?.content ?? ""}
+                    </Text>
                   )}
                 </View>
-                {analyses[ANALYSIS_TYPES.ACTION_ITEMS] &&
-                actionItemsHook.actionItems &&
-                actionItemsHook.actionItems.length > 0 ? (
-                  <ActionItemsList
-                    actionItems={actionItemsHook.actionItems}
-                    isDark={isDark}
-                    themeColors={themeColors}
-                    savingActionIndex={actionItemsHook.savingActionIndex}
-                    savedActionIndex={actionItemsHook.savedActionIndex}
-                    addingToCalendarIndex={
-                      actionItemsHook.addingToCalendarIndex
-                    }
-                    addedToCalendarIndex={actionItemsHook.addedToCalendarIndex}
-                    onOpenDatePicker={actionItemsHook.handleOpenDatePicker}
-                    onOpenContactPicker={
-                      actionItemsHook.handleOpenContactPicker
-                    }
-                    onAddToCalendar={actionItemsHook.handleAddToCalendar}
-                    onSavedIndicatorHidden={() =>
-                      actionItemsHook.setSavedActionIndex(null)
-                    }
-                    highlightTodoId={highlightTodoId}
-                  />
-                ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
-                  <Text style={styles.analysisResult} selectable>
-                    {analyses[ANALYSIS_TYPES.ACTION_ITEMS]?.content ?? ""}
-                  </Text>
-                ) : null}
-              </View>
+              )}
 
-              {/* Ideas Section */}
-              <IdeasSection
-                ideas={ideasHook.ideas}
-                ideasLoading={ideasHook.ideasLoading}
-                analysis={analyses[ANALYSIS_TYPES.IDEAS]}
-                analysisLoading={analysisLoading[ANALYSIS_TYPES.IDEAS]}
-                debugMode={debugMode}
-                isDark={isDark}
-                themeColors={themeColors}
-                onGenerate={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
-                highlightIdeaId={highlightIdeaId}
-                highlightTodoId={highlightTodoId}
-              />
+              {analyses[ANALYSIS_TYPES.IDEAS] && (
+                <IdeasSection
+                  ideas={ideasHook.ideas}
+                  ideasLoading={ideasHook.ideasLoading}
+                  analysis={analyses[ANALYSIS_TYPES.IDEAS]}
+                  analysisLoading={analysisLoading[ANALYSIS_TYPES.IDEAS]}
+                  debugMode={debugMode}
+                  isDark={isDark}
+                  themeColors={themeColors}
+                  onGenerate={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
+                  highlightIdeaId={highlightIdeaId}
+                  highlightTodoId={highlightTodoId}
+                />
+              )}
             </>
           )}
         </View>
@@ -354,6 +325,25 @@ export function AnalysisCard({
           label: "Annuler",
           onPress: () => setShowCalendarDialog(false),
         }}
+      />
+
+      {/* Date Picker Modal */}
+      <DatePickerModal
+        visible={actionItemsHook.showDatePicker}
+        selectedDate={actionItemsHook.selectedDate}
+        onConfirm={actionItemsHook.handleDateConfirm}
+        onCancel={actionItemsHook.handleDateCancel}
+      />
+
+      {/* Contact Picker Modal */}
+      <ContactPickerModal
+        visible={actionItemsHook.showContactPicker}
+        loadingContacts={actionItemsHook.loadingContacts}
+        contactSearchQuery={actionItemsHook.contactSearchQuery}
+        filteredContacts={actionItemsHook.filteredContacts}
+        onClose={actionItemsHook.handleContactPickerCancel}
+        onSearchChange={actionItemsHook.setContactSearchQuery}
+        onSelectContact={actionItemsHook.handleSelectContact}
       />
     </View>
   );
