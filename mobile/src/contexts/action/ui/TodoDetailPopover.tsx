@@ -5,7 +5,7 @@
  * Modal/bottom sheet for viewing and editing todo details
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -19,7 +19,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { NavigationProp as RNNavigationProp } from '@react-navigation/native';
 import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as Haptics from 'expo-haptics';
 import { container } from 'tsyringe';
@@ -32,6 +32,12 @@ import { useDeleteTodo } from '../hooks/useDeleteTodo';
 import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
+import {
+  colors,
+  getPrimaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+  type ColorScheme,
+} from '../../../design-system/tokens';
 
 interface TodoDetailPopoverProps {
   visible: boolean;
@@ -39,15 +45,18 @@ interface TodoDetailPopoverProps {
   onClose: () => void;
 }
 
-type CapturesStackParamList = {
-  CaptureDetail: {
-    captureId: string;
-    highlightIdeaId?: string;
-    highlightTodoId?: string;
+type MainTabParamList = {
+  Captures: {
+    screen: string;
+    params: {
+      captureId: string;
+      highlightIdeaId?: string;
+      highlightTodoId?: string;
+    };
   };
 };
 
-type NavigationProp = NativeStackNavigationProp<CapturesStackParamList>;
+type NavigationProp = RNNavigationProp<MainTabParamList>;
 
 /**
  * TodoDetailPopover - Subtask 6.1-6.10
@@ -58,7 +67,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
   todo,
   onClose,
 }) => {
-  const { isDark } = useTheme();
+  const { isDark, colorSchemePreference } = useTheme();
   const navigation = useNavigation<NavigationProp>();
   const debugMode = useSettingsStore((state) => state.debugMode);
   const updateTodo = useUpdateTodo();
@@ -185,10 +194,13 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
       // Capture exists - navigate to detail screen with highlight params (Story 5.4 - AC7, AC8)
       // CODE REVIEW FIX #3: Only pass highlightIdeaId if ideaId is defined
       onClose();
-      navigation.navigate('CaptureDetail', {
-        captureId: todo.captureId,
-        ...(todo.ideaId && { highlightIdeaId: todo.ideaId }),
-        highlightTodoId: todo.id,
+      navigation.navigate('Captures', {
+        screen: 'CaptureDetail',
+        params: {
+          captureId: todo.captureId,
+          ...(todo.ideaId && { highlightIdeaId: todo.ideaId }),
+          highlightTodoId: todo.id,
+        },
       });
     } catch (error) {
       // Navigation or database error
@@ -228,7 +240,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
   const deadlineFormat = formatDeadline(deadline);
   const deadlineColor = getDeadlineColor(deadlineFormat, isDark);
 
-  const styles = getStyles(isDark);
+  const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
 
   return (
     <Modal
@@ -256,7 +268,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                 value={description}
                 onChangeText={setDescription}
                 placeholder="Enter todo description..."
-                placeholderTextColor={isDark ? '#9ca3af' : '#6b7280'}
+                placeholderTextColor={isDark ? colors.neutral[400] : colors.neutral[500]}
                 multiline
                 numberOfLines={4}
                 textAlignVertical="top"
@@ -302,7 +314,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                   style={[
                     styles.priorityButton,
                     priority === 'high' && styles.priorityButtonActive,
-                    { borderColor: '#dc2626' },
+                    { borderColor: colors.error[600] },
                   ]}
                   onPress={() => handlePriorityChange('high')}
                 >
@@ -321,7 +333,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                   style={[
                     styles.priorityButton,
                     priority === 'medium' && styles.priorityButtonActive,
-                    { borderColor: '#f59e0b' },
+                    { borderColor: colors.warning[500] },
                   ]}
                   onPress={() => handlePriorityChange('medium')}
                 >
@@ -340,7 +352,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                   style={[
                     styles.priorityButton,
                     priority === 'low' && styles.priorityButtonActive,
-                    { borderColor: '#10b981' },
+                    { borderColor: colors.success[500] },
                   ]}
                   onPress={() => handlePriorityChange('low')}
                 >
@@ -365,10 +377,10 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                   value={isCompleted}
                   onValueChange={handleToggleComplete}
                   trackColor={{
-                    false: isDark ? '#374151' : '#d1d5db',
-                    true: isDark ? '#10b981' : '#059669',
+                    false: isDark ? colors.neutral[700] : colors.neutral[300],
+                    true: colors.success[isDark ? 500 : 600],
                   }}
-                  thumbColor={isCompleted ? '#ffffff' : '#f3f4f6'}
+                  thumbColor={isCompleted ? colors.neutral[0] : colors.neutral[100]}
                 />
               </View>
             </View>
@@ -441,21 +453,24 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 };
 
 // Subtask 6.9: Styles with smooth transition animations
-const getStyles = (isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (isDark: boolean, colorScheme: ColorScheme) => {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return StyleSheet.create({
     modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0, 0, 0, 0.5)',
       justifyContent: 'flex-end',
     },
     modalContent: {
-      backgroundColor: isDark ? '#1f2937' : '#ffffff',
+      backgroundColor: backgrounds.elevated,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
       maxHeight: '90%',
       ...Platform.select({
         ios: {
-          shadowColor: '#000',
+          shadowColor: colors.neutral[1000],
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.25,
           shadowRadius: 3.84,
@@ -471,16 +486,16 @@ const getStyles = (isDark: boolean) =>
       alignItems: 'center',
       padding: 20,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#374151' : '#e5e7eb',
+      borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
     },
     headerTitle: {
       fontSize: 20,
       fontWeight: '600',
-      color: isDark ? '#f9fafb' : '#111827',
+      color: isDark ? colors.neutral[50] : colors.neutral[900],
     },
     closeButton: {
       fontSize: 24,
-      color: isDark ? '#9ca3af' : '#6b7280',
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
       fontWeight: '300',
     },
     scrollContent: {
@@ -493,27 +508,27 @@ const getStyles = (isDark: boolean) =>
     label: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#e5e7eb' : '#374151',
+      color: isDark ? colors.neutral[200] : colors.neutral[700],
       marginBottom: 8,
     },
     textInput: {
-      backgroundColor: isDark ? '#374151' : '#f9fafb',
+      backgroundColor: backgrounds.input,
       borderRadius: 8,
       padding: 12,
       fontSize: 16,
-      color: isDark ? '#f9fafb' : '#111827',
+      color: isDark ? colors.neutral[50] : colors.neutral[900],
       borderWidth: 1,
-      borderColor: isDark ? '#4b5563' : '#d1d5db',
+      borderColor: isDark ? colors.neutral[600] : colors.neutral[300],
       minHeight: 100,
     },
     contactDisplay: {
       fontSize: 16,
-      color: isDark ? '#d1d5db' : '#4b5563',
-      backgroundColor: isDark ? '#374151' : '#f9fafb',
+      color: isDark ? colors.neutral[300] : colors.neutral[600],
+      backgroundColor: backgrounds.input,
       borderRadius: 8,
       padding: 12,
       borderWidth: 1,
-      borderColor: isDark ? '#4b5563' : '#d1d5db',
+      borderColor: isDark ? colors.neutral[600] : colors.neutral[300],
     },
     deadlineRow: {
       flexDirection: 'row',
@@ -522,18 +537,18 @@ const getStyles = (isDark: boolean) =>
     },
     deadlineButton: {
       flex: 1,
-      backgroundColor: isDark ? '#374151' : '#f9fafb',
+      backgroundColor: backgrounds.input,
       borderRadius: 8,
       padding: 12,
       borderWidth: 1,
-      borderColor: isDark ? '#4b5563' : '#d1d5db',
+      borderColor: isDark ? colors.neutral[600] : colors.neutral[300],
     },
     deadlineText: {
       fontSize: 16,
       fontWeight: '500',
     },
     clearButton: {
-      backgroundColor: isDark ? '#4b5563' : '#e5e7eb',
+      backgroundColor: backgrounds.subtle,
       borderRadius: 8,
       paddingHorizontal: 16,
       paddingVertical: 12,
@@ -541,7 +556,7 @@ const getStyles = (isDark: boolean) =>
     clearButtonText: {
       fontSize: 14,
       fontWeight: '500',
-      color: isDark ? '#f9fafb' : '#374151',
+      color: isDark ? colors.neutral[50] : colors.neutral[700],
     },
     priorityRow: {
       flexDirection: 'row',
@@ -553,13 +568,13 @@ const getStyles = (isDark: boolean) =>
       alignItems: 'center',
       justifyContent: 'center',
       gap: 6,
-      backgroundColor: isDark ? '#374151' : '#f9fafb',
+      backgroundColor: backgrounds.input,
       borderRadius: 8,
       padding: 12,
       borderWidth: 2,
     },
     priorityButtonActive: {
-      backgroundColor: isDark ? '#4b5563' : '#e5e7eb',
+      backgroundColor: backgrounds.subtle,
     },
     priorityEmoji: {
       fontSize: 18,
@@ -567,10 +582,10 @@ const getStyles = (isDark: boolean) =>
     priorityLabel: {
       fontSize: 14,
       fontWeight: '500',
-      color: isDark ? '#9ca3af' : '#6b7280',
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
     },
     priorityLabelActive: {
-      color: isDark ? '#f9fafb' : '#111827',
+      color: isDark ? colors.neutral[50] : colors.neutral[900],
       fontWeight: '600',
     },
     toggleRow: {
@@ -579,7 +594,7 @@ const getStyles = (isDark: boolean) =>
       alignItems: 'center',
     },
     viewOriginButton: {
-      backgroundColor: isDark ? '#1e40af' : '#3b82f6',
+      backgroundColor: primaryPalette[isDark ? 800 : 500],
       borderRadius: 8,
       padding: 14,
       alignItems: 'center',
@@ -587,27 +602,27 @@ const getStyles = (isDark: boolean) =>
     viewOriginText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#ffffff',
+      color: colors.neutral[0],
     },
     deleteButton: {
-      backgroundColor: isDark ? '#7f1d1d' : '#fef2f2',
+      backgroundColor: isDark ? colors.error[900] : colors.error[50],
       borderRadius: 8,
       padding: 14,
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: '#dc2626',
+      borderColor: colors.error[600],
     },
     deleteButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#dc2626',
+      color: colors.error[600],
     },
     footer: {
       flexDirection: 'row',
       gap: 12,
       padding: 20,
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#374151' : '#e5e7eb',
+      borderTopColor: isDark ? colors.neutral[700] : colors.neutral[200],
     },
     button: {
       flex: 1,
@@ -616,25 +631,26 @@ const getStyles = (isDark: boolean) =>
       alignItems: 'center',
     },
     cancelButton: {
-      backgroundColor: isDark ? '#374151' : '#e5e7eb',
+      backgroundColor: backgrounds.subtle,
     },
     cancelButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? '#f9fafb' : '#374151',
+      color: isDark ? colors.neutral[50] : colors.neutral[700],
     },
     saveButton: {
-      backgroundColor: isDark ? '#10b981' : '#059669',
+      backgroundColor: colors.success[isDark ? 500 : 600],
     },
     saveButtonDisabled: {
-      backgroundColor: isDark ? '#374151' : '#d1d5db',
+      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[300],
     },
     saveButtonText: {
       fontSize: 16,
       fontWeight: '600',
-      color: '#ffffff',
+      color: colors.neutral[0],
     },
     saveButtonTextDisabled: {
-      color: isDark ? '#6b7280' : '#9ca3af',
+      color: isDark ? colors.neutral[500] : colors.neutral[400],
     },
   });
+};

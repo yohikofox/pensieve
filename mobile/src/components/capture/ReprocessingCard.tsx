@@ -23,10 +23,12 @@ import { colors } from "../../design-system/tokens";
 import { CaptureIcons, NavigationIcons } from "../../design-system/icons";
 import { METADATA_KEYS } from "../../contexts/capture/domain/CaptureMetadata.model";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useReprocessing } from "../../hooks/useReprocessing";
 
 export function ReprocessingCard() {
+  const debugMode = useSettingsStore((state) => state.debugMode);
   // Autonomous hook - reads from stores
   const { reprocessing, handleReTranscribe, handleRePostProcess } = useReprocessing();
   const capture = useCaptureDetailStore((state) => state.capture);
@@ -36,6 +38,7 @@ export function ReprocessingCard() {
   const [showReprocess, setShowReprocess] = useState(false);
 
   // Component manages its own visibility conditions
+  if (!debugMode) return null;
   if (!capture) return null;
   if (!isAudio || capture.state !== "ready") return null;
 

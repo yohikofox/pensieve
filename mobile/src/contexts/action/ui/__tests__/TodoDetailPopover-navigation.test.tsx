@@ -86,7 +86,10 @@ describe('TodoDetailPopover - Navigation Logic (Task 7.7, 7.8)', () => {
 
       // Capture exists - navigate to detail screen
       mockOnClose();
-      mockNavigate('CaptureDetail', { captureId });
+      mockNavigate('Captures', {
+        screen: 'CaptureDetail',
+        params: { captureId },
+      });
     } catch (error) {
       // Navigation or database error
       console.error('[TodoDetailPopover] Error navigating to capture:', error);
@@ -122,7 +125,10 @@ describe('TodoDetailPopover - Navigation Logic (Task 7.7, 7.8)', () => {
       expect(mockCaptureRepository.findById).toHaveBeenCalledWith('capture-001');
 
       // Assert: Navigation called
-      expect(mockNavigate).toHaveBeenCalledWith('CaptureDetail', { captureId: 'capture-001' });
+      expect(mockNavigate).toHaveBeenCalledWith('Captures', {
+        screen: 'CaptureDetail',
+        params: { captureId: 'capture-001' },
+      });
 
       // Assert: Modal closed
       expect(mockOnClose).toHaveBeenCalled();
