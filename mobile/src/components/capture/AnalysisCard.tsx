@@ -17,14 +17,13 @@ import {
 } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { colors } from "../../design-system/tokens";
-import { NavigationIcons, ActionIcons } from "../../design-system/icons";
+import { NavigationIcons } from "../../design-system/icons";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { ANALYSIS_TYPES } from "../../contexts/capture/domain/CaptureAnalysis.model";
-import { ANALYSIS_LABELS } from "../../contexts/Normalization/services/analysisPrompts";
+import { ANALYSIS_LABELS, ANALYSIS_ICONS } from "../../contexts/Normalization/services/analysisPrompts";
 import { AnalysisSection } from "./AnalysisSection";
 import { ActionItemsList } from "./ActionItemsList";
 import { IdeasSection } from "./IdeasSection";
-import { AnalysisTypesList } from "./AnalysisTypesList";
 import { DatePickerModal } from "./DatePickerModal";
 import { ContactPickerModal } from "./ContactPickerModal";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
@@ -193,69 +192,79 @@ export function AnalysisCard({
                 return null;
               })()}
 
-              {/* Analysis Types Overview */}
-              <AnalysisTypesList
-                analyses={analyses}
-                analysisLoading={analysisLoading}
-                onGenerateAnalysis={handleGenerateAnalysis}
+              {/* Summary */}
+              <AnalysisSection
+                analysisType={ANALYSIS_TYPES.SUMMARY}
+                analysis={analyses[ANALYSIS_TYPES.SUMMARY]}
+                analysisLoading={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
+                debugMode={debugMode}
                 isDark={isDark}
                 themeColors={themeColors}
+                onGenerate={() =>
+                  handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)
+                }
               />
 
-              {/* Detailed Sections - shown when content is generated */}
-              {analyses[ANALYSIS_TYPES.SUMMARY] && (
-                <AnalysisSection
-                  analysisType={ANALYSIS_TYPES.SUMMARY}
-                  analysis={analyses[ANALYSIS_TYPES.SUMMARY]}
-                  analysisLoading={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
-                  debugMode={debugMode}
-                  isDark={isDark}
-                  themeColors={themeColors}
-                  onGenerate={() =>
-                    handleGenerateAnalysis(ANALYSIS_TYPES.SUMMARY)
-                  }
-                />
-              )}
+              {/* Highlights */}
+              <AnalysisSection
+                analysisType={ANALYSIS_TYPES.HIGHLIGHTS}
+                analysis={analyses[ANALYSIS_TYPES.HIGHLIGHTS]}
+                analysisLoading={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
+                debugMode={debugMode}
+                isDark={isDark}
+                themeColors={themeColors}
+                onGenerate={() =>
+                  handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)
+                }
+              />
 
-              {analyses[ANALYSIS_TYPES.HIGHLIGHTS] && (
-                <AnalysisSection
-                  analysisType={ANALYSIS_TYPES.HIGHLIGHTS}
-                  analysis={analyses[ANALYSIS_TYPES.HIGHLIGHTS]}
-                  analysisLoading={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
-                  debugMode={debugMode}
-                  isDark={isDark}
-                  themeColors={themeColors}
-                  onGenerate={() =>
-                    handleGenerateAnalysis(ANALYSIS_TYPES.HIGHLIGHTS)
-                  }
-                />
-              )}
-
-              {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (
-                <View
-                  style={[
-                    styles.analysisSection,
-                    { borderBottomColor: themeColors.borderDefault },
-                  ]}
-                >
-                  <View style={styles.analysisSectionHeader}>
-                    <View style={styles.analysisSectionTitleRow}>
-                      <Feather
-                        name="check-square"
-                        size={16}
-                        color={colors.success[500]}
-                      />
-                      <Text
-                        style={[
-                          styles.analysisSectionTitle,
-                          { color: themeColors.textPrimary },
-                        ]}
-                      >
-                        {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
-                      </Text>
-                    </View>
+              {/* Action Items */}
+              <View
+                style={[
+                  styles.analysisSection,
+                  { borderBottomColor: themeColors.borderDefault },
+                ]}
+              >
+                <View style={styles.analysisSectionHeader}>
+                  <View style={styles.analysisSectionTitleRow}>
+                    <Text style={{ fontSize: 16 }}>
+                      {ANALYSIS_ICONS[ANALYSIS_TYPES.ACTION_ITEMS]}
+                    </Text>
+                    <Text
+                      style={[
+                        styles.analysisSectionTitle,
+                        { color: themeColors.textPrimary },
+                      ]}
+                    >
+                      {ANALYSIS_LABELS[ANALYSIS_TYPES.ACTION_ITEMS]}
+                    </Text>
                   </View>
-                  {actionItemsHook.actionItems &&
+                  {(analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] || !analyses[ANALYSIS_TYPES.ACTION_ITEMS] || debugMode) && (
+                    <TouchableOpacity
+                      style={[
+                        styles.generateButton,
+                        {
+                          backgroundColor: themeColors.actionItemTagBg,
+                          borderColor: themeColors.analysisBorder,
+                        },
+                      ]}
+                      onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
+                      disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
+                    >
+                      {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                        <ActivityIndicator size="small" color={colors.primary[500]} />
+                      ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                        <Feather name="refresh-cw" size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
+                      ) : (
+                        <Text style={[styles.generateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>
+                          Générer
+                        </Text>
+                      )}
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {analyses[ANALYSIS_TYPES.ACTION_ITEMS] && (
+                  actionItemsHook.actionItems &&
                   actionItemsHook.actionItems.length > 0 ? (
                     <ActionItemsList
                       actionItems={actionItemsHook.actionItems}
@@ -281,24 +290,23 @@ export function AnalysisCard({
                     <Text style={styles.analysisResult} selectable>
                       {analyses[ANALYSIS_TYPES.ACTION_ITEMS]?.content ?? ""}
                     </Text>
-                  )}
-                </View>
-              )}
+                  )
+                )}
+              </View>
 
-              {analyses[ANALYSIS_TYPES.IDEAS] && (
-                <IdeasSection
-                  ideas={ideasHook.ideas}
-                  ideasLoading={ideasHook.ideasLoading}
-                  analysis={analyses[ANALYSIS_TYPES.IDEAS]}
-                  analysisLoading={analysisLoading[ANALYSIS_TYPES.IDEAS]}
-                  debugMode={debugMode}
-                  isDark={isDark}
-                  themeColors={themeColors}
-                  onGenerate={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
-                  highlightIdeaId={highlightIdeaId}
-                  highlightTodoId={highlightTodoId}
-                />
-              )}
+              {/* Ideas */}
+              <IdeasSection
+                ideas={ideasHook.ideas}
+                ideasLoading={ideasHook.ideasLoading}
+                analysis={analyses[ANALYSIS_TYPES.IDEAS]}
+                analysisLoading={analysisLoading[ANALYSIS_TYPES.IDEAS]}
+                debugMode={debugMode}
+                isDark={isDark}
+                themeColors={themeColors}
+                onGenerate={() => handleGenerateAnalysis(ANALYSIS_TYPES.IDEAS)}
+                highlightIdeaId={highlightIdeaId}
+                highlightTodoId={highlightTodoId}
+              />
             </>
           )}
         </View>
@@ -383,32 +391,34 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    paddingHorizontal: 16,
     marginBottom: 8,
   },
   analysisSectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   analysisSectionTitle: {
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
-    marginLeft: 8,
   },
   generateButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 6,
+    borderRadius: 12,
     borderWidth: 1,
-    minWidth: 70,
+    minWidth: 80,
     alignItems: "center",
   },
   generateButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "500",
   },
   analysisResult: {
+    paddingHorizontal: 16,
     fontSize: 14,
-    lineHeight: 20,
+    lineHeight: 22,
     marginTop: 4,
   },
   analyzeAllButton: {

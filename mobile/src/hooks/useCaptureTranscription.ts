@@ -23,20 +23,20 @@ export function useCaptureTranscription() {
 
   const [hasModelAvailable, setHasModelAvailable] = useState<boolean | null>(null);
 
-  // Check model availability on mount
+  // Check model availability on mount (engine-aware)
   useEffect(() => {
-    const checkModelAvailability = async () => {
+    const checkInitialAvailability = async () => {
       try {
-        const bestModel = await modelService.getBestAvailableModel();
-        setHasModelAvailable(bestModel !== null);
+        const selectedEngine = await engineService.getSelectedEngineType();
+        const available = await checkEngineAvailability(selectedEngine);
+        setHasModelAvailable(available);
       } catch (error) {
         console.error('[Transcription] Failed to check model availability:', error);
-        toast.error(t('errors.modelCheckFailed', 'Impossible de vérifier le modèle de transcription'));
         setHasModelAvailable(null);
       }
     };
-    checkModelAvailability();
-  }, [modelService, t, toast]);
+    checkInitialAvailability();
+  }, [engineService, checkEngineAvailability]);
 
   const checkEngineAvailability = useCallback(async (selectedEngine: string): Promise<boolean> => {
     if (selectedEngine === 'whisper') {

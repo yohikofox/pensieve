@@ -79,7 +79,7 @@ export function useReprocessing(): UseReprocessingReturn {
       toast.success("La capture a été remise en queue pour transcription");
 
       // Reload capture to see new state (if callback provided)
-      await onReloadCapture?.();
+      await reloadCapture?.();
     } catch (error) {
       console.error("[useReprocessing] Re-transcribe failed:", error);
       toast.error("Impossible de relancer la transcription");

@@ -19,17 +19,16 @@
  * - AC8: Scroll position persistence
  */
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
-  SectionList,
   FlatList,
   RefreshControl,
-  SectionListData,
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ViewToken,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -49,13 +48,16 @@ import { TodoSection } from '../../contexts/action/utils/groupTodosByDeadline';
 import { TodoWithSource } from '../../contexts/action/domain/ITodoRepository';
 import { ErrorBoundary } from '../../components/ErrorBoundary';
 import { useTheme } from '../../hooks/useTheme';
-import { colors } from '../../design-system/tokens';
+import {
+  colors,
+  getBackgroundColorsForColorScheme,
+} from '../../design-system/tokens';
 import { StandardLayout } from '../../components/layouts';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
 const ESTIMATED_ITEM_HEIGHT = 120;
-const SECTION_HEADER_HEIGHT = 40;
+const DATE_COLUMN_WIDTH = 72;
 
 // Animation constants (Story 5.3 - Code Review Fix #8)
 const FADE_IN_DURATION = 300;
@@ -68,8 +70,15 @@ interface EnrichedTodo extends TodoWithSource {
   sourceTimestamp?: string;
 }
 
+interface FlatTodoItem {
+  todo: EnrichedTodo;
+  sectionTitle: string;
+  isFirstInSection: boolean;
+  isLastInSection: boolean;
+}
+
 export const ActionsScreen = () => {
-  const { isDark } = useTheme();
+  const { isDark, colorSchemePreference } = useTheme();
   const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
 
   // Story 5.3: Filter and sort state (AC1, AC8)
@@ -84,29 +93,23 @@ export const ActionsScreen = () => {
 
   // Scroll position persistence (Story 5.2 - AC8)
   // Story 5.3 - Fix #9: Track previous list type to reset scroll on switch
-  const sectionListRef = useRef<SectionList>(null);
   const flatListRef = useRef<FlatList>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
   const previousIsSections = useRef<boolean>(isSections);
 
+  // Planning view: sticky section tracking
+  const [currentStickySection, setCurrentStickySection] = useState('');
+  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
+
   // Restore scroll position on focus
   useFocusEffect(
     React.useCallback(() => {
-      if (scrollOffset > 0) {
+      if (scrollOffset > 0 && flatListRef.current) {
         setTimeout(() => {
-          if (sectionListRef.current) {
-            sectionListRef.current.scrollToLocation({
-              sectionIndex: 0,
-              itemIndex: 0,
-              viewOffset: scrollOffset,
-              animated: false,
-            });
-          } else if (flatListRef.current) {
-            flatListRef.current.scrollToOffset({
-              offset: scrollOffset,
-              animated: false,
-            });
-          }
+          flatListRef.current?.scrollToOffset({
+            offset: scrollOffset,
+            animated: false,
+          });
         }, 100);
       }
     }, [scrollOffset])
@@ -154,8 +157,40 @@ export const ActionsScreen = () => {
   // Check if sorted data is sections or flat list
   const isSections = isSectionData(sortedData);
 
+  // Planning view: flatten sections into FlatTodoItem[]
+  const flatData = useMemo(() => {
+    if (!isSections) return null;
+
+    const flat: FlatTodoItem[] = [];
+    (sortedData as TodoSection[]).forEach((section) => {
+      section.data.forEach((todo, idx) => {
+        flat.push({
+          todo,
+          sectionTitle: section.title,
+          isFirstInSection: idx === 0,
+          isLastInSection: idx === section.data.length - 1,
+        });
+      });
+    });
+
+    return flat;
+  }, [sortedData, isSections]);
+
+  // Planning view: track visible section for sticky overlay
+  const onViewableItemsChanged = useCallback(
+    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
+      if (viewableItems.length > 0) {
+        const first = viewableItems[0].item as FlatTodoItem;
+        if (first?.sectionTitle) {
+          setCurrentStickySection(first.sectionTitle);
+        }
+      }
+    },
+    [],
+  );
+
   // Dynamic styles based on theme
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
 
   // Story 5.3 - Fix #9: Reset scroll offset when switching list type
   React.useEffect(() => {
@@ -315,42 +350,69 @@ export const ActionsScreen = () => {
     );
   }
 
-  // Render SectionList (for 'default' sort) with animations (Story 5.3 - Task 10)
-  if (isSections) {
+  // Render calendar item for planning view
+  const renderCalendarItem = ({ item }: { item: FlatTodoItem }) => {
+    if (item.isFirstInSection) {
+      return (
+        <View style={styles.calendarRow}>
+          <View style={styles.dateColumn}>
+            <Text style={styles.dateLabelText}>{item.sectionTitle}</Text>
+          </View>
+          <View style={styles.cardColumn}>
+            {renderTodoCard(item.todo)}
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.indentedRow}>
+        <View style={styles.verticalLineColumn} />
+        <View style={styles.cardColumn}>
+          {renderTodoCard(item.todo)}
+        </View>
+      </View>
+    );
+  };
+
+  // Render planning view FlatList (for 'default' sort)
+  if (isSections && flatData) {
     return (
       <StandardLayout>
         <View style={styles.container}>
           {renderHeader()}
-          <SectionList
-          ref={sectionListRef}
-          style={styles.list}
-          sections={sortedData as TodoSection[]}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => renderTodoCard(item)}
-          renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionHeaderText}>{title}</Text>
-            </View>
-          )}
-          contentContainerStyle={styles.listContent}
-          stickySectionHeadersEnabled
-          refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
-          }
-          windowSize={10}
-          initialNumToRender={15}
-          maxToRenderPerBatch={10}
-          removeClippedSubviews
-          getItemLayout={getItemLayout}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
-        <SortMenu
-          visible={isSortMenuVisible}
-          onClose={() => setSortMenuVisible(false)}
-          activeSort={sort}
-          onSortChange={setSort}
-        />
+          <View style={{ flex: 1 }}>
+            <FlatList
+              ref={flatListRef}
+              style={styles.list}
+              data={flatData}
+              keyExtractor={(item) => item.todo.id}
+              renderItem={renderCalendarItem}
+              contentContainerStyle={styles.calendarListContent}
+              refreshControl={
+                <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+              }
+              windowSize={10}
+              initialNumToRender={15}
+              maxToRenderPerBatch={10}
+              removeClippedSubviews
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onViewableItemsChanged={onViewableItemsChanged}
+              viewabilityConfig={viewabilityConfig}
+            />
+            {currentStickySection && scrollOffset > 0 && (
+              <View style={styles.stickyDateOverlay}>
+                <Text style={styles.stickyDateText}>{currentStickySection}</Text>
+              </View>
+            )}
+          </View>
+          <SortMenu
+            visible={isSortMenuVisible}
+            onClose={() => setSortMenuVisible(false)}
+            activeSort={sort}
+            onSortChange={setSort}
+          />
         </View>
       </StandardLayout>
     );
@@ -390,8 +452,10 @@ export const ActionsScreen = () => {
   );
 };
 
-const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (isDark: boolean, colorScheme: import('../../design-system/tokens').ColorScheme) => {
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return StyleSheet.create({
     container: {
       flex: 1,
     },
@@ -407,16 +471,21 @@ const createStyles = (isDark: boolean) =>
       flex: 1,
     },
     listContent: {
-      padding: 16,
+      paddingHorizontal: 16,
+      paddingBottom: 16,
+    },
+    calendarListContent: {
+      paddingBottom: 16,
     },
     sortButtonContainer: {
       flexDirection: 'row',
       gap: 8,
       paddingHorizontal: 16,
-      paddingVertical: 8,
+      paddingTop: 4,
+      paddingBottom: 8,
+      backgroundColor: backgrounds.card,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
-      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
     },
     sortButton: {
       flex: 1,
@@ -426,7 +495,7 @@ const createStyles = (isDark: boolean) =>
       paddingVertical: 8,
       paddingHorizontal: 16,
       borderRadius: 8,
-      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100],
+      backgroundColor: backgrounds.subtle,
     },
     sortButtonText: {
       fontSize: 14,
@@ -448,15 +517,51 @@ const createStyles = (isDark: boolean) =>
       fontWeight: '600',
       color: isDark ? colors.error[400] : colors.error[600],
     },
-    sectionHeader: {
-      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[100],
-      paddingHorizontal: 16,
-      paddingVertical: 8,
+    calendarRow: {
+      flexDirection: 'row',
+      paddingRight: 16,
     },
-    sectionHeaderText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: isDark ? colors.neutral[400] : colors.neutral[500],
+    dateColumn: {
+      width: DATE_COLUMN_WIDTH,
+      paddingTop: 14,
+      paddingLeft: 16,
+      paddingRight: 8,
+    },
+    dateLabelText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: isDark ? colors.neutral[300] : colors.neutral[600],
+      textTransform: 'uppercase',
+    },
+    cardColumn: {
+      flex: 1,
+    },
+    indentedRow: {
+      flexDirection: 'row',
+      paddingRight: 16,
+    },
+    verticalLineColumn: {
+      width: DATE_COLUMN_WIDTH,
+      borderRightWidth: StyleSheet.hairlineWidth,
+      borderRightColor: isDark ? colors.neutral[600] : colors.neutral[300],
+      marginRight: -StyleSheet.hairlineWidth,
+    },
+    stickyDateOverlay: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      width: DATE_COLUMN_WIDTH,
+      paddingTop: 14,
+      paddingLeft: 16,
+      paddingRight: 8,
+      paddingBottom: 8,
+      backgroundColor: backgrounds.screen,
+      zIndex: 10,
+    },
+    stickyDateText: {
+      fontSize: 13,
+      fontWeight: '700',
+      color: isDark ? colors.neutral[300] : colors.neutral[600],
       textTransform: 'uppercase',
     },
     errorFallback: {
@@ -471,3 +576,4 @@ const createStyles = (isDark: boolean) =>
       textAlign: 'center',
     },
   });
+};

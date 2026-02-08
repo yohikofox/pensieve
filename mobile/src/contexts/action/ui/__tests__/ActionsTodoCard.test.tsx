@@ -248,7 +248,7 @@ describe('ActionsTodoCard', () => {
 
     // Find main card Pressable (not the checkbox)
     const pressables = UNSAFE_getAllByType('Pressable' as any);
-    const cardPressable = pressables.find((p) => p.props.className?.includes('bg-background-0'));
+    const cardPressable = pressables.find((p) => p.props.className?.includes('bg-bg-card'));
 
     fireEvent.press(cardPressable!);
 

@@ -24,9 +24,9 @@ export class TodoRepository implements ITodoRepository {
     database.execute(
       `INSERT INTO todos (
         id, thought_id, idea_id, capture_id, user_id,
-        status, description, deadline, priority, completed_at,
+        status, description, deadline, contact, priority, completed_at,
         created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         todo.id,
         todo.thoughtId,
@@ -36,6 +36,7 @@ export class TodoRepository implements ITodoRepository {
         todo.status,
         todo.description,
         todo.deadline ?? null,
+        todo.contact ?? null,
         todo.priority,
         todo.completedAt ?? null,
         todo.createdAt,
@@ -142,6 +143,11 @@ export class TodoRepository implements ITodoRepository {
     if (changes.deadline !== undefined) {
       fields.push('deadline = ?');
       values.push(changes.deadline ?? null);
+    }
+
+    if (changes.contact !== undefined) {
+      fields.push('contact = ?');
+      values.push(changes.contact ?? null);
     }
 
     if (changes.priority !== undefined) {
@@ -384,6 +390,24 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
+   * Find all todos linked to a specific analysis via analysis_todos
+   * @param analysisId - CaptureAnalysis UUID
+   * @returns Array of todos ordered by action_item_index ASC
+   */
+  async findByAnalysisId(analysisId: string): Promise<Todo[]> {
+    const result = database.execute(
+      `SELECT t.* FROM todos t
+       JOIN analysis_todos at ON at.todo_id = t.id
+       WHERE at.analysis_id = ?
+       ORDER BY at.action_item_index ASC`,
+      [analysisId]
+    );
+
+    const rows = result.rows || [];
+    return rows.map((row: any) => this.mapRowToTodo(row));
+  }
+
+  /**
    * Map SQLite row to TodoWithSource model
    * Handles joined Thought and Idea data
    */
@@ -438,6 +462,7 @@ export class TodoRepository implements ITodoRepository {
       description: row.description,
       status: row.status as TodoStatus,
       deadline: row.deadline ?? undefined,
+      contact: row.contact ?? undefined,
       priority: row.priority,
       completedAt: row.completed_at ?? undefined,
       createdAt: row.created_at,

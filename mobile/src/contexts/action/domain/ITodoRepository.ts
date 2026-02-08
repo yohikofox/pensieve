@@ -121,4 +121,11 @@ export interface ITodoRepository {
    * @returns Array of ALL todos with thought and idea data
    */
   findAllWithSource(): Promise<TodoWithSource[]>;
+
+  /**
+   * Find all todos linked to a specific analysis via analysis_todos
+   * @param analysisId - CaptureAnalysis UUID
+   * @returns Array of todos ordered by action_item_index ASC
+   */
+  findByAnalysisId(analysisId: string): Promise<Todo[]>;
 }

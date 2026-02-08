@@ -1599,6 +1599,102 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v16 completed');
     },
   },
+  {
+    version: 17,
+    name: 'Add analysis_todos association table (capture_analysis → todos)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v17: Creating analysis_todos table');
+
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS analysis_todos (
+          todo_id TEXT NOT NULL,
+          analysis_id TEXT NOT NULL,
+          action_item_index INTEGER,
+          created_at INTEGER NOT NULL,
+          PRIMARY KEY (todo_id, analysis_id),
+          FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+          FOREIGN KEY (analysis_id) REFERENCES capture_analysis(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_analysis_todos_analysis_id
+        ON analysis_todos(analysis_id)
+      `);
+
+      console.log('[DB] ✅ Migration v17: analysis_todos table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v17');
+      db.executeSync('DROP TABLE IF EXISTS analysis_todos');
+      console.log('[DB] ✅ Rollback v17 completed');
+    },
+  },
+  {
+    version: 18,
+    name: 'Add contact column to todos table',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v18: Adding contact column to todos');
+
+      db.executeSync(`
+        ALTER TABLE todos ADD COLUMN contact TEXT
+      `);
+
+      console.log('[DB] ✅ Migration v18: contact column added to todos');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v18');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE todos_v17 (
+          id TEXT PRIMARY KEY NOT NULL,
+          thought_id TEXT NOT NULL,
+          idea_id TEXT,
+          capture_id TEXT NOT NULL,
+          user_id TEXT NOT NULL,
+          status TEXT NOT NULL CHECK(status IN ('todo', 'completed', 'abandoned')) DEFAULT 'todo',
+          description TEXT NOT NULL,
+          deadline INTEGER,
+          priority TEXT NOT NULL CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+          completed_at INTEGER,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE,
+          FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE SET NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync(`
+        INSERT INTO todos_v17 (
+          id, thought_id, idea_id, capture_id, user_id, status, description,
+          deadline, priority, completed_at, created_at, updated_at
+        )
+        SELECT
+          id, thought_id, idea_id, capture_id, user_id, status, description,
+          deadline, priority, completed_at, created_at, updated_at
+        FROM todos
+      `);
+
+      db.executeSync('DROP TABLE todos');
+      db.executeSync('ALTER TABLE todos_v17 RENAME TO todos');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_thought_id ON todos(thought_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_idea_id ON todos(idea_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_status ON todos(status)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_deadline ON todos(deadline)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)');
+
+      console.log('[DB] ✅ Rollback v18 completed');
+    },
+  },
 ];
 
 /**

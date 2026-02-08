@@ -19,6 +19,7 @@ export interface Todo {
   description: string;
   status: TodoStatus;
   deadline?: number; // Unix timestamp (ms), optional suggested deadline
+  contact?: string; // Optional contact name associated with the action
   priority: TodoPriority;
   completedAt?: number; // Unix timestamp (ms), set when status = 'completed'
   createdAt: number; // Unix timestamp (ms)

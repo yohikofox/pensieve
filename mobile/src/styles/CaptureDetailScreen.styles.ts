@@ -128,8 +128,8 @@ export const styles = StyleSheet.create({
   contentTextInput: {
     fontSize: 17,
     color: "#000",
-    lineHeight: 26,
-    padding: 0,
+    lineHeight: 30,
+    padding: 16,
     textAlignVertical: "top",
   },
   placeholderText: {

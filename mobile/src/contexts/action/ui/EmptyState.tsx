@@ -25,17 +25,17 @@ export const EmptyState: React.FC = () => {
       className="flex-1 items-center justify-center px-8"
     >
       {/* Garden illustration with subtle animation (AC5) */}
-      <View className="w-32 h-32 bg-primary-100 dark:bg-primary-900/20 rounded-full items-center justify-center mb-6">
+      <View className="w-32 h-32 bg-primary-subtle rounded-full items-center justify-center mb-6">
         <Text className="text-6xl">🌸</Text>
       </View>
 
       {/* Title */}
-      <Text className="text-content-primary dark:text-content-primary-dark text-xl font-bold text-center mb-2">
+      <Text className="text-text-primary text-xl font-bold text-center mb-2">
         {t('actions.empty.title')}
       </Text>
 
       {/* Description */}
-      <Text className="text-content-secondary dark:text-content-secondary-dark text-base text-center">
+      <Text className="text-text-secondary text-base text-center">
         {t('actions.empty.description')}
       </Text>
     </Animated.View>

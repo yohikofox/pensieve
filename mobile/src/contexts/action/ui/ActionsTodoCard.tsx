@@ -121,7 +121,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     <>
       <Pressable
         onPress={handleCardPress}
-        className="bg-background-0 dark:bg-background-900 p-4 mb-2 rounded-lg active:opacity-80"
+        className="bg-bg-card p-4 mb-2 rounded-lg active:opacity-80"
       >
         <View className="flex-row items-start">
           {/* Checkbox with completion animation */}
@@ -134,8 +134,8 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
               <View
                 className={`w-6 h-6 rounded border-2 items-center justify-center ${
                   todo.status === 'completed'
-                    ? 'bg-primary-500 border-primary-500'
-                    : 'border-border-secondary dark:border-border-secondary-dark'
+                    ? 'bg-primary-action border-primary-action'
+                    : 'border-border-default'
                 }`}
               >
                 {todo.status === 'completed' && (
@@ -150,7 +150,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
             {/* Description with animated strikethrough */}
             <Animated.Text
               style={animatedTextStyle}
-              className={`text-content-primary dark:text-content-primary-dark text-base mb-1 ${
+              className={`text-text-primary text-base mb-1 ${
                 todo.status === 'completed' ? 'line-through' : ''
               }`}
               numberOfLines={2}
@@ -161,7 +161,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
             {/* Source Preview */}
             {sourcePreview && (
               <Text
-                className="text-content-tertiary dark:text-content-tertiary-dark text-sm mb-2"
+                className="text-text-tertiary text-sm mb-2"
                 numberOfLines={1}
               >
                 {sourcePreview}
@@ -181,14 +181,21 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
 
               {/* Deadline */}
               {todo.deadline && (
-                <Text className="text-content-secondary dark:text-content-secondary-dark text-xs">
-                  📅 {formatDeadline(todo.deadline)}
+                <Text className="text-text-secondary text-xs">
+                  📅 {formatDeadline(todo.deadline).text}
+                </Text>
+              )}
+
+              {/* Contact */}
+              {todo.contact && (
+                <Text className="text-text-secondary text-xs">
+                  👤 {todo.contact}
                 </Text>
               )}
 
               {/* Source Timestamp */}
               {sourceTimestamp && (
-                <Text className="text-content-tertiary dark:text-content-tertiary-dark text-xs">
+                <Text className="text-text-tertiary text-xs">
                   {sourceTimestamp}
                 </Text>
               )}

@@ -23,6 +23,7 @@ import { CaptureAnalysisRepository } from '../../contexts/capture/data/CaptureAn
 import { ThoughtRepository } from '../../contexts/knowledge/data/ThoughtRepository';
 import { IdeaRepository } from '../../contexts/knowledge/data/IdeaRepository';
 import { TodoRepository } from '../../contexts/action/data/TodoRepository';
+import { AnalysisTodoRepository } from '../../contexts/action/data/AnalysisTodoRepository';
 
 // Services
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
@@ -98,6 +99,7 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IThoughtRepository, ThoughtRepository);
   container.registerSingleton(TOKENS.IIdeaRepository, IdeaRepository);
   container.registerSingleton(TOKENS.ITodoRepository, TodoRepository);
+  container.registerSingleton(TOKENS.IAnalysisTodoRepository, AnalysisTodoRepository);
 
   // Platform Adapters (Hardware/SDK wrappers)
   container.registerSingleton(TOKENS.IAudioRecorder, ExpoAudioAdapter);

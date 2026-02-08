@@ -61,7 +61,7 @@ const initialState = {
   showRawTranscript: false,
   showMetadata: false,
   showOriginalContent: false,
-  showAnalysis: false,
+  showAnalysis: true,
 
   // Audio player
   audioPosition: 0,

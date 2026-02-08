@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 16;
+export const SCHEMA_VERSION = 18;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -229,6 +229,7 @@ export const CREATE_TODOS_TABLE = `
     status TEXT NOT NULL CHECK(status IN ('todo', 'completed', 'abandoned')) DEFAULT 'todo',
     description TEXT NOT NULL,
     deadline INTEGER,
+    contact TEXT,
     priority TEXT NOT NULL CHECK(priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
     completed_at INTEGER,
     created_at INTEGER NOT NULL,
@@ -265,6 +266,28 @@ export const CREATE_INDEX_TODOS_DEADLINE = `
 
 export const CREATE_INDEX_TODOS_USER_ID = `
   CREATE INDEX IF NOT EXISTS idx_todos_user_id ON todos(user_id)
+`;
+
+/**
+ * Analysis Todos Table - Association between capture_analysis and todos
+ *
+ * Links AI-generated action items (from capture_analysis) to their corresponding todos.
+ * One table per source type pattern: analysis_todos links capture_analysis → todos.
+ */
+export const CREATE_ANALYSIS_TODOS_TABLE = `
+  CREATE TABLE IF NOT EXISTS analysis_todos (
+    todo_id TEXT NOT NULL,
+    analysis_id TEXT NOT NULL,
+    action_item_index INTEGER,
+    created_at INTEGER NOT NULL,
+    PRIMARY KEY (todo_id, analysis_id),
+    FOREIGN KEY (todo_id) REFERENCES todos(id) ON DELETE CASCADE,
+    FOREIGN KEY (analysis_id) REFERENCES capture_analysis(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_ANALYSIS_TODOS_ANALYSIS_ID = `
+  CREATE INDEX IF NOT EXISTS idx_analysis_todos_analysis_id ON analysis_todos(analysis_id)
 `;
 
 /**

@@ -14,7 +14,11 @@ import * as Haptics from 'expo-haptics';
 import { FilterType } from '../hooks/useFilterState';
 import { settingsStore } from '../../../stores/settingsStore';
 import { useTheme } from '../../../hooks/useTheme';
-import { colors } from '../../../design-system/tokens';
+import {
+  colors,
+  getPrimaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+} from '../../../design-system/tokens';
 
 export interface FilterTabsProps {
   activeFilter: FilterType;
@@ -31,8 +35,8 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
   onFilterChange,
   counts,
 }) => {
-  const { isDark } = useTheme();
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const { isDark, colorSchemePreference } = useTheme();
+  const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
 
   const handleTabPress = async (filter: FilterType) => {
     // Haptic feedback (check user preference)
@@ -147,14 +151,17 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
   );
 };
 
-const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (isDark: boolean, colorScheme: import('../../../design-system/tokens').ColorScheme) => {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return StyleSheet.create({
     container: {
       flexDirection: 'row',
       paddingHorizontal: 16,
       paddingVertical: 12,
       gap: 8,
-      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
+      backgroundColor: backgrounds.card,
       borderBottomWidth: 1,
       borderBottomColor: isDark ? colors.neutral[700] : colors.neutral[200],
     },
@@ -166,15 +173,14 @@ const createStyles = (isDark: boolean) =>
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 8,
-      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100],
+      backgroundColor: backgrounds.subtle,
       gap: 6,
     },
     tabActive: {
-      backgroundColor: isDark ? colors.primary[900] : colors.primary[50],
+      backgroundColor: isDark ? primaryPalette[900] : primaryPalette[50],
       borderWidth: 1.5,
-      borderColor: isDark ? colors.primary[400] : colors.primary[500],
-      // Liquid Glass elevated effect
-      shadowColor: isDark ? colors.primary[400] : colors.primary[500],
+      borderColor: isDark ? primaryPalette[400] : primaryPalette[500],
+      shadowColor: isDark ? primaryPalette[400] : primaryPalette[500],
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: isDark ? 0.3 : 0.1,
       shadowRadius: 4,
@@ -186,7 +192,7 @@ const createStyles = (isDark: boolean) =>
       color: isDark ? colors.neutral[300] : colors.neutral[500],
     },
     tabTextActive: {
-      color: isDark ? colors.primary[300] : colors.primary[600],
+      color: isDark ? primaryPalette[300] : primaryPalette[600],
     },
     badge: {
       minWidth: 20,
@@ -198,7 +204,7 @@ const createStyles = (isDark: boolean) =>
       paddingHorizontal: 6,
     },
     badgeActive: {
-      backgroundColor: isDark ? colors.primary[500] : colors.primary[500],
+      backgroundColor: primaryPalette[500],
     },
     badgeText: {
       fontSize: 12,
@@ -209,3 +215,4 @@ const createStyles = (isDark: boolean) =>
       color: colors.neutral[0],
     },
   });
+};

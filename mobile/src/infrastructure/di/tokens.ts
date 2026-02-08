@@ -19,6 +19,7 @@ export const TOKENS = {
   IThoughtRepository: Symbol.for('IThoughtRepository'),
   IIdeaRepository: Symbol.for('IIdeaRepository'),
   ITodoRepository: Symbol.for('ITodoRepository'),
+  IAnalysisTodoRepository: Symbol.for('IAnalysisTodoRepository'),
 
   // Hardware/Platform Adapters
   IAudioRecorder: Symbol.for('IAudioRecorder'),

@@ -21,7 +21,11 @@ import * as Haptics from 'expo-haptics';
 import { SortType } from '../hooks/useFilterState';
 import { settingsStore } from '../../../stores/settingsStore';
 import { useTheme } from '../../../hooks/useTheme';
-import { colors } from '../../../design-system/tokens';
+import {
+  colors,
+  getPrimaryPaletteForColorScheme,
+  getBackgroundColorsForColorScheme,
+} from '../../../design-system/tokens';
 
 export interface SortMenuProps {
   visible: boolean;
@@ -65,8 +69,8 @@ export const SortMenu: React.FC<SortMenuProps> = ({
   activeSort,
   onSortChange,
 }) => {
-  const { isDark } = useTheme();
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const { isDark, colorSchemePreference } = useTheme();
+  const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
 
   const handleSortSelect = async (sort: SortType) => {
     // Haptic feedback (check user preference)
@@ -135,8 +139,11 @@ export const SortMenu: React.FC<SortMenuProps> = ({
   );
 };
 
-const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (isDark: boolean, colorScheme: import('../../../design-system/tokens').ColorScheme) => {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+  const backgrounds = getBackgroundColorsForColorScheme(colorScheme, isDark);
+
+  return StyleSheet.create({
     backdrop: {
       flex: 1,
       backgroundColor: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.5)',
@@ -146,16 +153,14 @@ const createStyles = (isDark: boolean) =>
       justifyContent: 'flex-end',
     },
     sheet: {
-      backgroundColor: isDark ? colors.neutral[800] : colors.neutral[0],
+      backgroundColor: backgrounds.elevated,
       borderTopLeftRadius: 20,
       borderTopRightRadius: 20,
-      paddingBottom: 34, // Safe area inset
-      // Shadow for iOS
+      paddingBottom: 34,
       shadowColor: colors.neutral[1000],
       shadowOffset: { width: 0, height: -2 },
       shadowOpacity: isDark ? 0.3 : 0.1,
       shadowRadius: 8,
-      // Elevation for Android
       elevation: 5,
     },
     header: {
@@ -188,13 +193,13 @@ const createStyles = (isDark: boolean) =>
       paddingVertical: 16,
       paddingHorizontal: 16,
       borderRadius: 12,
-      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[50],
+      backgroundColor: backgrounds.subtle,
       marginVertical: 4,
     },
     optionActive: {
-      backgroundColor: isDark ? colors.primary[900] : colors.primary[50],
+      backgroundColor: isDark ? primaryPalette[900] : primaryPalette[50],
       borderWidth: 1.5,
-      borderColor: isDark ? colors.primary[400] : colors.primary[500],
+      borderColor: isDark ? primaryPalette[400] : primaryPalette[500],
     },
     optionContent: {
       flex: 1,
@@ -206,7 +211,7 @@ const createStyles = (isDark: boolean) =>
       marginBottom: 4,
     },
     optionLabelActive: {
-      color: isDark ? colors.primary[300] : colors.primary[600],
+      color: isDark ? primaryPalette[300] : primaryPalette[600],
     },
     optionDescription: {
       fontSize: 14,
@@ -216,7 +221,7 @@ const createStyles = (isDark: boolean) =>
       width: 24,
       height: 24,
       borderRadius: 12,
-      backgroundColor: isDark ? colors.primary[500] : colors.primary[500],
+      backgroundColor: primaryPalette[500],
       alignItems: 'center',
       justifyContent: 'center',
       marginLeft: 12,
@@ -227,3 +232,4 @@ const createStyles = (isDark: boolean) =>
       color: colors.neutral[0],
     },
   });
+};

@@ -77,18 +77,18 @@ export function ContentSection() {
     setAudioPosition(positionMs);
   };
   const isAudio = useCaptureDetailStore((state) => state.isAudio);
-  const isReady = useCaptureDetailStore((state) => state.isReady);
   const hasText = editedText.length > 0;
   const isEditable =
-    isReady || capture.state === "failed" || capture.type === "text";
+    capture.state === "ready" ||
+    capture.state === "failed" ||
+    capture.type === "text";
 
   // Check if content has been AI-enhanced
   const rawTranscript = metadata[METADATA_KEYS.RAW_TRANSCRIPT]?.value;
   const originalText = isAudio ? rawTranscript : capture?.rawContent;
-  console.log("🚀 ~ ContentSection ~ originalText:", originalText);
-  console.log("🚀 ~ ContentSection ~ capture:", capture?.normalizedText);
 
-  const hasBeenEnhanced = !!(originalText || capture?.normalizedText);
+  const hasBeenEnhanced = !!originalText && !!capture?.normalizedText;
+  // &&     originalText !== capture.normalizedText;
 
   // Determine which text to display
   const displayText =
@@ -223,7 +223,7 @@ export function ContentSection() {
             ? "Transcription en cours..."
             : capture.state === "failed"
               ? "La transcription a échoué"
-              : isReady && isAudio
+              : capture.state === "ready" && isAudio
                 ? "Aucun audio détecté dans l'enregistrement"
                 : "Aucun contenu disponible"}
         </Text>

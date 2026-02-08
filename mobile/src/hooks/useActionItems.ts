@@ -14,11 +14,16 @@
  * Story 5.4 - Unified store: no more captureId indexing
  */
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import * as Contacts from "expo-contacts";
 import { container } from "tsyringe";
+import { v4 as uuidv4 } from "uuid";
+import { useQueryClient } from "@tanstack/react-query";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { ICaptureAnalysisRepository } from "../contexts/capture/domain/ICaptureAnalysisRepository";
+import type { IThoughtRepository } from "../contexts/knowledge/domain/IThoughtRepository";
+import type { ITodoRepository } from "../contexts/action/domain/ITodoRepository";
+import type { IAnalysisTodoRepository } from "../contexts/action/domain/IAnalysisTodoRepository";
 import { ANALYSIS_TYPES } from "../contexts/capture/domain/CaptureAnalysis.model";
 import {
   parseActionItems,
@@ -58,8 +63,167 @@ interface UseActionItemsReturn {
   setSavedActionIndex: (index: number | null) => void;
 }
 
+/**
+ * Parse "JJ-MM-AAAA, HH:mm" deadline string to Unix timestamp (ms)
+ */
+function parseDeadlineToTimestamp(deadlineDate: string): number | undefined {
+  const match = deadlineDate.match(/^(\d{2})-(\d{2})-(\d{4}),?\s*(\d{2}):(\d{2})$/);
+  if (!match) return undefined;
+  const [, day, month, year, hours, minutes] = match;
+  return new Date(
+    parseInt(year, 10),
+    parseInt(month, 10) - 1,
+    parseInt(day, 10),
+    parseInt(hours, 10),
+    parseInt(minutes, 10),
+  ).getTime();
+}
+
+/**
+ * Sync parsed action items to the todos table for display in Actions tab.
+ * Idempotent: deletes todos linked to the analysis before re-creating.
+ */
+async function syncActionItemsToTodos(
+  items: ActionItem[],
+  captureId: string,
+  analyses: Record<string, any>,
+): Promise<void> {
+  const thoughtRepo = container.resolve<IThoughtRepository>(TOKENS.IThoughtRepository);
+  const todoRepo = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const analysisTodoRepo = container.resolve<IAnalysisTodoRepository>(TOKENS.IAnalysisTodoRepository);
+  const captureAnalysisRepo = container.resolve<ICaptureAnalysisRepository>(TOKENS.ICaptureAnalysisRepository);
+
+  // 1. Get the analysis record to obtain its ID
+  const analysis = await captureAnalysisRepo.get(captureId, ANALYSIS_TYPES.ACTION_ITEMS);
+  if (!analysis) {
+    console.warn('[useActionItems] No action_items analysis found for capture', captureId);
+    return;
+  }
+
+  // 2. Find or create a Thought for this capture
+  let thought = await thoughtRepo.findByCaptureId(captureId);
+
+  if (!thought) {
+    const summaryAnalysis = analyses[ANALYSIS_TYPES.SUMMARY];
+    const summary = summaryAnalysis?.content || 'Action items capture';
+
+    const now = Date.now();
+    thought = {
+      id: uuidv4(),
+      captureId,
+      userId: 'local',
+      summary,
+      processingTimeMs: 0,
+      createdAt: now,
+      updatedAt: now,
+    };
+    await thoughtRepo.create(thought);
+  }
+
+  // 3. Delete existing todos linked to this analysis for idempotency
+  await analysisTodoRepo.deleteByAnalysisId(analysis.id);
+
+  // 4. Create a Todo per ActionItem and link it to the analysis
+  const now = Date.now();
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const deadline = item.deadline_date
+      ? parseDeadlineToTimestamp(item.deadline_date)
+      : undefined;
+
+    const todoId = uuidv4();
+    await todoRepo.create({
+      id: todoId,
+      thoughtId: thought.id,
+      captureId,
+      userId: 'local',
+      description: item.title,
+      status: 'todo',
+      deadline,
+      contact: item.target ?? undefined,
+      priority: 'medium',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await analysisTodoRepo.link(todoId, analysis.id, index);
+  }
+
+  console.log(`[useActionItems] Synced ${items.length} action items to todos for capture ${captureId}`);
+}
+
+/**
+ * Convert Unix timestamp (ms) to "JJ-MM-AAAA, HH:mm" deadline string
+ */
+function timestampToDeadlineDate(timestamp: number): string {
+  const date = new Date(timestamp);
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const minutes = date.getMinutes().toString().padStart(2, "0");
+  return `${day}-${month}-${year}, ${hours}:${minutes}`;
+}
+
+/**
+ * Convert a Todo entity to an ActionItem for display
+ */
+function todoToActionItem(todo: import("../contexts/action/domain/Todo.model").Todo): ActionItem {
+  return {
+    title: todo.description,
+    deadline_date: todo.deadline ? timestampToDeadlineDate(todo.deadline) : null,
+    deadline_text: null,
+    target: todo.contact ?? null,
+  };
+}
+
+/**
+ * Load action items from todos DB (source of truth after sync)
+ */
+export async function loadActionItemsFromTodos(captureId: string): Promise<ActionItem[] | null> {
+  const captureAnalysisRepo = container.resolve<ICaptureAnalysisRepository>(TOKENS.ICaptureAnalysisRepository);
+  const todoRepo = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+
+  const analysis = await captureAnalysisRepo.get(captureId, ANALYSIS_TYPES.ACTION_ITEMS);
+  if (!analysis) return null;
+
+  const todos = await todoRepo.findByAnalysisId(analysis.id);
+  if (todos.length === 0) return null;
+
+  return todos.map(todoToActionItem);
+}
+
+/**
+ * Update the corresponding Todo when an ActionItem is edited (date or contact).
+ */
+async function updateTodoFromActionItem(
+  captureId: string,
+  actionItemIndex: number,
+  changes: Partial<{ deadline: number; contact: string }>,
+): Promise<void> {
+  const captureAnalysisRepo = container.resolve<ICaptureAnalysisRepository>(TOKENS.ICaptureAnalysisRepository);
+  const analysisTodoRepo = container.resolve<IAnalysisTodoRepository>(TOKENS.IAnalysisTodoRepository);
+  const todoRepo = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+
+  const analysis = await captureAnalysisRepo.get(captureId, ANALYSIS_TYPES.ACTION_ITEMS);
+  if (!analysis) {
+    console.warn('[useActionItems] updateTodoFromActionItem: no analysis found for capture', captureId);
+    return;
+  }
+
+  const todoId = await analysisTodoRepo.findTodoIdByAnalysisAndIndex(analysis.id, actionItemIndex);
+  if (!todoId) {
+    console.warn('[useActionItems] updateTodoFromActionItem: no todo found for analysis', analysis.id, 'index', actionItemIndex);
+    return;
+  }
+
+  await todoRepo.update(todoId, changes);
+}
+
 export function useActionItems(): UseActionItemsReturn {
   const toast = useToast();
+  const queryClient = useQueryClient();
+  const syncInProgressRef = useRef(false);
 
   // Read from unified store - direct selectors
   const captureId = useCaptureDetailStore((state) => state.captureId);
@@ -99,7 +263,38 @@ export function useActionItems(): UseActionItemsReturn {
 
   // Sync action items when analysis changes
   useEffect(() => {
-    if (actionItemsAnalysis) {
+    if (actionItemsAnalysis && captureId) {
+      // Instant display from parsed JSON
+      const parsed = parseActionItems(actionItemsAnalysis.content);
+      setActionItemsInStore(parsed);
+
+      if (parsed && parsed.length > 0 && !syncInProgressRef.current) {
+        syncInProgressRef.current = true;
+
+        // Try loading from DB first (source of truth for edits)
+        loadActionItemsFromTodos(captureId)
+          .then(async (dbItems) => {
+            if (dbItems && dbItems.length > 0) {
+              // Todos already exist → use DB values (reflects edits from Actions tab)
+              setActionItemsInStore(dbItems);
+            } else {
+              // No todos yet → sync from JSON then reload from DB
+              await syncActionItemsToTodos(parsed, captureId, analyses);
+              const freshItems = await loadActionItemsFromTodos(captureId);
+              if (freshItems && freshItems.length > 0) {
+                setActionItemsInStore(freshItems);
+              }
+              queryClient.invalidateQueries({ queryKey: ['todos'] });
+            }
+          })
+          .catch((error) => {
+            console.error('[useActionItems] Failed to sync action items to todos:', error);
+          })
+          .finally(() => {
+            syncInProgressRef.current = false;
+          });
+      }
+    } else if (actionItemsAnalysis) {
       const parsed = parseActionItems(actionItemsAnalysis.content);
       setActionItemsInStore(parsed);
     }
@@ -192,6 +387,13 @@ export function useActionItems(): UseActionItemsReturn {
       setSelectedDate(date);
 
       saveActionItems(updatedItems, editingActionIndex);
+
+      // Sync deadline change to the corresponding Todo
+      if (captureId) {
+        updateTodoFromActionItem(captureId, editingActionIndex, { deadline: date.getTime() })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['todos'] }))
+          .catch((err) => console.error('[useActionItems] Failed to sync deadline to todo:', err));
+      }
     }
     setShowDatePicker(false);
     setEditingActionIndex(null);
@@ -252,6 +454,14 @@ export function useActionItems(): UseActionItemsReturn {
       setActionItemsInStore(updatedItems);
 
       saveActionItems(updatedItems, currentIndex);
+
+      // Sync contact change to the corresponding Todo
+      if (captureId) {
+        const contactName = contact.name || "Contact sans nom";
+        updateTodoFromActionItem(captureId, currentIndex, { contact: contactName })
+          .then(() => queryClient.invalidateQueries({ queryKey: ['todos'] }))
+          .catch((err) => console.error('[useActionItems] Failed to sync contact to todo:', err));
+      }
     }
     setShowContactPicker(false);
     setEditingActionIndex(null);

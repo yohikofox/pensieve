@@ -154,6 +154,14 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap, isHig
             </View>
           )}
 
+          {/* Contact */}
+          {todo.contact && (
+            <View style={styles.contactContainer}>
+              <Feather name="user" size={12} color={mutedColor} style={styles.icon} />
+              <Text style={[styles.contactText, { color: mutedColor }]}>{todo.contact}</Text>
+            </View>
+          )}
+
           {/* Priority Badge (Subtask 4.5: AC4) */}
           <View style={styles.priorityBadge}>
             <Text style={styles.priorityEmoji}>{getPriorityEmoji(todo.priority)}</Text>
@@ -213,6 +221,14 @@ const styles = StyleSheet.create({
   deadlineContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  contactContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contactText: {
+    fontSize: 12,
+    lineHeight: 16,
   },
   icon: {
     marginRight: 4,

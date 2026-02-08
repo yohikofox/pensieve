@@ -52,6 +52,7 @@ export function useCaptureDetailInit(
   captureId: string,
 ): UseCaptureDetailInitReturn {
   // Autonomous - reads and writes directly to stores
+  const resetStore = useCaptureDetailStore((state) => state.reset);
   const setStoreCapture = useCaptureDetailStore((state) => state.setCapture);
   const setStoreMetadata = useCaptureDetailStore((state) => state.setMetadata);
   const setStoreLoading = useCaptureDetailStore((state) => state.setLoading);
@@ -81,6 +82,8 @@ export function useCaptureDetailInit(
    */
   const loadCapture = useCallback(async () => {
     try {
+      // Reset stale state (showOriginalContent, editedText, etc.) before loading new capture
+      resetStore();
       setStoreLoading(true);
       setError(null);
 
@@ -106,7 +109,7 @@ export function useCaptureDetailInit(
     } finally {
       setStoreLoading(false);
     }
-  }, [captureId, setStoreCapture, setStoreMetadata, setStoreLoading]);
+  }, [captureId, resetStore, setStoreCapture, setStoreMetadata, setStoreLoading]);
 
   // Store setter for analyses
   const setAnalyses = useCaptureDetailStore((state) => state.setAnalyses);
@@ -127,14 +130,25 @@ export function useCaptureDetailInit(
   }, [captureId, setAnalyses]);
 
   /**
-   * Check if transcription model is available
+   * Check if transcription model is available (engine-aware)
    */
   const checkModelAvailability = useCallback(async () => {
     try {
-      const modelService = container.resolve(TranscriptionModelService);
-      const bestModel = await modelService.getBestAvailableModel();
-      const available = bestModel !== null;
-      setStoreHasModelAvailable(available);
+      const engineService = container.resolve(TranscriptionEngineService);
+      const isNative = await engineService.isNativeEngineSelected();
+
+      if (isNative) {
+        const { NativeTranscriptionEngine } = await import(
+          "../contexts/Normalization/services/NativeTranscriptionEngine"
+        );
+        const nativeEngine = container.resolve(NativeTranscriptionEngine);
+        const available = await nativeEngine.isAvailable();
+        setStoreHasModelAvailable(available);
+      } else {
+        const modelService = container.resolve(TranscriptionModelService);
+        const bestModel = await modelService.getBestAvailableModel();
+        setStoreHasModelAvailable(bestModel !== null);
+      }
     } catch (err) {
       console.error(
         "[useCaptureDetailInit] Failed to check model availability:",

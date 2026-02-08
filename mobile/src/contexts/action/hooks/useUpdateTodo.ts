@@ -10,6 +10,8 @@ import { container } from 'tsyringe';
 import { ITodoRepository } from '../domain/ITodoRepository';
 import { Todo } from '../domain/Todo.model';
 import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useCaptureDetailStore } from '../../../stores/captureDetailStore';
+import { loadActionItemsFromTodos } from '../../../hooks/useActionItems';
 
 interface UpdateTodoParams {
   id: string;
@@ -30,8 +32,17 @@ export const useUpdateTodo = (): UseMutationResult<void, Error, UpdateTodoParams
     mutationFn: ({ id, changes }: UpdateTodoParams) => todoRepository.update(id, changes),
 
     onSuccess: () => {
-      // Invalidate all todos queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ['todos'] });
+
+      // Refresh action items in capture detail store if a capture is active
+      const captureId = useCaptureDetailStore.getState().captureId;
+      if (captureId) {
+        loadActionItemsFromTodos(captureId).then((items) => {
+          if (items) {
+            useCaptureDetailStore.getState().setActionItems(items);
+          }
+        });
+      }
     },
 
     onError: (err) => {

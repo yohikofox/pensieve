@@ -12,7 +12,7 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { FilterType } from '../hooks/useFilterState';
 import { useTheme } from '../../../hooks/useTheme';
-import { colors } from '../../../design-system/tokens';
+import { colors, getPrimaryPaletteForColorScheme } from '../../../design-system/tokens';
 
 export interface FilteredEmptyStateProps {
   filter: FilterType;
@@ -49,8 +49,8 @@ export const FilteredEmptyState: React.FC<FilteredEmptyStateProps> = ({
   filter,
   onFilterChange,
 }) => {
-  const { isDark } = useTheme();
-  const styles = useMemo(() => createStyles(isDark), [isDark]);
+  const { isDark, colorSchemePreference } = useTheme();
+  const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
   const content = EMPTY_STATE_CONTENT[filter];
 
   return (
@@ -76,8 +76,10 @@ export const FilteredEmptyState: React.FC<FilteredEmptyStateProps> = ({
   );
 };
 
-const createStyles = (isDark: boolean) =>
-  StyleSheet.create({
+const createStyles = (isDark: boolean, colorScheme: import('../../../design-system/tokens').ColorScheme) => {
+  const primaryPalette = getPrimaryPaletteForColorScheme(colorScheme);
+
+  return StyleSheet.create({
     container: {
       flex: 1,
       alignItems: 'center',
@@ -104,13 +106,11 @@ const createStyles = (isDark: boolean) =>
       paddingVertical: 12,
       paddingHorizontal: 24,
       borderRadius: 12,
-      backgroundColor: isDark ? colors.primary[600] : colors.primary[500],
-      // Shadow for iOS
-      shadowColor: isDark ? colors.primary[400] : colors.primary[500],
+      backgroundColor: isDark ? primaryPalette[600] : primaryPalette[500],
+      shadowColor: isDark ? primaryPalette[400] : primaryPalette[500],
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: isDark ? 0.3 : 0.2,
       shadowRadius: 4,
-      // Elevation for Android
       elevation: 2,
     },
     buttonText: {
@@ -119,3 +119,4 @@ const createStyles = (isDark: boolean) =>
       color: colors.neutral[0],
     },
   });
+};

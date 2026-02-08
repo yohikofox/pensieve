@@ -24,9 +24,11 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 import * as Haptics from 'expo-haptics';
 import { container } from 'tsyringe';
 import { useTheme } from '../../../hooks/useTheme';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import type { Todo, TodoPriority } from '../domain/Todo.model';
 import { useUpdateTodo } from '../hooks/useUpdateTodo';
 import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
+import { useDeleteTodo } from '../hooks/useDeleteTodo';
 import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
@@ -58,8 +60,10 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 }) => {
   const { isDark } = useTheme();
   const navigation = useNavigation<NavigationProp>();
+  const debugMode = useSettingsStore((state) => state.debugMode);
   const updateTodo = useUpdateTodo();
   const toggleStatus = useToggleTodoStatus();
+  const deleteTodo = useDeleteTodo();
 
   // Local state for editing
   const [description, setDescription] = useState(todo.description);
@@ -202,6 +206,25 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
     }
   };
 
+  const handleDelete = () => {
+    Alert.alert(
+      'Supprimer cette action ?',
+      'Cette action sera définitivement supprimée.',
+      [
+        { text: 'Annuler', style: 'cancel' },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            deleteTodo.mutate(todo.id);
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            onClose();
+          },
+        },
+      ]
+    );
+  };
+
   const deadlineFormat = formatDeadline(deadline);
   const deadlineColor = getDeadlineColor(deadlineFormat, isDark);
 
@@ -262,6 +285,14 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                 )}
               </View>
             </View>
+
+            {/* Contact (read-only) */}
+            {todo.contact && (
+              <View style={styles.section}>
+                <Text style={styles.label}>Contact</Text>
+                <Text style={styles.contactDisplay}>👤 {todo.contact}</Text>
+              </View>
+            )}
 
             {/* Subtask 6.5: Priority selector */}
             <View style={styles.section}>
@@ -351,6 +382,18 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
                 <Text style={styles.viewOriginText}>📍 View Origin Capture</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Delete button - debug mode only */}
+            {debugMode && (
+              <View style={styles.section}>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={handleDelete}
+                >
+                  <Text style={styles.deleteButtonText}>🗑️ Supprimer</Text>
+                </TouchableOpacity>
+              </View>
+            )}
           </ScrollView>
 
           {/* Footer with Save/Cancel buttons */}
@@ -463,6 +506,15 @@ const getStyles = (isDark: boolean) =>
       borderColor: isDark ? '#4b5563' : '#d1d5db',
       minHeight: 100,
     },
+    contactDisplay: {
+      fontSize: 16,
+      color: isDark ? '#d1d5db' : '#4b5563',
+      backgroundColor: isDark ? '#374151' : '#f9fafb',
+      borderRadius: 8,
+      padding: 12,
+      borderWidth: 1,
+      borderColor: isDark ? '#4b5563' : '#d1d5db',
+    },
     deadlineRow: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -536,6 +588,19 @@ const getStyles = (isDark: boolean) =>
       fontSize: 16,
       fontWeight: '600',
       color: '#ffffff',
+    },
+    deleteButton: {
+      backgroundColor: isDark ? '#7f1d1d' : '#fef2f2',
+      borderRadius: 8,
+      padding: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#dc2626',
+    },
+    deleteButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#dc2626',
     },
     footer: {
       flexDirection: 'row',
