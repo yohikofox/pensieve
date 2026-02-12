@@ -168,7 +168,11 @@ describe('DeadlineParserService', () => {
     });
 
     it('should parse with user timezone (America/New_York)', () => {
-      const result = service.parse('tomorrow', 'America/New_York', referenceDate);
+      const result = service.parse(
+        'tomorrow',
+        'America/New_York',
+        referenceDate,
+      );
 
       expect(result.date).toBeDefined();
       // Date should be adjusted for New York timezone
@@ -203,7 +207,11 @@ describe('DeadlineParserService', () => {
     });
 
     it('should handle unsupported French text gracefully', () => {
-      const result = service.parse('vendredi prochain', 'Europe/Paris', referenceDate);
+      const result = service.parse(
+        'vendredi prochain',
+        'Europe/Paris',
+        referenceDate,
+      );
 
       // Should return null or low confidence for unparseable French
       // Users can use English alternatives like "next Friday"

@@ -9,12 +9,8 @@ import { ResourceShareRepository } from '../repositories/resource-share.reposito
  * Handles shared resource access checks (ACL)
  */
 @Injectable()
-export class PostgreSQLResourceAccessControl
-  implements IResourceAccessControl
-{
-  constructor(
-    private readonly resourceShareRepo: ResourceShareRepository,
-  ) {}
+export class PostgreSQLResourceAccessControl implements IResourceAccessControl {
+  constructor(private readonly resourceShareRepo: ResourceShareRepository) {}
 
   /**
    * Check if user has access to a resource via sharing

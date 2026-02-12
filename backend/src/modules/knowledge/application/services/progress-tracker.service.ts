@@ -53,7 +53,9 @@ export class ProgressTrackerService {
     // Clamp percentage between 0 and 100
     const clampedPercentage = Math.max(0, Math.min(100, percentage));
     await this.progressStore.updateProgress(captureId, clampedPercentage);
-    this.logger.debug(`📈 Progress update: ${captureId} - ${clampedPercentage}%`);
+    this.logger.debug(
+      `📈 Progress update: ${captureId} - ${clampedPercentage}%`,
+    );
   }
 
   /**
@@ -116,5 +118,4 @@ export class ProgressTrackerService {
     await this.progressStore.cleanup();
     this.logger.log(`🗑️  Cleanup completed`);
   }
-
 }

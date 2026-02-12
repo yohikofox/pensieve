@@ -82,7 +82,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Valid idea'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject summary longer than 500 characters', () => {
@@ -92,7 +94,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Valid idea'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject empty summary', () => {
@@ -101,7 +105,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Valid idea'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject whitespace-only summary', () => {
@@ -110,7 +116,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Valid idea'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject missing summary', () => {
@@ -118,7 +126,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Valid idea'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
   });
 
@@ -129,7 +139,9 @@ describe('DigestionResponseSchema', () => {
         ideas: [],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject more than 10 ideas', () => {
@@ -141,7 +153,9 @@ describe('DigestionResponseSchema', () => {
         ideas: tooManyIdeas,
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject idea shorter than 5 characters', () => {
@@ -150,7 +164,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['Ok', 'Valid idea here'],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject idea longer than 200 characters', () => {
@@ -160,7 +176,9 @@ describe('DigestionResponseSchema', () => {
         ideas: [longIdea],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject whitespace-only idea', () => {
@@ -169,7 +187,9 @@ describe('DigestionResponseSchema', () => {
         ideas: ['     '],
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
 
     it('should reject missing ideas array', () => {
@@ -177,7 +197,9 @@ describe('DigestionResponseSchema', () => {
         summary: 'Valid summary',
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
   });
 
@@ -189,7 +211,9 @@ describe('DigestionResponseSchema', () => {
         confidence: 'unknown',
       };
 
-      expect(() => validateDigestionResponse(invalidResponse)).toThrow(ZodError);
+      expect(() => validateDigestionResponse(invalidResponse)).toThrow(
+        ZodError,
+      );
     });
   });
 
@@ -236,7 +260,9 @@ describe('DigestionResponseSchema', () => {
       expect(result.success).toBe(false);
       if (!result.success) {
         const errorMessages = result.error.issues.map((issue) => issue.message);
-        expect(errorMessages).toContain('Summary must be at least 10 characters');
+        expect(errorMessages).toContain(
+          'Summary must be at least 10 characters',
+        );
       }
     });
   });

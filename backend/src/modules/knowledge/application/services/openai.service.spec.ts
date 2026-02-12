@@ -106,7 +106,8 @@ describe('OpenAIService', () => {
           {
             message: {
               content: JSON.stringify({
-                summary: 'This is a valid summary that meets the minimum length requirement.',
+                summary:
+                  'This is a valid summary that meets the minimum length requirement.',
                 ideas: ['First key idea here', 'Second important point'],
                 confidence: 'high',
               }),
@@ -134,7 +135,8 @@ describe('OpenAIService', () => {
           {
             message: {
               content: JSON.stringify({
-                summary: 'This is a valid summary that meets the minimum length requirement.',
+                summary:
+                  'This is a valid summary that meets the minimum length requirement.',
                 ideas: ['First key idea here', 'Second important point'],
                 confidence: 'high',
               }),
@@ -177,7 +179,8 @@ describe('OpenAIService', () => {
           {
             message: {
               content: JSON.stringify({
-                summary: 'This is a valid summary that meets the minimum length requirement.',
+                summary:
+                  'This is a valid summary that meets the minimum length requirement.',
                 ideas: ['First key idea here', 'Second important point'],
                 confidence: 'high',
               }),
@@ -209,7 +212,8 @@ describe('OpenAIService', () => {
           {
             message: {
               content: JSON.stringify({
-                summary: 'This is a valid summary that meets the minimum length requirement.',
+                summary:
+                  'This is a valid summary that meets the minimum length requirement.',
                 ideas: ['First key idea here', 'Second important point'],
                 confidence: 'high',
               }),
@@ -235,7 +239,8 @@ describe('OpenAIService', () => {
           {
             message: {
               content: JSON.stringify({
-                summary: 'This is a valid summary that meets the minimum length requirement.',
+                summary:
+                  'This is a valid summary that meets the minimum length requirement.',
                 ideas: ['First key idea here', 'Second important point'],
                 confidence: 'high',
               }),
@@ -267,7 +272,9 @@ describe('OpenAIService', () => {
         .mockRejectedValueOnce(testError)
         .mockRejectedValueOnce(testError);
 
-      await expect(service.digestContent(content, contentType)).rejects.toThrow();
+      await expect(
+        service.digestContent(content, contentType),
+      ).rejects.toThrow();
 
       expect(errorSpy).toHaveBeenCalledWith(
         expect.stringContaining('Both primary and fallback prompts failed'),
@@ -441,7 +448,9 @@ describe('OpenAIService', () => {
         choices: [],
       } as any);
 
-      await expect(service.digestContent(content, contentType)).rejects.toThrow();
+      await expect(
+        service.digestContent(content, contentType),
+      ).rejects.toThrow();
     });
 
     it('should handle API rate limit errors', async () => {

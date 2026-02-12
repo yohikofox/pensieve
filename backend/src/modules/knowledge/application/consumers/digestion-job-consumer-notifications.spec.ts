@@ -73,7 +73,11 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
         summary: 'Test summary',
         ideas: ['Idea 1', 'Idea 2'],
         todos: [
-          { description: 'Todo 1', deadline: null, priority: 'medium' as const },
+          {
+            description: 'Todo 1',
+            deadline: null,
+            priority: 'medium' as const,
+          },
         ],
         confidence: 'high' as const,
         wasChunked: false,
@@ -133,9 +137,9 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
         {
           provide: TodoRepository,
           useValue: {
-            createManyInTransaction: jest.fn().mockResolvedValue([
-              { id: 'todo-1', description: 'Todo 1' },
-            ]),
+            createManyInTransaction: jest
+              .fn()
+              .mockResolvedValue([{ id: 'todo-1', description: 'Todo 1' }]),
           },
         },
         {
@@ -172,7 +176,9 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
 
       // Assert
       expect(mockQueueMonitoring.getQueueDepth).toHaveBeenCalled();
-      expect(mockProgressNotificationService.startTrackingWithNotifications).toHaveBeenCalledWith(
+      expect(
+        mockProgressNotificationService.startTrackingWithNotifications,
+      ).toHaveBeenCalledWith(
         'capture-123',
         'user-456',
         3, // Queue depth
@@ -184,43 +190,27 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
       await consumer.handleDigestionJob(mockJob);
 
       // Assert - Should be called at: 10%, 20%, 40%, 70%, 90%, 100%
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenCalledTimes(6);
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        1,
-        'capture-123',
-        'user-456',
-        10,
-      );
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        2,
-        'capture-123',
-        'user-456',
-        20,
-      );
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        3,
-        'capture-123',
-        'user-456',
-        40,
-      );
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        4,
-        'capture-123',
-        'user-456',
-        70,
-      );
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        5,
-        'capture-123',
-        'user-456',
-        90,
-      );
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenNthCalledWith(
-        6,
-        'capture-123',
-        'user-456',
-        100,
-      );
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenCalledTimes(6);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(1, 'capture-123', 'user-456', 10);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(2, 'capture-123', 'user-456', 20);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(3, 'capture-123', 'user-456', 40);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(4, 'capture-123', 'user-456', 70);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(5, 'capture-123', 'user-456', 90);
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenNthCalledWith(6, 'capture-123', 'user-456', 100);
     });
 
     it('should complete tracking with notifications on success (AC3)', async () => {
@@ -228,7 +218,9 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
       await consumer.handleDigestionJob(mockJob);
 
       // Assert
-      expect(mockProgressNotificationService.completeTrackingWithNotifications).toHaveBeenCalledWith(
+      expect(
+        mockProgressNotificationService.completeTrackingWithNotifications,
+      ).toHaveBeenCalledWith(
         'capture-123',
         'user-456',
         'Test summary',
@@ -240,13 +232,19 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
     it('should fail tracking with notifications after max retries (AC5)', async () => {
       // Arrange - Simulate failure and max retries
       const failedJob = { ...mockJob, retryCount: 2 }; // Max retries = 3, so retry 2 is the last attempt
-      mockContentExtractor.extractContent.mockRejectedValue(new Error('Extraction failed'));
+      mockContentExtractor.extractContent.mockRejectedValue(
+        new Error('Extraction failed'),
+      );
 
       // Act & Assert
-      await expect(consumer.handleDigestionJob(failedJob)).rejects.toThrow('Extraction failed');
+      await expect(consumer.handleDigestionJob(failedJob)).rejects.toThrow(
+        'Extraction failed',
+      );
 
       // Should call failTrackingWithNotifications
-      expect(mockProgressNotificationService.failTrackingWithNotifications).toHaveBeenCalledWith(
+      expect(
+        mockProgressNotificationService.failTrackingWithNotifications,
+      ).toHaveBeenCalledWith(
         'capture-123',
         'user-456',
         'Extraction failed',
@@ -257,13 +255,19 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
     it('should NOT fail tracking with notifications if retries remain', async () => {
       // Arrange - Simulate failure but retries remain
       const failedJob = { ...mockJob, retryCount: 0 }; // Will be retried
-      mockContentExtractor.extractContent.mockRejectedValue(new Error('Temporary error'));
+      mockContentExtractor.extractContent.mockRejectedValue(
+        new Error('Temporary error'),
+      );
 
       // Act & Assert
-      await expect(consumer.handleDigestionJob(failedJob)).rejects.toThrow('Temporary error');
+      await expect(consumer.handleDigestionJob(failedJob)).rejects.toThrow(
+        'Temporary error',
+      );
 
       // Should NOT call failTrackingWithNotifications (will be retried)
-      expect(mockProgressNotificationService.failTrackingWithNotifications).not.toHaveBeenCalled();
+      expect(
+        mockProgressNotificationService.failTrackingWithNotifications,
+      ).not.toHaveBeenCalled();
     });
 
     it('should handle completion without todos', async () => {
@@ -281,7 +285,9 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
       await consumer.handleDigestionJob(mockJob);
 
       // Assert
-      expect(mockProgressNotificationService.completeTrackingWithNotifications).toHaveBeenCalledWith(
+      expect(
+        mockProgressNotificationService.completeTrackingWithNotifications,
+      ).toHaveBeenCalledWith(
         'capture-123',
         'user-456',
         'Test summary',
@@ -300,9 +306,15 @@ describe('DigestionJobConsumer - Notification Integration (Task 12)', () => {
       await consumer.handleDigestionJob(mockJob);
 
       // Assert - Verify ProgressNotificationService was called (it handles event publishing)
-      expect(mockProgressNotificationService.startTrackingWithNotifications).toHaveBeenCalled();
-      expect(mockProgressNotificationService.updateProgressWithNotifications).toHaveBeenCalled();
-      expect(mockProgressNotificationService.completeTrackingWithNotifications).toHaveBeenCalled();
+      expect(
+        mockProgressNotificationService.startTrackingWithNotifications,
+      ).toHaveBeenCalled();
+      expect(
+        mockProgressNotificationService.updateProgressWithNotifications,
+      ).toHaveBeenCalled();
+      expect(
+        mockProgressNotificationService.completeTrackingWithNotifications,
+      ).toHaveBeenCalled();
     });
   });
 });

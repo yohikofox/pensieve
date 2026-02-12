@@ -76,10 +76,7 @@ export const DigestionResponseSchema = z.object({
     .optional()
     .default([]),
 
-  confidence: z
-    .enum(['high', 'medium', 'low'])
-    .optional()
-    .default('high'),
+  confidence: z.enum(['high', 'medium', 'low']).optional().default('high'),
 });
 
 /**

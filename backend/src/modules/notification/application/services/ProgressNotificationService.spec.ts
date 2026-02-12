@@ -30,7 +30,10 @@ describe('ProgressNotificationService', () => {
       emit: jest.fn(),
     } as any;
 
-    service = new ProgressNotificationService(mockProgressTracker, mockEventEmitter);
+    service = new ProgressNotificationService(
+      mockProgressTracker,
+      mockEventEmitter,
+    );
   });
 
   afterEach(() => {
@@ -43,9 +46,16 @@ describe('ProgressNotificationService', () => {
       const userId = 'user-456';
       const queuePosition = 5;
 
-      await service.startTrackingWithNotifications(captureId, userId, queuePosition);
+      await service.startTrackingWithNotifications(
+        captureId,
+        userId,
+        queuePosition,
+      );
 
-      expect(mockProgressTracker.startTracking).toHaveBeenCalledWith(captureId, userId);
+      expect(mockProgressTracker.startTracking).toHaveBeenCalledWith(
+        captureId,
+        userId,
+      );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'progress.update',
         expect.objectContaining({
@@ -64,9 +74,14 @@ describe('ProgressNotificationService', () => {
       const userId = 'user-456';
       const queuePosition = 3;
 
-      await service.startTrackingWithNotifications(captureId, userId, queuePosition);
+      await service.startTrackingWithNotifications(
+        captureId,
+        userId,
+        queuePosition,
+      );
 
-      const emittedEvent = (mockEventEmitter.emit as jest.Mock).mock.calls[0][1] as ProgressUpdate;
+      const emittedEvent = (mockEventEmitter.emit as jest.Mock).mock
+        .calls[0][1] as ProgressUpdate;
       // 3 jobs * 20s avg = 60s = 60000ms
       expect(emittedEvent.estimatedRemaining).toBe(60000);
     });
@@ -104,9 +119,16 @@ describe('ProgressNotificationService', () => {
         durationMs: 5000,
       });
 
-      await service.updateProgressWithNotifications(captureId, userId, percentage);
+      await service.updateProgressWithNotifications(
+        captureId,
+        userId,
+        percentage,
+      );
 
-      expect(mockProgressTracker.updateProgress).toHaveBeenCalledWith(captureId, percentage);
+      expect(mockProgressTracker.updateProgress).toHaveBeenCalledWith(
+        captureId,
+        percentage,
+      );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'progress.update',
         expect.objectContaining({
@@ -137,7 +159,10 @@ describe('ProgressNotificationService', () => {
       await service.updateProgressWithNotifications(captureId, userId, 30);
 
       // Should emit both progress.update and progress.still-processing
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('progress.update', expect.any(ProgressUpdate));
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'progress.update',
+        expect.any(ProgressUpdate),
+      );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'progress.still-processing',
         expect.any(ProgressUpdate),
@@ -163,7 +188,10 @@ describe('ProgressNotificationService', () => {
 
       // Should only emit progress.update
       expect(mockEventEmitter.emit).toHaveBeenCalledTimes(1);
-      expect(mockEventEmitter.emit).toHaveBeenCalledWith('progress.update', expect.any(ProgressUpdate));
+      expect(mockEventEmitter.emit).toHaveBeenCalledWith(
+        'progress.update',
+        expect.any(ProgressUpdate),
+      );
     });
 
     it('should emit timeout warning after 30s (AC9)', async () => {
@@ -252,7 +280,9 @@ describe('ProgressNotificationService', () => {
 
       await service.completeTrackingWithNotifications(captureId, userId);
 
-      expect(mockProgressTracker.completeTracking).toHaveBeenCalledWith(captureId);
+      expect(mockProgressTracker.completeTracking).toHaveBeenCalledWith(
+        captureId,
+      );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'progress.update',
         expect.objectContaining({
@@ -282,9 +312,16 @@ describe('ProgressNotificationService', () => {
         error: errorMessage,
       });
 
-      await service.failTrackingWithNotifications(captureId, userId, errorMessage);
+      await service.failTrackingWithNotifications(
+        captureId,
+        userId,
+        errorMessage,
+      );
 
-      expect(mockProgressTracker.failTracking).toHaveBeenCalledWith(captureId, errorMessage);
+      expect(mockProgressTracker.failTracking).toHaveBeenCalledWith(
+        captureId,
+        errorMessage,
+      );
       expect(mockEventEmitter.emit).toHaveBeenCalledWith(
         'progress.update',
         expect.objectContaining({
@@ -324,7 +361,9 @@ describe('ProgressNotificationService', () => {
       const result = await service.getUserActiveJobs(userId);
 
       expect(result).toEqual(activeJobs);
-      expect(mockProgressTracker.getUserActiveJobs).toHaveBeenCalledWith(userId);
+      expect(mockProgressTracker.getUserActiveJobs).toHaveBeenCalledWith(
+        userId,
+      );
     });
   });
 });

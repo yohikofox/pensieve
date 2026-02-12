@@ -1,10 +1,17 @@
-import { Entity, Column, PrimaryColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryColumn,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { AuditLog } from './audit-log.entity';
 
 @Entity('users')
 export class User {
   @PrimaryColumn('uuid')
-  id!: string;  // Supabase user ID
+  id!: string; // Supabase user ID
 
   @Column({ type: 'varchar', length: 255, unique: true })
   email!: string;

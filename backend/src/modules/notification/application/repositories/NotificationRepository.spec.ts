@@ -140,7 +140,10 @@ describe('NotificationRepository', () => {
 
       mockRepository.find.mockResolvedValue(notifications);
 
-      const result = await repository.findByRelatedEntity('capture-123', 'capture');
+      const result = await repository.findByRelatedEntity(
+        'capture-123',
+        'capture',
+      );
 
       expect(result).toEqual(notifications);
       expect(mockRepository.find).toHaveBeenCalledWith({

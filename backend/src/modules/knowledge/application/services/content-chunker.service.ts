@@ -19,7 +19,11 @@ import { OpenAIService } from './openai.service';
 export interface ChunkingResult {
   summary: string;
   ideas: string[];
-  todos: Array<{ description: string; deadline: string | null; priority: 'low' | 'medium' | 'high' }>; // Story 4.3
+  todos: Array<{
+    description: string;
+    deadline: string | null;
+    priority: 'low' | 'medium' | 'high';
+  }>; // Story 4.3
   confidence: 'high' | 'medium' | 'low';
   wasChunked: boolean;
   chunkCount?: number;
@@ -56,7 +60,10 @@ export class ContentChunkerService {
     // If within limits, process directly
     if (tokenCount <= this.maxTokensPerChunk) {
       this.logger.log('✅ Content within limits, processing directly');
-      const result = await this.openaiService.digestContent(content, contentType);
+      const result = await this.openaiService.digestContent(
+        content,
+        contentType,
+      );
       return {
         ...result,
         wasChunked: false,
@@ -75,7 +82,7 @@ export class ContentChunkerService {
     if (estimatedChunks > 2) {
       this.logger.warn(
         `⚠️  ${estimatedChunks} chunks detected - may exceed 60s job timeout. ` +
-        `Consider parallel processing for content > 8000 tokens.`,
+          `Consider parallel processing for content > 8000 tokens.`,
       );
     }
 
@@ -165,9 +172,10 @@ export class ContentChunkerService {
       encodingForDecode.free();
 
       // Handle Uint8Array from tiktoken (convert to string)
-      const chunkText = typeof decoded === 'string'
-        ? decoded
-        : new TextDecoder().decode(decoded);
+      const chunkText =
+        typeof decoded === 'string'
+          ? decoded
+          : new TextDecoder().decode(decoded);
 
       chunks.push(chunkText);
 
@@ -208,11 +216,14 @@ export class ContentChunkerService {
 
     // Determine overall confidence (lowest from all chunks)
     const confidenceLevels = ['high', 'medium', 'low'] as const;
-    const minConfidence = chunkResults.reduce((min, r) => {
-      const currentLevel = confidenceLevels.indexOf(r.confidence || 'high');
-      const minLevel = confidenceLevels.indexOf(min);
-      return currentLevel > minLevel ? r.confidence || 'high' : min;
-    }, 'high' as 'high' | 'medium' | 'low');
+    const minConfidence = chunkResults.reduce(
+      (min, r) => {
+        const currentLevel = confidenceLevels.indexOf(r.confidence || 'high');
+        const minLevel = confidenceLevels.indexOf(min);
+        return currentLevel > minLevel ? r.confidence || 'high' : min;
+      },
+      'high' as 'high' | 'medium' | 'low',
+    );
 
     // Downgrade confidence for very long content
     const finalConfidence =
@@ -243,7 +254,9 @@ export class ContentChunkerService {
 
     // Take key sentences from each summary
     const keySentences = summaries.map((s) => {
-      const sentences = s.split(/[.!?]+/).filter((sent) => sent.trim().length > 0);
+      const sentences = s
+        .split(/[.!?]+/)
+        .filter((sent) => sent.trim().length > 0);
       return sentences[0]?.trim(); // First sentence from each
     });
 

@@ -51,7 +51,8 @@ export class DigestionFailedListener {
 
     try {
       // AC7: Check user notification preferences
-      const userSettings = await this.userRepository.getUserNotificationSettings(userId);
+      const userSettings =
+        await this.userRepository.getUserNotificationSettings(userId);
 
       if (!userSettings) {
         this.logger.warn(`⚠️  User settings not found for userId: ${userId}`);
@@ -68,7 +69,9 @@ export class DigestionFailedListener {
 
       // Check if user has push token
       if (!userSettings.pushToken) {
-        this.logger.debug(`⏭️  No push token registered for user ${userId}, skipping push notification`);
+        this.logger.debug(
+          `⏭️  No push token registered for user ${userId}, skipping push notification`,
+        );
         return;
       }
 

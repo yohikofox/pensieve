@@ -16,18 +16,37 @@ export interface PriorityInferenceResult {
 @Injectable()
 export class PriorityInferenceService {
   private readonly highPriorityKeywords = [
-    'urgent', 'asap', 'critique', 'immédiatement', 'immediately',
-    'critical', 'au plus vite', 'deadline', 'avant', 'before'
+    'urgent',
+    'asap',
+    'critique',
+    'immédiatement',
+    'immediately',
+    'critical',
+    'au plus vite',
+    'deadline',
+    'avant',
+    'before',
   ];
 
   private readonly mediumPriorityKeywords = [
-    'important', 'faut que', 'je dois', 'need to', 'should',
-    "n'oublie pas", "don't forget"
+    'important',
+    'faut que',
+    'je dois',
+    'need to',
+    'should',
+    "n'oublie pas",
+    "don't forget",
   ];
 
   private readonly lowPriorityKeywords = [
-    'peut-être', 'maybe', 'quand j\'ai le temps', 'when i have time',
-    'someday', 'un jour', 'nice to have', 'éventuellement'
+    'peut-être',
+    'maybe',
+    "quand j'ai le temps",
+    'when i have time',
+    'someday',
+    'un jour',
+    'nice to have',
+    'éventuellement',
   ];
 
   /**
@@ -38,19 +57,25 @@ export class PriorityInferenceService {
     const lower = description.toLowerCase();
 
     // Check high priority keywords
-    const hasHighKeyword = this.highPriorityKeywords.some(kw => lower.includes(kw));
+    const hasHighKeyword = this.highPriorityKeywords.some((kw) =>
+      lower.includes(kw),
+    );
     if (hasHighKeyword) {
       return { priority: 'high', confidence: 0.9 };
     }
 
     // Check low priority keywords
-    const hasLowKeyword = this.lowPriorityKeywords.some(kw => lower.includes(kw));
+    const hasLowKeyword = this.lowPriorityKeywords.some((kw) =>
+      lower.includes(kw),
+    );
     if (hasLowKeyword) {
       return { priority: 'low', confidence: 0.8 };
     }
 
     // Check medium priority keywords
-    const hasMediumKeyword = this.mediumPriorityKeywords.some(kw => lower.includes(kw));
+    const hasMediumKeyword = this.mediumPriorityKeywords.some((kw) =>
+      lower.includes(kw),
+    );
     if (hasMediumKeyword) {
       return { priority: 'medium', confidence: 0.7 };
     }

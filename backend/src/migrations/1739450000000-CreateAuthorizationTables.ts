@@ -28,9 +28,7 @@ import {
  * - share_role_permissions: Permissions for each share role
  * - resource_shares: Shared resources with access control
  */
-export class CreateAuthorizationTables1739450000000
-  implements MigrationInterface
-{
+export class CreateAuthorizationTables1739450000000 implements MigrationInterface {
   name = 'CreateAuthorizationTables1739450000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -468,7 +466,8 @@ export class CreateAuthorizationTables1739450000000
             type: 'varchar',
             length: '50',
             default: "'active'",
-            comment: 'Subscription status (active, expired, cancelled, pending)',
+            comment:
+              'Subscription status (active, expired, cancelled, pending)',
           },
           {
             name: 'expires_at',

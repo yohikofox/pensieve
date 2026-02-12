@@ -14,19 +14,9 @@ import { PriorityInferenceService } from './application/services/priority-infere
 import { TodosController } from './application/controllers/todos.controller';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Todo]),
-  ],
+  imports: [TypeOrmModule.forFeature([Todo])],
   controllers: [TodosController],
-  providers: [
-    TodoRepository,
-    DeadlineParserService,
-    PriorityInferenceService,
-  ],
-  exports: [
-    TodoRepository,
-    DeadlineParserService,
-    PriorityInferenceService,
-  ],
+  providers: [TodoRepository, DeadlineParserService, PriorityInferenceService],
+  exports: [TodoRepository, DeadlineParserService, PriorityInferenceService],
 })
 export class ActionModule {}

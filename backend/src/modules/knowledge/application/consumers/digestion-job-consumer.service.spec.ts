@@ -154,8 +154,8 @@ describe('DigestionJobConsumer (AC3)', () => {
     it('should enforce 60-second timeout', async () => {
       // RED: Will fail - timeout logic doesn't exist
       // Mock a long-running job
-      mockProcessJob.mockImplementation(() =>
-        new Promise((resolve) => setTimeout(resolve, 70000)) // 70s > 60s timeout
+      mockProcessJob.mockImplementation(
+        () => new Promise((resolve) => setTimeout(resolve, 70000)), // 70s > 60s timeout
       );
 
       const job: DigestionJobPayload = {
@@ -168,9 +168,7 @@ describe('DigestionJobConsumer (AC3)', () => {
       };
 
       // Should timeout after 60 seconds
-      await expect(
-        service.handleDigestionJob(job)
-      ).rejects.toThrow(/timeout/i);
+      await expect(service.handleDigestionJob(job)).rejects.toThrow(/timeout/i);
     }, 65000); // Test timeout > job timeout
 
     it('should handle job processing errors gracefully', async () => {
@@ -186,7 +184,9 @@ describe('DigestionJobConsumer (AC3)', () => {
         retryCount: 0,
       };
 
-      await expect(service.handleDigestionJob(job)).rejects.toThrow('Processing failed');
+      await expect(service.handleDigestionJob(job)).rejects.toThrow(
+        'Processing failed',
+      );
     });
 
     it('should track retry count', async () => {
@@ -203,7 +203,7 @@ describe('DigestionJobConsumer (AC3)', () => {
       await service.handleDigestionJob(retryJob);
 
       expect(mockProcessJob).toHaveBeenCalledWith(
-        expect.objectContaining({ retryCount: 2 })
+        expect.objectContaining({ retryCount: 2 }),
       );
     });
   });
@@ -265,7 +265,7 @@ describe('DigestionJobConsumer (AC3)', () => {
       };
 
       await expect(service.handleDigestionJob(job)).rejects.toThrow(
-        'Consumer is shutting down, rejecting new jobs'
+        'Consumer is shutting down, rejecting new jobs',
       );
     });
   });

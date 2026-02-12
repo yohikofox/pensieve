@@ -82,7 +82,9 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
       useFactory: (configService: ConfigService) => {
         const apiKey = configService.get<string>('OPENAI_API_KEY');
         if (!apiKey) {
-          throw new Error('OPENAI_API_KEY is not configured in environment variables');
+          throw new Error(
+            'OPENAI_API_KEY is not configured in environment variables',
+          );
         }
         return new OpenAI({ apiKey });
       },
@@ -107,7 +109,10 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     {
       provide: 'PROGRESS_STORE',
       useFactory: (configService: ConfigService) => {
-        const storeType = configService.get<string>('PROGRESS_STORE_TYPE', 'memory');
+        const storeType = configService.get<string>(
+          'PROGRESS_STORE_TYPE',
+          'memory',
+        );
 
         if (storeType === 'redis') {
           return new RedisProgressStore(configService);

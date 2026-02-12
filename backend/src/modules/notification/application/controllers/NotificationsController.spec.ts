@@ -104,10 +104,9 @@ describe('NotificationsController', () => {
 
       const result = await controller.updateNotificationPreferences(req, body);
 
-      expect(mockUserRepository.updateNotificationPreferences).toHaveBeenCalledWith(
-        'user-123',
-        body,
-      );
+      expect(
+        mockUserRepository.updateNotificationPreferences,
+      ).toHaveBeenCalledWith('user-123', body);
       expect(result).toEqual({
         message: 'Notification preferences updated successfully',
         preferences: body,
@@ -122,10 +121,9 @@ describe('NotificationsController', () => {
 
       const result = await controller.updateNotificationPreferences(req, body);
 
-      expect(mockUserRepository.updateNotificationPreferences).toHaveBeenCalledWith(
-        'user-123',
-        body,
-      );
+      expect(
+        mockUserRepository.updateNotificationPreferences,
+      ).toHaveBeenCalledWith('user-123', body);
       expect(result).toEqual({
         message: 'Notification preferences updated successfully',
         preferences: body,
@@ -138,10 +136,9 @@ describe('NotificationsController', () => {
 
       const result = await controller.updateNotificationPreferences(req, body);
 
-      expect(mockUserRepository.updateNotificationPreferences).toHaveBeenCalledWith(
-        'user-123',
-        body,
-      );
+      expect(
+        mockUserRepository.updateNotificationPreferences,
+      ).toHaveBeenCalledWith('user-123', body);
       expect(result).toEqual({
         message: 'Notification preferences updated successfully',
         preferences: body,

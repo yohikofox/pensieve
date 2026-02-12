@@ -11,7 +11,15 @@
  * AC7: Offline Batch Processing
  */
 
-import { Controller, Post, Body, HttpCode, HttpStatus, Logger, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  UseGuards,
+} from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
@@ -36,9 +44,7 @@ export interface BatchSubmissionResponse {
 export class BatchDigestionController {
   private readonly logger = new Logger(BatchDigestionController.name);
 
-  constructor(
-    private readonly jobPublisher: DigestionJobPublisher,
-  ) {}
+  constructor(private readonly jobPublisher: DigestionJobPublisher) {}
 
   /**
    * Batch submit captures for digestion
@@ -61,7 +67,9 @@ export class BatchDigestionController {
   ): Promise<BatchSubmissionResponse> {
     const { captures } = request;
 
-    this.logger.log(`📦 Batch submission received: ${captures.length} captures`);
+    this.logger.log(
+      `📦 Batch submission received: ${captures.length} captures`,
+    );
 
     // Subtask 7.3: Ensure captures are sorted by recency (most recent first)
     // Frontend should send them sorted, but we verify here
@@ -127,7 +135,9 @@ export class BatchDigestionController {
    * @param captures - Array of captures to sort
    * @returns Sorted array (most recent first)
    */
-  private sortByRecency(captures: CreateDigestionJobInput[]): CreateDigestionJobInput[] {
+  private sortByRecency(
+    captures: CreateDigestionJobInput[],
+  ): CreateDigestionJobInput[] {
     // TODO: Sort by actual capture.createdAt timestamp when Capture entity exists
     // For now, preserve order (assume frontend sorted)
     return [...captures];

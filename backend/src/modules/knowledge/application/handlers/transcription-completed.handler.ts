@@ -73,9 +73,7 @@ interface TextCaptureCreated {
 export class CaptureEventsHandler {
   private readonly logger = new Logger(CaptureEventsHandler.name);
 
-  constructor(
-    private readonly digestionJobPublisher: DigestionJobPublisher,
-  ) {}
+  constructor(private readonly digestionJobPublisher: DigestionJobPublisher) {}
 
   /**
    * Handle TranscriptionCompleted event
@@ -109,9 +107,7 @@ export class CaptureEventsHandler {
    * Handle TextCaptureCreated event
    * Triggers digestion job for text captures (bypasses transcription)
    */
-  async handleTextCaptureCreated(
-    event: TextCaptureCreated,
-  ): Promise<void> {
+  async handleTextCaptureCreated(event: TextCaptureCreated): Promise<void> {
     this.logger.log(
       `Text capture created ${event.captureId}, queuing digestion job`,
     );
@@ -127,8 +123,6 @@ export class CaptureEventsHandler {
       userInitiated: true, // User directly created text
     });
 
-    this.logger.log(
-      `Digestion job queued for text capture ${event.captureId}`,
-    );
+    this.logger.log(`Digestion job queued for text capture ${event.captureId}`);
   }
 }

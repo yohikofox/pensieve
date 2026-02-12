@@ -10,7 +10,11 @@
 
 import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import * as amqp from 'amqplib';
-import { QueueNames, ExchangeNames, RoutingKeys } from './queue-names.constants';
+import {
+  QueueNames,
+  ExchangeNames,
+  RoutingKeys,
+} from './queue-names.constants';
 import { getRabbitMQUrl, DIGESTION_QUEUE_OPTIONS } from './rabbitmq.config';
 
 @Injectable()
@@ -31,7 +35,9 @@ export class RabbitMQSetupService implements OnModuleInit {
     try {
       // Connect to RabbitMQ
       const url = getRabbitMQUrl();
-      this.logger.log(`Connecting to RabbitMQ at ${url.replace(/\/\/.*@/, '//*****@')}`);
+      this.logger.log(
+        `Connecting to RabbitMQ at ${url.replace(/\/\/.*@/, '//*****@')}`,
+      );
 
       // @ts-expect-error - amqplib types issue with Connection
       this.connection = await amqp.connect(url, {
@@ -46,13 +52,17 @@ export class RabbitMQSetupService implements OnModuleInit {
       await this.channel.assertExchange(ExchangeNames.DIGESTION_DLX, 'direct', {
         durable: true,
       });
-      this.logger.log(`✓ Dead-letter exchange created: ${ExchangeNames.DIGESTION_DLX}`);
+      this.logger.log(
+        `✓ Dead-letter exchange created: ${ExchangeNames.DIGESTION_DLX}`,
+      );
 
       // Create dead-letter queue (Subtask 1.4)
       await this.channel.assertQueue(QueueNames.DIGESTION_FAILED, {
         durable: true, // Survive restarts
       });
-      this.logger.log(`✓ Dead-letter queue created: ${QueueNames.DIGESTION_FAILED}`);
+      this.logger.log(
+        `✓ Dead-letter queue created: ${QueueNames.DIGESTION_FAILED}`,
+      );
 
       // Bind DLQ to DLX
       await this.channel.bindQueue(
@@ -64,30 +74,37 @@ export class RabbitMQSetupService implements OnModuleInit {
       // Create main digestion jobs queue (Subtask 1.3)
       // Uses centralized DIGESTION_QUEUE_OPTIONS to ensure consistency
       // with consumer configuration (prevents PRECONDITION_FAILED errors)
-      await this.channel.assertQueue(QueueNames.DIGESTION_JOBS, DIGESTION_QUEUE_OPTIONS);
-      this.logger.log(`✓ Digestion jobs queue created: ${QueueNames.DIGESTION_JOBS}`);
+      await this.channel.assertQueue(
+        QueueNames.DIGESTION_JOBS,
+        DIGESTION_QUEUE_OPTIONS,
+      );
+      this.logger.log(
+        `✓ Digestion jobs queue created: ${QueueNames.DIGESTION_JOBS}`,
+      );
 
       this.logger.log('✅ RabbitMQ infrastructure setup complete');
     } catch (error) {
       // Detect queue parameter mismatch error (common when queue exists with different config)
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const isPreconditionFailed = errorMessage.includes('PRECONDITION_FAILED') ||
-                                   errorMessage.includes('inequivalent arg');
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const isPreconditionFailed =
+        errorMessage.includes('PRECONDITION_FAILED') ||
+        errorMessage.includes('inequivalent arg');
 
       if (isPreconditionFailed) {
         this.logger.error(
           '❌ RabbitMQ queue configuration mismatch detected!\n' +
-          '\n' +
-          'The queue already exists with different parameters.\n' +
-          'This happens when the queue was created before without x-max-priority.\n' +
-          '\n' +
-          'To fix this issue:\n' +
-          '1. Run: npm run reset-rabbitmq (or scripts/reset-rabbitmq-queues.sh)\n' +
-          '2. Restart the application\n' +
-          '\n' +
-          'Alternatively, manually delete the queues via RabbitMQ Management UI:\n' +
-          '- http://10.0.0.2:15672 (user: pensine, pass: pensine)\n' +
-          '- Delete: digestion-jobs, digestion-failed, digestion-dlx\n',
+            '\n' +
+            'The queue already exists with different parameters.\n' +
+            'This happens when the queue was created before without x-max-priority.\n' +
+            '\n' +
+            'To fix this issue:\n' +
+            '1. Run: npm run reset-rabbitmq (or scripts/reset-rabbitmq-queues.sh)\n' +
+            '2. Restart the application\n' +
+            '\n' +
+            'Alternatively, manually delete the queues via RabbitMQ Management UI:\n' +
+            '- http://10.0.0.2:15672 (user: pensine, pass: pensine)\n' +
+            '- Delete: digestion-jobs, digestion-failed, digestion-dlx\n',
         );
       } else {
         this.logger.error('Failed to setup RabbitMQ infrastructure:', error);

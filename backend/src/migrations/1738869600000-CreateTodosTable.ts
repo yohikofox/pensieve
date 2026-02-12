@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 /**
  * Migration: Create Todos Table
@@ -69,7 +74,8 @@ export class CreateTodosTable1738869600000 implements MigrationInterface {
             type: 'varchar',
             isNullable: false,
             default: "'todo'",
-            comment: "Status: 'todo' | 'launched' | 'in_progress' | 'completed' | 'abandoned'",
+            comment:
+              "Status: 'todo' | 'launched' | 'in_progress' | 'completed' | 'abandoned'",
           },
           {
             name: 'deadline',
@@ -81,7 +87,8 @@ export class CreateTodosTable1738869600000 implements MigrationInterface {
             name: 'deadlineConfidence',
             type: 'float',
             isNullable: true,
-            comment: 'Confidence score (0-1) for ambiguous deadline parsing (AC3)',
+            comment:
+              'Confidence score (0-1) for ambiguous deadline parsing (AC3)',
           },
           {
             name: 'priority',

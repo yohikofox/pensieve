@@ -95,7 +95,9 @@ describe('ProgressTrackerService (AC4)', () => {
       setTimeout(() => {
         service.updateProgress(captureId, 25);
         const updatedProgress = service.getProgress(captureId);
-        expect(updatedProgress.lastUpdatedAt.getTime()).toBeGreaterThan(initialTimestamp);
+        expect(updatedProgress.lastUpdatedAt.getTime()).toBeGreaterThan(
+          initialTimestamp,
+        );
       }, 10);
     });
   });

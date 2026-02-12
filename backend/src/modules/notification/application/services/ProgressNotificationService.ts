@@ -64,7 +64,9 @@ export class ProgressNotificationService {
     );
 
     this.eventEmitter.emit('progress.update', event);
-    this.logger.debug(`📊 Progress tracking started: ${captureId} (queue position: ${queuePosition})`);
+    this.logger.debug(
+      `📊 Progress tracking started: ${captureId} (queue position: ${queuePosition})`,
+    );
   }
 
   /**
@@ -107,7 +109,9 @@ export class ProgressNotificationService {
     // Check if timeout warning should be sent
     await this.checkTimeoutWarning(captureId, userId, elapsed);
 
-    this.logger.debug(`📈 Progress updated: ${captureId} - ${percentage}% (elapsed: ${elapsed}ms)`);
+    this.logger.debug(
+      `📈 Progress updated: ${captureId} - ${percentage}% (elapsed: ${elapsed}ms)`,
+    );
   }
 
   /**
@@ -134,7 +138,9 @@ export class ProgressNotificationService {
     this.lastStillProcessingNotification.delete(captureId);
     this.lastTimeoutWarning.delete(captureId);
 
-    this.logger.log(`✅ Progress tracking completed: ${captureId} (duration: ${elapsed}ms)`);
+    this.logger.log(
+      `✅ Progress tracking completed: ${captureId} (duration: ${elapsed}ms)`,
+    );
   }
 
   /**
@@ -162,7 +168,9 @@ export class ProgressNotificationService {
     this.lastStillProcessingNotification.delete(captureId);
     this.lastTimeoutWarning.delete(captureId);
 
-    this.logger.error(`❌ Progress tracking failed: ${captureId} - ${errorMessage}`);
+    this.logger.error(
+      `❌ Progress tracking failed: ${captureId} - ${errorMessage}`,
+    );
   }
 
   /**
@@ -211,15 +219,23 @@ export class ProgressNotificationService {
       return;
     }
 
-    const lastNotification = this.lastStillProcessingNotification.get(captureId) || 0;
+    const lastNotification =
+      this.lastStillProcessingNotification.get(captureId) || 0;
     const timeSinceLastNotification = Date.now() - lastNotification;
 
     // Send notification every 10 seconds after initial threshold
     if (timeSinceLastNotification >= 10000) {
-      const event = new ProgressUpdate(captureId, userId, 'processing', elapsed);
+      const event = new ProgressUpdate(
+        captureId,
+        userId,
+        'processing',
+        elapsed,
+      );
       this.eventEmitter.emit('progress.still-processing', event);
       this.lastStillProcessingNotification.set(captureId, Date.now());
-      this.logger.debug(`⏳ Still processing notification: ${captureId} (elapsed: ${elapsed}ms)`);
+      this.logger.debug(
+        `⏳ Still processing notification: ${captureId} (elapsed: ${elapsed}ms)`,
+      );
     }
   }
 
@@ -241,10 +257,17 @@ export class ProgressNotificationService {
       return;
     }
 
-    const warning = new TimeoutWarning(captureId, userId, elapsed, this.TIMEOUT_WARNING_THRESHOLD);
+    const warning = new TimeoutWarning(
+      captureId,
+      userId,
+      elapsed,
+      this.TIMEOUT_WARNING_THRESHOLD,
+    );
     this.eventEmitter.emit('progress.timeout-warning', warning);
     this.lastTimeoutWarning.set(captureId, Date.now());
 
-    this.logger.warn(`⚠️  Timeout warning: ${captureId} (elapsed: ${elapsed}ms)`);
+    this.logger.warn(
+      `⚠️  Timeout warning: ${captureId} (elapsed: ${elapsed}ms)`,
+    );
   }
 }

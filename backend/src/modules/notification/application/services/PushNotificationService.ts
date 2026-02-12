@@ -17,7 +17,12 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Expo, ExpoPushMessage, ExpoPushTicket, ExpoPushReceipt } from 'expo-server-sdk';
+import {
+  Expo,
+  ExpoPushMessage,
+  ExpoPushTicket,
+  ExpoPushReceipt,
+} from 'expo-server-sdk';
 
 export interface PushNotificationResult {
   success: boolean;
@@ -71,7 +76,9 @@ export class PushNotificationService {
     try {
       // Validate push token
       if (!this.isValidPushToken(pushToken)) {
-        this.logger.warn(`Invalid Expo push token for user ${userId}: ${pushToken}`);
+        this.logger.warn(
+          `Invalid Expo push token for user ${userId}: ${pushToken}`,
+        );
         return {
           success: false,
           error: 'Invalid Expo push token',
@@ -79,7 +86,8 @@ export class PushNotificationService {
       }
 
       // Truncate summary for notification (NFR12: no sensitive content)
-      const summaryPreview = summary.substring(0, 50) + (summary.length > 50 ? '...' : '');
+      const summaryPreview =
+        summary.substring(0, 50) + (summary.length > 50 ? '...' : '');
 
       // Create push message
       const message: ExpoPushMessage = {
@@ -127,7 +135,10 @@ export class PushNotificationService {
         ticketId: ticket.id,
       };
     } catch (error) {
-      this.logger.error(`Error sending push notification to user ${userId}:`, error);
+      this.logger.error(
+        `Error sending push notification to user ${userId}:`,
+        error,
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',
@@ -183,12 +194,14 @@ export class PushNotificationService {
     ticketIds: string[],
   ): Promise<Map<string, ExpoPushReceipt>> {
     try {
-      const receiptIdChunks = this.expo.chunkPushNotificationReceiptIds(ticketIds);
+      const receiptIdChunks =
+        this.expo.chunkPushNotificationReceiptIds(ticketIds);
       const receipts = new Map<string, ExpoPushReceipt>();
 
       for (const chunk of receiptIdChunks) {
         try {
-          const receiptChunk = await this.expo.getPushNotificationReceiptsAsync(chunk);
+          const receiptChunk =
+            await this.expo.getPushNotificationReceiptsAsync(chunk);
 
           for (const [receiptId, receipt] of Object.entries(receiptChunk)) {
             receipts.set(receiptId, receipt);
@@ -200,15 +213,22 @@ export class PushNotificationService {
 
               // Handle specific error cases
               if (receipt.details?.error === 'DeviceNotRegistered') {
-                this.logger.warn(`Device not registered, should remove push token: ${receiptId}`);
+                this.logger.warn(
+                  `Device not registered, should remove push token: ${receiptId}`,
+                );
                 // TODO: In production, trigger event to remove invalid push token from user
               }
             } else if (receipt.status === 'ok') {
-              this.logger.debug(`Push notification delivered successfully: ${receiptId}`);
+              this.logger.debug(
+                `Push notification delivered successfully: ${receiptId}`,
+              );
             }
           }
         } catch (error) {
-          this.logger.error('Failed to fetch push notification receipts:', error);
+          this.logger.error(
+            'Failed to fetch push notification receipts:',
+            error,
+          );
         }
       }
 
@@ -261,7 +281,9 @@ export class PushNotificationService {
 
       if (tickets.length === 0 || tickets[0].status === 'error') {
         const errorMessage =
-          tickets[0]?.status === 'error' ? tickets[0].message : 'Failed to send';
+          tickets[0]?.status === 'error'
+            ? tickets[0].message
+            : 'Failed to send';
         return {
           success: false,
           error: errorMessage,
@@ -273,7 +295,10 @@ export class PushNotificationService {
         ticketId: tickets[0].id,
       };
     } catch (error) {
-      this.logger.error(`Error sending error notification to user ${userId}:`, error);
+      this.logger.error(
+        `Error sending error notification to user ${userId}:`,
+        error,
+      );
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error',

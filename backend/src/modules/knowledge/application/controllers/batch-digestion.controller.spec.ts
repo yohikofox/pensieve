@@ -118,9 +118,24 @@ describe('BatchDigestionController (AC7)', () => {
     it('should process captures in order', async () => {
       // Arrange
       const captures: CreateDigestionJobInput[] = [
-        { captureId: 'capture-1', userId: 'user-1', type: 'TEXT', state: 'transcribed' },
-        { captureId: 'capture-2', userId: 'user-1', type: 'TEXT', state: 'transcribed' },
-        { captureId: 'capture-3', userId: 'user-1', type: 'TEXT', state: 'transcribed' },
+        {
+          captureId: 'capture-1',
+          userId: 'user-1',
+          type: 'TEXT',
+          state: 'transcribed',
+        },
+        {
+          captureId: 'capture-2',
+          userId: 'user-1',
+          type: 'TEXT',
+          state: 'transcribed',
+        },
+        {
+          captureId: 'capture-3',
+          userId: 'user-1',
+          type: 'TEXT',
+          state: 'transcribed',
+        },
       ];
 
       // Act
@@ -150,8 +165,18 @@ describe('BatchDigestionController (AC7)', () => {
     it('should continue processing after individual failures', async () => {
       // Arrange
       const captures: CreateDigestionJobInput[] = [
-        { captureId: 'capture-1', userId: 'user-1', type: 'TEXT', state: 'transcribed' },
-        { captureId: 'capture-2', userId: 'user-1', type: 'TEXT', state: 'transcribed' },
+        {
+          captureId: 'capture-1',
+          userId: 'user-1',
+          type: 'TEXT',
+          state: 'transcribed',
+        },
+        {
+          captureId: 'capture-2',
+          userId: 'user-1',
+          type: 'TEXT',
+          state: 'transcribed',
+        },
       ];
 
       // Mock: first fails, second succeeds

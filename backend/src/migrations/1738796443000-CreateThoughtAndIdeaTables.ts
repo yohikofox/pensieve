@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 /**
  * Migration: Create Thought and Idea Tables
@@ -55,7 +60,8 @@ export class CreateThoughtAndIdeaTables1738796443000 implements MigrationInterfa
             name: 'processingTimeMs',
             type: 'integer',
             isNullable: false,
-            comment: 'Processing time in milliseconds for performance monitoring',
+            comment:
+              'Processing time in milliseconds for performance monitoring',
           },
           {
             name: 'createdAt',

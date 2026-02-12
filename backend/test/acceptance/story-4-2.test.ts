@@ -19,7 +19,7 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import * as path from 'path';
 
 const feature = loadFeature(
-  path.join(__dirname, 'features/story-4-2-digestion-ia.feature')
+  path.join(__dirname, 'features/story-4-2-digestion-ia.feature'),
 );
 
 // ============================================================================
@@ -63,7 +63,7 @@ class MockOpenAIService {
 
   async digestContent(
     content: string,
-    contentType: 'text' | 'audio'
+    contentType: 'text' | 'audio',
   ): Promise<DigestionResponse> {
     if (this.responseDelay > 30000) {
       throw new Error('Request timeout: exceeded 30 seconds');
@@ -101,7 +101,11 @@ class MockOpenAIService {
       // Code content
       return {
         summary: 'Code snippet that logs Hello World to console',
-        ideas: ['JavaScript function', 'Console logging', 'Hello World pattern'],
+        ideas: [
+          'JavaScript function',
+          'Console logging',
+          'Hello World pattern',
+        ],
         confidence: 'high',
       };
     }
@@ -137,7 +141,7 @@ class MockContentExtractorService {
   private mockTranscriptions: Map<string, string> = new Map();
 
   async extractContent(
-    captureId: string
+    captureId: string,
   ): Promise<{ content: string; contentType: 'text' | 'audio' }> {
     const transcription = this.mockTranscriptions.get(captureId);
 
@@ -174,7 +178,7 @@ class MockContentChunkerService {
 
   async processContent(
     content: string,
-    contentType: 'text' | 'audio'
+    contentType: 'text' | 'audio',
   ): Promise<ChunkingResult> {
     const tokenCount = this.estimateTokens(content);
 
@@ -198,10 +202,11 @@ class MockContentChunkerService {
     }
 
     // Merge results
-    const mergedSummary = chunkResults
-      .map((r) => r.summary.split('.')[0])
-      .slice(0, 3)
-      .join('. ') + '.';
+    const mergedSummary =
+      chunkResults
+        .map((r) => r.summary.split('.')[0])
+        .slice(0, 3)
+        .join('. ') + '.';
 
     const allIdeas = chunkResults.flatMap((r) => r.ideas);
     const uniqueIdeas = this.deduplicateIdeas(allIdeas);
@@ -266,7 +271,7 @@ class MockThoughtRepository {
     summary: string,
     ideas: string[],
     processingTimeMs: number,
-    confidenceScore?: number
+    confidenceScore?: number,
   ): Promise<Thought> {
     if (this.shouldFailOnSecondIdea && ideas.length >= 2) {
       throw new Error('Failed to create second idea (simulated error)');
@@ -398,7 +403,7 @@ defineFeature(feature, (test) => {
   // AC1: GPT-4o-mini Integration and Prompt Engineering
   // ==========================================================================
 
-  test('Digestion d\'un contenu court avec GPT-4o-mini', ({
+  test("Digestion d'un contenu court avec GPT-4o-mini", ({
     given,
     when,
     then,
@@ -416,20 +421,26 @@ defineFeature(feature, (test) => {
       // OpenAI mock is ready
     });
 
-    given(/.*un job de digestion est reçu avec un contenu de (\d+) mots/, (wordCount: string) => {
-      context.currentContent = 'word '.repeat(parseInt(wordCount));
-    });
+    given(
+      /.*un job de digestion est reçu avec un contenu de (\d+) mots/,
+      (wordCount: string) => {
+        context.currentContent = 'word '.repeat(parseInt(wordCount));
+      },
+    );
 
     when('le service OpenAI traite le contenu', async () => {
       context.digestionResult = await context.openai.digestContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
-    then(/^GPT-4o-mini est utilisé comme modèle \(([^)]+)\)$/, (modelName: string) => {
-      expect(modelName).toBe('gpt-4o-mini');
-    });
+    then(
+      /^GPT-4o-mini est utilisé comme modèle \(([^)]+)\)$/,
+      (modelName: string) => {
+        expect(modelName).toBe('gpt-4o-mini');
+      },
+    );
 
     and(/^le timeout est configuré à (\d+) secondes$/, (seconds: string) => {
       expect(parseInt(seconds)).toBe(30);
@@ -455,13 +466,23 @@ defineFeature(feature, (test) => {
       expect(context.digestionResult!.ideas.length).toBeLessThanOrEqual(10);
     });
 
-    and(/^le résultat contient un niveau de confidence \(([^)]+)\)$/, (confidenceLevels: string) => {
-      expect(context.digestionResult!.confidence).toBeDefined();
-      expect(['high', 'medium', 'low']).toContain(context.digestionResult!.confidence);
-    });
+    and(
+      /^le résultat contient un niveau de confidence \(([^)]+)\)$/,
+      (confidenceLevels: string) => {
+        expect(context.digestionResult!.confidence).toBeDefined();
+        expect(['high', 'medium', 'low']).toContain(
+          context.digestionResult!.confidence,
+        );
+      },
+    );
   });
 
-  test('Validation du format JSON structuré avec Zod', ({ given, when, then, and }) => {
+  test('Validation du format JSON structuré avec Zod', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -473,7 +494,7 @@ defineFeature(feature, (test) => {
     when('le service OpenAI traite le contenu', async () => {
       context.digestionResult = await context.openai.digestContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
@@ -483,29 +504,56 @@ defineFeature(feature, (test) => {
       expect(Array.isArray(context.digestionResult!.ideas)).toBe(true);
     });
 
-    and(/^le schema Zod valide le champ "summary" \((\d+)-(\d+) caractères\)$/, (min, max) => {
-      expect(context.digestionResult!.summary.length).toBeGreaterThanOrEqual(parseInt(min));
-      expect(context.digestionResult!.summary.length).toBeLessThanOrEqual(parseInt(max));
-    });
+    and(
+      /^le schema Zod valide le champ "summary" \((\d+)-(\d+) caractères\)$/,
+      (min, max) => {
+        expect(context.digestionResult!.summary.length).toBeGreaterThanOrEqual(
+          parseInt(min),
+        );
+        expect(context.digestionResult!.summary.length).toBeLessThanOrEqual(
+          parseInt(max),
+        );
+      },
+    );
 
-    and(/^le schema Zod valide le champ "ideas" \(tableau de (\d+)-(\d+) éléments\)$/, (min, max) => {
-      expect(context.digestionResult!.ideas.length).toBeGreaterThanOrEqual(parseInt(min));
-      expect(context.digestionResult!.ideas.length).toBeLessThanOrEqual(parseInt(max));
-    });
+    and(
+      /^le schema Zod valide le champ "ideas" \(tableau de (\d+)-(\d+) éléments\)$/,
+      (min, max) => {
+        expect(context.digestionResult!.ideas.length).toBeGreaterThanOrEqual(
+          parseInt(min),
+        );
+        expect(context.digestionResult!.ideas.length).toBeLessThanOrEqual(
+          parseInt(max),
+        );
+      },
+    );
 
-    and(/^le schema Zod valide chaque idea \((\d+)-(\d+) caractères\)$/, (min, max) => {
-      context.digestionResult!.ideas.forEach((idea) => {
-        expect(idea.length).toBeGreaterThanOrEqual(parseInt(min));
-        expect(idea.length).toBeLessThanOrEqual(parseInt(max));
-      });
-    });
+    and(
+      /^le schema Zod valide chaque idea \((\d+)-(\d+) caractères\)$/,
+      (min, max) => {
+        context.digestionResult!.ideas.forEach((idea) => {
+          expect(idea.length).toBeGreaterThanOrEqual(parseInt(min));
+          expect(idea.length).toBeLessThanOrEqual(parseInt(max));
+        });
+      },
+    );
 
-    and(/^le schema Zod valide le champ "confidence" \(enum: ([^)]+)\)$/, (confidenceEnum) => {
-      expect(['high', 'medium', 'low']).toContain(context.digestionResult!.confidence);
-    });
+    and(
+      /^le schema Zod valide le champ "confidence" \(enum: ([^)]+)\)$/,
+      (confidenceEnum) => {
+        expect(['high', 'medium', 'low']).toContain(
+          context.digestionResult!.confidence,
+        );
+      },
+    );
   });
 
-  test('Fallback sur prompt plain-text si JSON échoue', ({ given, when, then, and }) => {
+  test('Fallback sur prompt plain-text si JSON échoue', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -521,7 +569,7 @@ defineFeature(feature, (test) => {
     when('le service OpenAI utilise le fallback', async () => {
       context.digestionResult = await context.openai.digestContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
@@ -551,7 +599,7 @@ defineFeature(feature, (test) => {
   // AC2: Text Capture Digestion Flow
   // ==========================================================================
 
-  test('Digestion d\'une capture texte simple', ({ given, when, then, and }) => {
+  test("Digestion d'une capture texte simple", ({ given, when, then, and }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -561,10 +609,12 @@ defineFeature(feature, (test) => {
     });
 
     when('un job de digestion est traité', async () => {
-      const extracted = await context.contentExtractor.extractContent(context.currentContent);
+      const extracted = await context.contentExtractor.extractContent(
+        context.currentContent,
+      );
       context.digestionResult = await context.openai.digestContent(
         extracted.content,
-        extracted.contentType
+        extracted.contentType,
       );
     });
 
@@ -587,13 +637,15 @@ defineFeature(feature, (test) => {
         context.digestionResult!.summary,
         context.digestionResult!.ideas,
         500,
-        0.9
+        0.9,
       );
       expect(context.createdThought).not.toBeNull();
     });
 
     and(/^(\d+) Ideas sont créées$/, (ideaCount: string) => {
-      const ideas = context.thoughtRepository.getIdeasForThought(context.createdThought!.id);
+      const ideas = context.thoughtRepository.getIdeasForThought(
+        context.createdThought!.id,
+      );
       expect(ideas.length).toBeGreaterThanOrEqual(parseInt(ideaCount));
     });
 
@@ -602,39 +654,56 @@ defineFeature(feature, (test) => {
       expect(true).toBe(true);
     });
 
-    and(/^le temps de traitement est < (\d+) secondes$/, (maxSeconds: string) => {
-      expect(context.createdThought!.processingTimeMs).toBeLessThan(
-        parseInt(maxSeconds) * 1000
-      );
-    });
+    and(
+      /^le temps de traitement est < (\d+) secondes$/,
+      (maxSeconds: string) => {
+        expect(context.createdThought!.processingTimeMs).toBeLessThan(
+          parseInt(maxSeconds) * 1000,
+        );
+      },
+    );
   });
 
-  test('Digestion d\'une capture texte longue avec chunking', ({ given, when, then, and }) => {
+  test("Digestion d'une capture texte longue avec chunking", ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
 
-    given(/.*une capture texte de ([0-9,]+) mots existe/, (wordCount: string) => {
-      const words = parseInt(wordCount.replace(',', ''));
-      context.currentContent = 'word '.repeat(words);
-    });
+    given(
+      /.*une capture texte de ([0-9,]+) mots existe/,
+      (wordCount: string) => {
+        const words = parseInt(wordCount.replace(',', ''));
+        context.currentContent = 'word '.repeat(words);
+      },
+    );
 
     when('un job de digestion est traité', async () => {
       context.chunkingResult = await context.contentChunker.processContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
-    then(/^le ContentChunkerService détecte que le contenu dépasse (\d+) tokens$/, (maxTokens: string) => {
-      const estimatedTokens = Math.ceil(context.currentContent.length / 4);
-      expect(estimatedTokens).toBeGreaterThan(parseInt(maxTokens));
-    });
+    then(
+      /^le ContentChunkerService détecte que le contenu dépasse (\d+) tokens$/,
+      (maxTokens: string) => {
+        const estimatedTokens = Math.ceil(context.currentContent.length / 4);
+        expect(estimatedTokens).toBeGreaterThan(parseInt(maxTokens));
+      },
+    );
 
-    and(/^le contenu est divisé en chunks de (\d+) tokens avec overlap de (\d+) tokens$/, (chunkSize, overlap) => {
-      expect(context.chunkingResult!.wasChunked).toBe(true);
-      expect(context.chunkingResult!.chunkCount).toBeGreaterThan(1);
-    });
+    and(
+      /^le contenu est divisé en chunks de (\d+) tokens avec overlap de (\d+) tokens$/,
+      (chunkSize, overlap) => {
+        expect(context.chunkingResult!.wasChunked).toBe(true);
+        expect(context.chunkingResult!.chunkCount).toBeGreaterThan(1);
+      },
+    );
 
     and('chaque chunk est traité séquentiellement par GPT-4o-mini', () => {
       expect(context.chunkingResult!.summary).toBeDefined();
@@ -645,10 +714,13 @@ defineFeature(feature, (test) => {
       expect(context.chunkingResult!.summary.length).toBeGreaterThan(20);
     });
 
-    and(/^les ideas sont dédupliquées \(seuil de similarité ([\d.]+)\)$/, (threshold: string) => {
-      // Ideas are deduplicated in mock implementation
-      expect(parseFloat(threshold)).toBe(0.8);
-    });
+    and(
+      /^les ideas sont dédupliquées \(seuil de similarité ([\d.]+)\)$/,
+      (threshold: string) => {
+        // Ideas are deduplicated in mock implementation
+        expect(parseFloat(threshold)).toBe(0.8);
+      },
+    );
 
     and('wasChunked est true dans le résultat', () => {
       expect(context.chunkingResult!.wasChunked).toBe(true);
@@ -663,7 +735,12 @@ defineFeature(feature, (test) => {
   // AC3: Audio Capture Digestion Flow
   // ==========================================================================
 
-  test('Digestion d\'une capture audio transcrite', ({ given, when, then, and }) => {
+  test("Digestion d'une capture audio transcrite", ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -671,21 +748,25 @@ defineFeature(feature, (test) => {
     given(/.*une capture audio a été transcrite par Whisper/, () => {
       context.contentExtractor.setTranscription(
         'capture-audio-123',
-        'Idée pour nouvelle feature: système de tags pour organiser les captures'
+        'Idée pour nouvelle feature: système de tags pour organiser les captures',
       );
     });
 
-    and(/.*la transcription contient "([^"]+)"/, (transcriptionContent: string) => {
-      // Already set in previous step
-      expect(transcriptionContent).toBeDefined();
-    });
+    and(
+      /.*la transcription contient "([^"]+)"/,
+      (transcriptionContent: string) => {
+        // Already set in previous step
+        expect(transcriptionContent).toBeDefined();
+      },
+    );
 
     when('un job de digestion est traité', async () => {
-      const extracted = await context.contentExtractor.extractContent('capture-audio-123');
+      const extracted =
+        await context.contentExtractor.extractContent('capture-audio-123');
       context.currentContentType = extracted.contentType;
       context.digestionResult = await context.openai.digestContent(
         extracted.content,
-        extracted.contentType
+        extracted.contentType,
       );
     });
 
@@ -697,10 +778,13 @@ defineFeature(feature, (test) => {
       expect(context.currentContentType).toBe('audio');
     });
 
-    and('le prompt GPT adapte son style pour du contenu audio transcrit', () => {
-      // In real implementation, prompt would adapt based on contentType
-      expect(context.digestionResult).not.toBeNull();
-    });
+    and(
+      'le prompt GPT adapte son style pour du contenu audio transcrit',
+      () => {
+        // In real implementation, prompt would adapt based on contentType
+        expect(context.digestionResult).not.toBeNull();
+      },
+    );
 
     and('un Thought est créé avec le summary', async () => {
       context.createdThought = await context.thoughtRepository.createWithIdeas(
@@ -709,13 +793,15 @@ defineFeature(feature, (test) => {
         context.digestionResult!.summary,
         context.digestionResult!.ideas,
         500,
-        0.9
+        0.9,
       );
       expect(context.createdThought).not.toBeNull();
     });
 
     and('au moins 1 Idea est extraite', () => {
-      const ideas = context.thoughtRepository.getIdeasForThought(context.createdThought!.id);
+      const ideas = context.thoughtRepository.getIdeasForThought(
+        context.createdThought!.id,
+      );
       expect(ideas.length).toBeGreaterThanOrEqual(1);
     });
 
@@ -724,7 +810,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Gestion du contenu audio vide ou invalide', ({ given, when, then, and }) => {
+  test('Gestion du contenu audio vide ou invalide', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -741,10 +832,13 @@ defineFeature(feature, (test) => {
       }
     });
 
-    then(/^le ContentExtractorService lève une exception "([^"]+)"$/, (errorMsg: string) => {
-      expect(context.error).not.toBeNull();
-      expect(context.error!.message).toContain(errorMsg);
-    });
+    then(
+      /^le ContentExtractorService lève une exception "([^"]+)"$/,
+      (errorMsg: string) => {
+        expect(context.error).not.toBeNull();
+        expect(context.error!.message).toContain(errorMsg);
+      },
+    );
 
     and('le job échoue', () => {
       expect(context.error).not.toBeNull();
@@ -755,17 +849,25 @@ defineFeature(feature, (test) => {
       expect(true).toBe(true);
     });
 
-    and(/^l'erreur est loguée avec le message "([^"]+): \{captureId\}"$/, (errorPrefix: string) => {
-      expect(context.error!.message).toContain(errorPrefix);
-      expect(context.error!.message).toContain('capture-empty');
-    });
+    and(
+      /^l'erreur est loguée avec le message "([^"]+): \{captureId\}"$/,
+      (errorPrefix: string) => {
+        expect(context.error!.message).toContain(errorPrefix);
+        expect(context.error!.message).toContain('capture-empty');
+      },
+    );
   });
 
   // ==========================================================================
   // AC4: Thought and Ideas Persistence
   // ==========================================================================
 
-  test('Création atomique d\'un Thought avec ses Ideas', ({ given, when, then, and }) => {
+  test("Création atomique d'un Thought avec ses Ideas", ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -785,7 +887,7 @@ defineFeature(feature, (test) => {
         context.digestionResult!.summary,
         context.digestionResult!.ideas,
         500,
-        0.9
+        0.9,
       );
     });
 
@@ -794,15 +896,22 @@ defineFeature(feature, (test) => {
       expect(context.createdThought!.summary).toBe('Test summary');
     });
 
-    and(/^(\d+) Ideas sont créées avec orderIndex \((\d+)-(\d+)\)$/, (count, minIndex, maxIndex) => {
-      const ideas = context.thoughtRepository.getIdeasForThought(context.createdThought!.id);
-      expect(ideas.length).toBe(parseInt(count));
-      expect(ideas[0].orderIndex).toBe(parseInt(minIndex));
-      expect(ideas[ideas.length - 1].orderIndex).toBe(parseInt(maxIndex));
-    });
+    and(
+      /^(\d+) Ideas sont créées avec orderIndex \((\d+)-(\d+)\)$/,
+      (count, minIndex, maxIndex) => {
+        const ideas = context.thoughtRepository.getIdeasForThought(
+          context.createdThought!.id,
+        );
+        expect(ideas.length).toBe(parseInt(count));
+        expect(ideas[0].orderIndex).toBe(parseInt(minIndex));
+        expect(ideas[ideas.length - 1].orderIndex).toBe(parseInt(maxIndex));
+      },
+    );
 
     and('toutes les entités partagent le même userId et captureId', () => {
-      const ideas = context.thoughtRepository.getIdeasForThought(context.createdThought!.id);
+      const ideas = context.thoughtRepository.getIdeasForThought(
+        context.createdThought!.id,
+      );
       expect(context.createdThought!.userId).toBe('user-456');
       expect(context.createdThought!.captureId).toBe('capture-123');
       ideas.forEach((idea) => {
@@ -816,16 +925,24 @@ defineFeature(feature, (test) => {
       expect(true).toBe(true);
     });
 
-    and(/^un confidenceScore numérique est calculé \(high=([\d.]+), medium=([\d.]+), low=([\d.]+)\)$/, (high, medium, low) => {
-      expect(context.createdThought!.confidenceScore).toBe(parseFloat(high));
-    });
+    and(
+      /^un confidenceScore numérique est calculé \(high=([\d.]+), medium=([\d.]+), low=([\d.]+)\)$/,
+      (high, medium, low) => {
+        expect(context.createdThought!.confidenceScore).toBe(parseFloat(high));
+      },
+    );
 
     and('processingTimeMs est enregistré', () => {
       expect(context.createdThought!.processingTimeMs).toBe(500);
     });
   });
 
-  test('Rollback en cas d\'échec de création des Ideas', ({ given, when, then, and }) => {
+  test("Rollback en cas d'échec de création des Ideas", ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -850,7 +967,7 @@ defineFeature(feature, (test) => {
           context.digestionResult!.summary,
           context.digestionResult!.ideas,
           500,
-          0.9
+          0.9,
         );
       } catch (error) {
         context.error = error as Error;
@@ -861,12 +978,12 @@ defineFeature(feature, (test) => {
       expect(context.error).not.toBeNull();
     });
 
-    and('aucun Thought n\'est créé', () => {
+    and("aucun Thought n'est créé", () => {
       // In real implementation with transaction, Thought would be rolled back
       expect(context.createdThought).toBeNull();
     });
 
-    and('aucune Idea n\'est créée', () => {
+    and("aucune Idea n'est créée", () => {
       // In real implementation, Ideas would be rolled back
       expect(true).toBe(true);
     });
@@ -877,7 +994,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Publication de l\'événement DigestionCompleted', ({ given, when, then, and }) => {
+  test("Publication de l'événement DigestionCompleted", ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -895,7 +1017,7 @@ defineFeature(feature, (test) => {
         context.digestionResult.summary,
         context.digestionResult.ideas,
         500,
-        0.9
+        0.9,
       );
     });
 
@@ -916,37 +1038,37 @@ defineFeature(feature, (test) => {
       expect(events.length).toBe(1);
     });
 
-    and('l\'événement contient thoughtId', () => {
+    and("l'événement contient thoughtId", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.thoughtId).toBeDefined();
     });
 
-    and('l\'événement contient captureId', () => {
+    and("l'événement contient captureId", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.captureId).toBe('capture-123');
     });
 
-    and('l\'événement contient userId', () => {
+    and("l'événement contient userId", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.userId).toBe('user-456');
     });
 
-    and('l\'événement contient summary', () => {
+    and("l'événement contient summary", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.summary).toBe('Test summary');
     });
 
-    and('l\'événement contient ideasCount', () => {
+    and("l'événement contient ideasCount", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.ideasCount).toBe(2);
     });
 
-    and('l\'événement contient processingTimeMs', () => {
+    and("l'événement contient processingTimeMs", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.processingTimeMs).toBe(500);
     });
 
-    and('l\'événement contient completedAt timestamp', () => {
+    and("l'événement contient completedAt timestamp", () => {
       const event = context.eventBus.getEvents('digestion.completed')[0];
       expect(event.payload.completedAt).toBeDefined();
     });
@@ -956,7 +1078,12 @@ defineFeature(feature, (test) => {
   // AC6: Long Content Chunking Strategy
   // ==========================================================================
 
-  test('Détection automatique du besoin de chunking', ({ given, when, then, and }) => {
+  test('Détection automatique du besoin de chunking', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -969,14 +1096,17 @@ defineFeature(feature, (test) => {
     when('ContentChunkerService.processContent est appelé', async () => {
       context.chunkingResult = await context.contentChunker.processContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
-    then(/^le service détecte que le contenu dépasse maxTokensPerChunk \((\d+)\)$/, (maxTokens: string) => {
-      const estimatedTokens = Math.ceil(context.currentContent.length / 4);
-      expect(estimatedTokens).toBeGreaterThan(parseInt(maxTokens));
-    });
+    then(
+      /^le service détecte que le contenu dépasse maxTokensPerChunk \((\d+)\)$/,
+      (maxTokens: string) => {
+        const estimatedTokens = Math.ceil(context.currentContent.length / 4);
+        expect(estimatedTokens).toBeGreaterThan(parseInt(maxTokens));
+      },
+    );
 
     and('le chunking est activé automatiquement', () => {
       expect(context.chunkingResult!.wasChunked).toBe(true);
@@ -987,7 +1117,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Chunking avec overlap pour préserver le contexte', ({ given, when, then, and }) => {
+  test('Chunking avec overlap pour préserver le contexte', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1000,7 +1135,7 @@ defineFeature(feature, (test) => {
     when('le contenu est divisé en chunks', async () => {
       context.chunkingResult = await context.contentChunker.processContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
@@ -1009,16 +1144,29 @@ defineFeature(feature, (test) => {
       expect(parseInt(maxTokens)).toBe(4000);
     });
 
-    and(/^chaque chunk \(sauf le premier\) commence avec (\d+) tokens du chunk précédent$/, (overlapTokens: string) => {
-      expect(parseInt(overlapTokens)).toBe(200);
-    });
+    and(
+      /^chaque chunk \(sauf le premier\) commence avec (\d+) tokens du chunk précédent$/,
+      (overlapTokens: string) => {
+        expect(parseInt(overlapTokens)).toBe(200);
+      },
+    );
 
-    and(/^le nombre de chunks est calculé: ceil\(([0-9,]+) \/ (\d+)\) = (\d+) chunks$/, (totalTokens, chunkSize, expectedChunks) => {
-      expect(context.chunkingResult!.chunkCount).toBeGreaterThanOrEqual(parseInt(expectedChunks));
-    });
+    and(
+      /^le nombre de chunks est calculé: ceil\(([0-9,]+) \/ (\d+)\) = (\d+) chunks$/,
+      (totalTokens, chunkSize, expectedChunks) => {
+        expect(context.chunkingResult!.chunkCount).toBeGreaterThanOrEqual(
+          parseInt(expectedChunks),
+        );
+      },
+    );
   });
 
-  test('Déduplication des ideas entre les chunks', ({ given, when, then, and }) => {
+  test('Déduplication des ideas entre les chunks', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1034,7 +1182,10 @@ defineFeature(feature, (test) => {
     when('les ideas sont fusionnées', async () => {
       // Simulate content that produces duplicate ideas
       const longContent = 'Feature B is important. '.repeat(5000);
-      context.chunkingResult = await context.contentChunker.processContent(longContent, 'text');
+      context.chunkingResult = await context.contentChunker.processContent(
+        longContent,
+        'text',
+      );
     });
 
     then('la similarité Jaccard est calculée pour chaque paire', () => {
@@ -1047,13 +1198,21 @@ defineFeature(feature, (test) => {
       expect(context.chunkingResult!.ideas.length).toBeGreaterThanOrEqual(1);
     });
 
-    and(/^le résultat final contient \["([^"]+)", "([^"]+)", "([^"]+)"\]$/, (idea1, idea2, idea3) => {
-      // In real implementation, unique ideas are preserved
-      expect(context.chunkingResult!.ideas.length).toBeGreaterThanOrEqual(3);
-    });
+    and(
+      /^le résultat final contient \["([^"]+)", "([^"]+)", "([^"]+)"\]$/,
+      (idea1, idea2, idea3) => {
+        // In real implementation, unique ideas are preserved
+        expect(context.chunkingResult!.ideas.length).toBeGreaterThanOrEqual(3);
+      },
+    );
   });
 
-  test('Downgrade de confidence pour contenu très long', ({ given, when, then, and }) => {
+  test('Downgrade de confidence pour contenu très long', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1071,7 +1230,7 @@ defineFeature(feature, (test) => {
     when('les résultats sont fusionnés', async () => {
       context.chunkingResult = await context.contentChunker.processContent(
         context.currentContent,
-        'text'
+        'text',
       );
     });
 
@@ -1079,26 +1238,42 @@ defineFeature(feature, (test) => {
       expect(context.chunkingResult!.confidence).toBe('medium');
     });
 
-    and(/^chunkCount \((\d+)\) est supérieur à (\d+)$/, (actualCount, threshold) => {
-      expect(context.chunkingResult!.chunkCount).toBeGreaterThan(parseInt(threshold));
-    });
+    and(
+      /^chunkCount \((\d+)\) est supérieur à (\d+)$/,
+      (actualCount, threshold) => {
+        expect(context.chunkingResult!.chunkCount).toBeGreaterThan(
+          parseInt(threshold),
+        );
+      },
+    );
   });
 
   // ==========================================================================
   // AC8: Low Confidence and Edge Cases
   // ==========================================================================
 
-  test('Détection de faible confidence sur contenu court', ({ given, when, then, and }) => {
+  test('Détection de faible confidence sur contenu court', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
 
-    given(/.*un contenu de (\d+) mots "([^"]+)" est reçu/, (wordCount, content) => {
-      context.currentContent = content;
-    });
+    given(
+      /.*un contenu de (\d+) mots "([^"]+)" est reçu/,
+      (wordCount, content) => {
+        context.currentContent = content;
+      },
+    );
 
     when('GPT traite le contenu', async () => {
-      context.digestionResult = await context.openai.digestContent(context.currentContent, 'text');
+      context.digestionResult = await context.openai.digestContent(
+        context.currentContent,
+        'text',
+      );
     });
 
     then('le niveau de confidence retourné est "low"', () => {
@@ -1117,9 +1292,9 @@ defineFeature(feature, (test) => {
         context.digestionResult!.summary,
         context.digestionResult!.ideas,
         500,
-        0.3
+        0.3,
       );
-      expect(context.createdThought!.confidenceScore).toBe(0.3);
+      expect(context.createdThought.confidenceScore).toBe(0.3);
     });
 
     and('un flag UI indique la faible fiabilité', () => {
@@ -1128,7 +1303,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Gestion des caractères spéciaux et émojis', ({ given, when, then, and }) => {
+  test('Gestion des caractères spéciaux et émojis', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1138,14 +1318,17 @@ defineFeature(feature, (test) => {
     });
 
     when('le job est traité', async () => {
-      context.digestionResult = await context.openai.digestContent(context.currentContent, 'text');
+      context.digestionResult = await context.openai.digestContent(
+        context.currentContent,
+        'text',
+      );
     });
 
     then('les émojis sont préservés dans le summary', () => {
       expect(context.digestionResult!.summary).toMatch(/🚀|💡/);
     });
 
-    and('les caractères spéciaux ne causent pas d\'erreur de parsing', () => {
+    and("les caractères spéciaux ne causent pas d'erreur de parsing", () => {
       expect(context.digestionResult).not.toBeNull();
     });
 
@@ -1154,7 +1337,12 @@ defineFeature(feature, (test) => {
     });
   });
 
-  test('Gestion du code source dans le contenu', ({ given, when, then, and }) => {
+  test('Gestion du code source dans le contenu', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1164,19 +1352,26 @@ defineFeature(feature, (test) => {
     });
 
     when('le job est traité', async () => {
-      context.digestionResult = await context.openai.digestContent(context.currentContent, 'text');
+      context.digestionResult = await context.openai.digestContent(
+        context.currentContent,
+        'text',
+      );
     });
 
     then('le code est traité comme du texte brut', () => {
       expect(context.digestionResult).not.toBeNull();
     });
 
-    and('le summary décrit l\'intention du code', () => {
+    and("le summary décrit l'intention du code", () => {
       expect(context.digestionResult!.summary).toContain('Hello World');
     });
 
     and('les ideas extraient les concepts clés', () => {
-      expect(context.digestionResult!.ideas.some(idea => idea.includes('function'))).toBe(true);
+      expect(
+        context.digestionResult!.ideas.some((idea) =>
+          idea.includes('function'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -1184,7 +1379,12 @@ defineFeature(feature, (test) => {
   // AC5: Real-Time Feed Update Notification (SKIPPED - not implemented yet)
   // ==========================================================================
 
-  test('Notification temps-réel après digestion complétée', ({ given, when, then, and }) => {
+  test('Notification temps-réel après digestion complétée', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1215,7 +1415,12 @@ defineFeature(feature, (test) => {
   // AC7: Error Handling and Retry Logic (TO BE IMPLEMENTED)
   // ==========================================================================
 
-  test('Retry automatique après échec temporaire (timeout)', ({ given, when, then, and }) => {
+  test('Retry automatique après échec temporaire (timeout)', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
     given('le backend est démarré', () => {});
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
@@ -1229,10 +1434,13 @@ defineFeature(feature, (test) => {
       // To be implemented
     });
 
-    then(/^RabbitMQ requeue le job avec retry delay \((\d+)s → (\d+)s → (\d+)s\)$/, (delay1, delay2, delay3) => {
-      // To be implemented
-      expect(true).toBe(true);
-    });
+    then(
+      /^RabbitMQ requeue le job avec retry delay \((\d+)s → (\d+)s → (\d+)s\)$/,
+      (delay1, delay2, delay3) => {
+        // To be implemented
+        expect(true).toBe(true);
+      },
+    );
 
     and('retryCount est incrémenté', () => {
       // To be implemented
@@ -1279,9 +1487,12 @@ defineFeature(feature, (test) => {
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
 
-    given(/^OpenAI retourne une erreur (\d+) \(([^)]+)\)$/, (statusCode, errorType) => {
-      // To be implemented
-    });
+    given(
+      /^OpenAI retourne une erreur (\d+) \(([^)]+)\)$/,
+      (statusCode, errorType) => {
+        // To be implemented
+      },
+    );
 
     when('le job est traité', () => {
       // To be implemented
@@ -1310,18 +1521,21 @@ defineFeature(feature, (test) => {
     given('RabbitMQ est accessible', () => {});
     given('OpenAI API est accessible', () => {});
 
-    given(/^un Thought a été créé avec confidence="(.*)"$/, (confidenceLevel: string) => {
-      // To be implemented
-      context.createdThought = {
-        id: 'thought-123',
-        captureId: 'capture-123',
-        userId: 'user-456',
-        summary: 'Test summary',
-        confidenceScore: 0.3,
-        processingTimeMs: 500,
-        createdAt: new Date(),
-      };
-    });
+    given(
+      /^un Thought a été créé avec confidence="(.*)"$/,
+      (confidenceLevel: string) => {
+        // To be implemented
+        context.createdThought = {
+          id: 'thought-123',
+          captureId: 'capture-123',
+          userId: 'user-456',
+          summary: 'Test summary',
+          confidenceScore: 0.3,
+          processingTimeMs: 500,
+          createdAt: new Date(),
+        };
+      },
+    );
 
     when('le Thought est affiché dans le Feed', () => {
       // To be implemented - UI responsibility

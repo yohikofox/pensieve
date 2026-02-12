@@ -47,9 +47,8 @@ export class OpenAIService {
     contentType: 'text' | 'audio',
   ): Promise<DigestionResponse> {
     // Subtask 1.4: Log request details (REDACTED - no PII logging per NFR12)
-    const contentPreview = content.length > 50
-      ? content.substring(0, 50) + '...'
-      : content;
+    const contentPreview =
+      content.length > 50 ? content.substring(0, 50) + '...' : content;
     this.logger.log(
       `🤖 Calling GPT-4o-mini for ${contentType} content (${content.length} chars, preview: "${contentPreview}")`,
     );
@@ -60,7 +59,9 @@ export class OpenAIService {
     } catch (primaryError) {
       // Check if it's a rate limit error (OpenAI 429)
       const errorMessage =
-        primaryError instanceof Error ? primaryError.message : String(primaryError);
+        primaryError instanceof Error
+          ? primaryError.message
+          : String(primaryError);
 
       if (this.isRateLimitError(primaryError)) {
         this.logger.warn(
@@ -276,7 +277,10 @@ You must respond with valid JSON in this exact format:
    * @param contentType - Type of content
    * @returns User prompt text
    */
-  private getUserPrompt(content: string, contentType: 'text' | 'audio'): string {
+  private getUserPrompt(
+    content: string,
+    contentType: 'text' | 'audio',
+  ): string {
     const typeLabel = contentType === 'text' ? 'text' : 'transcribed audio';
 
     return `Analyze the following ${typeLabel} thought:
@@ -336,7 +340,9 @@ Just provide a plain text summary.`;
    * @returns Validated digestion result
    * @throws Error if response is invalid
    */
-  private parseResponse(response: OpenAI.Chat.Completions.ChatCompletion): DigestionResponse {
+  private parseResponse(
+    response: OpenAI.Chat.Completions.ChatCompletion,
+  ): DigestionResponse {
     // Check for choices
     if (!response.choices || response.choices.length === 0) {
       throw new Error('No choices in GPT response');
@@ -356,7 +362,8 @@ Just provide a plain text summary.`;
 
       return validated;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`Response validation failed: ${errorMessage}`, error);
       throw new Error(`Failed to parse GPT response: ${errorMessage}`);
     }

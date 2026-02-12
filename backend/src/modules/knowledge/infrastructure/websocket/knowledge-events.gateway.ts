@@ -43,9 +43,10 @@ interface DigestionCompletedPayload {
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.NODE_ENV === 'production'
-      ? [process.env.MOBILE_APP_URL || 'https://app.pensieve.io']
-      : ['http://localhost:8081', 'exp://localhost:8081'], // Expo dev URLs
+    origin:
+      process.env.NODE_ENV === 'production'
+        ? [process.env.MOBILE_APP_URL || 'https://app.pensieve.io']
+        : ['http://localhost:8081', 'exp://localhost:8081'], // Expo dev URLs
     credentials: true,
   },
   namespace: '/knowledge',
@@ -194,7 +195,9 @@ export class KnowledgeEventsGateway
   @OnEvent('progress.still-processing')
   handleStillProcessing(event: any): void {
     if (!event.userId) {
-      this.logger.warn('⚠️  Received progress.still-processing event without userId');
+      this.logger.warn(
+        '⚠️  Received progress.still-processing event without userId',
+      );
       return;
     }
 
@@ -225,7 +228,9 @@ export class KnowledgeEventsGateway
   @OnEvent('progress.timeout-warning')
   handleTimeoutWarning(event: any): void {
     if (!event.userId) {
-      this.logger.warn('⚠️  Received progress.timeout-warning event without userId');
+      this.logger.warn(
+        '⚠️  Received progress.timeout-warning event without userId',
+      );
       return;
     }
 

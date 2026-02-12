@@ -258,7 +258,11 @@ describe('TodoRepository', () => {
         status: 'todo',
       } as any;
 
-      const updatedTodo = { ...mockTodo, status: newStatus, completedAt: expect.any(Date) };
+      const updatedTodo = {
+        ...mockTodo,
+        status: newStatus,
+        completedAt: expect.any(Date),
+      };
 
       mockTodoRepo.findOne.mockResolvedValue(mockTodo);
       mockTodoRepo.save.mockResolvedValue(updatedTodo);
@@ -294,9 +298,9 @@ describe('TodoRepository', () => {
       const todoId = 'nonexistent';
       mockTodoRepo.findOne.mockResolvedValue(null);
 
-      await expect(repository.updateStatus(todoId, 'completed')).rejects.toThrow(
-        `Todo not found: ${todoId}`,
-      );
+      await expect(
+        repository.updateStatus(todoId, 'completed'),
+      ).rejects.toThrow(`Todo not found: ${todoId}`);
     });
   });
 

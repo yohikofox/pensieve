@@ -72,7 +72,10 @@ export class NotificationsController {
   async updateNotificationPreferences(
     @Req() req: any,
     @Body() body: UpdateNotificationPreferencesDto,
-  ): Promise<{ message: string; preferences: UpdateNotificationPreferencesDto }> {
+  ): Promise<{
+    message: string;
+    preferences: UpdateNotificationPreferencesDto;
+  }> {
     const userId = req.user.id;
 
     // Update user's notification preferences

@@ -45,7 +45,9 @@ describe('PushNotificationService', () => {
       const result = service.isValidPushToken('ExponentPushToken[xxxxxx]');
 
       expect(result).toBe(true);
-      expect(mockExpo.isExpoPushToken).toHaveBeenCalledWith('ExponentPushToken[xxxxxx]');
+      expect(mockExpo.isExpoPushToken).toHaveBeenCalledWith(
+        'ExponentPushToken[xxxxxx]',
+      );
     });
 
     it('should reject invalid push token', () => {
@@ -112,7 +114,8 @@ describe('PushNotificationService', () => {
         1,
       );
 
-      const callArgs = (mockExpo.sendPushNotificationsAsync as jest.Mock).mock.calls[0][0][0];
+      const callArgs = (mockExpo.sendPushNotificationsAsync as jest.Mock).mock
+        .calls[0][0][0];
       const bodyText = callArgs.body;
 
       // Should be truncated to ~50 chars + "..."
@@ -161,7 +164,9 @@ describe('PushNotificationService', () => {
 
     it('should handle network errors gracefully', async () => {
       mockExpo.isExpoPushToken.mockReturnValue(true);
-      mockExpo.sendPushNotificationsAsync.mockRejectedValue(new Error('Network error'));
+      mockExpo.sendPushNotificationsAsync.mockRejectedValue(
+        new Error('Network error'),
+      );
 
       const result = await service.sendDigestionCompleteNotification(
         'user-456',
@@ -209,7 +214,10 @@ describe('PushNotificationService', () => {
         { to: 'token2', body: 'Test 2' },
       ];
 
-      mockExpo.chunkPushNotifications.mockReturnValue([[messages[0]], [messages[1]]]);
+      mockExpo.chunkPushNotifications.mockReturnValue([
+        [messages[0]],
+        [messages[1]],
+      ]);
 
       // First batch fails, second succeeds
       mockExpo.sendPushNotificationsAsync
@@ -227,7 +235,9 @@ describe('PushNotificationService', () => {
       const messages = [{ to: 'token1', body: 'Test' }];
 
       mockExpo.chunkPushNotifications.mockReturnValue([messages]);
-      mockExpo.sendPushNotificationsAsync.mockRejectedValue(new Error('All failed'));
+      mockExpo.sendPushNotificationsAsync.mockRejectedValue(
+        new Error('All failed'),
+      );
 
       const tickets = await service.sendPushNotifications(messages);
 
@@ -242,7 +252,11 @@ describe('PushNotificationService', () => {
       mockExpo.chunkPushNotificationReceiptIds.mockReturnValue([ticketIds]);
       mockExpo.getPushNotificationReceiptsAsync.mockResolvedValue({
         'ticket-1': { status: 'ok' },
-        'ticket-2': { status: 'error', message: 'DeviceNotRegistered', details: { error: 'DeviceNotRegistered' } },
+        'ticket-2': {
+          status: 'error',
+          message: 'DeviceNotRegistered',
+          details: { error: 'DeviceNotRegistered' },
+        },
       });
 
       const receipts = await service.checkPushNotificationReceipts(ticketIds);
@@ -271,14 +285,18 @@ describe('PushNotificationService', () => {
       const receipts = await service.checkPushNotificationReceipts(ticketIds);
 
       expect(receipts.get('ticket-1')?.status).toBe('error');
-      expect(receipts.get('ticket-1')?.details?.error).toBe('DeviceNotRegistered');
+      expect(receipts.get('ticket-1')?.details?.error).toBe(
+        'DeviceNotRegistered',
+      );
     });
 
     it('should handle network errors gracefully', async () => {
       const ticketIds = ['ticket-1'];
 
       mockExpo.chunkPushNotificationReceiptIds.mockReturnValue([ticketIds]);
-      mockExpo.getPushNotificationReceiptsAsync.mockRejectedValue(new Error('Network error'));
+      mockExpo.getPushNotificationReceiptsAsync.mockRejectedValue(
+        new Error('Network error'),
+      );
 
       const receipts = await service.checkPushNotificationReceipts(ticketIds);
 

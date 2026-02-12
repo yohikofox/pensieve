@@ -231,7 +231,9 @@ describe('KnowledgeEventsGateway (Task 6.1)', () => {
       };
 
       // Act & Assert - Should not throw
-      expect(() => gateway.handleDigestionCompleted(malformedEvent)).not.toThrow();
+      expect(() =>
+        gateway.handleDigestionCompleted(malformedEvent),
+      ).not.toThrow();
     });
 
     it('should handle server not initialized', () => {

@@ -8,7 +8,11 @@
  */
 
 import { Transport, RmqOptions } from '@nestjs/microservices';
-import { QueueNames, ExchangeNames, RoutingKeys } from './queue-names.constants';
+import {
+  QueueNames,
+  ExchangeNames,
+  RoutingKeys,
+} from './queue-names.constants';
 
 export interface RabbitMQConfig {
   url: string;

@@ -62,7 +62,10 @@ describe('UserRepository', () => {
 
       await userRepository.updateNotificationPreferences(userId, preferences);
 
-      expect(mockTypeOrmRepository.update).toHaveBeenCalledWith(userId, preferences);
+      expect(mockTypeOrmRepository.update).toHaveBeenCalledWith(
+        userId,
+        preferences,
+      );
     });
 
     it('should update partial notification preferences', async () => {
@@ -73,7 +76,10 @@ describe('UserRepository', () => {
 
       await userRepository.updateNotificationPreferences(userId, preferences);
 
-      expect(mockTypeOrmRepository.update).toHaveBeenCalledWith(userId, preferences);
+      expect(mockTypeOrmRepository.update).toHaveBeenCalledWith(
+        userId,
+        preferences,
+      );
     });
   });
 

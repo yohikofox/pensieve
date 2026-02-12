@@ -13,7 +13,10 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import type { IProgressStore, JobProgress } from '../../domain/interfaces/progress-store.interface';
+import type {
+  IProgressStore,
+  JobProgress,
+} from '../../domain/interfaces/progress-store.interface';
 
 @Injectable()
 export class InMemoryProgressStore implements IProgressStore {

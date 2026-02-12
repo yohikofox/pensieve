@@ -45,7 +45,9 @@ export class SupabaseAdminService {
       await this.adminClient.auth.admin.getUserById(userId);
 
     if (error || !data?.user) {
-      throw new Error(`Failed to fetch user profile: ${error?.message || 'User not found'}`);
+      throw new Error(
+        `Failed to fetch user profile: ${error?.message || 'User not found'}`,
+      );
     }
 
     const user = data.user;
@@ -63,11 +65,10 @@ export class SupabaseAdminService {
    * Verify user password (for account deletion confirmation)
    */
   async verifyPassword(email: string, password: string): Promise<boolean> {
-    const { data, error } =
-      await this.adminClient.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { data, error } = await this.adminClient.auth.signInWithPassword({
+      email,
+      password,
+    });
     return !error && !!data.user;
   }
 }

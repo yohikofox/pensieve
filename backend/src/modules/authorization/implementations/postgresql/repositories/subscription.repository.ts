@@ -50,9 +50,7 @@ export class SubscriptionRepository extends Repository<UserSubscription> {
       return [];
     }
 
-    return (
-      subscription.tier.tierPermissions?.map((tp) => tp.permission) || []
-    );
+    return subscription.tier.tierPermissions?.map((tp) => tp.permission) || [];
   }
 
   /**
@@ -61,10 +59,7 @@ export class SubscriptionRepository extends Repository<UserSubscription> {
    * @param permissionId - Permission ID
    * @returns true if subscription includes the permission
    */
-  async hasPermission(
-    userId: string,
-    permissionId: string,
-  ): Promise<boolean> {
+  async hasPermission(userId: string, permissionId: string): Promise<boolean> {
     const count = await this.createQueryBuilder('subscription')
       .innerJoin('subscription.tier', 'tier')
       .innerJoin('tier.tierPermissions', 'tierPermission')

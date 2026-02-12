@@ -26,7 +26,10 @@ import { EventBusService } from '../services/event-bus.service';
 import { ContentExtractorService } from '../services/content-extractor.service';
 import { ContentChunkerService } from '../services/content-chunker.service';
 import { ThoughtRepository } from '../repositories/thought.repository';
-import { TodoRepository, CreateTodoDto } from '../../../action/application/repositories/todo.repository';
+import {
+  TodoRepository,
+  CreateTodoDto,
+} from '../../../action/application/repositories/todo.repository';
 import { DeadlineParserService } from '../../../action/application/services/deadline-parser.service';
 import { ProgressNotificationService } from '../../../notification/application/services/ProgressNotificationService';
 import { DataSource } from 'typeorm';
@@ -107,7 +110,8 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       const duration = Date.now() - startTime;
 
       // Subtask 5.4: Log error details for debugging
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const stackTrace = error instanceof Error ? error.stack || '' : '';
 
       this.logger.error(
@@ -160,7 +164,10 @@ export class DigestionJobConsumer implements OnModuleDestroy {
           job,
         );
         this.eventBus.publish('digestion.job.failed', failedEvent.toJSON());
-        this.logger.error(`Job permanently failed: ${job.captureId}`, failedEvent.toJSON());
+        this.logger.error(
+          `Job permanently failed: ${job.captureId}`,
+          failedEvent.toJSON(),
+        );
 
         // TODO: Send alert to monitoring system
       } else {
@@ -200,9 +207,11 @@ export class DigestionJobConsumer implements OnModuleDestroy {
   private createTimeoutPromise(captureId: string): Promise<void> {
     return new Promise((_, reject) => {
       setTimeout(() => {
-        reject(new Error(
-          `Job timeout: ${captureId} exceeded ${this.JOB_TIMEOUT_MS}ms limit`,
-        ));
+        reject(
+          new Error(
+            `Job timeout: ${captureId} exceeded ${this.JOB_TIMEOUT_MS}ms limit`,
+          ),
+        );
       }, this.JOB_TIMEOUT_MS);
     });
   }
@@ -277,10 +286,19 @@ export class DigestionJobConsumer implements OnModuleDestroy {
         job.userId,
         70,
       );
-      const { summary, ideas, todos = [], confidence, wasChunked, chunkCount } = digestionResult;
+      const {
+        summary,
+        ideas,
+        todos = [],
+        confidence,
+        wasChunked,
+        chunkCount,
+      } = digestionResult;
 
       if (wasChunked) {
-        this.logger.log(`📊 Content was chunked into ${chunkCount} parts for processing`);
+        this.logger.log(
+          `📊 Content was chunked into ${chunkCount} parts for processing`,
+        );
       }
 
       // Story 4.3: Log todos extraction
@@ -292,15 +310,16 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       const processingTimeMs = Date.now() - startTime;
       const confidenceScore = this.mapConfidenceToScore(confidence);
 
-      const { thought, createdTodos } = await this.createThoughtWithIdeasAndTodos(
-        job.captureId,
-        job.userId,
-        summary,
-        ideas,
-        todos,
-        processingTimeMs,
-        confidenceScore,
-      );
+      const { thought, createdTodos } =
+        await this.createThoughtWithIdeasAndTodos(
+          job.captureId,
+          job.userId,
+          summary,
+          ideas,
+          todos,
+          processingTimeMs,
+          confidenceScore,
+        );
 
       await this.progressNotificationService.updateProgressWithNotifications(
         job.captureId,
@@ -401,7 +420,11 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     userId: string,
     summary: string,
     ideas: string[],
-    todos: Array<{ description: string; deadline: string | null; priority: 'low' | 'medium' | 'high' }>,
+    todos: Array<{
+      description: string;
+      deadline: string | null;
+      priority: 'low' | 'medium' | 'high';
+    }>,
     processingTimeMs: number,
     confidenceScore?: number,
   ): Promise<{ thought: Thought; createdTodos: Todo[] }> {
@@ -507,7 +530,9 @@ export class DigestionJobConsumer implements OnModuleDestroy {
     this.isShuttingDown = true;
 
     if (this.activeJobs.size > 0) {
-      this.logger.log(`⏳ Waiting for ${this.activeJobs.size} active jobs to finish...`);
+      this.logger.log(
+        `⏳ Waiting for ${this.activeJobs.size} active jobs to finish...`,
+      );
       await Promise.allSettled(Array.from(this.activeJobs));
       this.logger.log('✅ All active jobs finished');
     }

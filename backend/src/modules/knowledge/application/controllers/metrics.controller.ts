@@ -15,9 +15,7 @@ import { QueueMonitoringService } from '../services/queue-monitoring.service';
 @Controller('metrics')
 @UseGuards(SupabaseAuthGuard)
 export class MetricsController {
-  constructor(
-    private readonly queueMonitoring: QueueMonitoringService,
-  ) {}
+  constructor(private readonly queueMonitoring: QueueMonitoringService) {}
 
   /**
    * Prometheus metrics endpoint

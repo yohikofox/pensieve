@@ -98,7 +98,8 @@ export class QueueMonitoringService {
     } catch (error) {
       // Fallback to 0 if RabbitMQ Management API is not available
       // This is expected in dev/test environments without RabbitMQ
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Failed to query RabbitMQ queue depth, falling back to 0: ${errorMessage}`,
       );
@@ -113,7 +114,9 @@ export class QueueMonitoringService {
    * @param threshold - Max acceptable queue depth (default: 100)
    * @returns True if queue is overloaded
    */
-  async isQueueOverloaded(threshold: number = this.OVERLOAD_THRESHOLD): Promise<boolean> {
+  async isQueueOverloaded(
+    threshold: number = this.OVERLOAD_THRESHOLD,
+  ): Promise<boolean> {
     const queueDepth = await this.getQueueDepth();
     const isOverloaded = queueDepth > threshold;
 
@@ -195,7 +198,8 @@ export class QueueMonitoringService {
   async getMetrics(): Promise<QueueMetrics> {
     const avgLatency =
       this.latencies.length > 0
-        ? this.latencies.reduce((sum, lat) => sum + lat, 0) / this.latencies.length
+        ? this.latencies.reduce((sum, lat) => sum + lat, 0) /
+          this.latencies.length
         : 0;
 
     const currentQueueDepth = await this.getQueueDepth();

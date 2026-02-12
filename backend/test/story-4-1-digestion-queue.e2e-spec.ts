@@ -14,7 +14,8 @@ describe('Story 4.1 - Digestion Queue Infrastructure (AC1)', () => {
   let rabbitMQConnection: amqp.Connection;
   let channel: amqp.Channel;
 
-  const RABBITMQ_URL = process.env.RABBITMQ_URL || 'amqp://pensine:pensine@10.0.0.2:5672';
+  const RABBITMQ_URL =
+    process.env.RABBITMQ_URL || 'amqp://pensine:pensine@10.0.0.2:5672';
   const DIGESTION_QUEUE = 'digestion-jobs';
   const DEAD_LETTER_QUEUE = 'digestion-failed';
   const DEAD_LETTER_EXCHANGE = 'digestion-dlx';
@@ -25,7 +26,10 @@ describe('Story 4.1 - Digestion Queue Infrastructure (AC1)', () => {
       rabbitMQConnection = await amqp.connect(RABBITMQ_URL);
       channel = await rabbitMQConnection.createChannel();
     } catch (error) {
-      console.error('Failed to connect to RabbitMQ. Make sure RabbitMQ is running:', error);
+      console.error(
+        'Failed to connect to RabbitMQ. Make sure RabbitMQ is running:',
+        error,
+      );
       throw error;
     }
   });

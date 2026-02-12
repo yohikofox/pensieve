@@ -263,7 +263,9 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
           [tier.name, tier.priceMonthly, tier.isActive],
         );
         tierIds[tier.name] = result[0].id;
-        console.log(`  ✓ Created tier "${tier.name}" (€${tier.priceMonthly}/month)`);
+        console.log(
+          `  ✓ Created tier "${tier.name}" (€${tier.priceMonthly}/month)`,
+        );
       }
     }
 

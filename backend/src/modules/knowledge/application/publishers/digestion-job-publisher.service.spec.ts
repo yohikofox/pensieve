@@ -160,8 +160,12 @@ describe('DigestionJobPublisher (AC2)', () => {
 
       const payload = mockRabbitMQClient.emit.mock.calls[0][1];
       expect(payload.queuedAt).toBeInstanceOf(Date);
-      expect(payload.queuedAt.getTime()).toBeGreaterThanOrEqual(beforePublish.getTime());
-      expect(payload.queuedAt.getTime()).toBeLessThanOrEqual(afterPublish.getTime());
+      expect(payload.queuedAt.getTime()).toBeGreaterThanOrEqual(
+        beforePublish.getTime(),
+      );
+      expect(payload.queuedAt.getTime()).toBeLessThanOrEqual(
+        afterPublish.getTime(),
+      );
     });
 
     it('should initialize retryCount to 0', async () => {

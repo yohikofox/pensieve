@@ -1,16 +1,24 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  Inject,
+} from '@nestjs/common';
 import {
   PermissionCheckParams,
   ShareResourceParams,
   ResourceType,
 } from '../../../core';
 import type { IAuthorizationService } from '../../../core';
-import type { IPermissionChecker } from '../../../core/interfaces/permission-checker.interface';
-import type { IResourceAccessControl } from '../../../core/interfaces/resource-access-control.interface';
+import type * as PermissionCheckerNS from '../../../core/interfaces/permission-checker.interface';
+import type * as ResourceAccessControlNS from '../../../core/interfaces/resource-access-control.interface';
 import { PermissionRepository } from '../repositories/permission.repository';
 import { ResourceShareRepository } from '../repositories/resource-share.repository';
 import { ResourceShare } from '../entities/resource-share.entity';
 import { DataSource } from 'typeorm';
+
+type IPermissionChecker = PermissionCheckerNS.IPermissionChecker;
+type IResourceAccessControl = ResourceAccessControlNS.IResourceAccessControl;
 
 /**
  * PostgreSQL implementation of the authorization service
@@ -26,7 +34,9 @@ export class PostgreSQLAuthorizationService implements IAuthorizationService {
   constructor(
     private readonly permissionRepo: PermissionRepository,
     private readonly resourceShareRepo: ResourceShareRepository,
+    @Inject('IPermissionChecker')
     private readonly permissionChecker: IPermissionChecker,
+    @Inject('IResourceAccessControl')
     private readonly resourceAccessControl: IResourceAccessControl,
     private readonly dataSource: DataSource,
   ) {}
@@ -194,9 +204,7 @@ export class PostgreSQLAuthorizationService implements IAuthorizationService {
     );
 
     if (!isOwner) {
-      throw new ForbiddenException(
-        'Only the owner can share this resource',
-      );
+      throw new ForbiddenException('Only the owner can share this resource');
     }
 
     // Verify resource exists
@@ -213,9 +221,7 @@ export class PostgreSQLAuthorizationService implements IAuthorizationService {
     );
 
     if (resourceExists.length === 0) {
-      throw new NotFoundException(
-        `${params.resourceType} not found`,
-      );
+      throw new NotFoundException(`${params.resourceType} not found`);
     }
 
     // Get share role ID

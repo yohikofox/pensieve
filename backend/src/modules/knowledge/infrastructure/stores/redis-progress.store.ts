@@ -13,20 +13,33 @@
  * - Supports pub/sub for real-time updates (future)
  */
 
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createClient, RedisClientType } from 'redis';
-import type { IProgressStore, JobProgress } from '../../domain/interfaces/progress-store.interface';
+import type {
+  IProgressStore,
+  JobProgress,
+} from '../../domain/interfaces/progress-store.interface';
 
 @Injectable()
-export class RedisProgressStore implements IProgressStore, OnModuleInit, OnModuleDestroy {
+export class RedisProgressStore
+  implements IProgressStore, OnModuleInit, OnModuleDestroy
+{
   private readonly logger = new Logger(RedisProgressStore.name);
   private client: RedisClientType;
   private readonly RETENTION_SECONDS = 5 * 60; // 5 minutes TTL
   private readonly KEY_PREFIX = 'progress:';
 
   constructor(private readonly configService: ConfigService) {
-    const redisUrl = this.configService.get<string>('REDIS_URL', 'redis://localhost:6379');
+    const redisUrl = this.configService.get<string>(
+      'REDIS_URL',
+      'redis://localhost:6379',
+    );
     this.client = createClient({ url: redisUrl });
 
     this.client.on('error', (err) => {
@@ -77,7 +90,9 @@ export class RedisProgressStore implements IProgressStore, OnModuleInit, OnModul
     const data = await this.client.get(key);
 
     if (!data) {
-      this.logger.warn(`Cannot update progress: ${captureId} not found in Redis`);
+      this.logger.warn(
+        `Cannot update progress: ${captureId} not found in Redis`,
+      );
       return;
     }
 
@@ -95,7 +110,9 @@ export class RedisProgressStore implements IProgressStore, OnModuleInit, OnModul
     const data = await this.client.get(key);
 
     if (!data) {
-      this.logger.warn(`Cannot complete tracking: ${captureId} not found in Redis`);
+      this.logger.warn(
+        `Cannot complete tracking: ${captureId} not found in Redis`,
+      );
       return;
     }
 
@@ -106,7 +123,8 @@ export class RedisProgressStore implements IProgressStore, OnModuleInit, OnModul
     progress.percentage = 100;
     progress.completedAt = now;
     progress.lastUpdatedAt = now;
-    progress.durationMs = now.getTime() - new Date(progress.startedAt).getTime();
+    progress.durationMs =
+      now.getTime() - new Date(progress.startedAt).getTime();
 
     // Store with shorter TTL for completed jobs
     await this.client.set(key, JSON.stringify(progress), {
@@ -133,7 +151,8 @@ export class RedisProgressStore implements IProgressStore, OnModuleInit, OnModul
     progress.error = error;
     progress.completedAt = now;
     progress.lastUpdatedAt = now;
-    progress.durationMs = now.getTime() - new Date(progress.startedAt).getTime();
+    progress.durationMs =
+      now.getTime() - new Date(progress.startedAt).getTime();
 
     // Store with shorter TTL for failed jobs
     await this.client.set(key, JSON.stringify(progress), {

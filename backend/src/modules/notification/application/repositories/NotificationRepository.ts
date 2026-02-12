@@ -11,7 +11,10 @@
 
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository, LessThan } from 'typeorm';
-import { Notification, DeliveryStatus } from '../../domain/entities/Notification.entity';
+import {
+  Notification,
+  DeliveryStatus,
+} from '../../domain/entities/Notification.entity';
 import { INotificationRepository } from '../../domain/interfaces/INotificationRepository';
 
 @Injectable()
@@ -34,7 +37,10 @@ export class NotificationRepository implements INotificationRepository {
     return notification;
   }
 
-  async findByUserId(userId: string, limit: number = 50): Promise<Notification[]> {
+  async findByUserId(
+    userId: string,
+    limit: number = 50,
+  ): Promise<Notification[]> {
     const notifications = await this.repository.find({
       where: { userId },
       order: { createdAt: 'DESC' },

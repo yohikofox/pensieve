@@ -57,7 +57,9 @@ describe('DigestionCompletedListener', () => {
       ],
     }).compile();
 
-    listener = module.get<DigestionCompletedListener>(DigestionCompletedListener);
+    listener = module.get<DigestionCompletedListener>(
+      DigestionCompletedListener,
+    );
   });
 
   afterEach(() => {
@@ -68,8 +70,12 @@ describe('DigestionCompletedListener', () => {
     it('should send push notification when preferences enabled', async () => {
       await listener.handleDigestionCompleted(mockEvent);
 
-      expect(mockUserRepository.getUserNotificationSettings).toHaveBeenCalledWith('user-789');
-      expect(mockPushNotificationService.sendDigestionCompleteNotification).toHaveBeenCalledWith(
+      expect(
+        mockUserRepository.getUserNotificationSettings,
+      ).toHaveBeenCalledWith('user-789');
+      expect(
+        mockPushNotificationService.sendDigestionCompleteNotification,
+      ).toHaveBeenCalledWith(
         'user-789',
         'ExponentPushToken[xxxxxx]',
         'capture-456',
@@ -89,8 +95,12 @@ describe('DigestionCompletedListener', () => {
 
       await listener.handleDigestionCompleted(mockEvent);
 
-      expect(mockUserRepository.getUserNotificationSettings).toHaveBeenCalledWith('user-789');
-      expect(mockPushNotificationService.sendDigestionCompleteNotification).not.toHaveBeenCalled();
+      expect(
+        mockUserRepository.getUserNotificationSettings,
+      ).toHaveBeenCalledWith('user-789');
+      expect(
+        mockPushNotificationService.sendDigestionCompleteNotification,
+      ).not.toHaveBeenCalled();
     });
 
     it('should NOT send notification if user has no push token', async () => {
@@ -103,8 +113,12 @@ describe('DigestionCompletedListener', () => {
 
       await listener.handleDigestionCompleted(mockEvent);
 
-      expect(mockUserRepository.getUserNotificationSettings).toHaveBeenCalledWith('user-789');
-      expect(mockPushNotificationService.sendDigestionCompleteNotification).not.toHaveBeenCalled();
+      expect(
+        mockUserRepository.getUserNotificationSettings,
+      ).toHaveBeenCalledWith('user-789');
+      expect(
+        mockPushNotificationService.sendDigestionCompleteNotification,
+      ).not.toHaveBeenCalled();
     });
 
     it('should NOT send notification if user settings not found', async () => {
@@ -112,19 +126,27 @@ describe('DigestionCompletedListener', () => {
 
       await listener.handleDigestionCompleted(mockEvent);
 
-      expect(mockUserRepository.getUserNotificationSettings).toHaveBeenCalledWith('user-789');
-      expect(mockPushNotificationService.sendDigestionCompleteNotification).not.toHaveBeenCalled();
+      expect(
+        mockUserRepository.getUserNotificationSettings,
+      ).toHaveBeenCalledWith('user-789');
+      expect(
+        mockPushNotificationService.sendDigestionCompleteNotification,
+      ).not.toHaveBeenCalled();
     });
 
     it('should log error if notification send fails', async () => {
-      mockPushNotificationService.sendDigestionCompleteNotification.mockResolvedValue({
-        success: false,
-        error: 'DeviceNotRegistered',
-      });
+      mockPushNotificationService.sendDigestionCompleteNotification.mockResolvedValue(
+        {
+          success: false,
+          error: 'DeviceNotRegistered',
+        },
+      );
 
       await listener.handleDigestionCompleted(mockEvent);
 
-      expect(mockPushNotificationService.sendDigestionCompleteNotification).toHaveBeenCalled();
+      expect(
+        mockPushNotificationService.sendDigestionCompleteNotification,
+      ).toHaveBeenCalled();
       // Error should be logged (tested via logger spy if needed)
     });
 
@@ -134,7 +156,9 @@ describe('DigestionCompletedListener', () => {
       );
 
       // Should not throw
-      await expect(listener.handleDigestionCompleted(mockEvent)).resolves.not.toThrow();
+      await expect(
+        listener.handleDigestionCompleted(mockEvent),
+      ).resolves.not.toThrow();
     });
   });
 });

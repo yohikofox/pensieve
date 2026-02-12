@@ -8,7 +8,17 @@
  * AC5: Retry Logic and Error Handling
  */
 
-import { Controller, Post, Param, HttpCode, HttpStatus, Logger, UseGuards, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  HttpCode,
+  HttpStatus,
+  Logger,
+  UseGuards,
+  Inject,
+  NotFoundException,
+} from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';

@@ -14,9 +14,7 @@ import { MigrationInterface, QueryRunner, TableColumn } from 'typeorm';
  * NFR13: User notification preferences isolated per user
  * ADR-013: Hybrid notification strategy (local + push)
  */
-export class AddPushTokenAndNotificationPreferencesToUsers1738869800000
-  implements MigrationInterface
-{
+export class AddPushTokenAndNotificationPreferencesToUsers1738869800000 implements MigrationInterface {
   name = 'AddPushTokenAndNotificationPreferencesToUsers1738869800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -46,7 +44,9 @@ export class AddPushTokenAndNotificationPreferencesToUsers1738869800000
     }
 
     // Add pushNotificationsEnabled column (if not exists)
-    const hasPushNotificationsEnabled = usersTable.findColumnByName('pushNotificationsEnabled');
+    const hasPushNotificationsEnabled = usersTable.findColumnByName(
+      'pushNotificationsEnabled',
+    );
     if (!hasPushNotificationsEnabled) {
       await queryRunner.addColumn(
         'users',
@@ -63,7 +63,9 @@ export class AddPushTokenAndNotificationPreferencesToUsers1738869800000
     }
 
     // Add localNotificationsEnabled column (if not exists)
-    const hasLocalNotificationsEnabled = usersTable.findColumnByName('localNotificationsEnabled');
+    const hasLocalNotificationsEnabled = usersTable.findColumnByName(
+      'localNotificationsEnabled',
+    );
     if (!hasLocalNotificationsEnabled) {
       await queryRunner.addColumn(
         'users',
@@ -80,7 +82,9 @@ export class AddPushTokenAndNotificationPreferencesToUsers1738869800000
     }
 
     // Add hapticFeedbackEnabled column (if not exists)
-    const hasHapticFeedbackEnabled = usersTable.findColumnByName('hapticFeedbackEnabled');
+    const hasHapticFeedbackEnabled = usersTable.findColumnByName(
+      'hapticFeedbackEnabled',
+    );
     if (!hasHapticFeedbackEnabled) {
       await queryRunner.addColumn(
         'users',

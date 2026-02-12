@@ -114,10 +114,7 @@ Pour toute question, contactez: support@pensine.app
    * 2. PostgreSQL data deletion (CASCADE)
    * 3. Supabase auth user deletion
    */
-  async deleteUserAccount(
-    userId: string,
-    req: Request,
-  ): Promise<void> {
+  async deleteUserAccount(userId: string, req: Request): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
     await queryRunner.connect();
     await queryRunner.startTransaction();

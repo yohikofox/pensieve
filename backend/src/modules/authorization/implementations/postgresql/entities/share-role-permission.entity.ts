@@ -31,9 +31,13 @@ export class ShareRolePermission {
   @JoinColumn({ name: 'shareRoleId' })
   shareRole!: ShareRole;
 
-  @ManyToOne(() => Permission, (permission) => permission.shareRolePermissions, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(
+    () => Permission,
+    (permission) => permission.shareRolePermissions,
+    {
+      onDelete: 'CASCADE',
+    },
+  )
   @JoinColumn({ name: 'permissionId' })
   permission!: Permission;
 }

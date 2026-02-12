@@ -52,7 +52,9 @@ export class ContentExtractorService {
         contentType = 'text';
 
         if (content === null || content === undefined) {
-          throw new Error(`No content available for TEXT capture: ${captureId}`);
+          throw new Error(
+            `No content available for TEXT capture: ${captureId}`,
+          );
         }
       } else if (captureType === 'AUDIO') {
         // Subtask 3.2: Extract audio transcription
@@ -86,7 +88,8 @@ export class ContentExtractorService {
         contentType,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(`❌ Content extraction failed: ${errorMessage}`, error);
       throw error;
     }

@@ -1,4 +1,9 @@
-import { MigrationInterface, QueryRunner, Table, TableForeignKey } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableForeignKey,
+} from 'typeorm';
 
 /**
  * Migration: Create Notifications Table
@@ -48,7 +53,8 @@ export class CreateNotificationsTable1738869700000 implements MigrationInterface
             type: 'varchar',
             length: '50',
             isNullable: false,
-            comment: 'Notification type: queued, processing, completed, failed, etc.',
+            comment:
+              'Notification type: queued, processing, completed, failed, etc.',
           },
           {
             name: 'title',
@@ -157,7 +163,10 @@ export class CreateNotificationsTable1738869700000 implements MigrationInterface
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop foreign key first
-    await queryRunner.dropForeignKey('notifications', 'fk_notifications_userId');
+    await queryRunner.dropForeignKey(
+      'notifications',
+      'fk_notifications_userId',
+    );
 
     // Drop table
     await queryRunner.dropTable('notifications');

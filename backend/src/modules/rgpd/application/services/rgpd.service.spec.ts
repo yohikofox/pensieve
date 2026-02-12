@@ -88,9 +88,8 @@ describe('RgpdService', () => {
     auditLogRepository = module.get<Repository<AuditLog>>(
       getRepositoryToken(AuditLog),
     );
-    supabaseAdminService = module.get<SupabaseAdminService>(
-      SupabaseAdminService,
-    );
+    supabaseAdminService =
+      module.get<SupabaseAdminService>(SupabaseAdminService);
     dataSource = module.get<DataSource>(DataSource);
   });
 
@@ -178,9 +177,9 @@ describe('RgpdService', () => {
         .mockRejectedValue(new Error('Supabase error'));
 
       // Act & Assert
-      await expect(
-        service.generateExport(userId, mockRequest),
-      ).rejects.toThrow('Supabase error');
+      await expect(service.generateExport(userId, mockRequest)).rejects.toThrow(
+        'Supabase error',
+      );
       expect(fs.remove).toHaveBeenCalled();
     });
 

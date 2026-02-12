@@ -19,22 +19,24 @@ describe('ContentChunkerService Integration Tests (Task 7.6)', () => {
 
     // Mock OpenAI service with realistic responses
     const mockOpenAIService = {
-      digestContent: jest.fn().mockImplementation(async (content: string, contentType: string) => {
-        digestContentCalls++;
+      digestContent: jest
+        .fn()
+        .mockImplementation(async (content: string, contentType: string) => {
+          digestContentCalls++;
 
-        // Simulate different responses based on content
-        const wordCount = content.split(/\s+/).length;
+          // Simulate different responses based on content
+          const wordCount = content.split(/\s+/).length;
 
-        return {
-          summary: `Summary for chunk with ${wordCount} words. ${content.substring(0, 50)}...`,
-          ideas: [
-            `Key idea 1 from ${wordCount} word chunk`,
-            `Key idea 2 from content chunk ${digestContentCalls}`,
-            `Key idea 3 based on chunk analysis`,
-          ],
-          confidence: wordCount > 100 ? 'high' : 'medium',
-        };
-      }),
+          return {
+            summary: `Summary for chunk with ${wordCount} words. ${content.substring(0, 50)}...`,
+            ideas: [
+              `Key idea 1 from ${wordCount} word chunk`,
+              `Key idea 2 from content chunk ${digestContentCalls}`,
+              `Key idea 3 based on chunk analysis`,
+            ],
+            confidence: wordCount > 100 ? 'high' : 'medium',
+          };
+        }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -129,9 +131,18 @@ collaboration strategies. `.repeat(1000); // ~1000 repetitions
 
     it('should merge summaries from multiple chunks coherently', async () => {
       // Arrange - Content that will produce multiple chunks
-      const paragraph1 = 'First section discusses project planning and requirements gathering. '.repeat(200);
-      const paragraph2 = 'Second section covers implementation strategies and coding practices. '.repeat(200);
-      const paragraph3 = 'Third section explains testing methodologies and quality assurance. '.repeat(200);
+      const paragraph1 =
+        'First section discusses project planning and requirements gathering. '.repeat(
+          200,
+        );
+      const paragraph2 =
+        'Second section covers implementation strategies and coding practices. '.repeat(
+          200,
+        );
+      const paragraph3 =
+        'Third section explains testing methodologies and quality assurance. '.repeat(
+          200,
+        );
       const longContent = paragraph1 + paragraph2 + paragraph3;
 
       // Act
@@ -151,19 +162,22 @@ collaboration strategies. `.repeat(1000); // ~1000 repetitions
 
     it('should deduplicate ideas across chunks', async () => {
       // Arrange - Content with repetitive themes
-      const repeatedTheme = 'The importance of code quality cannot be overstated. '.repeat(100);
+      const repeatedTheme =
+        'The importance of code quality cannot be overstated. '.repeat(100);
       const longContent = repeatedTheme + repeatedTheme + repeatedTheme;
 
       // Mock to return duplicate ideas
-      (openaiService.digestContent as jest.Mock).mockImplementation(async () => ({
-        summary: 'Summary about code quality',
-        ideas: [
-          'Code quality is important',
-          'Quality standards matter',
-          'Code quality is important', // Duplicate
-        ],
-        confidence: 'high',
-      }));
+      (openaiService.digestContent as jest.Mock).mockImplementation(
+        async () => ({
+          summary: 'Summary about code quality',
+          ideas: [
+            'Code quality is important',
+            'Quality standards matter',
+            'Code quality is important', // Duplicate
+          ],
+          confidence: 'high',
+        }),
+      );
 
       // Act
       const result = await service.processContent(longContent, 'text');
@@ -322,7 +336,8 @@ app.use((err, req, res, next) => {
 
     it('should handle book chapter length content (~10000 words)', async () => {
       // Arrange - Book chapter
-      const paragraph = 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(20);
+      const paragraph =
+        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. '.repeat(20);
       const section = `\n\n## Section Title\n\n${paragraph}\n\n`;
       const bookChapter = section.repeat(100); // ~10,000 words
 
@@ -357,20 +372,22 @@ app.use((err, req, res, next) => {
     it('should process chunks sequentially (not in parallel)', async () => {
       // Arrange
       const callOrder: number[] = [];
-      (openaiService.digestContent as jest.Mock).mockImplementation(async () => {
-        digestContentCalls++; // Increment counter
-        const callNumber = digestContentCalls;
-        callOrder.push(callNumber);
+      (openaiService.digestContent as jest.Mock).mockImplementation(
+        async () => {
+          digestContentCalls++; // Increment counter
+          const callNumber = digestContentCalls;
+          callOrder.push(callNumber);
 
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 10));
+          // Simulate processing time
+          await new Promise((resolve) => setTimeout(resolve, 10));
 
-        return {
-          summary: `Summary ${callNumber}`,
-          ideas: [`Idea from chunk ${callNumber}`],
-          confidence: 'high',
-        };
-      });
+          return {
+            summary: `Summary ${callNumber}`,
+            ideas: [`Idea from chunk ${callNumber}`],
+            confidence: 'high',
+          };
+        },
+      );
 
       const longContent = 'word '.repeat(20000); // Force chunking
 

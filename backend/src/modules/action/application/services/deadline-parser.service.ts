@@ -74,7 +74,9 @@ export class DeadlineParserService {
 
       return { date: parsedDate, confidence };
     } catch (error) {
-      this.logger.error(`❌ Error parsing deadline "${deadlineText}": ${error}`);
+      this.logger.error(
+        `❌ Error parsing deadline "${deadlineText}": ${error}`,
+      );
       return { date: null, confidence: 0.0 };
     }
   }
@@ -110,12 +112,20 @@ export class DeadlineParserService {
     }
 
     // Medium-high confidence: Day of week or relative day (tomorrow, today)
-    if (hasDayOfWeek || originalText.includes('today') || originalText.includes('tomorrow')) {
+    if (
+      hasDayOfWeek ||
+      originalText.includes('today') ||
+      originalText.includes('tomorrow')
+    ) {
       return 0.8;
     }
 
     // Medium confidence: Month or relative expressions with month
-    if (hasMonth || originalText.includes('next week') || originalText.includes('semaine')) {
+    if (
+      hasMonth ||
+      originalText.includes('next week') ||
+      originalText.includes('semaine')
+    ) {
       return 0.6;
     }
 
@@ -177,7 +187,9 @@ export class DeadlineParserService {
     if (!date) return 'none';
 
     const msPerDay = 24 * 60 * 60 * 1000;
-    const daysUntil = Math.floor((date.getTime() - referenceDate.getTime()) / msPerDay);
+    const daysUntil = Math.floor(
+      (date.getTime() - referenceDate.getTime()) / msPerDay,
+    );
 
     if (daysUntil < 0) return 'overdue';
     if (daysUntil === 0) return 'urgent'; // Today

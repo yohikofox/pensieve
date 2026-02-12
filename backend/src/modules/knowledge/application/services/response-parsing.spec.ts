@@ -22,7 +22,9 @@ describe('Response Parsing Logic (Task 5.7)', () => {
       const validated = validateDigestionResponse(parsed);
 
       // Assert
-      expect(validated.summary).toBe('This is a valid summary that meets the length requirements.');
+      expect(validated.summary).toBe(
+        'This is a valid summary that meets the length requirements.',
+      );
       expect(validated.ideas).toHaveLength(3);
       expect(validated.confidence).toBe('high');
     });
@@ -78,16 +80,25 @@ Key Ideas:
       `.trim();
 
       // Act - Manual parsing (simulating fallback logic)
-      const summaryMatch = plainTextResponse.match(/Summary:\s*(.+?)(?=\n\n|$)/s);
-      const ideasMatch = plainTextResponse.match(/Key Ideas:\s*\n((?:- .+\n?)+)/);
+      const summaryMatch = plainTextResponse.match(
+        /Summary:\s*(.+?)(?=\n\n|$)/s,
+      );
+      const ideasMatch = plainTextResponse.match(
+        /Key Ideas:\s*\n((?:- .+\n?)+)/,
+      );
 
       const summary = summaryMatch ? summaryMatch[1].trim() : '';
       const ideas = ideasMatch
-        ? ideasMatch[1].split('\n').filter(line => line.startsWith('- ')).map(line => line.replace(/^- /, '').trim())
+        ? ideasMatch[1]
+            .split('\n')
+            .filter((line) => line.startsWith('- '))
+            .map((line) => line.replace(/^- /, '').trim())
         : [];
 
       // Assert
-      expect(summary).toBe('This is a plain text summary that needs to be extracted from the response.');
+      expect(summary).toBe(
+        'This is a plain text summary that needs to be extracted from the response.',
+      );
       expect(ideas).toHaveLength(3);
       expect(ideas[0]).toBe('First important idea from the content');
     });
@@ -101,8 +112,12 @@ No clear summary or ideas section
       `.trim();
 
       // Act - Attempt to extract
-      const summaryMatch = malformedResponse.match(/Summary:\s*(.+?)(?=\n\n|$)/s);
-      const ideasMatch = malformedResponse.match(/Key Ideas:\s*\n((?:- .+\n?)+)/);
+      const summaryMatch = malformedResponse.match(
+        /Summary:\s*(.+?)(?=\n\n|$)/s,
+      );
+      const ideasMatch = malformedResponse.match(
+        /Key Ideas:\s*\n((?:- .+\n?)+)/,
+      );
 
       // Assert - Should return empty/default values
       expect(summaryMatch).toBeNull();
@@ -122,16 +137,25 @@ This is a markdown formatted summary with proper structure.
       `.trim();
 
       // Act
-      const summaryMatch = markdownResponse.match(/## Summary\s*\n(.+?)(?=\n##|$)/s);
-      const ideasMatch = markdownResponse.match(/## Key Ideas\s*\n((?:- .+\n?)+)/);
+      const summaryMatch = markdownResponse.match(
+        /## Summary\s*\n(.+?)(?=\n##|$)/s,
+      );
+      const ideasMatch = markdownResponse.match(
+        /## Key Ideas\s*\n((?:- .+\n?)+)/,
+      );
 
       const summary = summaryMatch ? summaryMatch[1].trim() : '';
       const ideas = ideasMatch
-        ? ideasMatch[1].split('\n').filter(line => line.startsWith('- ')).map(line => line.replace(/^- /, '').trim())
+        ? ideasMatch[1]
+            .split('\n')
+            .filter((line) => line.startsWith('- '))
+            .map((line) => line.replace(/^- /, '').trim())
         : [];
 
       // Assert
-      expect(summary).toBe('This is a markdown formatted summary with proper structure.');
+      expect(summary).toBe(
+        'This is a markdown formatted summary with proper structure.',
+      );
       expect(ideas).toHaveLength(3);
     });
   });
@@ -191,10 +215,7 @@ This is a markdown formatted summary with proper structure.
       // Arrange
       const responseWithQuotes = JSON.stringify({
         summary: 'Summary with "quoted text" inside',
-        ideas: [
-          'Idea with "double quotes"',
-          "Idea with 'single quotes'",
-        ],
+        ideas: ['Idea with "double quotes"', "Idea with 'single quotes'"],
         confidence: 'medium',
       });
 
@@ -209,7 +230,8 @@ This is a markdown formatted summary with proper structure.
 
     it('should handle truncated JSON responses', () => {
       // Arrange - JSON cut off mid-response
-      const truncatedJSON = '{"summary":"This is a truncated","ideas":["First idea","Second';
+      const truncatedJSON =
+        '{"summary":"This is a truncated","ideas":["First idea","Second';
 
       // Act & Assert
       expect(() => JSON.parse(truncatedJSON)).toThrow(SyntaxError);
@@ -231,9 +253,13 @@ This is a markdown formatted summary with proper structure.
 
   describe('Confidence Level Parsing', () => {
     it('should parse all valid confidence levels', () => {
-      const levels: Array<'high' | 'medium' | 'low'> = ['high', 'medium', 'low'];
+      const levels: Array<'high' | 'medium' | 'low'> = [
+        'high',
+        'medium',
+        'low',
+      ];
 
-      levels.forEach(level => {
+      levels.forEach((level) => {
         // Arrange
         const response = JSON.stringify({
           summary: `Summary with ${level} confidence`,
@@ -289,12 +315,17 @@ This is a markdown formatted summary with proper structure.
 
       // Act & Assert
       const parsed = JSON.parse(responseWithNoIdeas);
-      expect(() => validateDigestionResponse(parsed)).toThrow(/at least one idea/i);
+      expect(() => validateDigestionResponse(parsed)).toThrow(
+        /at least one idea/i,
+      );
     });
 
     it('should validate maximum idea count (max 10)', () => {
       // Arrange
-      const tooManyIdeas = Array.from({ length: 11 }, (_, i) => `Idea number ${i + 1}`);
+      const tooManyIdeas = Array.from(
+        { length: 11 },
+        (_, i) => `Idea number ${i + 1}`,
+      );
       const response = JSON.stringify({
         summary: 'Summary with too many ideas',
         ideas: tooManyIdeas,
@@ -302,7 +333,9 @@ This is a markdown formatted summary with proper structure.
 
       // Act & Assert
       const parsed = JSON.parse(response);
-      expect(() => validateDigestionResponse(parsed)).toThrow(/maximum 10 ideas/i);
+      expect(() => validateDigestionResponse(parsed)).toThrow(
+        /maximum 10 ideas/i,
+      );
     });
 
     it('should validate each idea length (5-200 characters)', () => {
@@ -320,10 +353,14 @@ This is a markdown formatted summary with proper structure.
 
       // Act & Assert
       const parsedShort = JSON.parse(tooShort);
-      expect(() => validateDigestionResponse(parsedShort)).toThrow(/at least 5 characters/i);
+      expect(() => validateDigestionResponse(parsedShort)).toThrow(
+        /at least 5 characters/i,
+      );
 
       const parsedLong = JSON.parse(tooLong);
-      expect(() => validateDigestionResponse(parsedLong)).toThrow(/not exceed 200 characters/i);
+      expect(() => validateDigestionResponse(parsedLong)).toThrow(
+        /not exceed 200 characters/i,
+      );
     });
   });
 
@@ -343,10 +380,14 @@ This is a markdown formatted summary with proper structure.
 
       // Act & Assert
       const parsedShort = JSON.parse(tooShort);
-      expect(() => validateDigestionResponse(parsedShort)).toThrow(/at least 10 characters/i);
+      expect(() => validateDigestionResponse(parsedShort)).toThrow(
+        /at least 10 characters/i,
+      );
 
       const parsedLong = JSON.parse(tooLong);
-      expect(() => validateDigestionResponse(parsedLong)).toThrow(/not exceed 500 characters/i);
+      expect(() => validateDigestionResponse(parsedLong)).toThrow(
+        /not exceed 500 characters/i,
+      );
     });
 
     it('should reject empty or whitespace-only summaries', () => {
@@ -358,7 +399,9 @@ This is a markdown formatted summary with proper structure.
 
       // Act & Assert
       const parsed = JSON.parse(whitespaceOnly);
-      expect(() => validateDigestionResponse(parsed)).toThrow(/cannot be empty/i);
+      expect(() => validateDigestionResponse(parsed)).toThrow(
+        /cannot be empty/i,
+      );
     });
   });
 });

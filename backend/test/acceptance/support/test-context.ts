@@ -38,7 +38,11 @@ export interface Capture {
   id: string;
   userId: string;
   type: 'AUDIO' | 'TEXT';
-  status: 'queued_for_digestion' | 'digesting' | 'digestion_failed' | 'transcribed';
+  status:
+    | 'queued_for_digestion'
+    | 'digesting'
+    | 'digestion_failed'
+    | 'transcribed';
   processing_started_at?: Date;
   error_message?: string;
   error_stack?: string;
@@ -46,7 +50,11 @@ export interface Capture {
 }
 
 export interface DomainEvent {
-  eventType: 'DigestionJobQueued' | 'DigestionJobStarted' | 'DigestionJobFailed' | 'QueueOverloaded';
+  eventType:
+    | 'DigestionJobQueued'
+    | 'DigestionJobStarted'
+    | 'DigestionJobFailed'
+    | 'QueueOverloaded';
   payload: Record<string, any>;
   timestamp: Date;
 }
@@ -58,11 +66,14 @@ export interface DomainEvent {
 export class MockRabbitMQ {
   private queues: Map<string, QueueMessage[]> = new Map();
   private exchanges: Map<string, string> = new Map();
-  private queueConfigs: Map<string, {
-    durable: boolean;
-    maxPriority?: number;
-    deadLetterExchange?: string;
-  }> = new Map();
+  private queueConfigs: Map<
+    string,
+    {
+      durable: boolean;
+      maxPriority?: number;
+      deadLetterExchange?: string;
+    }
+  > = new Map();
   private prefetchCount: number = 1;
   private heartbeat: number = 60;
   private processingJobs: Set<string> = new Set(); // Track concurrent jobs
@@ -74,7 +85,7 @@ export class MockRabbitMQ {
       durable?: boolean;
       maxPriority?: number;
       deadLetterExchange?: string;
-    } = {}
+    } = {},
   ): Promise<void> {
     if (!this.queues.has(queueName)) {
       this.queues.set(queueName, []);
@@ -112,7 +123,7 @@ export class MockRabbitMQ {
   async publish(
     queueName: string,
     payload: DigestionJobPayload,
-    options: { priority?: number; persistent?: boolean } = {}
+    options: { priority?: number; persistent?: boolean } = {},
   ): Promise<void> {
     const queue = this.queues.get(queueName);
     if (!queue) {
@@ -143,7 +154,7 @@ export class MockRabbitMQ {
 
     // Insert based on priority (higher priority first)
     const insertIndex = queue.findIndex(
-      (msg) => msg.properties.priority < message.properties.priority
+      (msg) => msg.properties.priority < message.properties.priority,
     );
     if (insertIndex === -1) {
       queue.push(message);
@@ -199,7 +210,10 @@ export class MockRabbitMQ {
   }
 
   // Dead-letter queue
-  private moveToDeadLetterQueue(payload: DigestionJobPayload, dlxName: string): void {
+  private moveToDeadLetterQueue(
+    payload: DigestionJobPayload,
+    dlxName: string,
+  ): void {
     const dlqName = dlxName.replace('-dlx', '-failed');
     if (!this.queues.has(dlqName)) {
       this.assertQueue(dlqName);
@@ -251,7 +265,9 @@ export class MockRabbitMQ {
       const config = this.queueConfigs.get(queueName);
       if (config?.durable) {
         // Keep only persistent messages
-        const persistentMessages = messages.filter((msg) => msg.properties.persistent);
+        const persistentMessages = messages.filter(
+          (msg) => msg.properties.persistent,
+        );
         durableQueues.set(queueName, persistentMessages);
       }
     });
@@ -294,7 +310,7 @@ export class MockCaptureRepository {
   async updateStatus(
     captureId: string,
     status: Capture['status'],
-    additionalFields: Partial<Capture> = {}
+    additionalFields: Partial<Capture> = {},
   ): Promise<Capture | null> {
     const capture = this.captures.get(captureId);
     if (!capture) {
@@ -305,7 +321,9 @@ export class MockCaptureRepository {
   }
 
   async findByStatus(status: Capture['status']): Promise<Capture[]> {
-    return Array.from(this.captures.values()).filter((c) => c.status === status);
+    return Array.from(this.captures.values()).filter(
+      (c) => c.status === status,
+    );
   }
 
   getAll(): Capture[] {
@@ -379,9 +397,13 @@ export class MockProgressTracker {
 
 export class MockEventBus {
   private events: DomainEvent[] = [];
-  private listeners: Map<string, Array<(event: DomainEvent) => void>> = new Map();
+  private listeners: Map<string, Array<(event: DomainEvent) => void>> =
+    new Map();
 
-  emit(eventType: DomainEvent['eventType'], payload: Record<string, any>): void {
+  emit(
+    eventType: DomainEvent['eventType'],
+    payload: Record<string, any>,
+  ): void {
     const event: DomainEvent = {
       eventType,
       payload,
@@ -394,7 +416,10 @@ export class MockEventBus {
     eventListeners.forEach((listener) => listener(event));
   }
 
-  on(eventType: DomainEvent['eventType'], listener: (event: DomainEvent) => void): void {
+  on(
+    eventType: DomainEvent['eventType'],
+    listener: (event: DomainEvent) => void,
+  ): void {
     if (!this.listeners.has(eventType)) {
       this.listeners.set(eventType, []);
     }
@@ -514,7 +539,10 @@ export class TestContext {
     this.rabbitmq.setHeartbeat(30);
   }
 
-  calculateEstimatedWaitTime(queueDepth: number, avgJobDuration: number = 25): number {
+  calculateEstimatedWaitTime(
+    queueDepth: number,
+    avgJobDuration: number = 25,
+  ): number {
     const concurrentWorkers = this.rabbitmq.getPrefetchCount();
     return Math.ceil((queueDepth / concurrentWorkers) * avgJobDuration);
   }

@@ -30,7 +30,10 @@ export class ResourceShareRepository extends Repository<ResourceShare> {
       .andWhere('share.sharedWithId = :userId', { userId })
       .andWhere('(share.expiresAt IS NULL OR share.expiresAt > NOW())')
       .leftJoinAndSelect('share.shareRole', 'shareRole')
-      .leftJoinAndSelect('shareRole.shareRolePermissions', 'shareRolePermission')
+      .leftJoinAndSelect(
+        'shareRole.shareRolePermissions',
+        'shareRolePermission',
+      )
       .leftJoinAndSelect('shareRolePermission.permission', 'permission')
       .getOne();
   }
