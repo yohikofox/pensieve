@@ -266,6 +266,7 @@ export function WhisperModelCard({
             {advice.badge && !isSelected && (
               <View style={[
                 styles.adviceBadge,
+                modelSize === 'tiny' && styles.adviceBadgeRapide,
                 modelSize === 'base' && styles.adviceBadgeRecommended,
                 modelSize === 'medium' && styles.adviceBadgePro,
                 modelSize === 'large-v3' && styles.adviceBadgeUltimate,
@@ -459,12 +460,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
-
+    gap: 8,
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-
+    gap: 6,
   },
   title: {
     fontSize: 16,
@@ -476,6 +477,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
+  },
+  adviceBadgeRapide: {
+    backgroundColor: '#5AC8FA',
   },
   adviceBadgeRecommended: {
     backgroundColor: '#34C759',
@@ -601,7 +605,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-
+    gap: 12,
     flexWrap: 'wrap',
   },
   downloadButton: {

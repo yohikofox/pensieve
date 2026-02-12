@@ -83,9 +83,9 @@ export function SettingsRow(props: SettingsRowProps) {
       {props.type === 'navigate' && (
         <View className="flex-row items-center">
           {props.value && (
-            <Text className="text-base text-neutral-400 dark:text-neutral-500 mr-1">{props.value}</Text>
+            <Text className="text-base text-neutral-500 dark:text-neutral-300 mr-1">{props.value}</Text>
           )}
-          <Text className="text-xl text-neutral-300 dark:text-neutral-600 font-semibold">›</Text>
+          <Text className="text-xl text-neutral-500 dark:text-neutral-300 font-semibold">›</Text>
         </View>
       )}
 

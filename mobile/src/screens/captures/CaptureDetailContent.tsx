@@ -23,6 +23,7 @@ import { useNavigation } from "@react-navigation/native";
 import { useCaptureDetailListener } from "../../hooks/useCaptureDetailListener";
 import {
   ReprocessingCard,
+  NativeRecognitionDebugCard,
   CaptureHeader,
   MetadataSection,
   RawTranscriptSection,
@@ -104,6 +105,9 @@ export function CaptureDetailContent({
 
               {/* Reprocess Section - Debug tools (manages own visibility) */}
               <ReprocessingCard />
+
+              {/* Native Recognition Debug - Shows all alternatives (manages own visibility) */}
+              <NativeRecognitionDebugCard />
             </View>
           </ScrollView>
 

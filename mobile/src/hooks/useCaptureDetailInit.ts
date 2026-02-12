@@ -78,7 +78,7 @@ export function useCaptureDetailInit(
   const isNativeEngine = useCaptureDetailStore((state) => state.isNativeEngine);
 
   /**
-   * Load capture and metadata from repositories
+   * Load capture and metadata from repositories (full init with store reset)
    */
   const loadCapture = useCallback(async () => {
     try {
@@ -110,6 +110,31 @@ export function useCaptureDetailInit(
       setStoreLoading(false);
     }
   }, [captureId, resetStore, setStoreCapture, setStoreMetadata, setStoreLoading]);
+
+  /**
+   * Refresh capture data without resetting the store.
+   * Used by useCaptureDetailListener for event-driven reloads so that
+   * captureId and reloadCapture remain in the store and the listener
+   * stays subscribed to subsequent events.
+   */
+  const refreshCapture = useCallback(async () => {
+    try {
+      const repository = container.resolve<ICaptureRepository>(
+        TOKENS.ICaptureRepository,
+      );
+      const metadataRepository = container.resolve<ICaptureMetadataRepository>(
+        TOKENS.ICaptureMetadataRepository,
+      );
+
+      const result = await repository.findById(captureId);
+      setStoreCapture(result);
+
+      const captureMetadata = await metadataRepository.getAllAsMap(captureId);
+      setStoreMetadata(captureMetadata);
+    } catch (err) {
+      console.error("[useCaptureDetailInit] Failed to refresh capture:", err);
+    }
+  }, [captureId, setStoreCapture, setStoreMetadata]);
 
   // Store setter for analyses
   const setAnalyses = useCaptureDetailStore((state) => state.setAnalyses);
@@ -192,16 +217,17 @@ export function useCaptureDetailInit(
     checkEngineType();
   }, [checkEngineType]);
 
-  // Effect 5: Expose captureId and reloadCapture in store for useCaptureDetailListener
+  // Effect 5: Expose captureId and refreshCapture in store for useCaptureDetailListener
+  // Uses refreshCapture (not loadCapture) so event-driven reloads don't reset the store
   useEffect(() => {
     setCaptureId(captureId);
-    setReloadCapture(loadCapture);
+    setReloadCapture(refreshCapture);
 
     return () => {
       setCaptureId(null);
       setReloadCapture(null);
     };
-  }, [captureId, loadCapture, setCaptureId, setReloadCapture]);
+  }, [captureId, refreshCapture, setCaptureId, setReloadCapture]);
 
   return {
     loading,

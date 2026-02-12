@@ -37,6 +37,9 @@ const SILENCE_MARGIN_MS = 500; // Safety margin at end (ms) to avoid cutting las
 const SILENCE_MIN_DURATION_MS = 1000; // Minimum silence duration to trim (1 second) - avoids cutting short pauses
 const MAX_AUDIO_DURATION_MS = 10 * 60 * 1000; // 10 minutes max per segment
 
+// Native recognition: add silence padding at end to ensure last word is recognized
+const NATIVE_END_PADDING_MS = 800; // 800ms of silence at end for native recognition to finalize last word
+
 @injectable()
 export class AudioConversionService {
   // Debug: Track last converted WAV file for playback testing
@@ -175,6 +178,95 @@ export class AudioConversionService {
   }
 
   /**
+   * Convert audio file to Whisper-compatible WAV format with end padding
+   * for native speech recognition.
+   *
+   * Adds silence at the end to ensure the native recognition engine
+   * has time to finalize the last word before EOF.
+   *
+   * @param inputPath - Path to input audio file (m4a, aac, mp3, etc.)
+   * @returns Path to converted WAV file (caller must delete after use)
+   * @throws Error if conversion fails or file doesn't exist
+   */
+  async convertToWhisperFormatWithPadding(inputPath: string): Promise<string> {
+    console.log(
+      "[AudioConversionService] 🎵 Converting audio to Whisper format (with end padding):",
+      inputPath,
+    );
+
+    // Normalize path - remove file:// prefix for react-native-audio-api
+    const normalizedInputPath = inputPath.startsWith("file://")
+      ? inputPath.replace("file://", "")
+      : inputPath;
+
+    // Step 0: Verify input file exists
+    const fileInfo = await this.fileSystem.getFileInfo(inputPath);
+    if (!fileInfo.exists) {
+      console.error(
+        "[AudioConversionService] ❌ Input file does not exist:",
+        inputPath,
+      );
+      throw new Error(`Audio file not found: ${inputPath}`);
+    }
+    console.log(
+      "[AudioConversionService] 📁 Input file exists, size:",
+      fileInfo.size,
+      "bytes",
+    );
+
+    const outputFilePath = this.generateOutputPath(inputPath);
+    const outputPath = outputFilePath.toUri(); // Use URI format for expo-file-system File constructor
+    console.log(
+      "🚀 ~ AudioConversionService ~ convertToWhisperFormatWithPadding ~ outputPath:",
+      outputPath,
+    );
+
+    try {
+      // Step 1: Decode audio file and resample to 16kHz
+      const audioBuffer = await decodeAudioData(
+        normalizedInputPath,
+        WHISPER_SAMPLE_RATE,
+      );
+
+      console.log("[AudioConversionService] 📊 Decoded audio:", {
+        sampleRate: audioBuffer.sampleRate,
+        numberOfChannels: audioBuffer.numberOfChannels,
+        length: audioBuffer.length,
+        duration: audioBuffer.duration,
+      });
+
+      // Step 2: Mix to mono if stereo using OfflineAudioContext
+      const monoBuffer = await this.mixToMono(audioBuffer);
+
+      // Step 2.5: Add silence padding at end for native recognition
+      const paddedBuffer = this.addEndPadding(monoBuffer);
+
+      // Step 2.6: Check for long audio (>10min)
+      this.checkLongAudio(paddedBuffer);
+
+      // Step 3: Build WAV file from AudioBuffer
+      const wavData = this.buildWavFile(paddedBuffer);
+
+      // Step 4: Write to file
+      await this.writeWavFile(outputPath, wavData);
+
+      // Track for debug playback
+      this.lastConvertedWavPath = outputPath;
+
+      console.log(
+        "[AudioConversionService] ✅ Conversion successful (with padding):",
+        outputPath,
+      );
+      return outputPath;
+    } catch (error) {
+      console.error("[AudioConversionService] ❌ Conversion failed:", error);
+      throw new Error(
+        `Audio conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`,
+      );
+    }
+  }
+
+  /**
    * Delete temporary WAV file after transcription
    * In debug mode, files are kept for playback testing
    *
@@ -234,6 +326,50 @@ export class AudioConversionService {
     });
 
     return monoBuffer;
+  }
+
+  /**
+   * Add silence padding at the end of audio buffer
+   *
+   * This helps native speech recognition engines finalize the last word
+   * before reaching EOF. Without this, the last word can be cut off.
+   *
+   * @param audioBuffer - Input audio buffer
+   * @returns Audio buffer with silence padding at end
+   */
+  private addEndPadding(audioBuffer: RNAudioBuffer): RNAudioBuffer {
+    const sampleRate = audioBuffer.sampleRate;
+    const paddingSamples = Math.floor((NATIVE_END_PADDING_MS / 1000) * sampleRate);
+    const newLength = audioBuffer.length + paddingSamples;
+
+    console.log("[AudioConversionService] 🔇 Adding end padding:", {
+      originalDuration: `${audioBuffer.duration.toFixed(2)}s`,
+      paddingMs: NATIVE_END_PADDING_MS,
+      paddingSamples,
+      newDuration: `${(newLength / sampleRate).toFixed(2)}s`,
+    });
+
+    // Create offline context for padded buffer
+    const offlineCtx = new OfflineAudioContext({
+      numberOfChannels: 1,
+      length: newLength,
+      sampleRate,
+    });
+
+    // Create new buffer with padded length
+    const paddedBuffer = offlineCtx.createBuffer(1, newLength, sampleRate);
+    const paddedChannelData = paddedBuffer.getChannelData(0);
+    const originalChannelData = audioBuffer.getChannelData(0);
+
+    // Copy original audio
+    for (let i = 0; i < audioBuffer.length; i++) {
+      paddedChannelData[i] = originalChannelData[i];
+    }
+
+    // Padding samples are already zero-initialized (silence)
+    // No need to explicitly set them
+
+    return paddedBuffer;
   }
 
   /**

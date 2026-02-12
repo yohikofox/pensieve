@@ -23,3 +23,4 @@ export { CaptureDetailError } from "./CaptureDetailError";
 export { AudioPlayerSection } from "./AudioPlayerSection";
 export { CaptureAudioPlayerSection } from "./CaptureAudioPlayerSection";
 export { ContentSection } from "./ContentSection";
+export { NativeRecognitionDebugCard } from "./NativeRecognitionDebugCard";

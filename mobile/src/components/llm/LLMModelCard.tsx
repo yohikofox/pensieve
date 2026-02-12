@@ -313,7 +313,7 @@ export function LLMModelCard({
                 </Text>
               </View>
             )}
-            {showTpuBadge && isTpuModel && (
+            {showTpuBadge && isTpuModel && !(config.recommended && !isSelected) && (
               <View style={[styles.badge, styles.badgeTpu]}>
                 <Text style={styles.badgeText}>TPU</Text>
               </View>
@@ -361,7 +361,7 @@ export function LLMModelCard({
               <Feather name="download" size={14} color={isDark ? colors.warning[400] : colors.neutral[600]} />
               <Text style={[styles.statusBadgeText, { color: themeColors.statusBadgeText }]}>Non téléchargé</Text>
             </View>
-            {config?.requiresAuth && (
+            {config?.requiresAuth && isHfAuthenticated && (
               <View style={[styles.statusBadge, styles.statusAuthOk, { backgroundColor: themeColors.statusAuthOkBg }]}>
                 <Feather name="unlock" size={14} color={isDark ? colors.success[400] : colors.success[600]} />
                 <Text style={[styles.statusBadgeText, { color: themeColors.statusBadgeText }]}>Autorisé</Text>
@@ -525,7 +525,6 @@ const styles = StyleSheet.create({
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
-    marginHorizontal: 16,
     marginVertical: 8,
     padding: 16,
     shadowColor: '#000',
@@ -553,12 +552,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexWrap: 'wrap',
     flex: 1,
-
+    gap: 8,
   },
   titleWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-
+    gap: 6,
   },
   title: {
     fontSize: 16,
@@ -690,7 +689,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-
+    gap: 6,
   },
   warningText: {
     fontSize: 12,
@@ -698,7 +697,7 @@ const styles = StyleSheet.create({
   },
   buttonRow: {
     flexDirection: 'row',
-
+    gap: 8,
     flexWrap: 'wrap',
   },
   downloadButton: {
@@ -743,7 +742,7 @@ const styles = StyleSheet.create({
   },
   downloadActionsRow: {
     flexDirection: 'row',
-
+    gap: 8,
     marginTop: 12,
     marginBottom: 8,
   },

@@ -114,7 +114,7 @@ export function createDarkTheme(colorScheme: ColorScheme = 'blue') {
   // Text
   '--color-text-primary': hexToRgbValues(colors.neutral[50]),
   '--color-text-secondary': hexToRgbValues(colors.neutral[400]),
-  '--color-text-tertiary': hexToRgbValues(colors.neutral[500]),
+  '--color-text-tertiary': hexToRgbValues(colors.neutral[300]),
   '--color-text-inverse': hexToRgbValues(colors.neutral[900]),
   '--color-text-link': hexToRgbValues(primaryPalette[400]),
 

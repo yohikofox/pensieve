@@ -21,6 +21,10 @@ import {
   TranscriptionEngineResult,
   TranscriptionEngineConfig,
 } from "./ITranscriptionEngine";
+import {
+  NativeRecognitionResultsSchema,
+  type NativeRecognitionResults,
+} from "../../capture/domain/NativeRecognitionResults.schema";
 
 const SpeechRecognitionResultSchema = z.object({
   results: z.array(
@@ -31,7 +35,16 @@ const SpeechRecognitionResultSchema = z.object({
         .nullable()
         .optional()
         .transform((v) => v ?? undefined),
-      segments: z.array(z.unknown()).optional(),
+      segments: z
+        .array(
+          z.object({
+            startTimeMillis: z.number(),
+            endTimeMillis: z.number(),
+            segment: z.string(),
+            confidence: z.number(),
+          }),
+        )
+        .optional(),
     }),
   ),
   isFinal: z.boolean(),
@@ -102,16 +115,18 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
       await this.initialize();
     }
 
-    // Convert audio to WAV format (16kHz mono 16-bit PCM)
-    console.log("[NativeTranscription] Converting audio to WAV format...");
+    // Convert audio to WAV format (16kHz mono 16-bit PCM) with end padding
+    // The padding ensures the native recognition engine has time to finalize the last word
+    console.log("[NativeTranscription] Converting audio to WAV format with end padding...");
     const wavPath =
-      await this.audioConversionService.convertToWhisperFormat(audioFilePath);
-    console.log("[NativeTranscription] WAV conversion complete:", wavPath);
+      await this.audioConversionService.convertToWhisperFormatWithPadding(audioFilePath);
+    console.log("[NativeTranscription] WAV conversion complete (with padding):", wavPath);
 
     try {
       const result = await new Promise<TranscriptionEngineResult>(
         (resolve, reject) => {
           let finalText = "";
+          let fullNativeResults: NativeRecognitionResults | undefined;
 
           const resultHandler = ExpoSpeechRecognitionModule.addListener(
             "result",
@@ -127,15 +142,45 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
               }
               const event = parseResult.data;
               if (event.isFinal) {
-                const bestResult = event.results.reduce((best, current) =>
-                  (current.confidence ?? 0) > (best.confidence ?? 0)
-                    ? current
-                    : best,
-                );
-                finalText = bestResult?.transcript || "";
+                let selectedIndex = 0;
+                let bestConfidence = event.results[0]?.confidence ?? 0;
+
+                event.results.forEach((result, index) => {
+                  const conf = result.confidence ?? 0;
+                  if (conf > bestConfidence) {
+                    bestConfidence = conf;
+                    selectedIndex = index;
+                  }
+                });
+
+                finalText = event.results[selectedIndex]?.transcript || "";
+
+                const rawNativeResults = {
+                  selectedIndex,
+                  selectionReason: `Highest confidence: ${bestConfidence}`,
+                  results: event.results.map((r) => ({
+                    transcript: r.transcript,
+                    confidence: r.confidence ?? null,
+                    segments: r.segments,
+                  })),
+                };
+
+                const validated =
+                  NativeRecognitionResultsSchema.safeParse(rawNativeResults);
+                if (validated.success) {
+                  fullNativeResults = validated.data;
+                } else {
+                  console.warn(
+                    "[NativeTranscription] Native results validation failed:",
+                    validated.error.format(),
+                  );
+                  fullNativeResults = undefined;
+                }
+
                 console.log(
-                  "[NativeTranscription] Final result (confidence: %s):",
-                  bestResult.confidence,
+                  "[NativeTranscription] Final result (confidence: %s, alternatives: %d):",
+                  bestConfidence,
+                  event.results.length,
                   finalText.substring(0, 50),
                 );
               }
@@ -152,6 +197,10 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
               resolve({
                 text: finalText,
                 isPartial: false,
+                confidence:
+                  fullNativeResults?.results[fullNativeResults.selectedIndex]
+                    ?.confidence ?? undefined,
+                nativeResults: fullNativeResults,
               });
             },
           );
@@ -188,6 +237,7 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
           ExpoSpeechRecognitionModule.start({
             lang: this.normalizeLocale(config.language),
             interimResults: false,
+            maxAlternatives: 5,
             audioSource: {
               uri: wavPath,
               audioChannels: 1,

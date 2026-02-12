@@ -424,7 +424,7 @@ export const SettingsScreen = () => {
               <Text className="text-base text-text-tertiary mr-1">
                 {getThemeLabel(themePreference)}
               </Text>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -444,7 +444,7 @@ export const SettingsScreen = () => {
               <Text className="text-base text-text-tertiary mr-1">
                 {getAudioPlayerLabel(audioPlayerType)}
               </Text>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </View>
           </TouchableOpacity>
         </Card>
@@ -467,7 +467,7 @@ export const SettingsScreen = () => {
             </View>
             <View className="flex-row items-center">
               <Text className="text-base text-text-tertiary mr-1">{engineLabel}</Text>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -485,7 +485,7 @@ export const SettingsScreen = () => {
             </View>
             <View className="flex-row items-center">
               <Text className="text-base text-text-tertiary mr-1">{selectedModelLabel}</Text>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -503,7 +503,7 @@ export const SettingsScreen = () => {
             </View>
             <View className="flex-row items-center">
               <Text className="text-base text-text-tertiary mr-1">{llmStatusLabel}</Text>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </View>
           </TouchableOpacity>
 
@@ -585,7 +585,7 @@ export const SettingsScreen = () => {
                 {t('settings.notifications.pushNotificationsSubtitle')}
               </Text>
             </View>
-            <Text className="text-xl text-text-disabled font-semibold">›</Text>
+            <Text className="text-xl text-text-tertiary font-semibold">›</Text>
           </TouchableOpacity>
         </Card>
 
@@ -683,7 +683,7 @@ export const SettingsScreen = () => {
                   Prévisualiser toutes les animations Lottie
                 </Text>
               </View>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </TouchableOpacity>
           )}
 
@@ -701,7 +701,7 @@ export const SettingsScreen = () => {
                   Tester le composant TodoDetailPopover
                 </Text>
               </View>
-              <Text className="text-xl text-text-disabled font-semibold">›</Text>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </TouchableOpacity>
           )}
         </Card>

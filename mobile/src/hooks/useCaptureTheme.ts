@@ -75,6 +75,15 @@ export interface ThemeColors {
   reprocessButtonTranscribe: string;
   reprocessButtonPostProcess: string;
 
+  // Native debug section
+  nativeDebugBg: string;
+  nativeDebugBorder: string;
+  nativeDebugContentBg: string;
+  nativeDebugTitle: string;
+  nativeDebugText: string;
+  nativeDebugSelectedBg: string;
+  nativeDebugSelectedBorder: string;
+
   // Contact picker
   contactBg: string;
   contactHeaderBg: string;
@@ -154,6 +163,15 @@ const getThemeColors = (isDark: boolean, colorScheme: ColorScheme = "blue"): The
     reprocessStatusError: isDark ? colors.error[400] : "#EF4444",
     reprocessButtonTranscribe: isDark ? "#1565C0" : "#2196F3",
     reprocessButtonPostProcess: isDark ? "#6A1B9A" : "#9C27B0",
+
+    // Native debug section (blue theme, distinct from orange reprocess)
+    nativeDebugBg: isDark ? "#1A2635" : "#E8F0FE",
+    nativeDebugBorder: isDark ? "#2C4F6E" : "#90B8E0",
+    nativeDebugContentBg: isDark ? colors.neutral[800] : "#F5F9FF",
+    nativeDebugTitle: isDark ? colors.info[300] : "#1565C0",
+    nativeDebugText: isDark ? colors.neutral[300] : "#555",
+    nativeDebugSelectedBg: isDark ? "#1A3528" : "#E8F5E9",
+    nativeDebugSelectedBorder: isDark ? colors.success[600] : colors.success[400],
 
     // Contact picker
     contactBg: isDark ? colors.neutral[900] : "#F2F2F7",

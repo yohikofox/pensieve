@@ -47,7 +47,7 @@ const getThemeColors = (isDark: boolean) => ({
   inputBg: isDark ? colors.neutral[800] : '#FFFFFF',
   inputBorder: isDark ? colors.neutral[700] : '#E5E5EA',
   inputText: isDark ? colors.neutral[50] : '#000',
-  saveButtonBg: isDark ? colors.primary[600] : '#007AFF',
+  saveButtonBg: isDark ? colors.success[700] : '#34C759',
   saveButtonDisabledBg: isDark ? colors.neutral[700] : '#A8A8A8',
 });
 
@@ -202,7 +202,7 @@ export function WhisperSettingsScreen() {
 
   return (
     <StandardLayout useSafeArea={false}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
         <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Modèle de transcription</Text>
         <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>

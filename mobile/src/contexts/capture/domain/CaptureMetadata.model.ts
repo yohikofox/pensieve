@@ -30,6 +30,9 @@ export const METADATA_KEYS = {
 
   // Audio waveform (raw RMS values as JSON array)
   WAVEFORM_DATA: 'waveform_data',
+
+  // Native speech recognition full results (JSON)
+  NATIVE_RECOGNITION_RESULTS: 'native_recognition_results',
 } as const;
 
 export type MetadataKey = (typeof METADATA_KEYS)[keyof typeof METADATA_KEYS] | string;

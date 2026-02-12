@@ -472,9 +472,11 @@ const createStyles = (isDark: boolean, colorScheme: import('../../design-system/
     },
     listContent: {
       paddingHorizontal: 16,
+      paddingTop: 12,
       paddingBottom: 16,
     },
     calendarListContent: {
+      paddingTop: 12,
       paddingBottom: 16,
     },
     sortButtonContainer: {

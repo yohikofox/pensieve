@@ -410,7 +410,7 @@ export function LLMSettingsScreen() {
 
   return (
     <StandardLayout useSafeArea={false}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
         {/* Header */}
       <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Amélioration IA</Text>

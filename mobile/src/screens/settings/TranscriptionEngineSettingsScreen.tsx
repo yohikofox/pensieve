@@ -89,7 +89,7 @@ export function TranscriptionEngineSettingsScreen() {
 
   return (
     <StandardLayout useSafeArea={false}>
-      <ScrollView style={styles.container}>
+      <ScrollView style={[styles.container, { backgroundColor: themeColors.screenBg }]}>
         <View style={styles.header}>
         <Text style={[styles.headerTitle, { color: themeColors.textTertiary }]}>Moteur de transcription</Text>
         <Text style={[styles.headerDescription, { color: themeColors.textSecondary }]}>
@@ -191,13 +191,13 @@ export function TranscriptionEngineSettingsScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F2F2F7',
+    // backgroundColor applied dynamically via themeColors.screenBg
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F2F2F7',
+    // backgroundColor applied dynamically via themeColors.screenBg
   },
   header: {
     padding: 16,

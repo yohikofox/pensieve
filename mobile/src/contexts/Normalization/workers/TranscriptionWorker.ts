@@ -527,6 +527,7 @@ export class TranscriptionWorker {
         let rawTranscript: string;
         let wavPath: string | undefined;
         let transcriptPrompt: string | undefined;
+        let nativeRecognitionResults: unknown = undefined;
 
         if (effectiveEngine === 'native') {
           // Use native speech recognition
@@ -535,6 +536,7 @@ export class TranscriptionWorker {
             { language: 'fr' } // TODO: Get from user settings
           );
           rawTranscript = nativeResult.text;
+          nativeRecognitionResults = nativeResult.nativeResults;
         } else {
           // Use Whisper.rn via TranscriptionService
           const transcriptionResult = await this.transcriptionService.transcribe(
@@ -610,6 +612,16 @@ export class TranscriptionWorker {
         // Save metadata to capture_metadata table
         const metrics = effectiveEngine === 'whisper' ? this.transcriptionService.getLastPerformanceMetrics() : null;
         const llmModelId = llmApplied ? this.postProcessingService.getCurrentModelId() : null;
+        // Serialize native recognition results safely
+        let nativeResultsJson: string | null = null;
+        if (nativeRecognitionResults) {
+          try {
+            nativeResultsJson = JSON.stringify(nativeRecognitionResults);
+          } catch (serializeError) {
+            console.warn('[TranscriptionWorker] Failed to serialize native recognition results:', serializeError);
+          }
+        }
+
         await this.metadataRepository.setMany(queuedCapture.captureId, [
           { key: METADATA_KEYS.RAW_TRANSCRIPT, value: rawTranscript },
           { key: METADATA_KEYS.WHISPER_MODEL, value: effectiveEngine === 'whisper' ? this.currentWhisperModel : 'native' },
@@ -617,6 +629,9 @@ export class TranscriptionWorker {
           { key: METADATA_KEYS.WHISPER_DURATION_MS, value: metrics?.transcriptionDuration?.toString() || null },
           ...(llmApplied && llmModelId ? [
             { key: METADATA_KEYS.LLM_MODEL, value: llmModelId },
+          ] : []),
+          ...(nativeResultsJson ? [
+            { key: METADATA_KEYS.NATIVE_RECOGNITION_RESULTS, value: nativeResultsJson },
           ] : []),
         ]);
 

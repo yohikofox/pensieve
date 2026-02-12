@@ -11,6 +11,7 @@ export interface TranscriptionEngineResult {
   text: string;
   isPartial: boolean; // true for interim results (native real-time)
   confidence?: number; // 0-1, if available
+  nativeResults?: unknown; // JSON-serializable native recognition results (engine-agnostic)
 }
 
 export interface TranscriptionEngineConfig {
