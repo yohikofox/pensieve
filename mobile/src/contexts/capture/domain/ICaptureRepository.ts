@@ -7,8 +7,8 @@
  * Story: 2.1 - Capture Audio 1-Tap
  */
 
-import { type RepositoryResult } from './Result';
-import { type Capture } from './Capture.model';
+import { type RepositoryResult } from "./Result";
+import { type Capture } from "./Capture.model";
 
 export interface ICaptureRepository {
   /**
@@ -16,8 +16,8 @@ export interface ICaptureRepository {
    * Note: Sync status is now managed via sync_queue table (v2 architecture)
    */
   create(data: {
-    type: 'audio' | 'text' | 'image' | 'url';
-    state: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
+    type: "audio" | "text" | "image" | "url";
+    state: "recording" | "captured" | "processing" | "ready" | "failed";
     rawContent: string;
     duration?: number;
   }): Promise<RepositoryResult<Capture>>;
@@ -28,14 +28,14 @@ export interface ICaptureRepository {
   update(
     id: string,
     data: {
-      state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
+      state?: "recording" | "captured" | "processing" | "ready" | "failed";
       rawContent?: string;
       duration?: number;
       rawTranscript?: string | null;
       normalizedText?: string;
       wavPath?: string | null;
       transcriptPrompt?: string | null;
-    }
+    },
   ): Promise<RepositoryResult<Capture>>;
 
   /**
@@ -52,7 +52,7 @@ export interface ICaptureRepository {
    * Find all Captures by state
    */
   findByState(
-    state: 'recording' | 'captured' | 'processing' | 'ready' | 'failed'
+    state: "recording" | "captured" | "processing" | "ready" | "failed",
   ): Promise<Capture[]>;
 
   /**

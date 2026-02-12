@@ -9,9 +9,9 @@
  */
 
 export interface PermissionResult {
-  status: 'granted' | 'denied' | 'undetermined';
+  status: "granted" | "denied" | "undetermined";
   canAskAgain: boolean;
-  expires?: 'never' | number;
+  expires?: "never" | number;
 }
 
 export interface IPermissionService {

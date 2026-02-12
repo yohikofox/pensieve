@@ -8,11 +8,11 @@
  * Subtask 2.4: Cache todos locally with React Query (staleTime: 5 minutes)
  */
 
-import { useQuery, UseQueryResult } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { Todo } from '../domain/Todo.model';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useQuery, UseQueryResult } from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { Todo } from "../domain/Todo.model";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
 /**
  * Fetch todos for a specific idea
@@ -28,10 +28,12 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
  * @returns React Query result with todos array, loading and error states
  */
 export const useTodos = (ideaId: string): UseQueryResult<Todo[], Error> => {
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useQuery({
-    queryKey: ['todos', ideaId],
+    queryKey: ["todos", ideaId],
     queryFn: () => todoRepository.findByIdeaId(ideaId),
     staleTime: 5 * 60 * 1000, // 5 minutes cache (AC: Subtask 2.4)
     enabled: !!ideaId && ideaId.trim().length > 0, // Only run if ideaId is valid (Issue #5 fix)

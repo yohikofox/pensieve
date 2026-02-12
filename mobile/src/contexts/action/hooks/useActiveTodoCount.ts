@@ -8,21 +8,23 @@
  * - Shorter staleTime (1 min) for frequent updates
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useQuery } from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
-const QUERY_KEY = ['todos', 'count', 'active'];
+const QUERY_KEY = ["todos", "count", "active"];
 
 export const useActiveTodoCount = () => {
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useQuery({
     queryKey: QUERY_KEY,
     queryFn: () => todoRepository.countActive(),
     staleTime: 1 * 60 * 1000, // 1 minute cache (frequent updates for badge)
-    refetchOnMount: 'always', // Always refetch when tab opens
+    refetchOnMount: "always", // Always refetch when tab opens
     refetchOnWindowFocus: true, // Refetch when app comes to foreground
   });
 };

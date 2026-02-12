@@ -9,7 +9,7 @@
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-import { type FileStorageResult } from '../services/FileStorageResult';
+import { type FileStorageResult } from "../services/FileStorageResult";
 
 export interface FileMetadata {
   size: number; // Bytes
@@ -29,7 +29,7 @@ export interface IFileStorageService {
   moveToStorage(
     tempUri: string,
     captureId: string,
-    durationMillis: number
+    durationMillis: number,
   ): Promise<FileStorageResult<StorageResult>>;
 
   /**
@@ -37,7 +37,7 @@ export interface IFileStorageService {
    */
   getFileMetadata(
     fileUri: string,
-    durationMillis: number
+    durationMillis: number,
   ): Promise<FileStorageResult<FileMetadata>>;
 
   /**

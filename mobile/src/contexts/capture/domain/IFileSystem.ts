@@ -11,7 +11,7 @@
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-import { type RepositoryResult } from './Result';
+import { type RepositoryResult } from "./Result";
 
 export interface IFileSystem {
   /**

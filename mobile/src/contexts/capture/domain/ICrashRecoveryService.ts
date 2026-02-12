@@ -10,7 +10,7 @@
 
 export interface RecoveredCapture {
   captureId: string;
-  state: 'recovered' | 'failed';
+  state: "recovered" | "failed";
   reason?: string;
 }
 

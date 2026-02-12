@@ -7,11 +7,15 @@
  * Subtask 5.9: Add rollback on mutation error
  */
 
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { Todo } from '../domain/Todo.model';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import {
+  useMutation,
+  useQueryClient,
+  UseMutationResult,
+} from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { Todo } from "../domain/Todo.model";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
 /**
  * Toggle todo status between 'todo' and 'completed'
@@ -19,9 +23,15 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
  *
  * @returns React Query mutation with optimistic updates
  */
-export const useToggleTodoStatus = (): UseMutationResult<Todo, Error, string> => {
+export const useToggleTodoStatus = (): UseMutationResult<
+  Todo,
+  Error,
+  string
+> => {
   const queryClient = useQueryClient();
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useMutation({
     mutationFn: (todoId: string) => todoRepository.toggleStatus(todoId),
@@ -29,29 +39,30 @@ export const useToggleTodoStatus = (): UseMutationResult<Todo, Error, string> =>
     // Optimistic update (Subtask 5.8)
     onMutate: async (todoId: string) => {
       // Cancel any outgoing refetches
-      await queryClient.cancelQueries({ queryKey: ['todos'] });
+      await queryClient.cancelQueries({ queryKey: ["todos"] });
 
       // Snapshot previous state for rollback
-      const previousTodos = queryClient.getQueryData<Todo[]>(['todos']);
+      const previousTodos = queryClient.getQueryData<Todo[]>(["todos"]);
 
       // Optimistically update all 'todos' queries
-      queryClient.setQueriesData<Todo[]>(
-        { queryKey: ['todos'] },
-        (old) => {
-          if (!old) return old;
+      queryClient.setQueriesData<Todo[]>({ queryKey: ["todos"] }, (old) => {
+        if (!old) return old;
 
-          return old.map((todo) =>
-            todo.id === todoId
-              ? {
-                  ...todo,
-                  status: todo.status === 'completed' ? ('todo' as const) : ('completed' as const),
-                  completedAt: todo.status === 'completed' ? undefined : Date.now(),
-                  updatedAt: Date.now(),
-                }
-              : todo
-          );
-        }
-      );
+        return old.map((todo) =>
+          todo.id === todoId
+            ? {
+                ...todo,
+                status:
+                  todo.status === "completed"
+                    ? ("todo" as const)
+                    : ("completed" as const),
+                completedAt:
+                  todo.status === "completed" ? undefined : Date.now(),
+                updatedAt: Date.now(),
+              }
+            : todo,
+        );
+      });
 
       return { previousTodos };
     },
@@ -59,15 +70,15 @@ export const useToggleTodoStatus = (): UseMutationResult<Todo, Error, string> =>
     // Rollback on error (Subtask 5.9)
     onError: (err, todoId, context) => {
       if (context?.previousTodos) {
-        queryClient.setQueriesData(['todos'], context.previousTodos);
+        queryClient.setQueriesData(["todos"], context.previousTodos);
       }
 
-      console.error('[useToggleTodoStatus] Error toggling todo:', err);
+      console.error("[useToggleTodoStatus] Error toggling todo:", err);
     },
 
     // Refetch to ensure consistency (Subtask 5.7)
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
   });
 };

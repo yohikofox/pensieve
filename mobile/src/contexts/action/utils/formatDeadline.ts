@@ -5,13 +5,20 @@
  * Subtask 9.1-9.7: Format deadlines with relative time and overdue detection
  */
 
-import { formatDistanceToNow, isPast, isToday, isTomorrow, addDays, differenceInDays } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import {
+  formatDistanceToNow,
+  isPast,
+  isToday,
+  isTomorrow,
+  addDays,
+  differenceInDays,
+} from "date-fns";
+import { fr } from "date-fns/locale";
 
 export interface DeadlineFormat {
   text: string;
   isOverdue: boolean;
-  color: 'warning' | 'normal' | 'none';
+  color: "warning" | "normal" | "none";
 }
 
 /**
@@ -32,9 +39,9 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
   // Subtask 9.6: Handle null/undefined deadlines
   if (!deadline) {
     return {
-      text: 'Pas d\'échéance',
+      text: "Pas d'échéance",
       isOverdue: false,
-      color: 'none',
+      color: "none",
     };
   }
 
@@ -50,21 +57,21 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
 
     if (daysOverdue === 0) {
       return {
-        text: 'En retard (aujourd\'hui)',
+        text: "En retard (aujourd'hui)",
         isOverdue: true,
-        color: 'warning',
+        color: "warning",
       };
     } else if (daysOverdue === 1) {
       return {
-        text: 'En retard de 1 jour',
+        text: "En retard de 1 jour",
         isOverdue: true,
-        color: 'warning',
+        color: "warning",
       };
     } else {
       return {
         text: `En retard de ${daysOverdue} jours`,
         isOverdue: true,
-        color: 'warning',
+        color: "warning",
       };
     }
   }
@@ -72,17 +79,17 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
   // Subtask 9.3: Implement relative time formatting
   if (isToday(deadlineDate)) {
     return {
-      text: 'Aujourd\'hui',
+      text: "Aujourd'hui",
       isOverdue: false,
-      color: 'normal',
+      color: "normal",
     };
   }
 
   if (isTomorrow(deadlineDate)) {
     return {
-      text: 'Demain',
+      text: "Demain",
       isOverdue: false,
-      color: 'normal',
+      color: "normal",
     };
   }
 
@@ -90,9 +97,9 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
 
   if (daysUntil <= 7) {
     return {
-      text: `Dans ${daysUntil} jour${daysUntil > 1 ? 's' : ''}`,
+      text: `Dans ${daysUntil} jour${daysUntil > 1 ? "s" : ""}`,
       isOverdue: false,
-      color: 'normal',
+      color: "normal",
     };
   }
 
@@ -105,7 +112,7 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
   return {
     text: `Dans ${relativeTime}`,
     isOverdue: false,
-    color: 'normal',
+    color: "normal",
   };
 }
 
@@ -117,15 +124,18 @@ export function formatDeadline(deadline?: number): DeadlineFormat {
  * @param isDark - Dark mode flag
  * @returns Color hex string
  */
-export function getDeadlineColor(format: DeadlineFormat, isDark: boolean): string {
-  if (format.color === 'warning') {
-    return isDark ? '#f87171' : '#dc2626'; // red-400 / red-600
+export function getDeadlineColor(
+  format: DeadlineFormat,
+  isDark: boolean,
+): string {
+  if (format.color === "warning") {
+    return isDark ? "#f87171" : "#dc2626"; // red-400 / red-600
   }
 
-  if (format.color === 'normal') {
-    return isDark ? '#9ca3af' : '#6b7280'; // gray-400 / gray-600
+  if (format.color === "normal") {
+    return isDark ? "#9ca3af" : "#6b7280"; // gray-400 / gray-600
   }
 
   // 'none'
-  return isDark ? '#9ca3af' : '#6b7280'; // gray-400 / gray-600
+  return isDark ? "#9ca3af" : "#6b7280"; // gray-400 / gray-600
 }

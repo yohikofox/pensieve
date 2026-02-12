@@ -5,25 +5,31 @@
  * Tracks which AI analysis generated which todos.
  */
 
-import { injectable } from 'tsyringe';
-import { database } from '../../../database';
-import type { IAnalysisTodoRepository } from '../domain/IAnalysisTodoRepository';
+import { injectable } from "tsyringe";
+import { database } from "../../../database";
+import type { IAnalysisTodoRepository } from "../domain/IAnalysisTodoRepository";
 
 @injectable()
 export class AnalysisTodoRepository implements IAnalysisTodoRepository {
-
-  async link(todoId: string, analysisId: string, actionItemIndex?: number): Promise<void> {
+  async link(
+    todoId: string,
+    analysisId: string,
+    actionItemIndex?: number,
+  ): Promise<void> {
     database.execute(
       `INSERT INTO analysis_todos (todo_id, analysis_id, action_item_index, created_at)
        VALUES (?, ?, ?, ?)`,
-      [todoId, analysisId, actionItemIndex ?? null, Date.now()]
+      [todoId, analysisId, actionItemIndex ?? null, Date.now()],
     );
   }
 
-  async findTodoIdByAnalysisAndIndex(analysisId: string, actionItemIndex: number): Promise<string | null> {
+  async findTodoIdByAnalysisAndIndex(
+    analysisId: string,
+    actionItemIndex: number,
+  ): Promise<string | null> {
     const result = database.execute(
       `SELECT todo_id FROM analysis_todos WHERE analysis_id = ? AND action_item_index = ?`,
-      [analysisId, actionItemIndex]
+      [analysisId, actionItemIndex],
     );
 
     const rows = result.rows || [];
@@ -37,7 +43,7 @@ export class AnalysisTodoRepository implements IAnalysisTodoRepository {
   async findTodoIdsByAnalysisId(analysisId: string): Promise<string[]> {
     const result = database.execute(
       `SELECT todo_id FROM analysis_todos WHERE analysis_id = ?`,
-      [analysisId]
+      [analysisId],
     );
 
     const rows = result.rows || [];
@@ -47,7 +53,7 @@ export class AnalysisTodoRepository implements IAnalysisTodoRepository {
   async deleteByAnalysisId(analysisId: string): Promise<number> {
     const result = database.execute(
       `DELETE FROM todos WHERE id IN (SELECT todo_id FROM analysis_todos WHERE analysis_id = ?)`,
-      [analysisId]
+      [analysisId],
     );
 
     return result.rowsAffected || 0;

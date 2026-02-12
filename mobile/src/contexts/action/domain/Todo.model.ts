@@ -7,8 +7,8 @@
  * AC1, AC2, AC4: Todo entity with all required fields
  */
 
-export type TodoStatus = 'todo' | 'completed' | 'abandoned';
-export type TodoPriority = 'low' | 'medium' | 'high';
+export type TodoStatus = "todo" | "completed" | "abandoned";
+export type TodoPriority = "low" | "medium" | "high";
 
 export interface Todo {
   id: string;

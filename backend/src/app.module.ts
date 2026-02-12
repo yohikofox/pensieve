@@ -8,6 +8,7 @@ import { RgpdModule } from './modules/rgpd/rgpd.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ActionModule } from './modules/action/action.module'; // Story 4.3: Action Context
 import { NotificationModule } from './modules/notification/notification.module'; // Story 4.4: Notification Context
+import { AuthorizationModule } from './modules/authorization/authorization.module'; // Multi-level permissions system
 
 @Module({
   imports: [
@@ -40,6 +41,8 @@ import { NotificationModule } from './modules/notification/notification.module';
     ActionModule,
     // Notification module (Progress notifications - Story 4.4)
     NotificationModule,
+    // Authorization module (Multi-level permissions system)
+    AuthorizationModule,
   ],
   controllers: [AppController],
   providers: [],

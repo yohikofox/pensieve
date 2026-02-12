@@ -5,9 +5,9 @@
  * Uses singleton pattern to ensure same instance across component lifecycle.
  */
 
-import { useRef } from 'react';
-import { container } from 'tsyringe';
-import { WaveformExtractionService } from '../services/WaveformExtractionService';
+import { useRef } from "react";
+import { container } from "tsyringe";
+import { WaveformExtractionService } from "../services/WaveformExtractionService";
 
 /**
  * Access waveform extraction service

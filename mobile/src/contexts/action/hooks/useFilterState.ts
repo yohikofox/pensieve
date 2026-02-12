@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useState, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
-export type FilterType = 'all' | 'active' | 'completed';
-export type SortType = 'default' | 'priority' | 'createdDate' | 'alphabetical';
+export type FilterType = "all" | "active" | "completed";
+export type SortType = "default" | "priority" | "createdDate" | "alphabetical";
 
-const FILTER_STORAGE_KEY = '@pensine/actions_filter';
-const SORT_STORAGE_KEY = '@pensine/actions_sort';
+const FILTER_STORAGE_KEY = "@pensine/actions_filter";
+const SORT_STORAGE_KEY = "@pensine/actions_sort";
 
 export interface UseFilterStateReturn {
   filter: FilterType;
@@ -20,8 +20,8 @@ export interface UseFilterStateReturn {
  * Persists preferences to AsyncStorage (AC8)
  */
 export const useFilterState = (): UseFilterStateReturn => {
-  const [filter, setFilterState] = useState<FilterType>('active');
-  const [sort, setSortState] = useState<SortType>('default');
+  const [filter, setFilterState] = useState<FilterType>("active");
+  const [sort, setSortState] = useState<SortType>("default");
   const [isLoading, setIsLoading] = useState(true);
 
   // Load persisted preferences on mount (AC8)
@@ -41,7 +41,7 @@ export const useFilterState = (): UseFilterStateReturn => {
         }
       } catch (error) {
         // Fallback to defaults on error - don't block app
-        console.error('Failed to load filter preferences:', error);
+        console.error("Failed to load filter preferences:", error);
       } finally {
         setIsLoading(false);
       }
@@ -57,7 +57,7 @@ export const useFilterState = (): UseFilterStateReturn => {
     try {
       await AsyncStorage.setItem(FILTER_STORAGE_KEY, newFilter);
     } catch (error) {
-      console.error('Failed to save filter preference:', error);
+      console.error("Failed to save filter preference:", error);
       // Rollback state on persistence failure
       setFilterState(previousFilter);
     }
@@ -70,7 +70,7 @@ export const useFilterState = (): UseFilterStateReturn => {
     try {
       await AsyncStorage.setItem(SORT_STORAGE_KEY, newSort);
     } catch (error) {
-      console.error('Failed to save sort preference:', error);
+      console.error("Failed to save sort preference:", error);
       // Rollback state on persistence failure
       setSortState(previousSort);
     }

@@ -1,6 +1,6 @@
-import { Todo } from '../domain/Todo.model';
+import { Todo } from "../domain/Todo.model";
 
-export type FilterType = 'all' | 'active' | 'completed';
+export type FilterType = "all" | "active" | "completed";
 
 /**
  * Filter todos by status
@@ -12,20 +12,20 @@ export type FilterType = 'all' | 'active' | 'completed';
  */
 export const filterTodos = (todos: Todo[], filter: FilterType): Todo[] => {
   switch (filter) {
-    case 'all':
+    case "all":
       // AC4: Show active first, then completed
-      const active = todos.filter((t) => t.status === 'todo');
-      const completed = todos.filter((t) => t.status === 'completed');
+      const active = todos.filter((t) => t.status === "todo");
+      const completed = todos.filter((t) => t.status === "completed");
       return [...active, ...completed];
 
-    case 'active':
+    case "active":
       // AC2: Only incomplete todos (status='todo')
-      return todos.filter((t) => t.status === 'todo');
+      return todos.filter((t) => t.status === "todo");
 
-    case 'completed':
+    case "completed":
       // AC3: Only completed todos, sorted by completedAt DESC (most recent first)
       return todos
-        .filter((t) => t.status === 'completed')
+        .filter((t) => t.status === "completed")
         .sort((a, b) => {
           const aTime = a.completedAt ?? 0;
           const bTime = b.completedAt ?? 0;

@@ -9,15 +9,17 @@
  * - 5 minutes staleTime for data caching
  */
 
-import { useQuery } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useQuery } from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
-const QUERY_KEY = ['todos', 'all'];
+const QUERY_KEY = ["todos", "all"];
 
 export const useAllTodos = () => {
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useQuery({
     queryKey: QUERY_KEY,

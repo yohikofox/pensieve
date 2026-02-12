@@ -4,7 +4,11 @@
  * Defines data access operations for CaptureAnalysis entities.
  */
 
-import type { CaptureAnalysis, AnalysisType, SaveAnalysisInput } from './CaptureAnalysis.model';
+import type {
+  CaptureAnalysis,
+  AnalysisType,
+  SaveAnalysisInput,
+} from "./CaptureAnalysis.model";
 
 export interface ICaptureAnalysisRepository {
   /**
@@ -20,7 +24,9 @@ export interface ICaptureAnalysisRepository {
   /**
    * Get all analyses for a capture as a map keyed by type
    */
-  getAllAsMap(captureId: string): Promise<Record<AnalysisType, CaptureAnalysis | null>>;
+  getAllAsMap(
+    captureId: string,
+  ): Promise<Record<AnalysisType, CaptureAnalysis | null>>;
 
   /**
    * Save an analysis (upsert - creates or updates based on captureId + type)

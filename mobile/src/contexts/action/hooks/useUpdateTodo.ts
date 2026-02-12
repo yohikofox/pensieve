@@ -5,13 +5,17 @@
  * Support inline editing of todo fields
  */
 
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { Todo } from '../domain/Todo.model';
-import { TOKENS } from '../../../infrastructure/di/tokens';
-import { useCaptureDetailStore } from '../../../stores/captureDetailStore';
-import { loadActionItemsFromTodos } from '../../../hooks/useActionItems';
+import {
+  useMutation,
+  useQueryClient,
+  UseMutationResult,
+} from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { Todo } from "../domain/Todo.model";
+import { TOKENS } from "../../../infrastructure/di/tokens";
+import { useCaptureDetailStore } from "../../../stores/captureDetailStore";
+import { loadActionItemsFromTodos } from "../../../hooks/useActionItems";
 
 interface UpdateTodoParams {
   id: string;
@@ -24,15 +28,22 @@ interface UpdateTodoParams {
  *
  * @returns React Query mutation
  */
-export const useUpdateTodo = (): UseMutationResult<void, Error, UpdateTodoParams> => {
+export const useUpdateTodo = (): UseMutationResult<
+  void,
+  Error,
+  UpdateTodoParams
+> => {
   const queryClient = useQueryClient();
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useMutation({
-    mutationFn: ({ id, changes }: UpdateTodoParams) => todoRepository.update(id, changes),
+    mutationFn: ({ id, changes }: UpdateTodoParams) =>
+      todoRepository.update(id, changes),
 
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
 
       // Refresh action items in capture detail store if a capture is active
       const captureId = useCaptureDetailStore.getState().captureId;
@@ -46,7 +57,7 @@ export const useUpdateTodo = (): UseMutationResult<void, Error, UpdateTodoParams
     },
 
     onError: (err) => {
-      console.error('[useUpdateTodo] Error updating todo:', err);
+      console.error("[useUpdateTodo] Error updating todo:", err);
     },
   });
 };

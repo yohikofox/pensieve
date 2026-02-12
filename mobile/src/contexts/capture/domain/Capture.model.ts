@@ -163,7 +163,9 @@ export function mapRowToCapture(row: CaptureRow): Capture {
     conflictData: row.conflict_data,
     // Retry tracking fields (Migration v14)
     retryCount: row.retry_count,
-    retryWindowStartAt: row.retry_window_start_at ? new Date(row.retry_window_start_at) : null,
+    retryWindowStartAt: row.retry_window_start_at
+      ? new Date(row.retry_window_start_at)
+      : null,
     lastRetryAt: row.last_retry_at ? new Date(row.last_retry_at) : null,
     transcriptionError: row.transcription_error,
   };

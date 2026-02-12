@@ -9,7 +9,7 @@
  * - Entity + Action: "Capture" + "Recorded"
  */
 
-import type { DomainEvent } from '../../shared/events/DomainEvent';
+import type { DomainEvent } from "../../shared/events/DomainEvent";
 
 /**
  * CaptureRecorded Event
@@ -22,14 +22,14 @@ import type { DomainEvent } from '../../shared/events/DomainEvent';
  * - AnalyticsService (track capture metrics)
  */
 export interface CaptureRecordedEvent extends DomainEvent {
-  readonly type: 'CaptureRecorded';
+  readonly type: "CaptureRecorded";
   readonly payload: {
     readonly captureId: string;
-    readonly captureType: 'audio' | 'text';
-    readonly audioPath?: string;  // File path for audio captures
-    readonly audioDuration?: number;  // Milliseconds for audio captures
-    readonly textContent?: string;  // Text content for text captures
-    readonly createdAt: number;  // Unix milliseconds
+    readonly captureType: "audio" | "text";
+    readonly audioPath?: string; // File path for audio captures
+    readonly audioDuration?: number; // Milliseconds for audio captures
+    readonly textContent?: string; // Text content for text captures
+    readonly createdAt: number; // Unix milliseconds
   };
 }
 
@@ -44,11 +44,11 @@ export interface CaptureRecordedEvent extends DomainEvent {
  * - StorageService (cleanup audio files)
  */
 export interface CaptureDeletedEvent extends DomainEvent {
-  readonly type: 'CaptureDeleted';
+  readonly type: "CaptureDeleted";
   readonly payload: {
     readonly captureId: string;
-    readonly captureType: 'audio' | 'text';
-    readonly audioPath?: string;  // File path to cleanup
+    readonly captureType: "audio" | "text";
+    readonly audioPath?: string; // File path to cleanup
   };
 }
 
@@ -61,10 +61,10 @@ export interface CaptureDeletedEvent extends DomainEvent {
  * - SyncService (schedule update sync)
  */
 export interface CaptureUpdatedEvent extends DomainEvent {
-  readonly type: 'CaptureUpdated';
+  readonly type: "CaptureUpdated";
   readonly payload: {
     readonly captureId: string;
-    readonly updatedFields: string[];  // Which fields changed
+    readonly updatedFields: string[]; // Which fields changed
   };
 }
 
@@ -80,25 +80,25 @@ export type CaptureEvent =
  * Type guard for CaptureRecordedEvent
  */
 export function isCaptureRecordedEvent(
-  event: DomainEvent
+  event: DomainEvent,
 ): event is CaptureRecordedEvent {
-  return event.type === 'CaptureRecorded';
+  return event.type === "CaptureRecorded";
 }
 
 /**
  * Type guard for CaptureDeletedEvent
  */
 export function isCaptureDeletedEvent(
-  event: DomainEvent
+  event: DomainEvent,
 ): event is CaptureDeletedEvent {
-  return event.type === 'CaptureDeleted';
+  return event.type === "CaptureDeleted";
 }
 
 /**
  * Type guard for CaptureUpdatedEvent
  */
 export function isCaptureUpdatedEvent(
-  event: DomainEvent
+  event: DomainEvent,
 ): event is CaptureUpdatedEvent {
-  return event.type === 'CaptureUpdated';
+  return event.type === "CaptureUpdated";
 }

@@ -1,7 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useQuery } from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
 /**
  * Hook to get filtered todo counts for filter badges
@@ -17,11 +17,13 @@ export interface UseFilteredTodoCountsReturn {
 }
 
 export const useFilteredTodoCounts = (): UseFilteredTodoCountsReturn => {
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   // Single optimized query for all counts (Story 5.3 - Fix #5)
   const counts = useQuery({
-    queryKey: ['todos', 'count', 'all-grouped'],
+    queryKey: ["todos", "count", "all-grouped"],
     queryFn: () => todoRepository.countAllByStatus(),
     staleTime: 1 * 60 * 1000, // 1 minute cache
   });

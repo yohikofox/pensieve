@@ -6,16 +6,15 @@
  * AC1, AC2: Query todos by ideaId with sorting (priority desc, createdAt asc)
  */
 
-import { injectable } from 'tsyringe';
-import { database } from '../../../database';
-import { Todo, TodoStatus } from '../domain/Todo.model';
-import { ITodoRepository, TodoWithSource } from '../domain/ITodoRepository';
-import { Thought } from '../../knowledge/domain/Thought.model';
-import { Idea } from '../../knowledge/domain/Idea.model';
+import { injectable } from "tsyringe";
+import { database } from "../../../database";
+import { Todo, TodoStatus } from "../domain/Todo.model";
+import { ITodoRepository, TodoWithSource } from "../domain/ITodoRepository";
+import { Thought } from "../../knowledge/domain/Thought.model";
+import { Idea } from "../../knowledge/domain/Idea.model";
 
 @injectable()
 export class TodoRepository implements ITodoRepository {
-
   /**
    * Create a new todo
    * AC1: Store todos in OP-SQLite
@@ -41,7 +40,7 @@ export class TodoRepository implements ITodoRepository {
         todo.completedAt ?? null,
         todo.createdAt,
         todo.updatedAt,
-      ]
+      ],
     );
   }
 
@@ -50,7 +49,7 @@ export class TodoRepository implements ITodoRepository {
    * @returns Todo or null if not found
    */
   async findById(id: string): Promise<Todo | null> {
-    const result = database.execute('SELECT * FROM todos WHERE id = ?', [id]);
+    const result = database.execute("SELECT * FROM todos WHERE id = ?", [id]);
 
     const rows = result.rows || [];
     if (rows.length === 0) {
@@ -75,9 +74,9 @@ export class TodoRepository implements ITodoRepository {
    * @returns Array of todos sorted by: active first, then priority (high → medium → low)
    */
   async findByIdeaId(ideaId: string): Promise<Todo[]> {
-    if (!ideaId || ideaId.trim() === '') {
+    if (!ideaId || ideaId.trim() === "") {
       // Return empty array if ideaId is invalid (prevents SQL errors)
-      console.warn('[TodoRepository] findByIdeaId called with empty ideaId');
+      console.warn("[TodoRepository] findByIdeaId called with empty ideaId");
       return [];
     }
 
@@ -92,7 +91,7 @@ export class TodoRepository implements ITodoRepository {
            WHEN 'low' THEN 2
          END ASC,
          created_at ASC`,
-      [ideaId]
+      [ideaId],
     );
 
     const rows = result.rows || [];
@@ -116,7 +115,7 @@ export class TodoRepository implements ITodoRepository {
            WHEN 'low' THEN 2
          END ASC,
          created_at ASC`,
-      [thoughtId]
+      [thoughtId],
     );
 
     const rows = result.rows || [];
@@ -136,37 +135,37 @@ export class TodoRepository implements ITodoRepository {
     const values: any[] = [];
 
     if (changes.description !== undefined) {
-      fields.push('description = ?');
+      fields.push("description = ?");
       values.push(changes.description);
     }
 
     if (changes.deadline !== undefined) {
-      fields.push('deadline = ?');
+      fields.push("deadline = ?");
       values.push(changes.deadline ?? null);
     }
 
     if (changes.contact !== undefined) {
-      fields.push('contact = ?');
+      fields.push("contact = ?");
       values.push(changes.contact ?? null);
     }
 
     if (changes.priority !== undefined) {
-      fields.push('priority = ?');
+      fields.push("priority = ?");
       values.push(changes.priority);
     }
 
     if (changes.status !== undefined) {
-      fields.push('status = ?');
+      fields.push("status = ?");
       values.push(changes.status);
     }
 
     if (changes.completedAt !== undefined) {
-      fields.push('completed_at = ?');
+      fields.push("completed_at = ?");
       values.push(changes.completedAt ?? null);
     }
 
     // Always update updatedAt
-    fields.push('updated_at = ?');
+    fields.push("updated_at = ?");
     values.push(Date.now());
 
     // Add id to the end
@@ -174,11 +173,17 @@ export class TodoRepository implements ITodoRepository {
 
     if (fields.length === 1) {
       // Only updatedAt was set, no actual changes (Issue #9 fix: return false)
-      console.debug('[TodoRepository] update() called with no actual changes for todo:', id);
+      console.debug(
+        "[TodoRepository] update() called with no actual changes for todo:",
+        id,
+      );
       return false;
     }
 
-    database.execute(`UPDATE todos SET ${fields.join(', ')} WHERE id = ?`, values);
+    database.execute(
+      `UPDATE todos SET ${fields.join(", ")} WHERE id = ?`,
+      values,
+    );
     return true;
   }
 
@@ -187,7 +192,7 @@ export class TodoRepository implements ITodoRepository {
    * @param id - Todo UUID
    */
   async delete(id: string): Promise<void> {
-    database.execute('DELETE FROM todos WHERE id = ?', [id]);
+    database.execute("DELETE FROM todos WHERE id = ?", [id]);
   }
 
   /**
@@ -196,10 +201,9 @@ export class TodoRepository implements ITodoRepository {
    * @returns Number of todos deleted
    */
   async deleteCompleted(): Promise<number> {
-    const result = database.execute(
-      `DELETE FROM todos WHERE status = ?`,
-      ['completed']
-    );
+    const result = database.execute(`DELETE FROM todos WHERE status = ?`, [
+      "completed",
+    ]);
 
     return result.rowsAffected || 0;
   }
@@ -219,15 +223,16 @@ export class TodoRepository implements ITodoRepository {
     }
 
     // Determine new status and completedAt
-    const newStatus: TodoStatus = current.status === 'completed' ? 'todo' : 'completed';
-    const completedAt = newStatus === 'completed' ? Date.now() : null;
+    const newStatus: TodoStatus =
+      current.status === "completed" ? "todo" : "completed";
+    const completedAt = newStatus === "completed" ? Date.now() : null;
 
     // Update status and completedAt
     database.execute(
       `UPDATE todos
        SET status = ?, completed_at = ?, updated_at = ?
        WHERE id = ?`,
-      [newStatus, completedAt, Date.now(), id]
+      [newStatus, completedAt, Date.now(), id],
     );
 
     // Fetch and return updated todo
@@ -245,7 +250,9 @@ export class TodoRepository implements ITodoRepository {
    * @returns All todos in database
    */
   async getAll(): Promise<Todo[]> {
-    const result = database.execute('SELECT * FROM todos ORDER BY created_at DESC');
+    const result = database.execute(
+      "SELECT * FROM todos ORDER BY created_at DESC",
+    );
 
     const rows = result.rows || [];
     return rows.map((row: any) => this.mapRowToTodo(row));
@@ -269,7 +276,7 @@ export class TodoRepository implements ITodoRepository {
            WHEN 'medium' THEN 1
            WHEN 'low' THEN 2
          END ASC,
-         created_at ASC`
+         created_at ASC`,
     );
 
     const rows = result.rows || [];
@@ -283,7 +290,7 @@ export class TodoRepository implements ITodoRepository {
    */
   async countActive(): Promise<number> {
     const result = database.execute(
-      `SELECT COUNT(*) as count FROM todos WHERE status = 'todo'`
+      `SELECT COUNT(*) as count FROM todos WHERE status = 'todo'`,
     );
 
     const rows = result.rows || [];
@@ -300,10 +307,10 @@ export class TodoRepository implements ITodoRepository {
    * @param status - Status to count ('todo' or 'completed')
    * @returns Number of todos with given status
    */
-  async countByStatus(status: 'todo' | 'completed'): Promise<number> {
+  async countByStatus(status: "todo" | "completed"): Promise<number> {
     const result = database.execute(
       `SELECT COUNT(*) as count FROM todos WHERE status = ?`,
-      [status]
+      [status],
     );
 
     const rows = result.rows || [];
@@ -319,13 +326,17 @@ export class TodoRepository implements ITodoRepository {
    * Story 5.3 - Code Review Fix #5: Performance optimization
    * @returns Object with counts: { all, active, completed }
    */
-  async countAllByStatus(): Promise<{ all: number; active: number; completed: number }> {
+  async countAllByStatus(): Promise<{
+    all: number;
+    active: number;
+    completed: number;
+  }> {
     const result = database.execute(
       `SELECT
         COUNT(*) as all_count,
         SUM(CASE WHEN status = 'todo' THEN 1 ELSE 0 END) as active_count,
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count
-       FROM todos`
+       FROM todos`,
     );
 
     const rows = result.rows || [];
@@ -382,7 +393,7 @@ export class TodoRepository implements ITodoRepository {
            WHEN 'medium' THEN 1
            WHEN 'low' THEN 2
          END ASC,
-         t.created_at ASC`
+         t.created_at ASC`,
     );
 
     const rows = result.rows || [];
@@ -400,7 +411,7 @@ export class TodoRepository implements ITodoRepository {
        JOIN analysis_todos at ON at.todo_id = t.id
        WHERE at.analysis_id = ?
        ORDER BY at.action_item_index ASC`,
-      [analysisId]
+      [analysisId],
     );
 
     const rows = result.rows || [];

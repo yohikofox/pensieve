@@ -9,10 +9,10 @@
  * - Retrieval by capture or type
  */
 
-import 'reflect-metadata';
-import { injectable } from 'tsyringe';
-import { v4 as uuidv4 } from 'uuid';
-import { database } from '../../../database';
+import "reflect-metadata";
+import { injectable } from "tsyringe";
+import { v4 as uuidv4 } from "uuid";
+import { database } from "../../../database";
 import {
   type CaptureAnalysis,
   type CaptureAnalysisRow,
@@ -20,18 +20,21 @@ import {
   type SaveAnalysisInput,
   ANALYSIS_TYPES,
   mapRowToCaptureAnalysis,
-} from '../domain/CaptureAnalysis.model';
-import type { ICaptureAnalysisRepository } from '../domain/ICaptureAnalysisRepository';
+} from "../domain/CaptureAnalysis.model";
+import type { ICaptureAnalysisRepository } from "../domain/ICaptureAnalysisRepository";
 
 @injectable()
 export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
   /**
    * Get analysis by capture ID and type
    */
-  async get(captureId: string, type: AnalysisType): Promise<CaptureAnalysis | null> {
+  async get(
+    captureId: string,
+    type: AnalysisType,
+  ): Promise<CaptureAnalysis | null> {
     const result = database.execute(
-      'SELECT * FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?',
-      [captureId, type]
+      "SELECT * FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?",
+      [captureId, type],
     );
 
     const row = result.rows?.[0] as CaptureAnalysisRow | undefined;
@@ -43,8 +46,8 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
    */
   async getAllForCapture(captureId: string): Promise<CaptureAnalysis[]> {
     const result = database.execute(
-      'SELECT * FROM capture_analysis WHERE capture_id = ? ORDER BY analysis_type ASC',
-      [captureId]
+      "SELECT * FROM capture_analysis WHERE capture_id = ? ORDER BY analysis_type ASC",
+      [captureId],
     );
 
     const rows = (result.rows ?? []) as CaptureAnalysisRow[];
@@ -54,7 +57,9 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
   /**
    * Get all analyses for a capture as a map keyed by type
    */
-  async getAllAsMap(captureId: string): Promise<Record<AnalysisType, CaptureAnalysis | null>> {
+  async getAllAsMap(
+    captureId: string,
+  ): Promise<Record<AnalysisType, CaptureAnalysis | null>> {
     const analyses = await this.getAllForCapture(captureId);
     const map: Record<AnalysisType, CaptureAnalysis | null> = {
       [ANALYSIS_TYPES.SUMMARY]: null,
@@ -78,8 +83,8 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
 
     // Check if entry exists
     const existing = database.execute(
-      'SELECT id FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?',
-      [input.captureId, input.analysisType]
+      "SELECT id FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?",
+      [input.captureId, input.analysisType],
     );
 
     let id: string;
@@ -97,7 +102,7 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
           input.processingDurationMs ?? null,
           now,
           id,
-        ]
+        ],
       );
     } else {
       // Insert new
@@ -115,12 +120,15 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
           input.processingDurationMs ?? null,
           now,
           now,
-        ]
+        ],
       );
     }
 
     // Return the saved analysis
-    const result = database.execute('SELECT * FROM capture_analysis WHERE id = ?', [id]);
+    const result = database.execute(
+      "SELECT * FROM capture_analysis WHERE id = ?",
+      [id],
+    );
     const row = result.rows?.[0] as CaptureAnalysisRow;
     return mapRowToCaptureAnalysis(row);
   }
@@ -130,8 +138,8 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
    */
   async delete(captureId: string, type: AnalysisType): Promise<void> {
     database.execute(
-      'DELETE FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?',
-      [captureId, type]
+      "DELETE FROM capture_analysis WHERE capture_id = ? AND analysis_type = ?",
+      [captureId, type],
     );
   }
 
@@ -139,6 +147,8 @@ export class CaptureAnalysisRepository implements ICaptureAnalysisRepository {
    * Delete all analyses for a capture
    */
   async deleteAllForCapture(captureId: string): Promise<void> {
-    database.execute('DELETE FROM capture_analysis WHERE capture_id = ?', [captureId]);
+    database.execute("DELETE FROM capture_analysis WHERE capture_id = ?", [
+      captureId,
+    ]);
   }
 }

@@ -5,10 +5,14 @@
  * Delete all completed todos with confirmation and success feedback
  */
 
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import {
+  useMutation,
+  useQueryClient,
+  UseMutationResult,
+} from "@tanstack/react-query";
+import { container } from "tsyringe";
+import { ITodoRepository } from "../domain/ITodoRepository";
+import { TOKENS } from "../../../infrastructure/di/tokens";
 
 /**
  * Bulk delete all completed todos
@@ -16,9 +20,15 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
  *
  * @returns React Query mutation with count of deleted todos
  */
-export const useBulkDeleteCompleted = (): UseMutationResult<number, Error, void> => {
+export const useBulkDeleteCompleted = (): UseMutationResult<
+  number,
+  Error,
+  void
+> => {
   const queryClient = useQueryClient();
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+  const todoRepository = container.resolve<ITodoRepository>(
+    TOKENS.ITodoRepository,
+  );
 
   return useMutation({
     mutationFn: () => todoRepository.deleteCompleted(),
@@ -26,18 +36,23 @@ export const useBulkDeleteCompleted = (): UseMutationResult<number, Error, void>
     onSuccess: (deletedCount) => {
       // CODE REVIEW FIX #10: Early return if no todos were deleted (avoid unnecessary invalidation)
       if (deletedCount === 0) {
-        console.log('[useBulkDeleteCompleted] No completed todos to delete');
+        console.log("[useBulkDeleteCompleted] No completed todos to delete");
         return;
       }
 
       // Invalidate all todos queries to refetch updated data
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
 
-      console.log(`[useBulkDeleteCompleted] Deleted ${deletedCount} completed todos`);
+      console.log(
+        `[useBulkDeleteCompleted] Deleted ${deletedCount} completed todos`,
+      );
     },
 
     onError: (err) => {
-      console.error('[useBulkDeleteCompleted] Error deleting completed todos:', err);
+      console.error(
+        "[useBulkDeleteCompleted] Error deleting completed todos:",
+        err,
+      );
     },
   });
 };

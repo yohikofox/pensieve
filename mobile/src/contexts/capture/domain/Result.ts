@@ -5,10 +5,10 @@
  */
 
 export enum RepositoryResultType {
-  SUCCESS = 'success',
-  NOT_FOUND = 'not_found',
-  DATABASE_ERROR = 'database_error',
-  VALIDATION_ERROR = 'validation_error',
+  SUCCESS = "success",
+  NOT_FOUND = "not_found",
+  DATABASE_ERROR = "database_error",
+  VALIDATION_ERROR = "validation_error",
 }
 
 export type RepositoryResult<T> = {
@@ -27,7 +27,7 @@ export function success<T>(data: T): RepositoryResult<T> {
 export function notFound<T>(error?: string): RepositoryResult<T> {
   return {
     type: RepositoryResultType.NOT_FOUND,
-    error: error ?? 'Resource not found',
+    error: error ?? "Resource not found",
   };
 }
 

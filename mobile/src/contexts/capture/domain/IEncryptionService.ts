@@ -10,7 +10,7 @@ export interface EncryptionStatus {
   /** Is encryption available on this device? */
   available: boolean;
   /** Encryption type (OS-level) */
-  type: 'ios-data-protection' | 'android-fbe' | 'none';
+  type: "ios-data-protection" | "android-fbe" | "none";
   /** Human-readable status message */
   message: string;
   /** Verification method used */

@@ -11,10 +11,10 @@
  * Analysis type enumeration
  */
 export const ANALYSIS_TYPES = {
-  SUMMARY: 'summary',
-  HIGHLIGHTS: 'highlights',
-  ACTION_ITEMS: 'action_items',
-  IDEAS: 'ideas',
+  SUMMARY: "summary",
+  HIGHLIGHTS: "highlights",
+  ACTION_ITEMS: "action_items",
+  IDEAS: "ideas",
 } as const;
 
 export type AnalysisType = (typeof ANALYSIS_TYPES)[keyof typeof ANALYSIS_TYPES];
@@ -50,7 +50,9 @@ export interface CaptureAnalysisRow {
 /**
  * Map database row to domain model
  */
-export function mapRowToCaptureAnalysis(row: CaptureAnalysisRow): CaptureAnalysis {
+export function mapRowToCaptureAnalysis(
+  row: CaptureAnalysisRow,
+): CaptureAnalysis {
   return {
     id: row.id,
     captureId: row.capture_id,

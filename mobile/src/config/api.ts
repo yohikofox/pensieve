@@ -4,7 +4,7 @@
  * Uses environment variables with fallback to localhost
  */
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
 
 export const apiConfig = {
   baseUrl: API_URL,
@@ -25,6 +25,6 @@ export const apiConfig = {
   google: {
     // Google OAuth Client ID for calendar integration
     // Create at: https://console.cloud.google.com/apis/credentials
-    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '',
+    clientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || "",
   },
 };

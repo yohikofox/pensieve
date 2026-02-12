@@ -21,7 +21,10 @@
     "test:acceptance": "jest --config ./test/jest-acceptance.json",
     "test:acceptance:watch": "jest --config ./test/jest-acceptance.json --watch",
     "test:acceptance:story-4-1": "jest --config ./test/jest-acceptance.json story-4-1",
-    "reset-rabbitmq": "bash scripts/reset-rabbitmq-queues.sh"
+    "reset-rabbitmq": "bash scripts/reset-rabbitmq-queues.sh",
+    "migration:run": "ts-node -r tsconfig-paths/register src/scripts/run-migration.ts",
+    "seed:authorization": "ts-node -r tsconfig-paths/register src/scripts/run-seed.ts",
+    "migrate:users": "ts-node -r tsconfig-paths/register src/scripts/migrate-existing-users.ts"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",
@@ -39,6 +42,7 @@
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
     "chrono-node": "^2.9.0",
+    "dotenv": "^17.2.4",
     "fs-extra": "^11.3.3",
     "minio": "^8.0.6",
     "openai": "^6.17.0",

@@ -19,7 +19,11 @@ export interface IAnalysisTodoRepository {
    * @param analysisId - CaptureAnalysis UUID
    * @param actionItemIndex - Optional index of the action item in the analysis
    */
-  link(todoId: string, analysisId: string, actionItemIndex?: number): Promise<void>;
+  link(
+    todoId: string,
+    analysisId: string,
+    actionItemIndex?: number,
+  ): Promise<void>;
 
   /**
    * Find all todo IDs linked to a given analysis
@@ -34,7 +38,10 @@ export interface IAnalysisTodoRepository {
    * @param actionItemIndex - Index of the action item in the analysis
    * @returns Todo ID or null if not found
    */
-  findTodoIdByAnalysisAndIndex(analysisId: string, actionItemIndex: number): Promise<string | null>;
+  findTodoIdByAnalysisAndIndex(
+    analysisId: string,
+    actionItemIndex: number,
+  ): Promise<string | null>;
 
   /**
    * Delete all todos associated with a given analysis.

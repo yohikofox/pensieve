@@ -12,21 +12,32 @@
  * Migration: WatermelonDB → OP-SQLite
  */
 
-import 'reflect-metadata';
-import { injectable, inject } from 'tsyringe';
-import { v4 as uuidv4 } from 'uuid';
-import { database } from '../../../database';
-import { type Capture, mapRowToCapture, type CaptureRow } from '../domain/Capture.model';
-import { type RepositoryResult, success, databaseError } from '../domain/Result';
-import { type ICaptureRepository } from '../domain/ICaptureRepository';
-import { type ISyncQueueService } from '../domain/ISyncQueueService';
-import { TOKENS } from '../../../infrastructure/di/tokens';
-import type { EventBus } from '../../shared/events/EventBus';
-import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../events/CaptureEvents';
+import "reflect-metadata";
+import { injectable, inject } from "tsyringe";
+import { v4 as uuidv4 } from "uuid";
+import { database } from "../../../database";
+import {
+  type Capture,
+  mapRowToCapture,
+  type CaptureRow,
+} from "../domain/Capture.model";
+import {
+  type RepositoryResult,
+  success,
+  databaseError,
+} from "../domain/Result";
+import { type ICaptureRepository } from "../domain/ICaptureRepository";
+import { type ISyncQueueService } from "../domain/ISyncQueueService";
+import { TOKENS } from "../../../infrastructure/di/tokens";
+import type { EventBus } from "../../shared/events/EventBus";
+import type {
+  CaptureRecordedEvent,
+  CaptureDeletedEvent,
+} from "../events/CaptureEvents";
 
 export interface CreateCaptureData {
-  type: 'audio' | 'text' | 'image' | 'url';
-  state: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
+  type: "audio" | "text" | "image" | "url";
+  state: "recording" | "captured" | "processing" | "ready" | "failed";
   projectId?: string;
   rawContent: string;
   normalizedText?: string;
@@ -38,7 +49,7 @@ export interface CreateCaptureData {
 }
 
 export interface UpdateCaptureData {
-  state?: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
+  state?: "recording" | "captured" | "processing" | "ready" | "failed";
   projectId?: string;
   rawContent?: string;
   normalizedText?: string;
@@ -53,8 +64,9 @@ export interface UpdateCaptureData {
 @injectable()
 export class CaptureRepository implements ICaptureRepository {
   constructor(
-    @inject(TOKENS.ISyncQueueService) private syncQueueService: ISyncQueueService,
-    @inject('EventBus') private eventBus: EventBus
+    @inject(TOKENS.ISyncQueueService)
+    private syncQueueService: ISyncQueueService,
+    @inject("EventBus") private eventBus: EventBus,
   ) {}
 
   /**
@@ -81,37 +93,40 @@ export class CaptureRepository implements ICaptureRepository {
           now,
           now,
           0,
-        ]
+        ],
       );
 
       // Select the created record
-      const selectResult = database.execute('SELECT * FROM captures WHERE id = ?', [id]);
+      const selectResult = database.execute(
+        "SELECT * FROM captures WHERE id = ?",
+        [id],
+      );
       const row = selectResult.rows?.[0] as CaptureRow;
 
       if (!row) {
-        console.error('[CaptureRepository] Failed to create capture: record not found after INSERT');
-        return databaseError('Failed to create capture');
+        console.error(
+          "[CaptureRepository] Failed to create capture: record not found after INSERT",
+        );
+        return databaseError("Failed to create capture");
       }
 
       const capture = mapRowToCapture(row);
 
       // Story 2.4 AC4: Add to sync queue automatically (all new captures need sync)
       try {
-        await this.syncQueueService.enqueue(
-          'capture',
-          capture.id,
-          'create',
-          {
-            type: capture.type,
-            state: capture.state,
-            rawContent: capture.rawContent,
-            duration: capture.duration,
-            fileSize: capture.fileSize,
-          }
-        );
-        console.log('[CaptureRepository] Added to sync queue:', capture.id);
+        await this.syncQueueService.enqueue("capture", capture.id, "create", {
+          type: capture.type,
+          state: capture.state,
+          rawContent: capture.rawContent,
+          duration: capture.duration,
+          fileSize: capture.fileSize,
+        });
+        console.log("[CaptureRepository] Added to sync queue:", capture.id);
       } catch (queueError) {
-        console.error('[CaptureRepository] Failed to add to sync queue:', queueError);
+        console.error(
+          "[CaptureRepository] Failed to add to sync queue:",
+          queueError,
+        );
         // Don't fail the capture creation if queue fails
       }
 
@@ -119,37 +134,59 @@ export class CaptureRepository implements ICaptureRepository {
       // IMPORTANT: Only publish if state='captured' (not 'recording')
       // Audio captures start with state='recording' and transition to 'captured' on stopRecording()
       // We only want to trigger transcription when the capture is fully completed
-      console.log('[CaptureRepository] create() - Capture state:', capture.state, 'type:', capture.type);
-      if (capture.state === 'captured') {
+      console.log(
+        "[CaptureRepository] create() - Capture state:",
+        capture.state,
+        "type:",
+        capture.type,
+      );
+      if (capture.state === "captured") {
         try {
-          console.log('[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:', capture.id);
+          console.log(
+            "[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:",
+            capture.id,
+          );
           const event: CaptureRecordedEvent = {
-            type: 'CaptureRecorded',
+            type: "CaptureRecorded",
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
               captureType: capture.type,
-              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+              audioPath:
+                capture.type === "audio" ? capture.rawContent : undefined,
               audioDuration: capture.duration,
-              textContent: capture.type === 'text' ? capture.rawContent : undefined,
+              textContent:
+                capture.type === "text" ? capture.rawContent : undefined,
               createdAt: capture.createdAt.getTime(),
             },
           };
-          console.log('[CaptureRepository] Event payload:', JSON.stringify(event.payload));
+          console.log(
+            "[CaptureRepository] Event payload:",
+            JSON.stringify(event.payload),
+          );
           this.eventBus.publish(event);
-          console.log('[CaptureRepository] ✅ Published CaptureRecorded event:', capture.id);
+          console.log(
+            "[CaptureRepository] ✅ Published CaptureRecorded event:",
+            capture.id,
+          );
         } catch (eventError) {
-          console.error('[CaptureRepository] ❌ Failed to publish CaptureRecorded event:', eventError);
+          console.error(
+            "[CaptureRepository] ❌ Failed to publish CaptureRecorded event:",
+            eventError,
+          );
           // Don't fail the capture creation if event publish fails
         }
       } else {
-        console.log('[CaptureRepository] ⏭️  Skipping event publish (state is not "captured")');
+        console.log(
+          '[CaptureRepository] ⏭️  Skipping event publish (state is not "captured")',
+        );
       }
 
       return success(capture);
     } catch (error) {
-      console.error('[CaptureRepository] Database error during create:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+      console.error("[CaptureRepository] Database error during create:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown database error";
       return databaseError(`Failed to create capture: ${errorMessage}`);
     }
   }
@@ -157,7 +194,10 @@ export class CaptureRepository implements ICaptureRepository {
   /**
    * Update an existing Capture entity
    */
-  async update(id: string, updates: UpdateCaptureData): Promise<RepositoryResult<Capture>> {
+  async update(
+    id: string,
+    updates: UpdateCaptureData,
+  ): Promise<RepositoryResult<Capture>> {
     try {
       const now = Date.now();
 
@@ -165,49 +205,55 @@ export class CaptureRepository implements ICaptureRepository {
       const values: any[] = [];
 
       if (updates.state !== undefined) {
-        fields.push('state = ?');
+        fields.push("state = ?");
         values.push(updates.state);
       }
       if (updates.rawContent !== undefined) {
-        fields.push('raw_content = ?');
+        fields.push("raw_content = ?");
         values.push(updates.rawContent);
       }
       if (updates.duration !== undefined) {
-        fields.push('duration = ?');
+        fields.push("duration = ?");
         values.push(updates.duration);
       }
       if (updates.fileSize !== undefined) {
-        fields.push('file_size = ?');
+        fields.push("file_size = ?");
         values.push(updates.fileSize);
       }
       if (updates.normalizedText !== undefined) {
-        fields.push('normalized_text = ?');
+        fields.push("normalized_text = ?");
         values.push(updates.normalizedText);
       }
       if (updates.wavPath !== undefined) {
-        fields.push('wav_path = ?');
+        fields.push("wav_path = ?");
         values.push(updates.wavPath);
       }
 
-      fields.push('updated_at = ?');
+      fields.push("updated_at = ?");
       values.push(now);
 
-      fields.push('sync_version = sync_version + 1');
+      fields.push("sync_version = sync_version + 1");
 
       values.push(id);
 
       // Execute UPDATE directly (SQLite has implicit transactions per statement)
       database.execute(
-        `UPDATE captures SET ${fields.join(', ')} WHERE id = ?`,
-        values
+        `UPDATE captures SET ${fields.join(", ")} WHERE id = ?`,
+        values,
       );
 
       // Select the updated record
-      const selectResult = database.execute('SELECT * FROM captures WHERE id = ?', [id]);
+      const selectResult = database.execute(
+        "SELECT * FROM captures WHERE id = ?",
+        [id],
+      );
       const row = selectResult.rows?.[0] as CaptureRow;
 
       if (!row) {
-        console.error('[CaptureRepository] Failed to update capture: not found after UPDATE', id);
+        console.error(
+          "[CaptureRepository] Failed to update capture: not found after UPDATE",
+          id,
+        );
         return databaseError(`Capture not found: ${id}`);
       }
 
@@ -215,37 +261,63 @@ export class CaptureRepository implements ICaptureRepository {
 
       // Story 2.5: Publish CaptureRecorded event when transitioning to 'captured' state
       // This happens when stopRecording() updates the capture from 'recording' to 'captured'
-      console.log('[CaptureRepository] update() - New state:', updates.state, 'type:', capture.type);
-      if (updates.state === 'captured') {
+      console.log(
+        "[CaptureRepository] update() - New state:",
+        updates.state,
+        "type:",
+        capture.type,
+      );
+      if (updates.state === "captured") {
         try {
-          console.log('[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:', capture.id);
+          console.log(
+            "[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:",
+            capture.id,
+          );
           const event: CaptureRecordedEvent = {
-            type: 'CaptureRecorded',
+            type: "CaptureRecorded",
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
               captureType: capture.type,
-              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+              audioPath:
+                capture.type === "audio" ? capture.rawContent : undefined,
               audioDuration: capture.duration,
-              textContent: capture.type === 'text' ? capture.rawContent : undefined,
+              textContent:
+                capture.type === "text" ? capture.rawContent : undefined,
               createdAt: capture.createdAt.getTime(),
             },
           };
-          console.log('[CaptureRepository] Event payload:', JSON.stringify(event.payload));
+          console.log(
+            "[CaptureRepository] Event payload:",
+            JSON.stringify(event.payload),
+          );
           this.eventBus.publish(event);
-          console.log('[CaptureRepository] ✅ Published CaptureRecorded event:', capture.id);
+          console.log(
+            "[CaptureRepository] ✅ Published CaptureRecorded event:",
+            capture.id,
+          );
         } catch (eventError) {
-          console.error('[CaptureRepository] ❌ Failed to publish CaptureRecorded event:', eventError);
+          console.error(
+            "[CaptureRepository] ❌ Failed to publish CaptureRecorded event:",
+            eventError,
+          );
           // Don't fail the update if event publish fails
         }
       } else {
-        console.log('[CaptureRepository] ⏭️  Skipping event publish (state update is not "captured")');
+        console.log(
+          '[CaptureRepository] ⏭️  Skipping event publish (state update is not "captured")',
+        );
       }
 
       return success(capture);
     } catch (error) {
-      console.error('[CaptureRepository] Database error during update:', id, error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+      console.error(
+        "[CaptureRepository] Database error during update:",
+        id,
+        error,
+      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown database error";
       return databaseError(`Failed to update capture: ${errorMessage}`);
     }
   }
@@ -254,7 +326,9 @@ export class CaptureRepository implements ICaptureRepository {
    * Find Capture by ID
    */
   async findById(id: string): Promise<Capture | null> {
-    const result = database.execute('SELECT * FROM captures WHERE id = ?', [id]);
+    const result = database.execute("SELECT * FROM captures WHERE id = ?", [
+      id,
+    ]);
 
     const row = result.rows?.[0] as CaptureRow | undefined;
     return row ? mapRowToCapture(row) : null;
@@ -264,7 +338,9 @@ export class CaptureRepository implements ICaptureRepository {
    * Find all Captures
    */
   async findAll(): Promise<Capture[]> {
-    const result = database.execute('SELECT * FROM captures ORDER BY created_at DESC');
+    const result = database.execute(
+      "SELECT * FROM captures ORDER BY created_at DESC",
+    );
 
     const rows = (result.rows ?? []) as CaptureRow[];
     return rows.map(mapRowToCapture);
@@ -277,8 +353,8 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async findAllPaginated(limit: number, offset: number): Promise<Capture[]> {
     const result = database.execute(
-      'SELECT * FROM captures ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [limit, offset]
+      "SELECT * FROM captures ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      [limit, offset],
     );
 
     const rows = (result.rows ?? []) as CaptureRow[];
@@ -289,7 +365,7 @@ export class CaptureRepository implements ICaptureRepository {
    * Get total count of captures (Story 3.1 - for pagination)
    */
   async count(): Promise<number> {
-    const result = database.execute('SELECT COUNT(*) as count FROM captures');
+    const result = database.execute("SELECT COUNT(*) as count FROM captures");
     const row = result.rows?.[0] as { count: number } | undefined;
     return row?.count ?? 0;
   }
@@ -299,8 +375,8 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async findByState(state: string): Promise<Capture[]> {
     const result = database.execute(
-      'SELECT * FROM captures WHERE state = ? ORDER BY created_at DESC',
-      [state]
+      "SELECT * FROM captures WHERE state = ? ORDER BY created_at DESC",
+      [state],
     );
 
     const rows = (result.rows ?? []) as CaptureRow[];
@@ -312,8 +388,8 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async findByType(type: string): Promise<Capture[]> {
     const result = database.execute(
-      'SELECT * FROM captures WHERE type = ? ORDER BY created_at DESC',
-      [type]
+      "SELECT * FROM captures WHERE type = ? ORDER BY created_at DESC",
+      [type],
     );
 
     const rows = (result.rows ?? []) as CaptureRow[];
@@ -331,32 +407,44 @@ export class CaptureRepository implements ICaptureRepository {
       // Fetch capture before deleting (needed for CaptureDeleted event)
       const capture = await this.findById(id);
 
-      database.execute('DELETE FROM captures WHERE id = ?', [id]);
+      database.execute("DELETE FROM captures WHERE id = ?", [id]);
 
       // Story 2.5: Publish CaptureDeleted event (ADR-019)
       if (capture) {
         try {
           const event: CaptureDeletedEvent = {
-            type: 'CaptureDeleted',
+            type: "CaptureDeleted",
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
               captureType: capture.type,
-              audioPath: capture.type === 'audio' ? capture.rawContent : undefined,
+              audioPath:
+                capture.type === "audio" ? capture.rawContent : undefined,
             },
           };
           this.eventBus.publish(event);
-          console.log('[CaptureRepository] Published CaptureDeleted event:', capture.id);
+          console.log(
+            "[CaptureRepository] Published CaptureDeleted event:",
+            capture.id,
+          );
         } catch (eventError) {
-          console.error('[CaptureRepository] Failed to publish CaptureDeleted event:', eventError);
+          console.error(
+            "[CaptureRepository] Failed to publish CaptureDeleted event:",
+            eventError,
+          );
           // Don't fail the delete if event publish fails
         }
       }
 
       return success(undefined);
     } catch (error) {
-      console.error('[CaptureRepository] Database error during delete:', id, error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown database error';
+      console.error(
+        "[CaptureRepository] Database error during delete:",
+        id,
+        error,
+      );
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown database error";
       return databaseError(`Failed to delete capture: ${errorMessage}`);
     }
   }
@@ -380,7 +468,7 @@ export class CaptureRepository implements ICaptureRepository {
        INNER JOIN sync_queue sq ON c.id = sq.entity_id
        WHERE sq.entity_type = 'capture'
          AND sq.operation IN ('create', 'update', 'delete')
-       ORDER BY c.created_at DESC`
+       ORDER BY c.created_at DESC`,
     );
     const rows = (result.rows ?? []) as CaptureRow[];
     return rows.map(mapRowToCapture);
@@ -399,7 +487,7 @@ export class CaptureRepository implements ICaptureRepository {
            AND sq.entity_type = 'capture'
            AND sq.operation IN ('create', 'update', 'delete')
        )
-       ORDER BY c.created_at DESC`
+       ORDER BY c.created_at DESC`,
     );
     const rows = (result.rows ?? []) as CaptureRow[];
     return rows.map(mapRowToCapture);
@@ -415,7 +503,7 @@ export class CaptureRepository implements ICaptureRepository {
        INNER JOIN sync_queue sq ON c.id = sq.entity_id
        WHERE sq.entity_type = 'capture'
          AND sq.operation = 'conflict'
-       ORDER BY c.created_at DESC`
+       ORDER BY c.created_at DESC`,
     );
     const rows = (result.rows ?? []) as CaptureRow[];
     return rows.map(mapRowToCapture);
@@ -431,7 +519,7 @@ export class CaptureRepository implements ICaptureRepository {
          AND entity_id = ?
          AND operation IN ('create', 'update', 'delete')
        LIMIT 1`,
-      [captureId]
+      [captureId],
     );
     return (result.rows?.length ?? 0) > 0;
   }
@@ -446,7 +534,7 @@ export class CaptureRepository implements ICaptureRepository {
          AND entity_id = ?
          AND operation = 'conflict'
        LIMIT 1`,
-      [captureId]
+      [captureId],
     );
     return (result.rows?.length ?? 0) > 0;
   }
@@ -458,11 +546,17 @@ export class CaptureRepository implements ICaptureRepository {
    * Simple polling-based Observable implementation for OP-SQLite
    * Polls database every 500ms for changes to the capture
    */
-  observeById(id: string): { subscribe: (observer: (value: Capture | null) => void) => { unsubscribe: () => void } } {
+  observeById(id: string): {
+    subscribe: (observer: (value: Capture | null) => void) => {
+      unsubscribe: () => void;
+    };
+  } {
     return {
       subscribe: (observer: (value: Capture | null) => void) => {
         // Emit initial value immediately
-        this.findById(id).then(observer).catch(() => observer(null));
+        this.findById(id)
+          .then(observer)
+          .catch(() => observer(null));
 
         // Poll for updates every 500ms
         const interval = setInterval(async () => {
@@ -478,9 +572,9 @@ export class CaptureRepository implements ICaptureRepository {
         return {
           unsubscribe: () => {
             clearInterval(interval);
-          }
+          },
         };
-      }
+      },
     };
   }
 }

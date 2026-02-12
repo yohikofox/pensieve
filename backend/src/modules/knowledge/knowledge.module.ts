@@ -29,9 +29,12 @@ import { OpenAIService } from './application/services/openai.service';
 import { ContentExtractorService } from './application/services/content-extractor.service';
 import { ContentChunkerService } from './application/services/content-chunker.service';
 import { ThoughtRepository } from './application/repositories/thought.repository';
+import { IdeaRepository } from './application/repositories/idea.repository';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
 import { BatchDigestionController } from './application/controllers/batch-digestion.controller';
+import { ThoughtsController } from './application/controllers/thoughts.controller';
+import { IdeasController } from './application/controllers/ideas.controller';
 import { CaptureRepositoryStub } from './infrastructure/stubs/capture-repository.stub';
 import { CaptureContentRepositoryStub } from './infrastructure/stubs/capture-content-repository.stub';
 import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progress.store';
@@ -62,6 +65,8 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     DigestionRetryController, // Manual retry endpoint (AC5)
     MetricsController, // Prometheus metrics endpoint (AC6)
     BatchDigestionController, // Batch submission endpoint (AC7)
+    ThoughtsController, // Thoughts CRUD with authorization
+    IdeasController, // Ideas CRUD with authorization
   ],
   providers: [
     RabbitMQSetupService, // Initialize queues on startup
@@ -87,6 +92,7 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     ContentExtractorService, // Content extraction from captures (Story 4.2 Task 3)
     ContentChunkerService, // Long content chunking with overlap (Story 4.2 Task 7)
     ThoughtRepository, // Thought + Ideas persistence (Story 4.2 Task 4)
+    IdeaRepository, // Individual idea operations
     // Capture Repository stub - replaces when Capture Context is integrated
     {
       provide: 'CAPTURE_REPOSITORY',

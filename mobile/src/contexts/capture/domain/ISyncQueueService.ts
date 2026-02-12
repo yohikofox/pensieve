@@ -10,8 +10,8 @@
  * NFR7: 100% offline availability - queue must persist across app restarts
  */
 
-export type EntityType = 'capture' | 'user' | 'settings';
-export type OperationType = 'create' | 'update' | 'delete' | 'conflict';
+export type EntityType = "capture" | "user" | "settings";
+export type OperationType = "create" | "update" | "delete" | "conflict";
 
 export interface SyncQueueItem {
   id: number; // Auto-increment primary key
@@ -39,7 +39,7 @@ export interface ISyncQueueService {
     entityType: EntityType,
     entityId: string,
     operation: OperationType,
-    payload: Record<string, any>
+    payload: Record<string, any>,
   ): Promise<number>;
 
   /**
@@ -59,7 +59,7 @@ export interface ISyncQueueService {
    */
   getPendingOperationsForEntity(
     entityType: EntityType,
-    entityId: string
+    entityId: string,
   ): Promise<SyncQueueItem[]>;
 
   /**

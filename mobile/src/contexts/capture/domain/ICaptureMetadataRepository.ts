@@ -4,7 +4,11 @@
  * Defines data access operations for CaptureMetadata entities.
  */
 
-import type { CaptureMetadata, MetadataKey, SetMetadataInput } from './CaptureMetadata.model';
+import type {
+  CaptureMetadata,
+  MetadataKey,
+  SetMetadataInput,
+} from "./CaptureMetadata.model";
 
 export interface ICaptureMetadataRepository {
   /**

@@ -10,9 +10,9 @@
  * - Allows translation to other languages (English, etc.)
  */
 
-import { startOfDay, endOfWeek, isSameDay, isWithinInterval } from 'date-fns';
-import { Todo } from '../domain/Todo.model';
-import i18n from 'i18next';
+import { startOfDay, endOfWeek, isSameDay, isWithinInterval } from "date-fns";
+import { Todo } from "../domain/Todo.model";
+import i18n from "i18next";
 
 export interface TodoSection {
   title: string;
@@ -74,7 +74,11 @@ export const groupTodosByDeadline = (todos: Todo[]): TodoSection[] => {
 
   // Sort within each group by priority (High → Medium → Low)
   const sortByPriority = (a: Todo, b: Todo) => {
-    const priorityOrder: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    const priorityOrder: Record<string, number> = {
+      high: 0,
+      medium: 1,
+      low: 2,
+    };
     return priorityOrder[a.priority] - priorityOrder[b.priority];
   };
 
@@ -85,10 +89,10 @@ export const groupTodosByDeadline = (todos: Todo[]): TodoSection[] => {
   // Return sections array for SectionList, filtering empty sections
   // Code Review Fix #10: Use i18n translations instead of hardcoded strings
   return [
-    { title: i18n.t('actions.groups.overdue'), data: groups.overdue },
-    { title: i18n.t('actions.groups.today'), data: groups.today },
-    { title: i18n.t('actions.groups.thisWeek'), data: groups.thisWeek },
-    { title: i18n.t('actions.groups.later'), data: groups.later },
-    { title: i18n.t('actions.groups.noDeadline'), data: groups.noDeadline },
+    { title: i18n.t("actions.groups.overdue"), data: groups.overdue },
+    { title: i18n.t("actions.groups.today"), data: groups.today },
+    { title: i18n.t("actions.groups.thisWeek"), data: groups.thisWeek },
+    { title: i18n.t("actions.groups.later"), data: groups.later },
+    { title: i18n.t("actions.groups.noDeadline"), data: groups.noDeadline },
   ].filter((section) => section.data.length > 0);
 };

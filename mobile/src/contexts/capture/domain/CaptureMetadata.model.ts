@@ -12,30 +12,32 @@
  */
 export const METADATA_KEYS = {
   // Transcription-related
-  RAW_TRANSCRIPT: 'raw_transcript',
-  TRANSCRIPT_PROMPT: 'transcript_prompt',
-  WHISPER_MODEL: 'whisper_model',
-  WHISPER_DURATION_MS: 'whisper_duration_ms',
-  WHISPER_LANGUAGE: 'whisper_language',
-  WHISPER_NO_SPEECH_PROB: 'whisper_no_speech_prob',
-  WHISPER_COMPRESSION_RATIO: 'whisper_compression_ratio',
+  RAW_TRANSCRIPT: "raw_transcript",
+  TRANSCRIPT_PROMPT: "transcript_prompt",
+  WHISPER_MODEL: "whisper_model",
+  WHISPER_DURATION_MS: "whisper_duration_ms",
+  WHISPER_LANGUAGE: "whisper_language",
+  WHISPER_NO_SPEECH_PROB: "whisper_no_speech_prob",
+  WHISPER_COMPRESSION_RATIO: "whisper_compression_ratio",
 
   // LLM post-processing
-  LLM_MODEL: 'llm_model',
-  LLM_SYSTEM_PROMPT: 'llm_system_prompt',
-  LLM_DURATION_MS: 'llm_duration_ms',
+  LLM_MODEL: "llm_model",
+  LLM_SYSTEM_PROMPT: "llm_system_prompt",
+  LLM_DURATION_MS: "llm_duration_ms",
 
   // Processing info
-  TOTAL_PROCESSING_DURATION_MS: 'total_processing_duration_ms',
+  TOTAL_PROCESSING_DURATION_MS: "total_processing_duration_ms",
 
   // Audio waveform (raw RMS values as JSON array)
-  WAVEFORM_DATA: 'waveform_data',
+  WAVEFORM_DATA: "waveform_data",
 
   // Native speech recognition full results (JSON)
-  NATIVE_RECOGNITION_RESULTS: 'native_recognition_results',
+  NATIVE_RECOGNITION_RESULTS: "native_recognition_results",
 } as const;
 
-export type MetadataKey = (typeof METADATA_KEYS)[keyof typeof METADATA_KEYS] | string;
+export type MetadataKey =
+  | (typeof METADATA_KEYS)[keyof typeof METADATA_KEYS]
+  | string;
 
 /**
  * Capture Metadata domain model
@@ -64,7 +66,9 @@ export interface CaptureMetadataRow {
 /**
  * Map database row to domain model
  */
-export function mapRowToCaptureMetadata(row: CaptureMetadataRow): CaptureMetadata {
+export function mapRowToCaptureMetadata(
+  row: CaptureMetadataRow,
+): CaptureMetadata {
   return {
     id: row.id,
     captureId: row.capture_id,

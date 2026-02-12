@@ -1,7 +1,7 @@
-import { Todo } from '../domain/Todo.model';
-import { groupTodosByDeadline, TodoSection } from './groupTodosByDeadline';
+import { Todo } from "../domain/Todo.model";
+import { groupTodosByDeadline, TodoSection } from "./groupTodosByDeadline";
 
-export type SortType = 'default' | 'priority' | 'createdDate' | 'alphabetical';
+export type SortType = "default" | "priority" | "createdDate" | "alphabetical";
 
 /**
  * Sort todos by selected sort type
@@ -13,15 +13,15 @@ export type SortType = 'default' | 'priority' | 'createdDate' | 'alphabetical';
  */
 export const sortTodos = (
   todos: Todo[],
-  sort: SortType
+  sort: SortType,
 ): TodoSection[] | Todo[] => {
   switch (sort) {
-    case 'default':
+    case "default":
       // AC5: Use groupTodosByDeadline from Story 5.2
       // Returns sections: Overdue → Today → This Week → Later → No Deadline
       return groupTodosByDeadline(todos);
 
-    case 'priority':
+    case "priority":
       // AC6: Sort by priority (High → Medium → Low), secondary by deadline
       return [...todos].sort((a, b) => {
         const priorityOrder: Record<string, number> = {
@@ -43,16 +43,16 @@ export const sortTodos = (
         return aDeadline - bDeadline;
       });
 
-    case 'createdDate':
+    case "createdDate":
       // AC7: Sort by createdAt DESC (newest first)
       return [...todos].sort((a, b) => b.createdAt - a.createdAt);
 
-    case 'alphabetical':
+    case "alphabetical":
       // AC5: Sort by description ASC (A-Z, French locale)
       return [...todos].sort((a, b) =>
-        a.description.localeCompare(b.description, 'fr', {
-          sensitivity: 'base',
-        })
+        a.description.localeCompare(b.description, "fr", {
+          sensitivity: "base",
+        }),
       );
 
     default:
@@ -68,7 +68,7 @@ export const sortTodos = (
  * @returns true if data is TodoSection[], false if Todo[]
  */
 export const isSectionData = (
-  data: TodoSection[] | Todo[]
+  data: TodoSection[] | Todo[],
 ): data is TodoSection[] => {
-  return Array.isArray(data) && data.length > 0 && 'title' in data[0];
+  return Array.isArray(data) && data.length > 0 && "title" in data[0];
 };

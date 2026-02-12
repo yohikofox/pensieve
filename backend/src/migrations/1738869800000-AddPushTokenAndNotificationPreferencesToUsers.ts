@@ -20,50 +20,81 @@ export class AddPushTokenAndNotificationPreferencesToUsers1738869800000
   name = 'AddPushTokenAndNotificationPreferencesToUsers1738869800000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    // Add pushToken column
-    await queryRunner.addColumn(
-      'users',
-      new TableColumn({
-        name: 'pushToken',
-        type: 'varchar',
-        length: '255',
-        isNullable: true,
-        comment: 'Expo push token for push notifications (AC3)',
-      }),
-    );
+    // Check if users table exists
+    const usersTable = await queryRunner.getTable('users');
+    if (!usersTable) {
+      console.log('⚠️  Users table does not exist, skipping migration');
+      return;
+    }
 
-    // Add pushNotificationsEnabled column
-    await queryRunner.addColumn(
-      'users',
-      new TableColumn({
-        name: 'pushNotificationsEnabled',
-        type: 'boolean',
-        default: true,
-        comment: 'User opt-in/opt-out for push notifications (AC7)',
-      }),
-    );
+    // Add pushToken column (if not exists)
+    const hasPushToken = usersTable.findColumnByName('pushToken');
+    if (!hasPushToken) {
+      await queryRunner.addColumn(
+        'users',
+        new TableColumn({
+          name: 'pushToken',
+          type: 'varchar',
+          length: '255',
+          isNullable: true,
+          comment: 'Expo push token for push notifications (AC3)',
+        }),
+      );
+      console.log('✅ Added pushToken column');
+    } else {
+      console.log('⏭️  pushToken column already exists');
+    }
 
-    // Add localNotificationsEnabled column
-    await queryRunner.addColumn(
-      'users',
-      new TableColumn({
-        name: 'localNotificationsEnabled',
-        type: 'boolean',
-        default: true,
-        comment: 'User opt-in/opt-out for local notifications (AC7)',
-      }),
-    );
+    // Add pushNotificationsEnabled column (if not exists)
+    const hasPushNotificationsEnabled = usersTable.findColumnByName('pushNotificationsEnabled');
+    if (!hasPushNotificationsEnabled) {
+      await queryRunner.addColumn(
+        'users',
+        new TableColumn({
+          name: 'pushNotificationsEnabled',
+          type: 'boolean',
+          default: true,
+          comment: 'User opt-in/opt-out for push notifications (AC7)',
+        }),
+      );
+      console.log('✅ Added pushNotificationsEnabled column');
+    } else {
+      console.log('⏭️  pushNotificationsEnabled column already exists');
+    }
 
-    // Add hapticFeedbackEnabled column
-    await queryRunner.addColumn(
-      'users',
-      new TableColumn({
-        name: 'hapticFeedbackEnabled',
-        type: 'boolean',
-        default: true,
-        comment: 'User opt-in/opt-out for haptic feedback (AC2, AC3, AC7)',
-      }),
-    );
+    // Add localNotificationsEnabled column (if not exists)
+    const hasLocalNotificationsEnabled = usersTable.findColumnByName('localNotificationsEnabled');
+    if (!hasLocalNotificationsEnabled) {
+      await queryRunner.addColumn(
+        'users',
+        new TableColumn({
+          name: 'localNotificationsEnabled',
+          type: 'boolean',
+          default: true,
+          comment: 'User opt-in/opt-out for local notifications (AC7)',
+        }),
+      );
+      console.log('✅ Added localNotificationsEnabled column');
+    } else {
+      console.log('⏭️  localNotificationsEnabled column already exists');
+    }
+
+    // Add hapticFeedbackEnabled column (if not exists)
+    const hasHapticFeedbackEnabled = usersTable.findColumnByName('hapticFeedbackEnabled');
+    if (!hasHapticFeedbackEnabled) {
+      await queryRunner.addColumn(
+        'users',
+        new TableColumn({
+          name: 'hapticFeedbackEnabled',
+          type: 'boolean',
+          default: true,
+          comment: 'User opt-in/opt-out for haptic feedback (AC2, AC3, AC7)',
+        }),
+      );
+      console.log('✅ Added hapticFeedbackEnabled column');
+    } else {
+      console.log('⏭️  hapticFeedbackEnabled column already exists');
+    }
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

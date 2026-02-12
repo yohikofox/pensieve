@@ -18,16 +18,16 @@
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-import 'reflect-metadata';
-import { injectable, inject } from 'tsyringe';
-import { File, Directory, Paths } from 'expo-file-system';
-import { TOKENS } from '../../../infrastructure/di/tokens';
-import { type ICaptureRepository } from '../domain/ICaptureRepository';
+import "reflect-metadata";
+import { injectable, inject } from "tsyringe";
+import { File, Directory, Paths } from "expo-file-system";
+import { TOKENS } from "../../../infrastructure/di/tokens";
+import { type ICaptureRepository } from "../domain/ICaptureRepository";
 import {
   type ICrashRecoveryService,
   type RecoveredCapture,
   type OrphanedFile,
-} from '../domain/ICrashRecoveryService';
+} from "../domain/ICrashRecoveryService";
 
 /**
  * CrashRecoveryService detects and recovers interrupted recordings
@@ -45,7 +45,7 @@ import {
 @injectable()
 export class CrashRecoveryService implements ICrashRecoveryService {
   constructor(
-    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository
+    @inject(TOKENS.ICaptureRepository) private repository: ICaptureRepository,
   ) {}
 
   /**
@@ -60,14 +60,14 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     const results: RecoveredCapture[] = [];
 
     // Find all captures still in "recording" state
-    const incompleteCaptures = await this.repository.findByState('recording');
+    const incompleteCaptures = await this.repository.findByState("recording");
 
     if (incompleteCaptures.length === 0) {
       return results;
     }
 
     console.log(
-      `[CrashRecovery] Found ${incompleteCaptures.length} incomplete recording(s), attempting recovery...`
+      `[CrashRecovery] Found ${incompleteCaptures.length} incomplete recording(s), attempting recovery...`,
     );
 
     // Process each incomplete capture
@@ -92,38 +92,44 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     if (fileExists) {
       // File exists - mark as recovered
       const updateResult = await this.repository.update(captureId, {
-        state: 'captured',
-        syncStatus: 'pending',
+        state: "captured",
+        syncStatus: "pending",
       });
 
-      if (updateResult.type === 'success') {
+      if (updateResult.type === "success") {
         return {
           captureId,
-          state: 'recovered',
+          state: "recovered",
         };
       } else {
-        console.error(`[CrashRecovery] Failed to update capture ${captureId}:`, updateResult.error);
+        console.error(
+          `[CrashRecovery] Failed to update capture ${captureId}:`,
+          updateResult.error,
+        );
         return {
           captureId,
-          state: 'failed',
-          reason: updateResult.error ?? 'Failed to update capture',
+          state: "failed",
+          reason: updateResult.error ?? "Failed to update capture",
         };
       }
     } else {
       // File doesn't exist - mark as failed
       const updateResult = await this.repository.update(captureId, {
-        state: 'failed',
-        syncStatus: 'pending',
+        state: "failed",
+        syncStatus: "pending",
       });
 
-      if (updateResult.type !== 'success') {
-        console.error(`[CrashRecovery] Failed to mark capture as failed ${captureId}:`, updateResult.error);
+      if (updateResult.type !== "success") {
+        console.error(
+          `[CrashRecovery] Failed to mark capture as failed ${captureId}:`,
+          updateResult.error,
+        );
       }
 
       return {
         captureId,
-        state: 'failed',
-        reason: 'Audio file not found',
+        state: "failed",
+        reason: "Audio file not found",
       };
     }
   }
@@ -144,7 +150,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
       const fileInfo = file.info();
       return fileInfo.exists;
     } catch (error) {
-      console.error('[CrashRecovery] Error checking file existence:', error);
+      console.error("[CrashRecovery] Error checking file existence:", error);
       return false;
     }
   }
@@ -153,7 +159,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
    * Get count of captures pending recovery
    */
   async getPendingRecoveryCount(): Promise<number> {
-    const incompleteCaptures = await this.repository.findByState('recording');
+    const incompleteCaptures = await this.repository.findByState("recording");
     return incompleteCaptures.length;
   }
 
@@ -162,17 +168,17 @@ export class CrashRecoveryService implements ICrashRecoveryService {
    * (Useful for cleanup after user is notified)
    */
   async clearFailedCaptures(): Promise<number> {
-    const failedCaptures = await this.repository.findByState('failed');
+    const failedCaptures = await this.repository.findByState("failed");
     let deletedCount = 0;
 
     for (const capture of failedCaptures) {
       const deleteResult = await this.repository.delete(capture.id);
-      if (deleteResult.type === 'success') {
+      if (deleteResult.type === "success") {
         deletedCount++;
       } else {
         console.error(
           `[CrashRecovery] Failed to delete capture ${capture.id}:`,
-          deleteResult.error
+          deleteResult.error,
         );
       }
     }
@@ -201,7 +207,9 @@ export class CrashRecoveryService implements ICrashRecoveryService {
         return orphans;
       }
 
-      console.log(`[CrashRecovery] Scanning ${files.length} audio files for orphans...`);
+      console.log(
+        `[CrashRecovery] Scanning ${files.length} audio files for orphans...`,
+      );
 
       // Get all captures from DB
       const allCaptures = await this.repository.findAll();
@@ -228,20 +236,26 @@ export class CrashRecoveryService implements ICrashRecoveryService {
               createdAt: new Date(fileInfo.modificationTime || Date.now()),
             });
 
-            console.warn('[CrashRecovery] Orphaned file detected:', filePath);
+            console.warn("[CrashRecovery] Orphaned file detected:", filePath);
           }
         } catch (error) {
-          console.error('[CrashRecovery] Error checking file:', filePath, error);
+          console.error(
+            "[CrashRecovery] Error checking file:",
+            filePath,
+            error,
+          );
         }
       }
 
       if (orphans.length > 0) {
-        console.warn(`[CrashRecovery] Found ${orphans.length} orphaned file(s)`);
+        console.warn(
+          `[CrashRecovery] Found ${orphans.length} orphaned file(s)`,
+        );
       }
 
       return orphans;
     } catch (error) {
-      console.error('[CrashRecovery] Error detecting orphaned files:', error);
+      console.error("[CrashRecovery] Error detecting orphaned files:", error);
       return orphans;
     }
   }
@@ -261,7 +275,9 @@ export class CrashRecoveryService implements ICrashRecoveryService {
 
     let deletedCount = 0;
 
-    console.log(`[CrashRecovery] Cleaning up ${orphans.length} orphaned file(s)...`);
+    console.log(
+      `[CrashRecovery] Cleaning up ${orphans.length} orphaned file(s)...`,
+    );
 
     for (const orphan of orphans) {
       try {
@@ -273,18 +289,24 @@ export class CrashRecoveryService implements ICrashRecoveryService {
           await file.delete();
           deletedCount++;
 
-          console.log('[CrashRecovery] Deleted orphaned file:', {
+          console.log("[CrashRecovery] Deleted orphaned file:", {
             path: orphan.filePath,
             size: orphan.sizeBytes,
             createdAt: orphan.createdAt.toISOString(),
           });
         }
       } catch (error) {
-        console.error('[CrashRecovery] Failed to delete orphaned file:', orphan.filePath, error);
+        console.error(
+          "[CrashRecovery] Failed to delete orphaned file:",
+          orphan.filePath,
+          error,
+        );
       }
     }
 
-    console.log(`[CrashRecovery] Cleanup complete: ${deletedCount}/${orphans.length} files deleted`);
+    console.log(
+      `[CrashRecovery] Cleanup complete: ${deletedCount}/${orphans.length} files deleted`,
+    );
 
     return deletedCount;
   }

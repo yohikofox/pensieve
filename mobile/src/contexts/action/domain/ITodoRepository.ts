@@ -7,9 +7,9 @@
  * Story 5.2 - Task 7: Source preview with Thought/Idea context
  */
 
-import { Todo } from './Todo.model';
-import { Thought } from '../../knowledge/domain/Thought.model';
-import { Idea } from '../../knowledge/domain/Idea.model';
+import { Todo } from "./Todo.model";
+import { Thought } from "../../knowledge/domain/Thought.model";
+import { Idea } from "../../knowledge/domain/Idea.model";
 
 /**
  * Todo with source context (Thought + Idea)
@@ -104,14 +104,18 @@ export interface ITodoRepository {
    * @param status - Status to count ('todo' or 'completed')
    * @returns Number of todos with given status
    */
-  countByStatus(status: 'todo' | 'completed'): Promise<number>;
+  countByStatus(status: "todo" | "completed"): Promise<number>;
 
   /**
    * Count all todos grouped by status (optimized single query)
    * Story 5.3 - Code Review Fix #5: Performance optimization
    * @returns Object with counts: { all, active, completed }
    */
-  countAllByStatus(): Promise<{ all: number; active: number; completed: number }>;
+  countAllByStatus(): Promise<{
+    all: number;
+    active: number;
+    completed: number;
+  }>;
 
   /**
    * Find all todos with source context (Thought + Idea)
