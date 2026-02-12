@@ -18,7 +18,7 @@ describe('Capture Model Integration Tests', () => {
   beforeEach(async () => {
     // Setup in-memory test database
     database = new Database({
-      adapter: /* SQLite in-memory adapter */,
+      adapter: null as any, // TODO: SQLite in-memory adapter
       modelClasses: [Capture],
       actionsEnabled: true,
     });
