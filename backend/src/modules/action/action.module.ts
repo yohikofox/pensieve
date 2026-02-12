@@ -12,9 +12,13 @@ import { TodoRepository } from './application/repositories/todo.repository';
 import { DeadlineParserService } from './application/services/deadline-parser.service';
 import { PriorityInferenceService } from './application/services/priority-inference.service';
 import { TodosController } from './application/controllers/todos.controller';
+import { AuthorizationModule } from '../authorization/authorization.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Todo])],
+  imports: [
+    TypeOrmModule.forFeature([Todo]),
+    AuthorizationModule,
+  ],
   controllers: [TodosController],
   providers: [TodoRepository, DeadlineParserService, PriorityInferenceService],
   exports: [TodoRepository, DeadlineParserService, PriorityInferenceService],

@@ -19,6 +19,7 @@ import { Thought } from './domain/entities/thought.entity';
 import { Idea } from './domain/entities/idea.entity';
 import { ActionModule } from '../action/action.module'; // Story 4.3: Import ActionModule for TodoRepository
 import { NotificationModule } from '../notification/notification.module'; // Story 4.4: Import NotificationModule for ProgressNotificationService
+import { AuthorizationModule } from '../authorization/authorization.module';
 import { RabbitMQSetupService } from './infrastructure/rabbitmq/rabbitmq-setup.service';
 import { DigestionJobPublisher } from './application/publishers/digestion-job-publisher.service';
 import { DigestionJobConsumer } from './application/consumers/digestion-job-consumer.service';
@@ -51,6 +52,8 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     ActionModule,
     // Story 4.4: Import NotificationModule for ProgressNotificationService (forward ref to avoid circular dependency)
     forwardRef(() => NotificationModule),
+    // Import AuthorizationModule for guards and permissions
+    AuthorizationModule,
     // Register RabbitMQ client for job publishing
     ClientsModule.register([
       {
