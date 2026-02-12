@@ -52,34 +52,6 @@ export interface CaptureMetadata {
 }
 
 /**
- * Database row type (snake_case from SQLite)
- */
-export interface CaptureMetadataRow {
-  id: string;
-  capture_id: string;
-  key: string;
-  value: string | null;
-  created_at: number;
-  updated_at: number;
-}
-
-/**
- * Map database row to domain model
- */
-export function mapRowToCaptureMetadata(
-  row: CaptureMetadataRow,
-): CaptureMetadata {
-  return {
-    id: row.id,
-    captureId: row.capture_id,
-    key: row.key,
-    value: row.value,
-    createdAt: new Date(row.created_at),
-    updatedAt: new Date(row.updated_at),
-  };
-}
-
-/**
  * Bulk set metadata input
  */
 export interface SetMetadataInput {

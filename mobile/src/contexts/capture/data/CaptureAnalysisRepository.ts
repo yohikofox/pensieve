@@ -15,12 +15,14 @@ import { v4 as uuidv4 } from "uuid";
 import { database } from "../../../database";
 import {
   type CaptureAnalysis,
-  type CaptureAnalysisRow,
   type AnalysisType,
   type SaveAnalysisInput,
   ANALYSIS_TYPES,
-  mapRowToCaptureAnalysis,
 } from "../domain/CaptureAnalysis.model";
+import {
+  type CaptureAnalysisRow,
+  mapRowToCaptureAnalysis,
+} from "./mappers/captureAnalysis.mapper";
 import type { ICaptureAnalysisRepository } from "../domain/ICaptureAnalysisRepository";
 
 @injectable()

@@ -16,11 +16,8 @@ import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { v4 as uuidv4 } from "uuid";
 import { database } from "../../../database";
-import {
-  type Capture,
-  mapRowToCapture,
-  type CaptureRow,
-} from "../domain/Capture.model";
+import { type Capture } from "../domain/Capture.model";
+import { mapRowToCapture, type CaptureRow } from "./mappers/capture.mapper";
 import {
   type RepositoryResult,
   success,

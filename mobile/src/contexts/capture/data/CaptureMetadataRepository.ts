@@ -15,11 +15,13 @@ import { v4 as uuidv4 } from "uuid";
 import { database } from "../../../database";
 import {
   type CaptureMetadata,
-  type CaptureMetadataRow,
   type MetadataKey,
   type SetMetadataInput,
-  mapRowToCaptureMetadata,
 } from "../domain/CaptureMetadata.model";
+import {
+  type CaptureMetadataRow,
+  mapRowToCaptureMetadata,
+} from "./mappers/captureMetadata.mapper";
 import type { ICaptureMetadataRepository } from "../domain/ICaptureMetadataRepository";
 
 @injectable()
