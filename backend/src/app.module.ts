@@ -23,10 +23,10 @@ import { AuthorizationModule } from './modules/authorization/authorization.modul
         type: 'postgres',
         url: process.env.DATABASE_URL,
         autoLoadEntities: true,
-        synchronize: process.env.NODE_ENV !== 'production',
+        synchronize: false, // Disabled - using migrations instead
         logging: process.env.NODE_ENV === 'development',
         migrations: ['dist/migrations/*.js'],
-        migrationsRun: process.env.NODE_ENV === 'production', // Auto-run in production
+        migrationsRun: false, // Run migrations manually via npm run migration:run
       }),
     }),
     // Shared services (MinioService, Guards)
