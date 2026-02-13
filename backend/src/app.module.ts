@@ -10,6 +10,7 @@ import { ActionModule } from './modules/action/action.module'; // Story 4.3: Act
 import { NotificationModule } from './modules/notification/notification.module'; // Story 4.4: Notification Context
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Multi-level permissions system
+import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile ↔ Backend sync infrastructure
 
 @Module({
   imports: [
@@ -45,6 +46,8 @@ import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Mul
     // Authorization module (Multi-level permissions system)
     AuthorizationModule,
     AdminAuthModule,
+    // Sync module (Mobile ↔ Backend synchronization - Story 6.1)
+    SyncModule,
   ],
   controllers: [AppController],
   providers: [],
