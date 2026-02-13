@@ -152,6 +152,9 @@ class DatabaseConnection {
 // Export singleton instance
 export const database = DatabaseConnection.getInstance();
 
+// Export class for testing
+export { DatabaseConnection };
+
 // Auto-initialize on import
 database.initialize();
 

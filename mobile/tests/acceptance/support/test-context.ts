@@ -366,6 +366,23 @@ export class InMemoryDatabase {
     this._nextSyncQueueId = 1;
     this._simulatedDelay = 0;
   }
+
+  // Aliases for test convenience (Story 6.1)
+  createCapture(data: Partial<Capture>): Promise<Capture> {
+    return this.create(data);
+  }
+
+  updateCapture(id: string, updates: Partial<Capture>): Promise<Capture> {
+    return this.update(id, updates);
+  }
+
+  getCaptureById(id: string): Promise<Capture | null> {
+    return this.findById(id);
+  }
+
+  getAllCaptures(): Promise<Capture[]> {
+    return this.findAll();
+  }
 }
 
 // ============================================================================

@@ -24,6 +24,7 @@ import {
   updateSyncStatus,
 } from './SyncStorage';
 import { retryWithFibonacci, isRetryableError } from './retry-logic';
+import { getConflictHandler } from './ConflictHandler';
 
 // Sync configuration
 const CHUNK_SIZE = 100; // Task 3.7: Max records per sync batch
@@ -97,6 +98,12 @@ export class SyncService {
 
       // Step 3: PULL again to get any server changes from push conflicts
       const finalPullResult = await this.performPull(options);
+
+      // Step 4: Apply conflict resolutions (Task 4)
+      if (pushResult.conflicts && pushResult.conflicts.length > 0) {
+        const conflictHandler = getConflictHandler();
+        await conflictHandler.applyConflicts(pushResult.conflicts);
+      }
 
       // Mark sync as success
       await this.updateAllEntitiesStatus('success');
@@ -272,15 +279,12 @@ export class SyncService {
         );
 
         if (result.rows && result.rows.length > 0) {
-          // Convert rows to plain objects
-          const records = [];
-          for (let i = 0; i < result.rows.length; i++) {
-            records.push(result.rows.item(i));
-          }
+          // OP-SQLite returns rows in _array property
+          const records = (result.rows as any)._array || result.rows;
 
           // Group by status
-          const updated = records.filter((r) => r._status === 'active');
-          const deleted = records.filter((r) => r._status === 'deleted');
+          const updated = records.filter((r: any) => r._status === 'active');
+          const deleted = records.filter((r: any) => r._status === 'deleted');
 
           changes[entity as keyof ChangesPayload] = {
             updated: updated.length > 0 ? updated : undefined,
