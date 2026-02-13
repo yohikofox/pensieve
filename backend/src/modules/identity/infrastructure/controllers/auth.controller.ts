@@ -1,16 +1,17 @@
-import { Controller, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, UseGuards } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
-import type { AuthenticatedRequest } from '../../../shared/infrastructure/types/authenticated-request';
+import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
+import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 
 @Controller('api/auth')
 export class AuthController {
   @Get('me')
   @UseGuards(SupabaseAuthGuard)
-  async getCurrentUser(@Request() req: AuthenticatedRequest) {
+  async getCurrentUser(@CurrentUser() user: User) {
     return {
-      userId: req.user.id,
-      email: req.user.email,
-      createdAt: req.user.created_at,
+      userId: user.id,
+      email: user.email,
+      createdAt: user['created_at'],
     };
   }
 

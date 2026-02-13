@@ -12,6 +12,18 @@ export class UserPermissionRepository extends Repository<UserPermission> {
   }
 
   /**
+   * Find all permissions for a user (including expired)
+   * @param userId - User ID
+   * @returns List of all user permissions
+   */
+  async findByUserId(userId: string): Promise<UserPermission[]> {
+    return this.createQueryBuilder('userPermission')
+      .where('userPermission.userId = :userId', { userId })
+      .leftJoinAndSelect('userPermission.permission', 'permission')
+      .getMany();
+  }
+
+  /**
    * Find user override for a permission
    * @param userId - User ID
    * @param permissionId - Permission ID

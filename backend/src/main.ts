@@ -5,6 +5,17 @@ import { getRabbitMQOptions } from './modules/knowledge/infrastructure/rabbitmq/
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Enable CORS for admin frontend and mobile app
+  app.enableCors({
+    origin: [
+      'http://localhost:3001', // Admin frontend
+      'http://localhost:3002', // Web frontend (if needed)
+      /^capacitor:\/\/localhost/, // Mobile Capacitor
+      /^ionic:\/\/localhost/, // Mobile Ionic
+    ],
+    credentials: true,
+  });
+
   // Connect RabbitMQ microservice for job consumption (Story 4.1 - AC3)
   // Hybrid app: HTTP API + Message Queue
   app.connectMicroservice(getRabbitMQOptions());

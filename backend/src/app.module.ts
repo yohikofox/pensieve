@@ -8,7 +8,8 @@ import { RgpdModule } from './modules/rgpd/rgpd.module';
 import { KnowledgeModule } from './modules/knowledge/knowledge.module';
 import { ActionModule } from './modules/action/action.module'; // Story 4.3: Action Context
 import { NotificationModule } from './modules/notification/notification.module'; // Story 4.4: Notification Context
-import { AuthorizationModule } from './modules/authorization/authorization.module'; // Multi-level permissions system
+import { AuthorizationModule } from './modules/authorization/authorization.module';
+import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Multi-level permissions system
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { AuthorizationModule } from './modules/authorization/authorization.modul
     NotificationModule,
     // Authorization module (Multi-level permissions system)
     AuthorizationModule,
+    AdminAuthModule,
   ],
   controllers: [AppController],
   providers: [],

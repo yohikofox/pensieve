@@ -19,8 +19,11 @@ import {
   HttpStatus,
   Logger,
   UseGuards,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
+import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
 
@@ -64,12 +67,23 @@ export class BatchDigestionController {
   @HttpCode(HttpStatus.OK)
   async batchSubmitDigestion(
     @Body() request: BatchSubmissionRequest,
+    @CurrentUser() user: User,
   ): Promise<BatchSubmissionResponse> {
     const { captures } = request;
 
     this.logger.log(
       `📦 Batch submission received: ${captures.length} captures`,
     );
+
+    // Validate all captures belong to the authenticated user
+    const unauthorizedCaptures = captures.filter(
+      (capture) => capture.userId !== user.id,
+    );
+    if (unauthorizedCaptures.length > 0) {
+      throw new ForbiddenException(
+        'All captures must belong to the authenticated user',
+      );
+    }
 
     // Subtask 7.3: Ensure captures are sorted by recency (most recent first)
     // Frontend should send them sorted, but we verify here

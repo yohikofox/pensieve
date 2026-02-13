@@ -12,6 +12,23 @@ export class PermissionRepository extends Repository<Permission> {
   }
 
   /**
+   * Find all permissions
+   * @returns List of all permissions
+   */
+  async findAll(): Promise<Permission[]> {
+    return this.find();
+  }
+
+  /**
+   * Find permission by ID
+   * @param id - Permission ID
+   * @returns Permission or null
+   */
+  async findById(id: string): Promise<Permission | null> {
+    return this.findOneBy({ id });
+  }
+
+  /**
    * Find permission by name
    * @param name - Permission name (e.g., "thought.read")
    * @returns Permission or null

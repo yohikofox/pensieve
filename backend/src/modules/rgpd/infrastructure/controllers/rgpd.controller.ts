@@ -11,9 +11,10 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
+import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { RgpdService } from '../../application/services/rgpd.service';
 import type { Response } from 'express';
-import type { AuthenticatedRequest } from '../../../shared/infrastructure/types/authenticated-request';
 
 @Controller('api/rgpd')
 @UseGuards(SupabaseAuthGuard)
@@ -23,19 +24,16 @@ export class RgpdController {
   /**
    * Article 15: Export User Data
    * POST /api/rgpd/export
-   *
-   * Returns ZIP file with all user data
    */
   @Post('export')
-  async exportUserData(@Req() req: AuthenticatedRequest, @Res() res: Response) {
-    const userId = req.user.id;
-
+  async exportUserData(
+    @CurrentUser() user: User,
+    @Req() req: any,
+    @Res() res: Response,
+  ) {
     try {
-      // Generate export ZIP
-      const zipBuffer = await this.rgpdService.generateExport(userId, req);
-
-      // Send ZIP file as download
-      const filename = `pensine-export-${userId}-${Date.now()}.zip`;
+      const zipBuffer = await this.rgpdService.generateExport(user.id, req);
+      const filename = `pensine-export-${user.id}-${Date.now()}.zip`;
 
       res.set({
         'Content-Type': 'application/zip',
@@ -58,27 +56,20 @@ export class RgpdController {
    * DELETE /api/rgpd/delete-account
    *
    * Body: { password: string } (for re-confirmation)
-   *
-   * Response:
-   * - 204 No Content → Account deleted successfully
-   * - 401 Unauthorized → Invalid password
    */
   @Delete('delete-account')
   @HttpCode(204)
   async deleteUserAccount(
-    @Req() req: AuthenticatedRequest,
+    @CurrentUser() user: User,
+    @Req() req: any,
     @Body() body: { password: string },
   ) {
-    const userId = req.user.id;
-    const email = req.user.email;
-
-    if (!email) {
+    if (!user.email) {
       throw new UnauthorizedException('Email not found in user session');
     }
 
-    // Re-verify password (security best practice)
     const isValidPassword = await this.rgpdService.verifyPassword(
-      email,
+      user.email,
       body.password,
     );
 
@@ -86,10 +77,6 @@ export class RgpdController {
       throw new UnauthorizedException('Invalid password');
     }
 
-    // Execute account deletion
-    await this.rgpdService.deleteUserAccount(userId, req);
-
-    // Return 204 No Content (no body)
-    return;
+    await this.rgpdService.deleteUserAccount(user.id, req);
   }
 }

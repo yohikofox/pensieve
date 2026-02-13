@@ -13,6 +13,23 @@ export class RoleRepository extends Repository<Role> {
   }
 
   /**
+   * Find all roles
+   * @returns List of all roles
+   */
+  async findAll(): Promise<Role[]> {
+    return this.find();
+  }
+
+  /**
+   * Find role by ID
+   * @param id - Role ID
+   * @returns Role or null
+   */
+  async findById(id: string): Promise<Role | null> {
+    return this.findOneBy({ id });
+  }
+
+  /**
    * Find role by name
    * @param name - Role name (e.g., "admin", "user")
    * @returns Role or null

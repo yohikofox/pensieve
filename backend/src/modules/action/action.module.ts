@@ -15,10 +15,7 @@ import { TodosController } from './application/controllers/todos.controller';
 import { AuthorizationModule } from '../authorization/authorization.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([Todo]),
-    AuthorizationModule,
-  ],
+  imports: [TypeOrmModule.forFeature([Todo]), AuthorizationModule],
   controllers: [TodosController],
   providers: [TodoRepository, DeadlineParserService, PriorityInferenceService],
   exports: [TodoRepository, DeadlineParserService, PriorityInferenceService],

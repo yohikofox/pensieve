@@ -18,8 +18,11 @@ import {
   UseGuards,
   Inject,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
+import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
 import type { ICaptureRepository } from '../../domain/interfaces/capture-repository.interface';
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
@@ -48,6 +51,7 @@ export class DigestionRetryController {
   @HttpCode(HttpStatus.ACCEPTED)
   async retryDigestionJob(
     @Param('captureId') captureId: string,
+    @CurrentUser() user: User,
   ): Promise<{ message: string; captureId: string }> {
     this.logger.log(`🔄 Manual retry requested for capture: ${captureId}`);
 
@@ -56,6 +60,11 @@ export class DigestionRetryController {
 
     if (!capture) {
       throw new NotFoundException(`Capture not found: ${captureId}`);
+    }
+
+    // Verify the authenticated user owns this capture
+    if (capture.userId !== user.id) {
+      throw new ForbiddenException('Access denied');
     }
 
     const captureInput: CreateDigestionJobInput = {

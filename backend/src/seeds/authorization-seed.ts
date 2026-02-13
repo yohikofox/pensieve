@@ -125,6 +125,15 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
         action: PermissionAction.DELETE,
         isPaidFeature: false,
       },
+
+      // Admin permissions
+      {
+        name: 'admin.access',
+        displayName: 'Access admin panel',
+        resourceType: 'system',
+        action: PermissionAction.READ,
+        isPaidFeature: false,
+      },
     ];
 
     const permissionIds: Record<string, string> = {};

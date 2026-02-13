@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { AdminAuthModule } from '../admin-auth/admin-auth.module';
 
 // Entities
 import {
@@ -24,6 +25,10 @@ import {
   UserPermissionRepository,
   SubscriptionRepository,
   ResourceShareRepository,
+  SubscriptionTierRepository,
+  UserSubscriptionRepository,
+  RolePermissionRepository,
+  TierPermissionRepository,
 } from './implementations/postgresql/repositories';
 
 // Services (PostgreSQL implementation)
@@ -35,6 +40,10 @@ import { PostgreSQLResourceAccessControl } from './implementations/postgresql/se
 import { PermissionGuard } from './infrastructure/guards/permission.guard';
 import { ResourceOwnershipGuard } from './infrastructure/guards/resource-ownership.guard';
 import { ResourceShareGuard } from './infrastructure/guards/resource-share.guard';
+
+// Controllers
+import { SubscriptionController } from './infrastructure/controllers/subscription.controller';
+import { AdminController } from './infrastructure/controllers/admin.controller';
 
 /**
  * Authorization Module
@@ -56,7 +65,9 @@ import { ResourceShareGuard } from './infrastructure/guards/resource-share.guard
  * 3. No changes needed in controllers or guards!
  */
 @Module({
+  controllers: [SubscriptionController, AdminController],
   imports: [
+    AdminAuthModule,
     TypeOrmModule.forFeature([
       Permission,
       Role,
@@ -79,6 +90,10 @@ import { ResourceShareGuard } from './infrastructure/guards/resource-share.guard
     UserPermissionRepository,
     SubscriptionRepository,
     ResourceShareRepository,
+    SubscriptionTierRepository,
+    UserSubscriptionRepository,
+    RolePermissionRepository,
+    TierPermissionRepository,
 
     // PostgreSQL Implementation Services
     PostgreSQLAuthorizationService,

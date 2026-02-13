@@ -5,7 +5,7 @@
  * Provides CRUD operations with multi-level authorization:
  * - Permission-based access control (RBAC)
  * - Resource ownership verification
- * - Shared resource access (future)
+ * - Shared resource access via sharing endpoints
  */
 
 import {
@@ -18,6 +18,7 @@ import {
   HttpCode,
   HttpStatus,
   UseGuards,
+  Inject,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
@@ -30,11 +31,10 @@ import { RequirePermission } from '../../../authorization/infrastructure/decorat
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { ResourceType } from '../../../authorization/core/enums/resource-type.enum';
+import { ShareRole } from '../../../authorization/core/enums/share-role.enum';
+import type { IAuthorizationService } from '../../../authorization/core/interfaces/authorization.interface';
+import { ResourceShareRepository } from '../../../authorization/implementations/postgresql/repositories/resource-share.repository';
 
-/**
- * DTO for creating a thought (manual creation scenario)
- * Note: In production, thoughts are primarily created by AI digestion
- */
 class CreateThoughtDto {
   captureId!: string;
   summary!: string;
@@ -43,11 +43,22 @@ class CreateThoughtDto {
   confidenceScore?: number;
 }
 
+class ShareThoughtDto {
+  userId!: string;
+  role!: ShareRole;
+  expiresAt?: string;
+}
+
 @Controller('api/thoughts')
 export class ThoughtsController {
   private readonly logger = new Logger(ThoughtsController.name);
 
-  constructor(private readonly thoughtRepository: ThoughtRepository) {}
+  constructor(
+    private readonly thoughtRepository: ThoughtRepository,
+    @Inject('IAuthorizationService')
+    private readonly authService: IAuthorizationService,
+    private readonly resourceShareRepo: ResourceShareRepository,
+  ) {}
 
   /**
    * Get all thoughts for the authenticated user
@@ -136,5 +147,69 @@ export class ThoughtsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteThought(@Param('id') id: string) {
     await this.thoughtRepository.delete(id);
+  }
+
+  // ========================================
+  // Sharing Endpoints
+  // ========================================
+
+  /**
+   * Share a thought with another user
+   * Authorization: PermissionGuard checks thought.share permission (paid feature)
+   *                ResourceOwnershipGuard ensures user owns the thought
+   */
+  @Post(':id/share')
+  @UseGuards(SupabaseAuthGuard, PermissionGuard, ResourceOwnershipGuard)
+  @RequirePermission('thought.share')
+  @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
+  async shareThought(
+    @Param('id') id: string,
+    @Body() dto: ShareThoughtDto,
+    @CurrentUser() user: User,
+  ) {
+    await this.authService.shareResource({
+      resourceType: ResourceType.THOUGHT,
+      resourceId: id,
+      ownerId: user.id,
+      sharedWithId: dto.userId,
+      shareRole: dto.role,
+      expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : undefined,
+    });
+
+    return { message: 'Thought shared successfully' };
+  }
+
+  /**
+   * List all shares for a thought
+   * Authorization: ResourceOwnershipGuard ensures user owns the thought
+   */
+  @Get(':id/shares')
+  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
+  async listShares(@Param('id') id: string) {
+    const shares = await this.resourceShareRepo.findByResourceId(
+      ResourceType.THOUGHT,
+      id,
+    );
+
+    return shares.map((share) => ({
+      id: share.id,
+      sharedWithId: share.sharedWithId,
+      role: share.shareRole?.name,
+      expiresAt: share.expiresAt,
+      createdAt: share.createdAt,
+    }));
+  }
+
+  /**
+   * Revoke a share
+   * Authorization: ResourceOwnershipGuard ensures user owns the thought
+   */
+  @Delete(':id/shares/:shareId')
+  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async revokeShare(@Param('shareId') shareId: string) {
+    await this.authService.revokeShare(shareId);
   }
 }

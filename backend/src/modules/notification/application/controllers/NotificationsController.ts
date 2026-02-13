@@ -6,8 +6,10 @@
  * Task 5, Subtask 5.3: Create endpoint POST /api/users/push-token
  */
 
-import { Controller, Post, Body, Patch, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Patch, UseGuards } from '@nestjs/common';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
+import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { UserRepository } from '../repositories/UserRepository';
 import { PushNotificationService } from '../services/PushNotificationService';
 
@@ -32,17 +34,12 @@ export class NotificationsController {
   /**
    * Register user's Expo push token
    * Subtask 5.3: Create endpoint POST /api/users/push-token
-   *
-   * @param req - Request with user from JWT
-   * @param body - Push token payload
-   * @returns Success message
    */
   @Post('push-token')
   async registerPushToken(
-    @Req() req: any,
+    @CurrentUser() user: User,
     @Body() body: RegisterPushTokenDto,
   ): Promise<{ message: string; validated: boolean }> {
-    const userId = req.user.id;
     const { pushToken } = body;
 
     // Validate push token format
@@ -52,7 +49,7 @@ export class NotificationsController {
     }
 
     // Update user's push token
-    await this.userRepository.updatePushToken(userId, pushToken);
+    await this.userRepository.updatePushToken(user.id, pushToken);
 
     return {
       message: 'Push token registered successfully',
@@ -63,23 +60,16 @@ export class NotificationsController {
   /**
    * Update user's notification preferences
    * Task 6, Subtask 6.2: Create endpoint PATCH /api/users/notification-settings
-   *
-   * @param req - Request with user from JWT
-   * @param body - Notification preferences
-   * @returns Updated preferences
    */
   @Patch('notification-settings')
   async updateNotificationPreferences(
-    @Req() req: any,
+    @CurrentUser() user: User,
     @Body() body: UpdateNotificationPreferencesDto,
   ): Promise<{
     message: string;
     preferences: UpdateNotificationPreferencesDto;
   }> {
-    const userId = req.user.id;
-
-    // Update user's notification preferences
-    await this.userRepository.updateNotificationPreferences(userId, body);
+    await this.userRepository.updateNotificationPreferences(user.id, body);
 
     return {
       message: 'Notification preferences updated successfully',
