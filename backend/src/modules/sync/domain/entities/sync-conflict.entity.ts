@@ -1,50 +1,66 @@
-/**
- * SyncConflict Entity
- * Audit trail for conflict resolution
- *
- * Story 6.1 - Task 4: Conflict Resolution Logic
- * AC3, AC4: Conflict resolution strategy
- */
-
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 
+/**
+ * Sync Conflict Entity (AC4 - Task 4.5 Audit Trail)
+ *
+ * Logs all conflict resolutions for audit trail and debugging.
+ * Helps track conflict patterns and resolution effectiveness.
+ */
 @Entity('sync_conflicts')
+@Index(['entity', 'recordId'])
+@Index(['resolvedAt'])
 export class SyncConflict {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column('uuid')
-  userId!: string;
+  @Column({
+    type: 'text',
+    comment: 'Entity type: capture, thought, idea, todo, project',
+  })
+  entity!: string;
 
-  @Column('text')
-  entity!: string; // captures, thoughts, ideas, todos
+  @Column({
+    type: 'uuid',
+    comment: 'ID of the conflicted record',
+  })
+  recordId!: string;
 
-  @Column('uuid')
-  recordId!: string; // ID of the conflicted record
+  @Column({
+    type: 'text',
+    comment: 'Type of conflict: capture-user-vs-technical, todo-state-vs-ai, etc.',
+  })
+  conflictType!: string;
 
-  @Column('text')
-  conflictType!: string; // concurrent_modification, schema_mismatch, etc.
+  @Column({
+    type: 'text',
+    comment: 'Strategy used: per-column-hybrid, client-wins, etc.',
+  })
+  resolutionStrategy!: string;
 
-  @Column('text')
-  resolutionStrategy!: 'client_wins' | 'server_wins' | 'per_column_merge';
+  @Column({
+    type: 'jsonb',
+    comment: 'Server record data at conflict time',
+  })
+  serverData!: Record<string, any>;
 
-  @Column({ type: 'json', nullable: true })
-  clientValue?: any; // Client's version of the record
+  @Column({
+    type: 'jsonb',
+    comment: 'Client record data at conflict time',
+  })
+  clientData!: Record<string, any>;
 
-  @Column({ type: 'json', nullable: true })
-  serverValue?: any; // Server's version of the record
-
-  @Column({ type: 'json', nullable: true })
-  resolvedValue?: any; // Final resolved value
+  @Column({
+    type: 'jsonb',
+    comment: 'Resolved record data after conflict resolution',
+  })
+  resolvedData!: Record<string, any>;
 
   @CreateDateColumn()
   resolvedAt!: Date;
-
-  @Column({ type: 'text', nullable: true })
-  notes?: string; // Additional context
 }

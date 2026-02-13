@@ -1,11 +1,3 @@
-/**
- * SyncLog Entity
- * Logs every sync request/response for monitoring and debugging
- *
- * Story 6.1 - Task 6: Sync Monitoring & Logging
- * AC7: Sync Monitoring & Metrics
- */
-
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -13,6 +5,12 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 
+/**
+ * Sync Log Entity (AC7 - Sync Monitoring & Metrics)
+ *
+ * Tracks all sync operations for monitoring and debugging.
+ * Used for metrics collection and performance analysis.
+ */
 @Entity('sync_logs')
 export class SyncLog {
   @PrimaryGeneratedColumn('uuid')
@@ -21,34 +19,45 @@ export class SyncLog {
   @Column('uuid')
   userId!: string;
 
-  @Column('text')
-  syncType!: 'pull' | 'push'; // Type of sync operation
+  @Column({
+    type: 'text',
+    comment: 'pull or push',
+  })
+  syncType!: 'pull' | 'push';
 
   @CreateDateColumn()
   startedAt!: Date;
 
   @Column({ type: 'timestamp', nullable: true })
-  completedAt?: Date;
+  completedAt!: Date | null;
 
-  @Column('int')
-  durationMs!: number; // Sync duration in milliseconds
+  @Column({
+    type: 'int',
+    nullable: true,
+    comment: 'Sync duration in milliseconds',
+  })
+  durationMs!: number | null;
 
-  @Column('int')
-  recordsSynced!: number; // Number of records synced
+  @Column({
+    type: 'int',
+    default: 0,
+    comment: 'Number of records synced',
+  })
+  recordsSynced!: number;
 
-  @Column('text')
-  status!: 'success' | 'error' | 'partial'; // Sync status
+  @Column({
+    type: 'text',
+    comment: 'success, error, timeout',
+  })
+  status!: 'success' | 'error' | 'timeout';
 
   @Column({ type: 'text', nullable: true })
-  errorMessage?: string; // Error details if failed
+  errorMessage!: string | null;
 
-  @Column({ type: 'json', nullable: true })
-  metadata?: {
-    // Additional sync metadata
-    capturesCount?: number;
-    thoughtsCount?: number;
-    ideasCount?: number;
-    todosCount?: number;
-    conflicts?: number;
-  };
+  @Column({
+    type: 'jsonb',
+    nullable: true,
+    comment: 'Additional metadata (entities synced, conflicts, etc.)',
+  })
+  metadata!: Record<string, any> | null;
 }

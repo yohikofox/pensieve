@@ -1,56 +1,39 @@
-import { IsNumber, IsObject, ValidateNested } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNumber, IsObject, IsNotEmpty } from 'class-validator';
 
 /**
- * Entity change payload for push requests
- */
-class EntityChanges {
-  updated?: any[]; // Records to update/create
-  deleted?: any[]; // Records to mark as deleted (soft delete)
-}
-
-/**
- * Changes payload grouping all entities
- */
-class ChangesPayload {
-  @IsObject()
-  @ValidateNested()
-  @Type(() => EntityChanges)
-  captures?: EntityChanges;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => EntityChanges)
-  thoughts?: EntityChanges;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => EntityChanges)
-  ideas?: EntityChanges;
-
-  @IsObject()
-  @ValidateNested()
-  @Type(() => EntityChanges)
-  todos?: EntityChanges;
-}
-
-/**
- * DTO for sync push requests
- * Client sends local changes to server
+ * Push Request DTO (ADR-009.2)
+ *
+ * Client sends local changes to server with lastPulledAt for conflict detection.
  */
 export class PushRequestDto {
   /**
-   * Last pull timestamp in milliseconds
-   * Used for conflict detection
+   * Unix timestamp (ms) of last successful pull.
+   * Used for conflict detection.
    */
+  @IsNotEmpty()
   @IsNumber()
-  last_pulled_at!: number;
+  lastPulledAt!: number;
 
   /**
-   * Changes grouped by entity type
+   * Changes object with entity types as keys and arrays of records as values.
+   *
+   * Example:
+   * {
+   *   captures: {
+   *     updated: [{ id: 'c1', title: 'Updated', last_modified_at: 1736760700000 }],
+   *     deleted: ['c2']
+   *   },
+   *   todos: {
+   *     updated: [{ id: 't1', state: 'completed', completed_at: 1736760700000 }]
+   *   }
+   * }
    */
+  @IsNotEmpty()
   @IsObject()
-  @ValidateNested()
-  @Type(() => ChangesPayload)
-  changes!: ChangesPayload;
+  changes!: {
+    [entity: string]: {
+      updated?: any[];
+      deleted?: string[];
+    };
+  };
 }

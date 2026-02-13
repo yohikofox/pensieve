@@ -1,11 +1,3 @@
-/**
- * SyncService
- * Core synchronization orchestrator implementing ADR-009 sync protocol
- *
- * Story 6.1 - Task 1: Backend Sync Endpoint Infrastructure
- * Implements: processPull (AC1), processPush (AC4), conflict detection (AC3)
- */
-
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
@@ -13,360 +5,387 @@ import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
-import { SyncConflict } from '../../domain/entities/sync-conflict.entity';
 import { SyncConflictResolver } from '../../infrastructure/sync-conflict-resolver';
+import { PullRequestDto } from '../dto/pull-request.dto';
+import { PushRequestDto } from '../dto/push-request.dto';
 import { SyncResponseDto } from '../dto/sync-response.dto';
 
+/**
+ * Sync Service (AC1, AC4 - Tasks 1.3-1.6)
+ *
+ * Implements ADR-009 sync protocol:
+ * - processPull: Return server changes since lastPulledAt
+ * - processPush: Apply client changes with conflict resolution
+ *
+ * User isolation (NFR13): Always filter by userId from JWT
+ */
 @Injectable()
 export class SyncService {
   private readonly logger = new Logger(SyncService.name);
 
   constructor(
-    // Entity repositories
     @InjectRepository(Thought)
-    private readonly thoughtRepo: Repository<Thought>,
+    private readonly thoughtRepository: Repository<Thought>,
     @InjectRepository(Idea)
-    private readonly ideaRepo: Repository<Idea>,
+    private readonly ideaRepository: Repository<Idea>,
     @InjectRepository(Todo)
-    private readonly todoRepo: Repository<Todo>,
-    // Sync infrastructure
+    private readonly todoRepository: Repository<Todo>,
     @InjectRepository(SyncLog)
-    private readonly syncLogRepo: Repository<SyncLog>,
-    @InjectRepository(SyncConflict)
-    private readonly syncConflictRepo: Repository<SyncConflict>,
-    // Conflict resolver
+    private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
   ) {}
 
   /**
-   * Process pull request - Return server changes since lastPulledAt
-   * Implements ADR-009.2: lastPulledAt + last_modified pattern
+   * Process PULL request: Return server changes since lastPulledAt
    *
-   * @param userId User ID from JWT
-   * @param lastPulledAt Last pull timestamp (milliseconds), 0 = full sync
-   * @returns Server changes and new timestamp
+   * ADR-009.2 Pattern:
+   * - Query: WHERE last_modified_at > lastPulledAt AND user_id = userId
+   * - Return: { changes: {...}, timestamp: now() }
    */
   async processPull(
     userId: string,
-    lastPulledAt: number = 0,
+    dto: PullRequestDto,
   ): Promise<SyncResponseDto> {
     const startTime = Date.now();
+    const lastPulledAt = dto.lastPulledAt || 0;
+
     this.logger.debug(
-      `Processing PULL for user ${userId}, lastPulledAt: ${lastPulledAt}`,
+      `Processing PULL for user ${userId} since ${lastPulledAt}`,
     );
 
     try {
-      // TODO: Add Capture entity support when implemented
-      // const captures = await this.pullCaptures(userId, lastPulledAt);
+      const changes: SyncResponseDto['changes'] = {};
 
-      const thoughts = await this.pullThoughts(userId, lastPulledAt);
-      const ideas = await this.pullIdeas(userId, lastPulledAt);
-      const todos = await this.pullTodos(userId, lastPulledAt);
+      // Fetch changes for each entity
+      // TODO: Add Capture entity when it's created
+      const entities = dto.entities ? dto.entities.split(',') : ['thought', 'idea', 'todo'];
 
-      const recordCount = thoughts.length + ideas.length + todos.length;
-      const newTimestamp = Date.now();
+      for (const entity of entities) {
+        const entityChanges = await this.getEntityChanges(
+          entity,
+          userId,
+          lastPulledAt,
+        );
+        if (entityChanges.updated.length > 0 || entityChanges.deleted.length > 0) {
+          changes[entity] = entityChanges;
+        }
+      }
+
+      const timestamp = Date.now();
 
       // Log sync operation
-      await this.logSync(
-        userId,
-        'pull',
-        startTime,
-        newTimestamp,
-        recordCount,
-        'success',
-      );
+      await this.logSync(userId, 'pull', startTime, timestamp, {
+        recordsSynced: this.countRecords(changes),
+        status: 'success',
+      });
 
       return {
-        changes: {
-          // captures: { updated: captures }, // TODO: Implement when Capture entity exists
-          thoughts: { updated: thoughts },
-          ideas: { updated: ideas },
-          todos: { updated: todos },
-        },
-        timestamp: newTimestamp,
+        changes,
+        timestamp,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Pull failed for user ${userId}:`, error);
-      await this.logSync(
-        userId,
-        'pull',
-        startTime,
-        Date.now(),
-        0,
-        'error',
-        errorMessage,
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `PULL failed for user ${userId}: ${errorMessage}`,
+        errorStack,
       );
+
+      await this.logSync(userId, 'pull', startTime, Date.now(), {
+        status: 'error',
+        errorMessage,
+      });
+
       throw error;
     }
   }
 
   /**
-   * Process push request - Accept client changes with conflict detection
-   * Implements ADR-009.2: Conflict detection via last_modified comparison
+   * Process PUSH request: Apply client changes with conflict resolution
    *
-   * @param userId User ID from JWT (NFR13: user isolation)
-   * @param changes Client changes payload
-   * @param lastPulledAt Client's last pull timestamp for conflict detection
-   * @returns Server response with potential conflicts
+   * ADR-009.2 Conflict Detection:
+   * - IF server.last_modified_at > request.lastPulledAt → CONFLICT
+   * - ELSE → Accept client changes
    */
   async processPush(
     userId: string,
-    changes: any,
-    lastPulledAt: number,
+    dto: PushRequestDto,
   ): Promise<SyncResponseDto> {
     const startTime = Date.now();
-    this.logger.debug(`Processing PUSH for user ${userId}`);
 
-    const conflicts: any[] = [];
-    let recordCount = 0;
+    this.logger.debug(
+      `Processing PUSH for user ${userId} with lastPulledAt ${dto.lastPulledAt}`,
+    );
 
     try {
-      // Process each entity type
-      // TODO: Add captures when entity exists
-      // if (changes.captures) {
-      //   const result = await this.pushCaptures(userId, changes.captures, lastPulledAt);
-      //   conflicts.push(...result.conflicts);
-      //   recordCount += result.count;
-      // }
+      const conflicts: SyncResponseDto['conflicts'] = [];
+      const serverChanges: SyncResponseDto['changes'] = {};
 
-      if (changes.thoughts) {
-        const result = await this.pushThoughts(
-          userId,
-          changes.thoughts,
-          lastPulledAt,
-        );
-        conflicts.push(...result.conflicts);
-        recordCount += result.count;
+      // Process each entity
+      for (const [entity, entityChanges] of Object.entries(dto.changes)) {
+        // Process updated records
+        if (entityChanges.updated) {
+          for (const clientRecord of entityChanges.updated) {
+            const result = await this.applyClientUpdate(
+              entity,
+              userId,
+              clientRecord,
+              dto.lastPulledAt,
+            );
+
+            if (result.conflict) {
+              conflicts.push({
+                entity,
+                recordId: clientRecord.id,
+                resolution: result.strategy || 'unknown',
+              });
+            }
+          }
+        }
+
+        // Process deleted records
+        if (entityChanges.deleted) {
+          for (const recordId of entityChanges.deleted) {
+            await this.applyClientDelete(entity, userId, recordId);
+          }
+        }
       }
 
-      if (changes.ideas) {
-        const result = await this.pushIdeas(
-          userId,
-          changes.ideas,
-          lastPulledAt,
-        );
-        conflicts.push(...result.conflicts);
-        recordCount += result.count;
-      }
+      // After push, fetch any server changes client needs to know about
+      const pullResult = await this.processPull(userId, {
+        lastPulledAt: dto.lastPulledAt,
+      });
 
-      if (changes.todos) {
-        const result = await this.pushTodos(
-          userId,
-          changes.todos,
-          lastPulledAt,
-        );
-        conflicts.push(...result.conflicts);
-        recordCount += result.count;
-      }
-
-      const newTimestamp = Date.now();
+      const timestamp = Date.now();
 
       // Log sync operation
-      await this.logSync(
-        userId,
-        'push',
-        startTime,
-        newTimestamp,
-        recordCount,
-        conflicts.length > 0 ? 'partial' : 'success',
-        undefined,
-        { conflicts: conflicts.length },
-      );
-
-      // Pull latest changes to return to client
-      const serverChanges = await this.processPull(userId, lastPulledAt);
+      await this.logSync(userId, 'push', startTime, timestamp, {
+        recordsSynced: this.countRecords(dto.changes),
+        status: 'success',
+        conflicts: conflicts.length,
+      });
 
       return {
-        ...serverChanges,
+        changes: pullResult.changes,
+        timestamp,
         conflicts: conflicts.length > 0 ? conflicts : undefined,
       };
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Push failed for user ${userId}:`, error);
-      await this.logSync(
-        userId,
-        'push',
-        startTime,
-        Date.now(),
-        recordCount,
-        'error',
-        errorMessage,
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `PUSH failed for user ${userId}: ${errorMessage}`,
+        errorStack,
       );
+
+      await this.logSync(userId, 'push', startTime, Date.now(), {
+        status: 'error',
+        errorMessage,
+      });
+
       throw error;
     }
   }
 
-  // ========== Private: Pull Methods ==========
-
-  private async pullThoughts(
+  /**
+   * Get changes for a specific entity since lastPulledAt
+   */
+  private async getEntityChanges(
+    entity: string,
     userId: string,
     lastPulledAt: number,
-  ): Promise<any[]> {
-    // TODO: Filter by last_modified_at once column is added in migration
-    return this.thoughtRepo.find({
+  ): Promise<{ updated: any[]; deleted: string[] }> {
+    const repository = this.getRepository(entity);
+
+    if (!repository) {
+      this.logger.warn(`Unknown entity: ${entity}`);
+      return { updated: [], deleted: [] };
+    }
+
+    // Get updated records (active)
+    const updated = await repository.find({
       where: {
         userId,
-        // last_modified_at: MoreThan(lastPulledAt), // Uncomment after migration
-      },
-      order: { createdAt: 'DESC' },
+        last_modified_at: MoreThan(lastPulledAt),
+        _status: 'active',
+      } as any,
     });
-  }
 
-  private async pullIdeas(
-    userId: string,
-    lastPulledAt: number,
-  ): Promise<any[]> {
-    // TODO: Add userId field to Idea entity (currently missing)
-    // TODO: Filter by last_modified_at once column is added in migration
-    return this.ideaRepo.find({
-      order: { createdAt: 'DESC' },
-      // where: {
-      //   userId,
-      //   last_modified_at: MoreThan(lastPulledAt),
-      // },
-    });
-  }
-
-  private async pullTodos(
-    userId: string,
-    lastPulledAt: number,
-  ): Promise<any[]> {
-    // TODO: Filter by last_modified_at once column is added in migration
-    return this.todoRepo.find({
+    // Get deleted records (soft deletes)
+    const deleted = await repository.find({
       where: {
         userId,
-        // last_modified_at: MoreThan(lastPulledAt), // Uncomment after migration
-      },
-      order: { createdAt: 'DESC' },
+        last_modified_at: MoreThan(lastPulledAt),
+        _status: 'deleted',
+      } as any,
+      select: ['id'] as any,
     });
+
+    return {
+      updated,
+      deleted: deleted.map((r: any) => r.id),
+    };
   }
 
-  // ========== Private: Push Methods ==========
-
-  private async pushThoughts(
+  /**
+   * Apply client update with conflict resolution
+   */
+  private async applyClientUpdate(
+    entity: string,
     userId: string,
-    changes: any,
+    clientRecord: any,
     lastPulledAt: number,
-  ): Promise<{ conflicts: any[]; count: number }> {
-    const conflicts: any[] = [];
-    let count = 0;
+  ): Promise<{ conflict: boolean; strategy?: string }> {
+    const repository = this.getRepository(entity);
 
-    if (changes.updated) {
-      for (const record of changes.updated) {
-        // NFR13: User isolation - only sync user's own data
-        if (record.userId !== userId) {
-          this.logger.warn(
-            `User ${userId} attempted to sync thought ${record.id} belonging to different user`,
-          );
-          continue;
-        }
-
-        const existing = await this.thoughtRepo.findOne({
-          where: { id: record.id },
-        });
-
-        if (existing) {
-          // TODO: Conflict detection using last_modified_at after migration
-          // For now, simple update
-          await this.thoughtRepo.update(record.id, record);
-        } else {
-          await this.thoughtRepo.save(record);
-        }
-        count++;
-      }
+    if (!repository) {
+      throw new Error(`Unknown entity: ${entity}`);
     }
 
-    return { conflicts, count };
-  }
+    // Fetch current server record
+    const serverRecord = await repository.findOne({
+      where: { id: clientRecord.id, userId } as any,
+    });
 
-  private async pushIdeas(
-    userId: string,
-    changes: any,
-    lastPulledAt: number,
-  ): Promise<{ conflicts: any[]; count: number }> {
-    const conflicts: any[] = [];
-    let count = 0;
-
-    if (changes.updated) {
-      for (const record of changes.updated) {
-        // TODO: Add userId validation once Idea entity has userId field
-
-        const existing = await this.ideaRepo.findOne({
-          where: { id: record.id },
-        });
-
-        if (existing) {
-          await this.ideaRepo.update(record.id, record);
-        } else {
-          await this.ideaRepo.save(record);
-        }
-        count++;
-      }
+    // New record - no conflict
+    if (!serverRecord) {
+      await repository.save({
+        ...clientRecord,
+        userId,
+        last_modified_at: Date.now(),
+      });
+      return { conflict: false };
     }
 
-    return { conflicts, count };
+    // Check for conflict
+    const hasConflict = this.conflictResolver.hasConflict(
+      serverRecord,
+      lastPulledAt,
+    );
+
+    if (hasConflict) {
+      // Resolve conflict
+      const resolution = await this.conflictResolver.resolve(
+        serverRecord,
+        clientRecord,
+        entity as any,
+      );
+
+      await repository.save({
+        ...resolution.resolvedRecord,
+        userId,
+      });
+
+      return {
+        conflict: true,
+        strategy: resolution.strategy,
+      };
+    } else {
+      // No conflict - accept client changes
+      await repository.save({
+        ...clientRecord,
+        userId,
+        last_modified_at: Date.now(),
+      });
+
+      return { conflict: false };
+    }
   }
 
-  private async pushTodos(
+  /**
+   * Apply client delete (soft delete)
+   */
+  private async applyClientDelete(
+    entity: string,
     userId: string,
-    changes: any,
-    lastPulledAt: number,
-  ): Promise<{ conflicts: any[]; count: number }> {
-    const conflicts: any[] = [];
-    let count = 0;
+    recordId: string,
+  ): Promise<void> {
+    const repository = this.getRepository(entity);
 
-    if (changes.updated) {
-      for (const record of changes.updated) {
-        // NFR13: User isolation
-        if (record.userId !== userId) {
-          this.logger.warn(
-            `User ${userId} attempted to sync todo ${record.id} belonging to different user`,
-          );
-          continue;
-        }
-
-        const existing = await this.todoRepo.findOne({
-          where: { id: record.id },
-        });
-
-        if (existing) {
-          // TODO: Conflict detection using last_modified_at after migration
-          await this.todoRepo.update(record.id, record);
-        } else {
-          await this.todoRepo.save(record);
-        }
-        count++;
-      }
+    if (!repository) {
+      throw new Error(`Unknown entity: ${entity}`);
     }
 
-    return { conflicts, count };
+    await repository.update(
+      { id: recordId, userId } as any,
+      {
+        _status: 'deleted',
+        last_modified_at: Date.now(),
+      } as any,
+    );
   }
 
-  // ========== Private: Logging ==========
+  /**
+   * Get repository for entity
+   */
+  private getRepository(entity: string): Repository<any> | null {
+    switch (entity) {
+      case 'thought':
+        return this.thoughtRepository;
+      case 'idea':
+        return this.ideaRepository;
+      case 'todo':
+        return this.todoRepository;
+      // TODO: Add Capture repository when entity is created
+      default:
+        return null;
+    }
+  }
 
+  /**
+   * Count total records in changes object
+   */
+  private countRecords(changes: Record<string, any>): number {
+    let count = 0;
+    for (const entityChanges of Object.values(changes)) {
+      count += (entityChanges.updated?.length || 0);
+      count += (entityChanges.deleted?.length || 0);
+    }
+    return count;
+  }
+
+  /**
+   * Log sync operation to sync_logs table
+   */
   private async logSync(
     userId: string,
     syncType: 'pull' | 'push',
     startedAt: number,
     completedAt: number,
-    recordsSynced: number,
-    status: 'success' | 'error' | 'partial',
-    errorMessage?: string,
-    metadata?: any,
+    options: {
+      recordsSynced?: number;
+      status: 'success' | 'error';
+      errorMessage?: string;
+      conflicts?: number;
+    },
   ): Promise<void> {
-    await this.syncLogRepo.save({
-      userId,
-      syncType,
-      startedAt: new Date(startedAt),
-      completedAt: new Date(completedAt),
-      durationMs: completedAt - startedAt,
-      recordsSynced,
-      status,
-      errorMessage,
-      metadata,
-    });
+    try {
+      const log = this.syncLogRepository.create({
+        userId,
+        syncType,
+        startedAt: new Date(startedAt),
+        completedAt: new Date(completedAt),
+        durationMs: completedAt - startedAt,
+        recordsSynced: options.recordsSynced || 0,
+        status: options.status,
+        errorMessage: options.errorMessage || null,
+        metadata: {
+          conflicts: options.conflicts || 0,
+        },
+      });
+
+      await this.syncLogRepository.save(log);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+
+      this.logger.error(
+        `Failed to log sync operation: ${errorMessage}`,
+        errorStack,
+      );
+      // Don't throw - logging failure shouldn't break sync
+    }
   }
 }

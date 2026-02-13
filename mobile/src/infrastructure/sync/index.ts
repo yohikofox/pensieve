@@ -8,6 +8,9 @@
 // Main service
 export { SyncService, getSyncService } from './SyncService';
 
+// Conflict handling
+export { ConflictHandler, getConflictHandler } from './ConflictHandler';
+
 // Storage
 export {
   getSyncMetadata,

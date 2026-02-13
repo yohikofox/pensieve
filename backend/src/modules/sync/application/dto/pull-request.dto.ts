@@ -1,17 +1,24 @@
-import { IsNumber, IsOptional } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsNumber, IsOptional, IsString } from 'class-validator';
 
 /**
- * DTO for sync pull requests
- * Client requests changes from server since last_pulled_at timestamp
+ * Pull Request DTO (ADR-009.2)
+ *
+ * Client sends lastPulledAt timestamp to get changes since last sync.
  */
 export class PullRequestDto {
   /**
-   * Last pull timestamp in milliseconds (Unix epoch)
-   * If not provided or 0, returns all records
+   * Unix timestamp (ms) of last successful pull.
+   * Server returns changes after this timestamp.
    */
   @IsOptional()
   @IsNumber()
-  @Type(() => Number)
-  last_pulled_at?: number;
+  lastPulledAt?: number;
+
+  /**
+   * Optional: Comma-separated list of entities to sync (e.g., "capture,todo").
+   * If omitted, sync all.
+   */
+  @IsOptional()
+  @IsString()
+  entities?: string;
 }

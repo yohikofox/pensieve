@@ -1,12 +1,3 @@
-/**
- * Sync Controller
- * HTTP API endpoints for mobile ↔ backend synchronization
- *
- * Story 6.1 - Task 1: Backend Sync Endpoint Infrastructure
- * Implements: AC1 (sync endpoints), AC2 (authentication)
- * Protocol: ADR-009 lastPulledAt + last_modified pattern
- */
-
 import {
   Controller,
   Post,
@@ -14,78 +5,86 @@ import {
   Body,
   Query,
   UseGuards,
+  Request,
+  HttpCode,
+  HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { SyncService } from '../services/sync.service';
 import { PullRequestDto } from '../dto/pull-request.dto';
 import { PushRequestDto } from '../dto/push-request.dto';
 import { SyncResponseDto } from '../dto/sync-response.dto';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
-import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
-import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 
+/**
+ * Sync Controller (AC1 - Task 1.1)
+ *
+ * Exposes sync endpoints:
+ * - GET  /api/sync/pull  - Fetch server changes
+ * - POST /api/sync/push  - Send client changes
+ *
+ * Authentication: JWT via SupabaseAuthGuard (Task 1.2)
+ * User Isolation: userId extracted from JWT (NFR13)
+ */
 @Controller('api/sync')
-@UseGuards(SupabaseAuthGuard) // AC1: JWT authentication required
+@UseGuards(SupabaseAuthGuard)
 export class SyncController {
   private readonly logger = new Logger(SyncController.name);
 
   constructor(private readonly syncService: SyncService) {}
 
   /**
-   * Pull endpoint - Client requests server changes
+   * PULL endpoint: Fetch server changes since lastPulledAt
    *
-   * GET /api/sync/pull?last_pulled_at=1736759400000
+   * GET /api/sync/pull?lastPulledAt=1736759400000
    *
-   * Returns all server changes since last_pulled_at timestamp
-   * Client should save response.timestamp for next pull
-   *
-   * AC1: Endpoint accepts WatermelonDB sync protocol payloads
-   * AC1: Endpoint handles authentication via JWT tokens
-   * AC1: Endpoint validates user isolation (NFR13)
+   * Returns: { changes: {...}, timestamp: now() }
    */
   @Get('pull')
+  @HttpCode(HttpStatus.OK)
   async pull(
-    @CurrentUser() user: User,
-    @Query('last_pulled_at') lastPulledAt?: string,
+    @Request() req: any,
+    @Query() dto: PullRequestDto,
   ): Promise<SyncResponseDto> {
-    const userId = user.id;
-    const timestamp = lastPulledAt ? parseInt(lastPulledAt, 10) : 0;
+    const userId = req.user?.id;
 
-    this.logger.log(
-      `📥 PULL request from user ${userId}, lastPulledAt: ${timestamp}`,
+    if (!userId) {
+      this.logger.error('Missing userId in JWT token');
+      throw new Error('Unauthorized: userId not found in token');
+    }
+
+    this.logger.debug(
+      `PULL request from user ${userId} with lastPulledAt ${dto.lastPulledAt || 0}`,
     );
 
-    return this.syncService.processPull(userId, timestamp);
+    return this.syncService.processPull(userId, dto);
   }
 
   /**
-   * Push endpoint - Client sends local changes
+   * PUSH endpoint: Send client changes to server
    *
    * POST /api/sync/push
-   * Body: { last_pulled_at: number, changes: {...} }
+   * Body: { lastPulledAt, changes: {...} }
    *
-   * Accepts client changes, detects conflicts, returns server changes
-   *
-   * AC4: Changes are validated for data integrity
-   * AC4: User permissions are verified (NFR13: user can only sync their own data)
-   * AC4: Changes are applied to PostgreSQL database
-   * AC4: Sync response follows OP-SQLite sync protocol format
+   * Returns: { changes: {...}, timestamp: now(), conflicts?: [...] }
    */
   @Post('push')
+  @HttpCode(HttpStatus.OK)
   async push(
-    @CurrentUser() user: User,
+    @Request() req: any,
     @Body() dto: PushRequestDto,
   ): Promise<SyncResponseDto> {
-    const userId = user.id;
+    const userId = req.user?.id;
 
-    this.logger.log(
-      `📤 PUSH request from user ${userId}, lastPulledAt: ${dto.last_pulled_at}`,
+    if (!userId) {
+      this.logger.error('Missing userId in JWT token');
+      throw new Error('Unauthorized: userId not found in token');
+    }
+
+    this.logger.debug(
+      `PUSH request from user ${userId} with lastPulledAt ${dto.lastPulledAt}`,
     );
 
-    return this.syncService.processPush(
-      userId,
-      dto.changes,
-      dto.last_pulled_at,
-    );
+    return this.syncService.processPush(userId, dto);
   }
 }

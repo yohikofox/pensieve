@@ -1,44 +1,44 @@
 /**
- * Entity changes response structure
- */
-interface EntityChangesResponse {
-  updated?: any[]; // Records updated since last pull
-  deleted?: any[]; // Records marked as deleted
-}
-
-/**
- * Changes response grouping all entities
- */
-interface ChangesResponse {
-  captures?: EntityChangesResponse;
-  thoughts?: EntityChangesResponse;
-  ideas?: EntityChangesResponse;
-  todos?: EntityChangesResponse;
-}
-
-/**
- * DTO for sync responses (pull and push)
- * Returns server-side changes to client
+ * Sync Response DTO (ADR-009.2)
+ *
+ * Server response for both pull and push operations.
+ * Contains changes to apply on client and new timestamp for next sync.
  */
 export class SyncResponseDto {
   /**
-   * Server-side changes since last_pulled_at
+   * Changes object with entity types as keys and updated/deleted records.
+   *
+   * Example:
+   * {
+   *   captures: {
+   *     updated: [{ id: 'c1', title: 'Server capture', last_modified_at: 1736760000000 }],
+   *     deleted: ['c2']
+   *   },
+   *   thoughts: {
+   *     updated: [{ id: 'th1', content: 'AI generated thought', last_modified_at: 1736760100000 }]
+   *   }
+   * }
    */
-  changes!: ChangesResponse;
+  changes!: {
+    [entity: string]: {
+      updated?: any[];
+      deleted?: string[];
+    };
+  };
 
   /**
-   * New server timestamp for next pull
-   * Client should save this as last_pulled_at
+   * New timestamp for client to store as lastPulledAt for next sync.
    */
   timestamp!: number;
 
   /**
-   * Optional conflicts detected during push
+   * Optional: Array of conflicts detected and resolved during push.
+   *
+   * Example: [{ entity: 'todo', recordId: 't1', resolution: 'per-column-hybrid' }]
    */
   conflicts?: Array<{
     entity: string;
-    record_id: string;
-    conflict_type: string;
-    resolution: 'client_wins' | 'server_wins' | 'merged';
+    recordId: string;
+    resolution: string;
   }>;
 }
