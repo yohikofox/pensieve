@@ -10,15 +10,16 @@ LATEST_TAG ?= latest
 # Image names
 BACKEND_IMAGE = $(REGISTRY)/pensine-backend
 WEB_IMAGE = $(REGISTRY)/pensine-web
+ADMIN_IMAGE = $(REGISTRY)/pensine-admin
 
 # ===========================================
 # Build Commands
 # ===========================================
 
-.PHONY: build build-backend build-web
+.PHONY: build build-backend build-web build-admin
 
 ## Build all images
-build: build-backend build-web
+build: build-backend build-web build-admin
 
 ## Build backend image
 build-backend:
@@ -30,14 +31,19 @@ build-web:
 	@echo "🔨 Building web image..."
 	docker build -t $(WEB_IMAGE):$(VERSION) -t $(WEB_IMAGE):$(LATEST_TAG) ./web
 
+## Build admin image
+build-admin:
+	@echo "🔨 Building admin image..."
+	docker build -t $(ADMIN_IMAGE):$(VERSION) -t $(ADMIN_IMAGE):$(LATEST_TAG) ./admin
+
 # ===========================================
 # Push Commands
 # ===========================================
 
-.PHONY: push push-backend push-web
+.PHONY: push push-backend push-web push-admin
 
 ## Push all images to registry
-push: push-backend push-web
+push: push-backend push-web push-admin
 
 ## Push backend image
 push-backend:
@@ -51,11 +57,17 @@ push-web:
 	docker push $(WEB_IMAGE):$(VERSION)
 	docker push $(WEB_IMAGE):$(LATEST_TAG)
 
+## Push admin image
+push-admin:
+	@echo "📤 Pushing admin image..."
+	docker push $(ADMIN_IMAGE):$(VERSION)
+	docker push $(ADMIN_IMAGE):$(LATEST_TAG)
+
 # ===========================================
 # Combined Commands
 # ===========================================
 
-.PHONY: release release-backend release-web
+.PHONY: release release-backend release-web release-admin
 
 ## Build and push all images
 release: build push
@@ -68,6 +80,10 @@ release-backend: build-backend push-backend
 ## Build and push web
 release-web: build-web push-web
 	@echo "✅ Web released to $(REGISTRY)"
+
+## Build and push admin
+release-admin: build-admin push-admin
+	@echo "✅ Admin released to $(REGISTRY)"
 
 # ===========================================
 # Utility Commands
@@ -90,6 +106,7 @@ clean:
 	@echo "🧹 Cleaning local images..."
 	-docker rmi $(BACKEND_IMAGE):$(VERSION) $(BACKEND_IMAGE):$(LATEST_TAG) 2>/dev/null
 	-docker rmi $(WEB_IMAGE):$(VERSION) $(WEB_IMAGE):$(LATEST_TAG) 2>/dev/null
+	-docker rmi $(ADMIN_IMAGE):$(VERSION) $(ADMIN_IMAGE):$(LATEST_TAG) 2>/dev/null
 	@echo "✅ Local images cleaned"
 
 ## Show version
@@ -107,16 +124,19 @@ help:
 	@echo "  build           Build all images"
 	@echo "  build-backend   Build backend image"
 	@echo "  build-web       Build web image"
+	@echo "  build-admin     Build admin image"
 	@echo ""
 	@echo "Push targets:"
 	@echo "  push            Push all images"
 	@echo "  push-backend    Push backend image"
 	@echo "  push-web        Push web image"
+	@echo "  push-admin      Push admin image"
 	@echo ""
 	@echo "Release targets:"
 	@echo "  release         Build and push all"
 	@echo "  release-backend Build and push backend"
 	@echo "  release-web     Build and push web"
+	@echo "  release-admin   Build and push admin"
 	@echo ""
 	@echo "Utility targets:"
 	@echo "  list            List images in registry"
