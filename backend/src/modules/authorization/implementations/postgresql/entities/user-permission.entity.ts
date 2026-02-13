@@ -19,29 +19,29 @@ export class UserPermission {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column('uuid')
+  @Column({ name: 'user_id', type: 'uuid' })
   @Index('IDX_USER_PERMISSIONS_USER_ID')
   userId!: string;
 
-  @Column('uuid')
+  @Column({ name: 'permission_id', type: 'uuid' })
   permissionId!: string;
 
-  @Column('boolean')
+  @Column({ type: 'boolean' })
   granted!: boolean;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt!: Date | null;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt!: Date;
 
   // Relations
   @ManyToOne(() => Permission, (permission) => permission.userPermissions, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'permissionId' })
+  @JoinColumn({ name: 'permission_id' })
   permission!: Permission;
 }

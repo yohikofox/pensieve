@@ -24,35 +24,35 @@ export class ResourceShare {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ name: 'resource_type', type: 'varchar', length: 50 })
   resourceType!: string;
 
-  @Column('uuid')
+  @Column({ name: 'resource_id', type: 'uuid' })
   resourceId!: string;
 
-  @Column('uuid')
+  @Column({ name: 'owner_id', type: 'uuid' })
   @Index('IDX_RESOURCE_SHARES_OWNER')
   ownerId!: string;
 
-  @Column('uuid')
+  @Column({ name: 'shared_with_id', type: 'uuid' })
   sharedWithId!: string;
 
-  @Column('uuid')
+  @Column({ name: 'share_role_id', type: 'uuid' })
   shareRoleId!: string;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ name: 'expires_at', type: 'timestamp', nullable: true })
   expiresAt!: Date | null;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt!: Date;
 
   // Relations
   @ManyToOne(() => ShareRole, (shareRole) => shareRole.resourceShares, {
     onDelete: 'RESTRICT',
   })
-  @JoinColumn({ name: 'shareRoleId' })
+  @JoinColumn({ name: 'share_role_id' })
   shareRole!: ShareRole;
 }

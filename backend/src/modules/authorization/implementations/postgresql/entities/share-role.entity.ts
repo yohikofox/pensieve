@@ -25,13 +25,13 @@ export class ShareRole {
   @Column({ type: 'varchar', length: 50 })
   name!: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ name: 'resource_type', type: 'varchar', length: 50 })
   resourceType!: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt!: Date;
 
   // Relations

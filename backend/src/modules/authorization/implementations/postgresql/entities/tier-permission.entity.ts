@@ -15,25 +15,25 @@ import { Permission } from './permission.entity';
  */
 @Entity('tier_permissions')
 export class TierPermission {
-  @PrimaryColumn('uuid')
+  @PrimaryColumn({ name: 'tier_id', type: 'uuid' })
   tierId!: string;
 
-  @PrimaryColumn('uuid')
+  @PrimaryColumn({ name: 'permission_id', type: 'uuid' })
   permissionId!: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
   // Relations
   @ManyToOne(() => SubscriptionTier, (tier) => tier.tierPermissions, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'tierId' })
+  @JoinColumn({ name: 'tier_id' })
   tier!: SubscriptionTier;
 
   @ManyToOne(() => Permission, (permission) => permission.tierPermissions, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'permissionId' })
+  @JoinColumn({ name: 'permission_id' })
   permission!: Permission;
 }

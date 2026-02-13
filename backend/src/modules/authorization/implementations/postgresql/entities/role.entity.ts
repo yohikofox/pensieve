@@ -21,16 +21,16 @@ export class Role {
   @Column({ type: 'varchar', length: 100, unique: true })
   name!: string;
 
-  @Column({ type: 'varchar', length: 200 })
+  @Column({ name: 'display_name', type: 'varchar', length: 200 })
   displayName!: string;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ name: 'is_system', type: 'boolean', default: false })
   isSystem!: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt!: Date;
 
   // Relations

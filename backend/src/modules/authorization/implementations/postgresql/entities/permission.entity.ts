@@ -25,22 +25,22 @@ export class Permission {
   @Index('IDX_PERMISSIONS_NAME')
   name!: string;
 
-  @Column({ type: 'varchar', length: 200 })
+  @Column({ name: 'display_name', type: 'varchar', length: 200 })
   displayName!: string;
 
-  @Column({ type: 'varchar', length: 50 })
+  @Column({ name: 'resource_type', type: 'varchar', length: 50 })
   resourceType!: string;
 
   @Column({ type: 'varchar', length: 50 })
   action!: string;
 
-  @Column({ type: 'boolean', default: false })
+  @Column({ name: 'is_paid_feature', type: 'boolean', default: false })
   isPaidFeature!: boolean;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamp' })
   updatedAt!: Date;
 
   // Relations

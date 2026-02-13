@@ -15,20 +15,20 @@ import { Permission } from './permission.entity';
  */
 @Entity('share_role_permissions')
 export class ShareRolePermission {
-  @PrimaryColumn('uuid')
+  @PrimaryColumn({ name: 'share_role_id', type: 'uuid' })
   shareRoleId!: string;
 
-  @PrimaryColumn('uuid')
+  @PrimaryColumn({ name: 'permission_id', type: 'uuid' })
   permissionId!: string;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
   createdAt!: Date;
 
   // Relations
   @ManyToOne(() => ShareRole, (shareRole) => shareRole.shareRolePermissions, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'shareRoleId' })
+  @JoinColumn({ name: 'share_role_id' })
   shareRole!: ShareRole;
 
   @ManyToOne(
@@ -38,6 +38,6 @@ export class ShareRolePermission {
       onDelete: 'CASCADE',
     },
   )
-  @JoinColumn({ name: 'permissionId' })
+  @JoinColumn({ name: 'permission_id' })
   permission!: Permission;
 }
