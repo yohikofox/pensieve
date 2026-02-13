@@ -10,6 +10,31 @@
  * Migration Note: Converted from WatermelonDB Model to plain interface for OP-SQLite
  */
 
+/**
+ * Capture type enumeration
+ */
+export const CAPTURE_TYPES = {
+  AUDIO: "audio",
+  TEXT: "text",
+  IMAGE: "image",
+  URL: "url",
+} as const;
+
+export type CaptureType = (typeof CAPTURE_TYPES)[keyof typeof CAPTURE_TYPES];
+
+/**
+ * Capture state enumeration
+ */
+export const CAPTURE_STATES = {
+  RECORDING: "recording",
+  CAPTURED: "captured",
+  PROCESSING: "processing",
+  READY: "ready",
+  FAILED: "failed",
+} as const;
+
+export type CaptureState = (typeof CAPTURE_STATES)[keyof typeof CAPTURE_STATES];
+
 export interface Capture {
   /**
    * Unique identifier
@@ -18,15 +43,13 @@ export interface Capture {
 
   /**
    * Type of capture
-   * Values: 'audio' | 'text' | 'image' | 'url'
    */
-  type: string;
+  type: CaptureType;
 
   /**
    * Current state of capture
-   * Values: 'captured' | 'processing' | 'ready' | 'failed' | 'recording'
    */
-  state: string;
+  state: CaptureState;
 
   /**
    * Optional project association

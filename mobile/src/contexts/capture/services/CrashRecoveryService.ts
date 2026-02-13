@@ -28,6 +28,7 @@ import {
   type RecoveredCapture,
   type OrphanedFile,
 } from "../domain/ICrashRecoveryService";
+import { CAPTURE_STATES } from "../domain/Capture.model";
 
 /**
  * CrashRecoveryService detects and recovers interrupted recordings
@@ -60,7 +61,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     const results: RecoveredCapture[] = [];
 
     // Find all captures still in "recording" state
-    const incompleteCaptures = await this.repository.findByState("recording");
+    const incompleteCaptures = await this.repository.findByState(CAPTURE_STATES.RECORDING);
 
     if (incompleteCaptures.length === 0) {
       return results;
@@ -92,7 +93,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     if (fileExists) {
       // File exists - mark as recovered
       const updateResult = await this.repository.update(captureId, {
-        state: "captured",
+        state: CAPTURE_STATES.CAPTURED,
         syncStatus: "pending",
       });
 
@@ -115,7 +116,7 @@ export class CrashRecoveryService implements ICrashRecoveryService {
     } else {
       // File doesn't exist - mark as failed
       const updateResult = await this.repository.update(captureId, {
-        state: "failed",
+        state: CAPTURE_STATES.FAILED,
         syncStatus: "pending",
       });
 

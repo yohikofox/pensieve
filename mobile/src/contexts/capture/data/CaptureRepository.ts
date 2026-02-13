@@ -16,7 +16,13 @@ import "reflect-metadata";
 import { injectable, inject } from "tsyringe";
 import { v4 as uuidv4 } from "uuid";
 import { database } from "../../../database";
-import { type Capture } from "../domain/Capture.model";
+import {
+  type Capture,
+  type CaptureType,
+  type CaptureState,
+  CAPTURE_TYPES,
+  CAPTURE_STATES,
+} from "../domain/Capture.model";
 import { mapRowToCapture, type CaptureRow } from "./mappers/capture.mapper";
 import {
   type RepositoryResult,
@@ -33,8 +39,8 @@ import type {
 } from "../events/CaptureEvents";
 
 export interface CreateCaptureData {
-  type: "audio" | "text" | "image" | "url";
-  state: "recording" | "captured" | "processing" | "ready" | "failed";
+  type: CaptureType;
+  state: CaptureState;
   projectId?: string;
   rawContent: string;
   normalizedText?: string;
@@ -46,7 +52,7 @@ export interface CreateCaptureData {
 }
 
 export interface UpdateCaptureData {
-  state?: "recording" | "captured" | "processing" | "ready" | "failed";
+  state?: CaptureState;
   projectId?: string;
   rawContent?: string;
   normalizedText?: string;
@@ -137,7 +143,7 @@ export class CaptureRepository implements ICaptureRepository {
         "type:",
         capture.type,
       );
-      if (capture.state === "captured") {
+      if (capture.state === CAPTURE_STATES.CAPTURED) {
         try {
           console.log(
             "[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:",
@@ -150,10 +156,10 @@ export class CaptureRepository implements ICaptureRepository {
               captureId: capture.id,
               captureType: capture.type,
               audioPath:
-                capture.type === "audio" ? capture.rawContent : undefined,
-              audioDuration: capture.duration,
+                capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
+              audioDuration: capture.duration ?? undefined,
               textContent:
-                capture.type === "text" ? capture.rawContent : undefined,
+                capture.type === CAPTURE_TYPES.TEXT ? capture.rawContent : undefined,
               createdAt: capture.createdAt.getTime(),
             },
           };
@@ -264,7 +270,7 @@ export class CaptureRepository implements ICaptureRepository {
         "type:",
         capture.type,
       );
-      if (updates.state === "captured") {
+      if (updates.state === CAPTURE_STATES.CAPTURED) {
         try {
           console.log(
             "[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:",
@@ -277,10 +283,10 @@ export class CaptureRepository implements ICaptureRepository {
               captureId: capture.id,
               captureType: capture.type,
               audioPath:
-                capture.type === "audio" ? capture.rawContent : undefined,
-              audioDuration: capture.duration,
+                capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
+              audioDuration: capture.duration ?? undefined,
               textContent:
-                capture.type === "text" ? capture.rawContent : undefined,
+                capture.type === CAPTURE_TYPES.TEXT ? capture.rawContent : undefined,
               createdAt: capture.createdAt.getTime(),
             },
           };
@@ -416,7 +422,7 @@ export class CaptureRepository implements ICaptureRepository {
               captureId: capture.id,
               captureType: capture.type,
               audioPath:
-                capture.type === "audio" ? capture.rawContent : undefined,
+                capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
             },
           };
           this.eventBus.publish(event);

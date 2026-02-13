@@ -95,8 +95,8 @@ describe('RetentionPolicyService', () => {
       const oldCaptures = [
         {
           id: 'cap-1',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/path/to/audio1.m4a',
           fileSize: 10 * 1024 * 1024, // 10MB
           capturedAt: old1,
@@ -106,8 +106,8 @@ describe('RetentionPolicyService', () => {
         },
         {
           id: 'cap-2',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/path/to/audio2.m4a',
           fileSize: 15 * 1024 * 1024, // 15MB
           capturedAt: old2,
@@ -135,8 +135,8 @@ describe('RetentionPolicyService', () => {
       const recentCaptures = [
         {
           id: 'cap-recent',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/path/to/recent.m4a',
           fileSize: 5 * 1024 * 1024,
           capturedAt: recent,
@@ -176,8 +176,8 @@ describe('RetentionPolicyService', () => {
       const oldCaptures = [
         {
           id: 'cap-1',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/path/to/audio1.m4a',
           fileSize: 10 * 1024 * 1024,
           capturedAt: old,
@@ -217,7 +217,7 @@ describe('RetentionPolicyService', () => {
       mockRepository.findSynced.mockResolvedValue([
         {
           id: 'cap-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           rawContent: '/path/to/audio.m4a',
           fileSize: 5 * 1024 * 1024,
           capturedAt: old,
@@ -227,7 +227,7 @@ describe('RetentionPolicyService', () => {
           todos: ['Todo 1', 'Todo 2'],
           createdAt: old,
           updatedAt: old,
-          state: 'captured',
+          state: CAPTURE_STATES.CAPTURED,
         },
       ] as any);
 
@@ -260,8 +260,8 @@ describe('RetentionPolicyService', () => {
           syncStatus: 'synced',
           createdAt: old,
           updatedAt: old,
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
         },
       ] as any);
 
@@ -291,8 +291,8 @@ describe('RetentionPolicyService', () => {
           syncStatus: 'synced',
           createdAt: old,
           updatedAt: old,
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
         },
       ] as any);
 
@@ -350,8 +350,8 @@ describe('RetentionPolicyService', () => {
           syncStatus: 'synced',
           createdAt: old,
           updatedAt: old,
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
         },
       ] as any);
 
@@ -425,8 +425,8 @@ describe('RetentionPolicyService', () => {
           todos: ['Important todo'],
           createdAt: old,
           updatedAt: old,
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
         },
       ] as any);
 

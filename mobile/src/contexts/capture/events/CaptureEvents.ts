@@ -10,6 +10,7 @@
  */
 
 import type { DomainEvent } from "../../shared/events/DomainEvent";
+import { type CaptureType } from "../domain/Capture.model";
 
 /**
  * CaptureRecorded Event
@@ -25,7 +26,7 @@ export interface CaptureRecordedEvent extends DomainEvent {
   readonly type: "CaptureRecorded";
   readonly payload: {
     readonly captureId: string;
-    readonly captureType: "audio" | "text";
+    readonly captureType: CaptureType;
     readonly audioPath?: string; // File path for audio captures
     readonly audioDuration?: number; // Milliseconds for audio captures
     readonly textContent?: string; // Text content for text captures
@@ -47,7 +48,7 @@ export interface CaptureDeletedEvent extends DomainEvent {
   readonly type: "CaptureDeleted";
   readonly payload: {
     readonly captureId: string;
-    readonly captureType: "audio" | "text";
+    readonly captureType: CaptureType;
     readonly audioPath?: string; // File path to cleanup
   };
 }

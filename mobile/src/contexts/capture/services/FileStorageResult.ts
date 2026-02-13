@@ -5,10 +5,10 @@
  */
 
 export enum FileStorageResultType {
-  SUCCESS = 'success',
-  FILE_NOT_FOUND = 'file_not_found',
-  PERMISSION_DENIED = 'permission_denied',
-  STORAGE_ERROR = 'storage_error',
+  SUCCESS = "success",
+  FILE_NOT_FOUND = "file_not_found",
+  PERMISSION_DENIED = "permission_denied",
+  STORAGE_ERROR = "storage_error",
 }
 
 export type FileStorageResult<T> = {
@@ -27,14 +27,14 @@ export function storageSuccess<T>(data: T): FileStorageResult<T> {
 export function fileNotFound<T>(error?: string): FileStorageResult<T> {
   return {
     type: FileStorageResultType.FILE_NOT_FOUND,
-    error: error ?? 'File not found',
+    error: error ?? "File not found",
   };
 }
 
 export function permissionDenied<T>(error?: string): FileStorageResult<T> {
   return {
     type: FileStorageResultType.PERMISSION_DENIED,
-    error: error ?? 'Permission denied',
+    error: error ?? "Permission denied",
   };
 }
 

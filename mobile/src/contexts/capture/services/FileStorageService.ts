@@ -21,21 +21,21 @@
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  */
 
-import 'reflect-metadata';
-import { injectable } from 'tsyringe';
-import { File, Directory, Paths } from 'expo-file-system';
+import "reflect-metadata";
+import { injectable } from "tsyringe";
+import { File, Directory, Paths } from "expo-file-system";
 import {
   type FileStorageResult,
   FileStorageResultType,
   storageSuccess,
   fileNotFound,
   storageError,
-} from './FileStorageResult';
+} from "./FileStorageResult";
 import {
   type IFileStorageService,
   type FileMetadata,
   type StorageResult,
-} from '../domain/IFileStorageService';
+} from "../domain/IFileStorageService";
 
 /**
  * FileStorageService manages permanent audio file storage
@@ -77,12 +77,12 @@ export class FileStorageService implements IFileStorageService {
 
       if (!dirInfo.exists) {
         await audioDir.create({ intermediates: true });
-        console.log('[FileStorage] Created audio directory:', this.AUDIO_DIR);
+        console.log("[FileStorage] Created audio directory:", this.AUDIO_DIR);
       }
     } catch (error) {
-      console.error('[FileStorage] Failed to create audio directory:', error);
+      console.error("[FileStorage] Failed to create audio directory:", error);
       // EXCEPTION ALLOWED: Critical initialization failure at app startup
-      throw new Error('Failed to initialize audio storage');
+      throw new Error("Failed to initialize audio storage");
     }
   }
 
@@ -108,7 +108,7 @@ export class FileStorageService implements IFileStorageService {
   async moveToStorage(
     tempUri: string,
     captureId: string,
-    durationMillis: number
+    durationMillis: number,
   ): Promise<FileStorageResult<StorageResult>> {
     // Ensure directory exists (can throw - documented exception)
     await this.ensureAudioDirectoryExists();
@@ -132,9 +132,15 @@ export class FileStorageService implements IFileStorageService {
     console.log(`[FileStorage] Moved file: ${tempUri} → ${permanentPath}`);
 
     // Get file metadata
-    const metadataResult = await this.getFileMetadata(permanentPath, durationMillis);
+    const metadataResult = await this.getFileMetadata(
+      permanentPath,
+      durationMillis,
+    );
 
-    if (metadataResult.type !== FileStorageResultType.SUCCESS || !metadataResult.data) {
+    if (
+      metadataResult.type !== FileStorageResultType.SUCCESS ||
+      !metadataResult.data
+    ) {
       return metadataResult as FileStorageResult<StorageResult>;
     }
 
@@ -153,7 +159,7 @@ export class FileStorageService implements IFileStorageService {
    */
   async getFileMetadata(
     fileUri: string,
-    durationMillis: number
+    durationMillis: number,
   ): Promise<FileStorageResult<FileMetadata>> {
     const file = new File(fileUri);
     const fileInfo = file.info();
@@ -202,7 +208,7 @@ export class FileStorageService implements IFileStorageService {
       const fileInfo = file.info();
       return fileInfo.exists;
     } catch (error) {
-      console.error('[FileStorage] Failed to check file existence:', error);
+      console.error("[FileStorage] Failed to check file existence:", error);
       return false;
     }
   }

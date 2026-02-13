@@ -16,10 +16,13 @@
  * - Android: File-based Encryption (FBE) - enabled on Android 7+
  */
 
-import 'reflect-metadata';
-import { injectable } from 'tsyringe';
-import { Platform } from 'react-native';
-import type { IEncryptionService, EncryptionStatus } from '../domain/IEncryptionService';
+import "reflect-metadata";
+import { injectable } from "tsyringe";
+import { Platform } from "react-native";
+import type {
+  IEncryptionService,
+  EncryptionStatus,
+} from "../domain/IEncryptionService";
 
 @injectable()
 export class EncryptionService implements IEncryptionService {
@@ -29,16 +32,16 @@ export class EncryptionService implements IEncryptionService {
    * Returns encryption status with OS-specific details
    */
   async checkEncryptionStatus(): Promise<EncryptionStatus> {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === "ios") {
       return this.checkIOSDataProtection();
-    } else if (Platform.OS === 'android') {
+    } else if (Platform.OS === "android") {
       return this.checkAndroidFBE();
     } else {
       return {
         available: false,
-        type: 'none',
-        message: 'Platform not supported for encryption verification',
-        verificationMethod: 'platform-check',
+        type: "none",
+        message: "Platform not supported for encryption verification",
+        verificationMethod: "platform-check",
       };
     }
   }
@@ -57,9 +60,10 @@ export class EncryptionService implements IEncryptionService {
     // but we can assume encryption is available on iOS 7+
     return {
       available: true,
-      type: 'ios-data-protection',
-      message: 'iOS Data Protection enabled (documentDirectory encrypted when device locked)',
-      verificationMethod: 'ios-platform-default',
+      type: "ios-data-protection",
+      message:
+        "iOS Data Protection enabled (documentDirectory encrypted when device locked)",
+      verificationMethod: "ios-platform-default",
     };
   }
 
@@ -75,9 +79,10 @@ export class EncryptionService implements IEncryptionService {
     // on modern Android versions
     return {
       available: true,
-      type: 'android-fbe',
-      message: 'Android File-based Encryption available (documentDirectory encrypted)',
-      verificationMethod: 'android-api-level',
+      type: "android-fbe",
+      message:
+        "Android File-based Encryption available (documentDirectory encrypted)",
+      verificationMethod: "android-api-level",
     };
   }
 
@@ -87,7 +92,7 @@ export class EncryptionService implements IEncryptionService {
    * Called on app startup and when creating captures
    */
   logEncryptionStatus(status: EncryptionStatus): void {
-    console.log('[Encryption] Status check:', {
+    console.log("[Encryption] Status check:", {
       available: status.available,
       type: status.type,
       message: status.message,
@@ -96,7 +101,9 @@ export class EncryptionService implements IEncryptionService {
     });
 
     if (!status.available) {
-      console.warn('[Encryption] ⚠️ Device encryption NOT available - data at risk');
+      console.warn(
+        "[Encryption] ⚠️ Device encryption NOT available - data at risk",
+      );
     }
   }
 

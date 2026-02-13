@@ -13,8 +13,8 @@ describe('Capture Model - Retry Fields', () => {
     it('should include retry tracking fields', () => {
       const capture = {
         id: 'test-1',
-        type: 'audio',
-        state: 'failed',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.FAILED,
         rawContent: 'test.m4a',
         normalizedText: null,
         duration: 5000,

@@ -18,7 +18,7 @@ import { injectable, inject } from 'tsyringe';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
-import { type Capture } from '../domain/Capture';
+import { type Capture, CAPTURE_TYPES, CAPTURE_STATES } from '../domain/Capture.model';
 
 /**
  * TextCaptureService manages text capture creation
@@ -60,8 +60,8 @@ export class TextCaptureService {
     // AC4: Set syncStatus='pending' for offline support
     // For text captures, normalizedText = rawContent (no transcription/processing needed)
     const result = await this.repository.create({
-      type: 'text',
-      state: 'captured',
+      type: CAPTURE_TYPES.TEXT,
+      state: CAPTURE_STATES.CAPTURED,
       rawContent: trimmedText,
       normalizedText: trimmedText,
       syncStatus: 'pending',

@@ -25,6 +25,7 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';
 import { type IFileSystem } from '../domain/IFileSystem';
 import { type RepositoryResult, RepositoryResultType } from '../domain/Result';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../domain/Capture.model';
 
 export interface RecordingResult {
   captureId: string;
@@ -75,8 +76,8 @@ export class RecordingService {
     // AC1: Create Capture entity with status "recording" and temporary file URI
     // This allows crash recovery to find the file even if app crashes during recording
     const result = await this.repository.create({
-      type: 'audio',
-      state: 'recording',
+      type: CAPTURE_TYPES.AUDIO,
+      state: CAPTURE_STATES.RECORDING,
       rawContent: tempUri,
       syncStatus: 'pending',
     });

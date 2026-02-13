@@ -7,14 +7,15 @@
  */
 
 import { type CaptureRow, mapRowToCapture } from '../capture.mapper';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../../../domain/Capture.model';
 
 describe('Capture Mapper', () => {
   describe('mapRowToCapture', () => {
     it('should map database row to Capture interface', () => {
       const row: CaptureRow = {
         id: 'capture-123',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         raw_content: '/path/to/audio.m4a',
         normalized_text: null,
         duration: 5000,
@@ -52,8 +53,8 @@ describe('Capture Mapper', () => {
     it('should handle sync metadata correctly', () => {
       const row: CaptureRow = {
         id: 'capture-456',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         raw_content: 'Quick note',
         normalized_text: 'Quick note',
         duration: null,
@@ -82,8 +83,8 @@ describe('Capture Mapper', () => {
       const conflictPayload = JSON.stringify({ serverVersion: 10 });
       const row: CaptureRow = {
         id: 'capture-789',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         raw_content: '/path/to/audio.m4a',
         normalized_text: null,
         duration: 3000,
@@ -110,8 +111,8 @@ describe('Capture Mapper', () => {
     it('should handle nullable fields correctly', () => {
       const row: CaptureRow = {
         id: 'capture-null',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         raw_content: 'Simple text',
         normalized_text: null,
         duration: null,
@@ -145,8 +146,8 @@ describe('Capture Mapper', () => {
 
       const row: CaptureRow = {
         id: 'test-3',
-        type: 'audio',
-        state: 'failed',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.FAILED,
         raw_content: 'test.m4a',
         normalized_text: null,
         duration: 5000,
@@ -177,8 +178,8 @@ describe('Capture Mapper', () => {
 
       const row: CaptureRow = {
         id: 'test-4',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         raw_content: 'test.m4a',
         normalized_text: null,
         duration: 5000,
@@ -209,8 +210,8 @@ describe('Capture Mapper', () => {
     it('should include retry tracking columns', () => {
       const row: CaptureRow = {
         id: 'test-2',
-        type: 'audio',
-        state: 'failed',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.FAILED,
         raw_content: 'test.m4a',
         normalized_text: null,
         duration: 5000,

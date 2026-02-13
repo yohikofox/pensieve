@@ -47,8 +47,8 @@ describe('OfflineSyncService', () => {
       const pendingCaptures = [
         {
           id: 'capture-1',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/audio1.m4a',
           createdAt: new Date(1234567890000),
           updatedAt: new Date(1234567890000),
@@ -56,8 +56,8 @@ describe('OfflineSyncService', () => {
         },
         {
           id: 'capture-2',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/audio2.m4a',
           createdAt: new Date(1234567891000),
           updatedAt: new Date(1234567891000),
@@ -72,8 +72,8 @@ describe('OfflineSyncService', () => {
       expect(result).toHaveLength(2);
       expect(result[0]).toEqual({
         id: 'capture-1',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio1.m4a',
         capturedAt: new Date(1234567890000),
       });
@@ -125,8 +125,8 @@ describe('OfflineSyncService', () => {
     it('should add capture to sync queue', async () => {
       const capture = {
         id: 'capture-456',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/path/audio.m4a',
         duration: 5000,
         fileSize: 1024000,
@@ -145,8 +145,8 @@ describe('OfflineSyncService', () => {
         'capture-456',
         'update',
         expect.objectContaining({
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/path/audio.m4a',
         })
       );
@@ -163,18 +163,18 @@ describe('OfflineSyncService', () => {
   describe('getSyncStats', () => {
     it('should return correct sync statistics', async () => {
       const allCaptures = [
-        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '2', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '3', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
       ];
 
       const pendingCaptures = [
-        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
-        { id: '2', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '2', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
       ];
 
       const syncedCaptures = [
-        { id: '3', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
+        { id: '3', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date() },
       ];
 
       mockRepository.findAll.mockResolvedValue(allCaptures);
@@ -208,8 +208,8 @@ describe('OfflineSyncService', () => {
       const pendingCaptures = [
         {
           id: 'capture-1',
-          type: 'audio',
-          state: 'captured',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.CAPTURED,
           rawContent: '/audio1.m4a',
           createdAt: new Date(1234567890000),
           updatedAt: new Date(1234567890000),
@@ -217,8 +217,8 @@ describe('OfflineSyncService', () => {
         },
         {
           id: 'capture-2',
-          type: 'audio',
-          state: 'recording', // Should be filtered out
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING, // Should be filtered out
           rawContent: '/audio2.m4a',
           createdAt: new Date(1234567891000),
           updatedAt: new Date(1234567891000),
@@ -226,8 +226,8 @@ describe('OfflineSyncService', () => {
         },
         {
           id: 'capture-3',
-          type: 'audio',
-          state: 'ready',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.READY,
           rawContent: '/audio3.m4a',
           createdAt: new Date(1234567892000),
           updatedAt: new Date(1234567892000),
@@ -235,8 +235,8 @@ describe('OfflineSyncService', () => {
         },
         {
           id: 'capture-4',
-          type: 'audio',
-          state: 'failed', // Should be filtered out
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.FAILED, // Should be filtered out
           rawContent: '/audio4.m4a',
           createdAt: new Date(1234567893000),
           updatedAt: new Date(1234567893000),
@@ -265,7 +265,7 @@ describe('OfflineSyncService', () => {
   describe('hasPendingSync', () => {
     it('should return true when pending captures exist', async () => {
       mockRepository.findPendingSync.mockResolvedValue([
-        { id: '1', type: 'audio', state: 'captured', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ]);
 
       const result = await service.hasPendingSync();

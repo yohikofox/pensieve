@@ -47,8 +47,8 @@ describe('Capture Model', () => {
     it('should allow creating valid capture objects', () => {
       const capture: Capture = {
         id: 'test-id',
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/path/to/audio.m4a',
         duration: 5000,
         fileSize: 1024000,
@@ -66,8 +66,8 @@ describe('Capture Model', () => {
     it('should support optional fields', () => {
       const capture: Capture = {
         id: 'test-id',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Quick note',
         createdAt: new Date(),
         updatedAt: new Date(),

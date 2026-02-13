@@ -21,6 +21,7 @@ import { RecordingService } from '../RecordingService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
 import { MockFileSystem } from '../../__tests__/helpers/MockFileSystem';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../../domain/Capture.model';
 
 // Mock dependencies
 jest.mock('../../data/CaptureRepository');
@@ -55,8 +56,8 @@ describe('RecordingService', () => {
         type: RepositoryResultType.SUCCESS,
         data: {
           id: 'capture-123',
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: 'file:///temp/recording.m4a',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -73,8 +74,8 @@ describe('RecordingService', () => {
       // Verify Capture entity was created with correct state
       expect(mockRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: 'file:///temp/recording.m4a',
           syncStatus: 'pending',
         })

@@ -14,6 +14,7 @@ import { CrashRecoveryService } from '../CrashRecoveryService';
 import { CaptureRepository } from '../../data/CaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
 import { File, __clearMockFiles } from 'expo-file-system';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../../domain/Capture.model';
 
 // Mock CaptureRepository
 jest.mock('../../data/CaptureRepository');
@@ -49,14 +50,14 @@ describe('CrashRecoveryService', () => {
       const results = await service.recoverIncompleteRecordings();
 
       expect(results).toEqual([]);
-      expect(mockRepository.findByState).toHaveBeenCalledWith('recording');
+      expect(mockRepository.findByState).toHaveBeenCalledWith(CAPTURE_STATES.RECORDING);
     });
 
     it('should recover captures with valid audio files', async () => {
       const incompleteCapture = {
         id: 'capture-123',
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/path/to/audio.m4a',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -70,7 +71,7 @@ describe('CrashRecoveryService', () => {
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
-        data: { ...incompleteCapture, state: 'captured' } as any,
+        data: { ...incompleteCapture, state: CAPTURE_STATES.CAPTURED } as any,
       });
 
       const results = await service.recoverIncompleteRecordings();
@@ -83,7 +84,7 @@ describe('CrashRecoveryService', () => {
 
       // Verify capture was updated to "captured" state
       expect(mockRepository.update).toHaveBeenCalledWith('capture-123', {
-        state: 'captured',
+        state: CAPTURE_STATES.CAPTURED,
         syncStatus: 'pending',
       });
     });
@@ -91,8 +92,8 @@ describe('CrashRecoveryService', () => {
     it('should mark captures as failed when audio file does not exist', async () => {
       const incompleteCapture = {
         id: 'capture-456',
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '', // Empty path = file doesn't exist
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -103,7 +104,7 @@ describe('CrashRecoveryService', () => {
       mockRepository.findByState.mockResolvedValue([incompleteCapture]);
       mockRepository.update.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
-        data: { ...incompleteCapture, state: 'failed' } as any,
+        data: { ...incompleteCapture, state: CAPTURE_STATES.FAILED } as any,
       });
 
       const results = await service.recoverIncompleteRecordings();
@@ -111,13 +112,13 @@ describe('CrashRecoveryService', () => {
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         captureId: 'capture-456',
-        state: 'failed',
+        state: CAPTURE_STATES.FAILED,
         reason: 'Audio file not found',
       });
 
       // Verify capture was updated to "failed" state
       expect(mockRepository.update).toHaveBeenCalledWith('capture-456', {
-        state: 'failed',
+        state: CAPTURE_STATES.FAILED,
         syncStatus: 'pending',
       });
     });
@@ -126,8 +127,8 @@ describe('CrashRecoveryService', () => {
       const incompleteCaptures = [
         {
           id: 'capture-1',
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: '/path/1.m4a',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -136,8 +137,8 @@ describe('CrashRecoveryService', () => {
         },
         {
           id: 'capture-2',
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: '/path/2.m4a',
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -146,8 +147,8 @@ describe('CrashRecoveryService', () => {
         },
         {
           id: 'capture-3',
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: '', // Will fail - empty path
           createdAt: new Date(),
           updatedAt: new Date(),
@@ -177,8 +178,8 @@ describe('CrashRecoveryService', () => {
     it('should handle recovery errors gracefully', async () => {
       const incompleteCapture = {
         id: 'capture-error',
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/path/error.m4a',
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -200,7 +201,7 @@ describe('CrashRecoveryService', () => {
       expect(results).toHaveLength(1);
       expect(results[0]).toEqual({
         captureId: 'capture-error',
-        state: 'failed',
+        state: CAPTURE_STATES.FAILED,
         reason: 'Database error',
       });
     });
@@ -209,8 +210,8 @@ describe('CrashRecoveryService', () => {
   describe('getPendingRecoveryCount', () => {
     it('should return count of incomplete recordings', async () => {
       const incompleteCaptures = [
-        { id: '1', type: 'audio', state: 'recording', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: '2', type: 'audio', state: 'recording', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.RECORDING, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: '2', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.RECORDING, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(incompleteCaptures);
@@ -218,7 +219,7 @@ describe('CrashRecoveryService', () => {
       const count = await service.getPendingRecoveryCount();
 
       expect(count).toBe(2);
-      expect(mockRepository.findByState).toHaveBeenCalledWith('recording');
+      expect(mockRepository.findByState).toHaveBeenCalledWith(CAPTURE_STATES.RECORDING);
     });
 
     it('should return 0 when no incomplete recordings exist', async () => {
@@ -233,8 +234,8 @@ describe('CrashRecoveryService', () => {
   describe('clearFailedCaptures', () => {
     it('should delete all failed captures', async () => {
       const failedCaptures = [
-        { id: 'failed-1', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: 'failed-2', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.FAILED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-2', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.FAILED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(failedCaptures);
@@ -261,8 +262,8 @@ describe('CrashRecoveryService', () => {
 
     it('should handle deletion errors gracefully', async () => {
       const failedCaptures = [
-        { id: 'failed-1', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
-        { id: 'failed-2', type: 'audio', state: 'failed', rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-1', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.FAILED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
+        { id: 'failed-2', type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.FAILED, rawContent: '', createdAt: new Date(), updatedAt: new Date(), capturedAt: new Date(), syncStatus: 'pending' },
       ];
 
       mockRepository.findByState.mockResolvedValue(failedCaptures);

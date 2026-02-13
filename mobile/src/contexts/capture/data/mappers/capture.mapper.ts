@@ -5,7 +5,7 @@
  * Extracted from domain layer to respect Clean Architecture dependency rule.
  */
 
-import type { Capture } from "../../domain/Capture.model";
+import type { Capture, CaptureType, CaptureState } from "../../domain/Capture.model";
 
 /**
  * Database row type (snake_case from SQLite)
@@ -42,8 +42,8 @@ export interface CaptureRow {
 export function mapRowToCapture(row: CaptureRow): Capture {
   return {
     id: row.id,
-    type: row.type,
-    state: row.state,
+    type: row.type as CaptureType,
+    state: row.state as CaptureState,
     rawContent: row.raw_content,
     normalizedText: row.normalized_text,
     duration: row.duration,

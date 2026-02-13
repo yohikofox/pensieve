@@ -166,8 +166,8 @@ describe('RecordingService Regression Tests', () => {
         type: RepositoryResultType.SUCCESS,
         data: {
           id: 'user-recording',
-          type: 'audio',
-          state: 'recording',
+          type: CAPTURE_TYPES.AUDIO,
+          state: CAPTURE_STATES.RECORDING,
           rawContent: 'file:///user/audio.m4a',
         } as any,
       });
@@ -176,8 +176,8 @@ describe('RecordingService Regression Tests', () => {
       // 2. User taps cancel button
       mockRepository.findById.mockResolvedValue({
         id: 'user-recording',
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: 'file:///user/audio.m4a',
         createdAt: new Date(),
         updatedAt: new Date(),

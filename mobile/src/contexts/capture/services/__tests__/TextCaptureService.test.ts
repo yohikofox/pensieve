@@ -12,7 +12,7 @@
 import { TextCaptureService } from '../TextCaptureService';
 import { ICaptureRepository } from '../../domain/ICaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
-import { Capture } from '../../domain/Capture';
+import { Capture, CAPTURE_TYPES, CAPTURE_STATES } from '../../domain/Capture.model';
 
 // Mock repository
 const mockRepository: jest.Mocked<ICaptureRepository> = {
@@ -52,8 +52,8 @@ describe('TextCaptureService', () => {
     it('should trim text before saving', async () => {
       const mockCapture: Capture = {
         id: 'test-id',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Ma pensée',
         capturedAt: new Date(),
         syncStatus: 'pending',
@@ -70,8 +70,8 @@ describe('TextCaptureService', () => {
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(mockRepository.create).toHaveBeenCalledWith({
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Ma pensée',
         normalizedText: 'Ma pensée',
         syncStatus: 'pending',
@@ -81,8 +81,8 @@ describe('TextCaptureService', () => {
     it('should create Capture entity with type=text', async () => {
       const mockCapture: Capture = {
         id: 'test-id',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Ma pensée importante',
         capturedAt: new Date(),
         syncStatus: 'pending',
@@ -100,7 +100,7 @@ describe('TextCaptureService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data).toBeDefined();
       expect(result.data?.id).toBe('test-id');
-      expect(result.data?.type).toBe('text');
+      expect(result.data?.type).toBe(CAPTURE_TYPES.TEXT);
       expect(result.data?.rawContent).toBe('Ma pensée importante');
     });
 
@@ -119,8 +119,8 @@ describe('TextCaptureService', () => {
     it('should set syncStatus to pending for offline support', async () => {
       const mockCapture: Capture = {
         id: 'test-id',
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Offline text',
         capturedAt: new Date(),
         syncStatus: 'pending',

@@ -12,6 +12,7 @@ import { CaptureRepository } from '../CaptureRepository';
 import { database } from '../../../../database';
 import { ISyncQueueService } from '../../domain/ISyncQueueService';
 import { EventBus } from '../../../shared/events/EventBus';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../../domain/Capture.model';
 
 // Mock ISyncQueueService
 const mockSyncQueueService: jest.Mocked<ISyncQueueService> = {
@@ -186,8 +187,8 @@ describe('CaptureRepository', () => {
   describe('create', () => {
     it('should create a new capture with required fields', async () => {
       const result = await repository.create({
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/path/to/audio.m4a',
       });
 
@@ -201,8 +202,8 @@ describe('CaptureRepository', () => {
 
     it('should create a capture with optional fields', async () => {
       const result = await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/path/to/audio.m4a',
         duration: 5000,
         fileSize: 1024000,
@@ -218,8 +219,8 @@ describe('CaptureRepository', () => {
   describe('findById', () => {
     it('should find a capture by id', async () => {
       const createResult = await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/path/to/audio.m4a',
       });
 
@@ -241,15 +242,15 @@ describe('CaptureRepository', () => {
   describe('update', () => {
     it('should update capture state', async () => {
       const createResult = await repository.create({
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/path/to/audio.m4a',
       });
 
       expect(createResult.type).toBe('success');
 
       const updateResult = await repository.update(createResult.data!.id, {
-        state: 'captured',
+        state: CAPTURE_STATES.CAPTURED,
       });
 
       expect(updateResult.type).toBe('success');
@@ -261,15 +262,15 @@ describe('CaptureRepository', () => {
 
     it('should update multiple fields', async () => {
       const createResult = await repository.create({
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/path/to/temp.m4a',
       });
 
       expect(createResult.type).toBe('success');
 
       const updateResult = await repository.update(createResult.data!.id, {
-        state: 'captured',
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/path/to/final.m4a',
         duration: 10000,
         fileSize: 2048000,
@@ -293,14 +294,14 @@ describe('CaptureRepository', () => {
 
     it('should return all captures', async () => {
       await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio1.m4a',
       });
 
       await repository.create({
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Quick note',
       });
 
@@ -313,20 +314,20 @@ describe('CaptureRepository', () => {
   describe('findByState', () => {
     it('should find captures by state', async () => {
       await repository.create({
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/audio1.m4a',
       });
 
       await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio2.m4a',
       });
 
       await repository.create({
-        type: 'audio',
-        state: 'recording',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.RECORDING,
         rawContent: '/audio3.m4a',
       });
 
@@ -340,14 +341,14 @@ describe('CaptureRepository', () => {
   describe('findByType', () => {
     it('should find captures by type', async () => {
       await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio.m4a',
       });
 
       await repository.create({
-        type: 'text',
-        state: 'captured',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: 'Quick note',
       });
 
@@ -361,8 +362,8 @@ describe('CaptureRepository', () => {
   describe('delete', () => {
     it('should delete a capture', async () => {
       const capture = await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio.m4a',
       });
 
@@ -377,8 +378,8 @@ describe('CaptureRepository', () => {
   describe('destroyPermanently', () => {
     it('should permanently delete a capture', async () => {
       const capture = await repository.create({
-        type: 'audio',
-        state: 'captured',
+        type: CAPTURE_TYPES.AUDIO,
+        state: CAPTURE_STATES.CAPTURED,
         rawContent: '/audio.m4a',
       });
 

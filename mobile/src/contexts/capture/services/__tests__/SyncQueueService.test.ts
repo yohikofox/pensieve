@@ -36,7 +36,7 @@ describe('SyncQueueService', () => {
         'capture',
         'capture-123',
         'create',
-        { type: 'audio', state: 'captured' }
+        { type: CAPTURE_TYPES.AUDIO, state: CAPTURE_STATES.CAPTURED }
       );
 
       expect(queueItemId).toBe(42);
@@ -53,7 +53,7 @@ describe('SyncQueueService', () => {
       mockDatabase.execute.mockReturnValueOnce(undefined as any);
       mockDatabase.execute.mockReturnValueOnce({ rows: [{ id: 1 }] } as any);
 
-      const payload = { type: 'audio', duration: 5000, fileSize: 1024 };
+      const payload = { type: CAPTURE_TYPES.AUDIO, duration: 5000, fileSize: 1024 };
       await service.enqueue('capture', 'cap-456', 'update', payload);
 
       const insertCall = mockDatabase.execute.mock.calls[0];
@@ -281,7 +281,7 @@ describe('SyncQueueService', () => {
       mockDatabase.execute.mockReturnValueOnce(undefined as any);
       mockDatabase.execute.mockReturnValueOnce({ rows: [{ id: 1 }] } as any);
 
-      await service.enqueue('capture', 'cap-123', 'create', { type: 'audio' });
+      await service.enqueue('capture', 'cap-123', 'create', { type: CAPTURE_TYPES.AUDIO });
 
       // Verify operation written to SQLite table (persists across restarts)
       expect(mockDatabase.execute).toHaveBeenCalledWith(
