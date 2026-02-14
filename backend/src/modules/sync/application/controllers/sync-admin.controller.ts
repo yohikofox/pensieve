@@ -12,11 +12,12 @@ import { Repository, MoreThan } from 'typeorm';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
 import { SyncConflict } from '../../domain/entities/sync-conflict.entity';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
-// TODO: Add admin authorization guard when implemented
-// import { RequirePermission } from '../../../authorization/infrastructure/decorators/require-permission.decorator';
+import { RequirePermission } from '../../../authorization/infrastructure/decorators/require-permission.decorator';
 
+// NOTE: Requires 'admin.sync.view' permission in database seeds
 @Controller('api/admin/sync')
-@UseGuards(SupabaseAuthGuard) // TODO: Add admin role check
+@UseGuards(SupabaseAuthGuard)
+@RequirePermission('admin.sync.view')
 export class SyncAdminController {
   private readonly logger = new Logger(SyncAdminController.name);
 
@@ -32,7 +33,6 @@ export class SyncAdminController {
    * GET /api/admin/sync/stats?period=24h
    */
   @Get('stats')
-  // @RequirePermission('admin.sync.view') // TODO: Uncomment when admin perms ready
   async getStats(@Query('period') period?: string) {
     const hours = this.parsePeriod(period || '24h');
     const since = new Date(Date.now() - hours * 60 * 60 * 1000);

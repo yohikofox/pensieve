@@ -30,6 +30,16 @@ import { getConflictHandler } from './ConflictHandler';
 const CHUNK_SIZE = 100; // Task 3.7: Max records per sync batch
 const SYNC_TIMEOUT_MS = 30000; // 30 seconds
 
+// Security: Entity whitelist to prevent SQL injection
+const VALID_ENTITIES = ['captures', 'thoughts', 'ideas', 'todos'] as const;
+
+/**
+ * Validate entity name to prevent SQL injection
+ */
+function validateEntity(entity: string): entity is typeof VALID_ENTITIES[number] {
+  return VALID_ENTITIES.includes(entity as any);
+}
+
 /**
  * SyncService
  * Handles bidirectional sync between mobile and backend
@@ -96,10 +106,9 @@ export class SyncService {
         return pushResult;
       }
 
-      // Step 3: PULL again to get any server changes from push conflicts
-      const finalPullResult = await this.performPull(options);
-
-      // Step 4: Apply conflict resolutions (Task 4)
+      // Step 3: Apply conflict resolutions (Task 4)
+      // Note: Backend processPush already returns latest server changes,
+      // so no need for additional PULL here (backend calls processPull internally)
       if (pushResult.conflicts && pushResult.conflicts.length > 0) {
         const conflictHandler = getConflictHandler();
         await conflictHandler.applyConflicts(pushResult.conflicts);
@@ -113,7 +122,7 @@ export class SyncService {
       return {
         result: SyncResult.SUCCESS,
         retryable: false,
-        timestamp: finalPullResult.timestamp,
+        timestamp: pushResult.timestamp,
         conflicts: pushResult.conflicts,
       };
     } catch (error) {
@@ -152,14 +161,16 @@ export class SyncService {
         entities.map((entity) => getLastPulledAt(entity)),
       );
 
-      // Use oldest timestamp for full consistency
-      const lastPulledAt = Math.min(...lastPulledTimes, Date.now());
+      // Use oldest timestamp for full consistency (or 0 if no history)
+      const lastPulledAt = lastPulledTimes.length > 0
+        ? Math.min(...lastPulledTimes)
+        : 0;
 
       // Call backend /api/sync/pull
       const response = await retryWithFibonacci(
         async () => {
           const { data } = await this.apiClient.get('/api/sync/pull', {
-            params: { last_pulled_at: options?.forceFull ? 0 : lastPulledAt },
+            params: { lastPulledAt: options?.forceFull ? 0 : lastPulledAt },
           });
           return data;
         },
@@ -226,7 +237,7 @@ export class SyncService {
       const response = await retryWithFibonacci(
         async () => {
           const payload: PushRequest = {
-            last_pulled_at: lastPulledAt,
+            lastPulledAt: lastPulledAt,
             changes,
           };
 
@@ -273,7 +284,13 @@ export class SyncService {
 
     for (const entity of entities) {
       try {
-        // Query for changed records
+        // Security: Validate entity to prevent SQL injection
+        if (!validateEntity(entity)) {
+          console.error(`[Sync] Invalid entity: ${entity} (SQL injection prevented)`);
+          continue;
+        }
+
+        // Query for changed records (entity validated - safe to interpolate)
         const result = this.db.executeSync(
           `SELECT * FROM ${entity} WHERE _changed = 1 LIMIT ${CHUNK_SIZE}`,
         );
@@ -331,6 +348,11 @@ export class SyncService {
    */
   private async upsertRecord(entity: string, record: any): Promise<void> {
     try {
+      // Security: Validate entity to prevent SQL injection
+      if (!validateEntity(entity)) {
+        throw new Error(`Invalid entity: ${entity} (SQL injection prevented)`);
+      }
+
       // Check if record exists
       const existing = this.db.executeSync(
         `SELECT id FROM ${entity} WHERE id = ?`,
@@ -339,7 +361,10 @@ export class SyncService {
 
       if (existing.rows && existing.rows.length > 0) {
         // Update existing record
-        const columns = Object.keys(record);
+        // Security: Filter column names to prevent SQL injection
+        const columns = Object.keys(record).filter((col) =>
+          /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col) // Only valid SQL identifiers
+        );
         const setClause = columns.map((col) => `${col} = ?`).join(', ');
         const values = columns.map((col) => record[col]);
 
@@ -349,7 +374,10 @@ export class SyncService {
         );
       } else {
         // Insert new record
-        const columns = Object.keys(record);
+        // Security: Filter column names to prevent SQL injection
+        const columns = Object.keys(record).filter((col) =>
+          /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(col) // Only valid SQL identifiers
+        );
         const placeholders = columns.map(() => '?').join(', ');
         const values = columns.map((col) => record[col]);
 
@@ -368,6 +396,11 @@ export class SyncService {
    */
   private async markRecordDeleted(entity: string, id: string): Promise<void> {
     try {
+      // Security: Validate entity to prevent SQL injection
+      if (!validateEntity(entity)) {
+        throw new Error(`Invalid entity: ${entity} (SQL injection prevented)`);
+      }
+
       this.db.executeSync(
         `UPDATE ${entity} SET _status = 'deleted', _changed = 0 WHERE id = ?`,
         [id],
@@ -383,6 +416,12 @@ export class SyncService {
   private async markRecordsAsSynced(changes: ChangesPayload): Promise<void> {
     for (const [entity, entityChanges] of Object.entries(changes)) {
       if (!entityChanges) continue;
+
+      // Security: Validate entity to prevent SQL injection
+      if (!validateEntity(entity)) {
+        console.error(`[Sync] Invalid entity: ${entity} (SQL injection prevented)`);
+        continue;
+      }
 
       const allRecords = [
         ...(entityChanges.updated || []),

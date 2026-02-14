@@ -134,6 +134,13 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
         action: PermissionAction.READ,
         isPaidFeature: false,
       },
+      {
+        name: 'admin.sync.view',
+        displayName: 'View sync metrics and logs',
+        resourceType: 'system',
+        action: PermissionAction.READ,
+        isPaidFeature: false,
+      },
     ];
 
     const permissionIds: Record<string, string> = {};

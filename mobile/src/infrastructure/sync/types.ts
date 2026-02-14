@@ -61,14 +61,14 @@ export interface ChangesPayload {
  * Pull request parameters
  */
 export interface PullRequest {
-  last_pulled_at: number; // Milliseconds timestamp
+  lastPulledAt: number; // Milliseconds timestamp (camelCase for backend DTO compatibility)
 }
 
 /**
  * Push request parameters
  */
 export interface PushRequest {
-  last_pulled_at: number;
+  lastPulledAt: number; // camelCase for backend DTO compatibility
   changes: ChangesPayload;
 }
 

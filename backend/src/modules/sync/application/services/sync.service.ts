@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan } from 'typeorm';
+import { Repository, MoreThan, DataSource } from 'typeorm';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
@@ -33,6 +33,7 @@ export class SyncService {
     @InjectRepository(SyncLog)
     private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
+    private readonly dataSource: DataSource,
   ) {}
 
   /**
@@ -122,35 +123,51 @@ export class SyncService {
       const conflicts: SyncResponseDto['conflicts'] = [];
       const serverChanges: SyncResponseDto['changes'] = {};
 
-      // Process each entity
-      for (const [entity, entityChanges] of Object.entries(dto.changes)) {
-        // Process updated records
-        if (entityChanges.updated) {
-          for (const clientRecord of entityChanges.updated) {
-            const result = await this.applyClientUpdate(
-              entity,
-              userId,
-              clientRecord,
-              dto.lastPulledAt,
-            );
+      // Wrap all PUSH operations in a transaction for atomicity
+      await this.dataSource.transaction(async (manager) => {
+        // Override repositories with transaction manager
+        const transactionalRepos = {
+          thought: manager.getRepository(Thought),
+          idea: manager.getRepository(Idea),
+          todo: manager.getRepository(Todo),
+        };
 
-            if (result.conflict) {
-              conflicts.push({
+        // Process each entity
+        for (const [entity, entityChanges] of Object.entries(dto.changes)) {
+          // Process updated records
+          if (entityChanges.updated) {
+            for (const clientRecord of entityChanges.updated) {
+              const result = await this.applyClientUpdateInTransaction(
                 entity,
-                recordId: clientRecord.id,
-                resolution: result.strategy || 'unknown',
-              });
+                userId,
+                clientRecord,
+                dto.lastPulledAt,
+                transactionalRepos,
+              );
+
+              if (result.conflict) {
+                conflicts.push({
+                  entity,
+                  recordId: clientRecord.id,
+                  resolution: result.strategy || 'unknown',
+                });
+              }
+            }
+          }
+
+          // Process deleted records
+          if (entityChanges.deleted) {
+            for (const recordId of entityChanges.deleted) {
+              await this.applyClientDeleteInTransaction(
+                entity,
+                userId,
+                recordId,
+                transactionalRepos,
+              );
             }
           }
         }
-
-        // Process deleted records
-        if (entityChanges.deleted) {
-          for (const recordId of entityChanges.deleted) {
-            await this.applyClientDelete(entity, userId, recordId);
-          }
-        }
-      }
+      });
 
       // After push, fetch any server changes client needs to know about
       const pullResult = await this.processPull(userId, {
@@ -303,6 +320,96 @@ export class SyncService {
     recordId: string,
   ): Promise<void> {
     const repository = this.getRepository(entity);
+
+    if (!repository) {
+      throw new Error(`Unknown entity: ${entity}`);
+    }
+
+    await repository.update(
+      { id: recordId, userId } as any,
+      {
+        _status: 'deleted',
+        last_modified_at: Date.now(),
+      } as any,
+    );
+  }
+
+  /**
+   * Apply client update within transaction (atomicity for PUSH)
+   */
+  private async applyClientUpdateInTransaction(
+    entity: string,
+    userId: string,
+    clientRecord: any,
+    lastPulledAt: number,
+    transactionalRepos: Record<string, Repository<any>>,
+  ): Promise<{ conflict: boolean; strategy?: string }> {
+    const repository = transactionalRepos[entity];
+
+    if (!repository) {
+      throw new Error(`Unknown entity: ${entity}`);
+    }
+
+    // Fetch current server record
+    const serverRecord = await repository.findOne({
+      where: { id: clientRecord.id, userId } as any,
+    });
+
+    // New record - no conflict
+    if (!serverRecord) {
+      await repository.save({
+        ...clientRecord,
+        userId,
+        last_modified_at: Date.now(),
+      });
+      return { conflict: false };
+    }
+
+    // Check for conflict
+    const hasConflict = this.conflictResolver.hasConflict(
+      serverRecord,
+      lastPulledAt,
+    );
+
+    if (hasConflict) {
+      // Resolve conflict
+      const resolution = await this.conflictResolver.resolve(
+        serverRecord,
+        clientRecord,
+        entity as any,
+      );
+
+      await repository.save({
+        ...resolution.resolvedRecord,
+        userId,
+      });
+
+      return {
+        conflict: true,
+        strategy: resolution.strategy,
+      };
+    } else {
+      // No conflict - accept client changes
+      await repository.save({
+        ...clientRecord,
+        userId,
+        last_modified_at: Date.now(),
+      });
+
+      return { conflict: false };
+    }
+  }
+
+  /**
+   * Apply client delete within transaction (atomicity for PUSH)
+   */
+  private async applyClientDeleteInTransaction(
+    entity: string,
+    userId: string,
+    recordId: string,
+    transactionalRepos: Record<string, Repository<any>>,
+  ): Promise<void> {
+    const repository = transactionalRepos[entity];
 
     if (!repository) {
       throw new Error(`Unknown entity: ${entity}`);

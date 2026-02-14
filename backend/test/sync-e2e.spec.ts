@@ -13,7 +13,7 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import { INestApplication, ExecutionContext } from '@nestjs/common';
 import * as request from 'supertest';
 import { AppModule } from '../src/app.module';
 import { DataSource } from 'typeorm';
@@ -22,6 +22,7 @@ import { Idea } from '../src/modules/knowledge/domain/entities/idea.entity';
 import { Todo } from '../src/modules/action/domain/entities/todo.entity';
 import { SyncLog } from '../src/modules/sync/domain/entities/sync-log.entity';
 import { SyncConflict } from '../src/modules/sync/domain/entities/sync-conflict.entity';
+import { SupabaseAuthGuard } from '../src/modules/shared/infrastructure/guards/supabase-auth.guard';
 
 describe('Sync Infrastructure E2E', () => {
   let app: INestApplication;
@@ -32,17 +33,25 @@ describe('Sync Infrastructure E2E', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideGuard(SupabaseAuthGuard)
+      .useValue({
+        canActivate: (context: ExecutionContext) => {
+          const request = context.switchToHttp().getRequest();
+          request.user = { id: userId }; // Mock authenticated user
+          return true;
+        },
+      })
+      .compile();
 
     app = moduleFixture.createNestApplication();
     await app.init();
 
     dataSource = app.get(DataSource);
 
-    // Mock auth for tests
-    // TODO: Replace with actual Supabase test user token
+    // Mock auth for tests - userId set before guard override
     userId = 'test-user-123';
-    authToken = 'mock-jwt-token'; // In real tests, use actual JWT
+    authToken = 'mock-jwt-token'; // Token is now ignored, guard overridden
   });
 
   afterAll(async () => {
