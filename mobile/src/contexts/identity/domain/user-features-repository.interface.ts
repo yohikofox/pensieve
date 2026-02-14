@@ -1,5 +1,5 @@
 import type { UserFeatures, UserFeaturesCache } from './user-features.model';
-import type { RepositoryResult } from '@/contexts/shared/domain/repository-result';
+import type { RepositoryResult } from '@/contexts/shared/domain/Result';
 
 /**
  * Repository interface for user features

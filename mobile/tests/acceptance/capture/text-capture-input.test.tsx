@@ -8,7 +8,7 @@
 
 import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
-import { TextCaptureInput } from '@/contexts/Capture/ui/TextCaptureInput';
+import { TextCaptureInput } from '@/contexts/capture/ui/TextCaptureInput';
 import * as Haptics from 'expo-haptics';
 
 // Mock expo-haptics
