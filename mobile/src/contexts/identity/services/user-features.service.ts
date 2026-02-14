@@ -107,8 +107,8 @@ export class UserFeaturesService {
 
       return success(cache.features);
     } catch (error) {
-      return failure(
-        error instanceof Error ? error : new Error('Unknown error'),
+      return databaseError(
+        error instanceof Error ? error.message : 'Unknown error',
       );
     }
   }

@@ -144,4 +144,46 @@ describe('UserFeaturesService', () => {
       expect(mockRepository.fetchUserFeatures).toHaveBeenCalledWith('user-id');
     });
   });
+
+  describe('Bug Fix: getCachedFeaturesIfValid error handling', () => {
+    /**
+     * Bug reproduction: Line 110 uses failure() which doesn't exist in Result.ts
+     * Expected exports: success(), notFound(), databaseError(), validationError()
+     *
+     * Scenario: getCachedFeatures() throws exception → catch block uses failure()
+     * Expected: Should return databaseError() instead
+     */
+    it('should handle database errors when getting cached features', async () => {
+      // ARRANGE - Mock getCachedFeatures to throw exception
+      const dbError = new Error('SQLite connection lost');
+      mockRepository.getCachedFeatures.mockRejectedValue(dbError);
+      mockRepository.fetchUserFeatures.mockResolvedValue(success(mockFeatures));
+      mockRepository.saveCachedFeatures.mockResolvedValue(success(undefined));
+
+      // ACT - Call getUserFeatures (triggers getCachedFeaturesIfValid internally)
+      const result = await service.getUserFeatures('user-id');
+
+      // ASSERT - Should gracefully handle error and fetch from server
+      // Bug: This will fail with ReferenceError: failure is not defined
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data).toEqual(mockFeatures);
+      expect(mockRepository.fetchUserFeatures).toHaveBeenCalledWith('user-id');
+    });
+
+    it('should return databaseError when cache read fails and fetch also fails', async () => {
+      // ARRANGE - Both cache and fetch fail
+      const cacheError = new Error('SQLite connection lost');
+      const fetchError = databaseError('Network timeout');
+
+      mockRepository.getCachedFeatures.mockRejectedValue(cacheError);
+      mockRepository.fetchUserFeatures.mockResolvedValue(fetchError);
+
+      // ACT
+      const result = await service.getUserFeatures('user-id');
+
+      // ASSERT - Should return database error (no fallback possible when cache throws)
+      expect(result.type).toBe(RepositoryResultType.DATABASE_ERROR);
+      expect(result.error).toContain('SQLite connection lost');
+    });
+  });
 });
