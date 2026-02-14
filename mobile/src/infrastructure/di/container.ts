@@ -24,6 +24,7 @@ import { ThoughtRepository } from '../../contexts/knowledge/data/ThoughtReposito
 import { IdeaRepository } from '../../contexts/knowledge/data/IdeaRepository';
 import { TodoRepository } from '../../contexts/action/data/TodoRepository';
 import { AnalysisTodoRepository } from '../../contexts/action/data/AnalysisTodoRepository';
+import { UserFeaturesRepository } from '../../contexts/identity/data/user-features.repository';
 
 // Services
 import { RecordingService } from '../../contexts/capture/services/RecordingService';
@@ -59,6 +60,9 @@ import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMM
 // Native Speech Recognition
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
+
+// Identity Services (Story 7.1)
+import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
 
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
@@ -100,6 +104,7 @@ export function registerServices() {
   container.registerSingleton(TOKENS.IIdeaRepository, IdeaRepository);
   container.registerSingleton(TOKENS.ITodoRepository, TodoRepository);
   container.registerSingleton(TOKENS.IAnalysisTodoRepository, AnalysisTodoRepository);
+  container.registerSingleton(TOKENS.IUserFeaturesRepository, UserFeaturesRepository);
 
   // Platform Adapters (Hardware/SDK wrappers)
   container.registerSingleton(TOKENS.IAudioRecorder, ExpoAudioAdapter);
@@ -138,6 +143,9 @@ export function registerServices() {
   // Native Speech Recognition Engine
   container.registerSingleton(NativeTranscriptionEngine);
   container.registerSingleton(TranscriptionEngineService);
+
+  // Identity Services (Story 7.1 - Support Mode)
+  container.registerSingleton(UserFeaturesService);
 
   servicesRegistered = true;
   console.log('[DI Container] ✅ Services registered');

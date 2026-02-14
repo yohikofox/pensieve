@@ -49,7 +49,8 @@ export const SettingsScreen = () => {
   // Audio player type from global settings store (Story 3.2b)
   const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
 
-  // Debug mode from global settings store
+  // Debug mode from global settings store (Story 7.1)
+  const debugModeAccess = useSettingsStore((state) => state.debugModeAccess);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
 
@@ -627,27 +628,29 @@ export const SettingsScreen = () => {
         </Card>
 
         {/* Development Section */}
-        <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
-          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
-            {t('settings.sections.development')}
-          </Text>
+        {/* Story 7.1 AC6, AC7: Debug section only visible when backend grants permission */}
+        {debugModeAccess && (
+          <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
+            <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+              {t('settings.sections.development')}
+            </Text>
 
-          <View className="flex-row items-center py-3 px-4">
-            <View className="flex-1">
-              <Text className="text-lg text-text-primary">
-                {t('settings.development.debugMode')}
-              </Text>
-              <Text className="text-xs text-text-tertiary mt-0.5">
-                {t('settings.development.debugModeSubtitle')}
-              </Text>
+            <View className="flex-row items-center py-3 px-4">
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  {t('settings.development.debugMode')}
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  {t('settings.development.debugModeSubtitle')}
+                </Text>
+              </View>
+              <Switch
+                value={debugMode}
+                onValueChange={toggleDebugMode}
+                trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+                thumbColor={colors.neutral[0]}
+              />
             </View>
-            <Switch
-              value={debugMode}
-              onValueChange={toggleDebugMode}
-              trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
-              thumbColor={colors.neutral[0]}
-            />
-          </View>
 
           {/* Calibration Grid toggle - only visible when debug mode is enabled */}
           {debugMode && (
@@ -705,6 +708,7 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
           )}
         </Card>
+        )}
         </ScrollView>
       </StandardLayout>
 

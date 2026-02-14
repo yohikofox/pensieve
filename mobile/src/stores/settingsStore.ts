@@ -50,8 +50,14 @@ interface SettingsState {
   // Audio player type - 'waveform' (default) or 'simple' (Story 3.2b)
   audioPlayerType: AudioPlayerType;
 
-  // Debug mode - enables all debug features (WAV player, etc.)
-  // Can be enabled by user permissions in production
+  // Story 7.1: Support Mode avec Permissions Backend
+  // Backend permission to access debug mode features
+  // Controls whether the debug mode toggle appears in settings
+  debugModeAccess: boolean;
+
+  // Debug mode local toggle - user's preference to enable/disable debug mode
+  // Only effective when debugModeAccess is true
+  // This was previously just "debugMode" but renamed for clarity
   debugMode: boolean;
 
   // Show calibration grid - override to hide grid even when debugMode is on
@@ -76,6 +82,7 @@ interface SettingsState {
   setThemePreference: (preference: ThemePreference) => void;
   setColorScheme: (scheme: ColorScheme) => void;
   setAudioPlayerType: (type: AudioPlayerType) => void;
+  setDebugModeAccess: (enabled: boolean) => void; // Story 7.1: Update backend permission
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
   setShowCalibrationGrid: (show: boolean) => void;
@@ -102,7 +109,10 @@ export const useSettingsStore = create<SettingsState>()(
         // Initial state - waveform player by default (Story 3.2b)
         audioPlayerType: 'waveform' as AudioPlayerType,
 
-        // Initial state - debug mode off by default
+        // Story 7.1: Backend permission for debug mode - default false (security)
+        debugModeAccess: false,
+
+        // Initial state - debug mode local toggle off by default
         debugMode: false,
 
         // Initial state - show calibration grid enabled by default (when debugMode is on)
@@ -144,15 +154,43 @@ export const useSettingsStore = create<SettingsState>()(
           console.log('[SettingsStore] Audio player type:', type);
         },
 
+        // Story 7.1: Set backend permission for debug mode access
+        setDebugModeAccess: (enabled: boolean) => {
+          set({ debugModeAccess: enabled });
+          console.log('[SettingsStore] Debug mode access (backend):', enabled ? 'GRANTED' : 'DENIED');
+
+          // AC7: If permission denied, disable local debug mode
+          if (!enabled) {
+            set({ debugMode: false });
+            console.log('[SettingsStore] Debug mode disabled (permission revoked)');
+          }
+        },
+
+        // AC8: Verify permission before activating debug mode
         setDebugMode: (enabled: boolean) => {
+          const { debugModeAccess } = get();
+
+          // Only allow enabling if backend permission is granted
+          if (enabled && !debugModeAccess) {
+            console.warn('[SettingsStore] Debug mode activation blocked: no backend permission');
+            return;
+          }
+
           set({ debugMode: enabled });
           console.log('[SettingsStore] Debug mode:', enabled ? 'ON' : 'OFF');
         },
 
         toggleDebugMode: () => {
-          const current = get().debugMode;
-          set({ debugMode: !current });
-          console.log('[SettingsStore] Debug mode toggled:', !current ? 'ON' : 'OFF');
+          const { debugMode, debugModeAccess } = get();
+
+          // Only allow toggling if backend permission is granted
+          if (!debugMode && !debugModeAccess) {
+            console.warn('[SettingsStore] Debug mode toggle blocked: no backend permission');
+            return;
+          }
+
+          set({ debugMode: !debugMode });
+          console.log('[SettingsStore] Debug mode toggled:', !debugMode ? 'ON' : 'OFF');
         },
 
         setShowCalibrationGrid: (show: boolean) => {

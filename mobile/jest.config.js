@@ -28,6 +28,8 @@ module.exports = {
   ],
   setupFilesAfterEnv: ['<rootDir>/jest-setup.js'],
   moduleNameMapper: {
+    // Path alias for src directory
+    '^@/(.*)$': '<rootDir>/src/$1',
     // Mock WatermelonDB decorators as no-ops for unit tests
     '^@nozbe/watermelondb/decorators$':
       '<rootDir>/__mocks__/@nozbe/watermelondb/decorators.js',

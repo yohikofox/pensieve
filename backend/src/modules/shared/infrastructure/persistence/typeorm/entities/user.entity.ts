@@ -41,6 +41,10 @@ export class User {
   @Column({ type: 'boolean', default: true })
   hapticFeedbackEnabled!: boolean;
 
+  // Story 7.1: Support Mode avec Permissions Backend
+  @Column({ type: 'boolean', default: false })
+  debug_mode_access!: boolean;
+
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
   audit_logs!: AuditLog[];
 }

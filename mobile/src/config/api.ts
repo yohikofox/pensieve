@@ -20,6 +20,7 @@ export const apiConfig = {
     users: {
       pushToken: `${API_URL}/api/users/push-token`,
       notificationSettings: `${API_URL}/api/users/notification-settings`,
+      features: (userId: string) => `${API_URL}/api/users/${userId}/features`,
     },
   },
   google: {
