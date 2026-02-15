@@ -110,10 +110,12 @@ export const useSettingsStore = create<SettingsState>()(
         audioPlayerType: 'waveform' as AudioPlayerType,
 
         // Story 7.1: Backend permission for debug mode - default false (security)
-        debugModeAccess: false,
+        // TEMPORARY: Force true for debugging
+        debugModeAccess: true,
 
         // Initial state - debug mode local toggle off by default
-        debugMode: false,
+        // TEMPORARY: Force true for debugging
+        debugMode: true,
 
         // Initial state - show calibration grid enabled by default (when debugMode is on)
         showCalibrationGrid: true,
@@ -251,7 +253,23 @@ export const useSettingsStore = create<SettingsState>()(
 /**
  * Helper to check if debug mode is enabled
  * Can be used outside React components
+ *
+ * Story 7.1 - Support Mode Logic:
+ * Debug mode is ONLY active when BOTH conditions are met:
+ * 1. debugModeAccess = true (backend permission granted)
+ * 2. debugMode = true (user toggle enabled)
+ *
+ * This is an AND operation, not OR.
  */
 export function isDebugModeEnabled(): boolean {
-  return useSettingsStore.getState().debugMode;
+  const { debugMode, debugModeAccess } = useSettingsStore.getState();
+  return debugMode && debugModeAccess;
 }
+
+/**
+ * Zustand selector for debug mode (for use in React components)
+ * Returns true only if BOTH permission AND toggle are enabled
+ */
+export const selectIsDebugModeEnabled = (state: SettingsState): boolean => {
+  return state.debugMode && state.debugModeAccess;
+};

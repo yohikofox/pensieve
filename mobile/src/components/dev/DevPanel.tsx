@@ -32,7 +32,7 @@ import { CaptureDevTools } from './CaptureDevTools';
 import { TranscriptionQueueDebug } from './TranscriptionQueueDebug';
 import { WavDebugPlayer } from './WavDebugPlayer';
 import { CorrectionLearningDebug } from './CorrectionLearningDebug';
-import { useSettingsStore } from '../../stores/settingsStore';
+import { useSettingsStore, selectIsDebugModeEnabled } from '../../stores/settingsStore';
 
 const BUTTON_SIZE = 56;
 const EDGE_MARGIN = 20;
@@ -42,8 +42,8 @@ export function DevPanel() {
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const insets = useSafeAreaInsets();
 
-  // Get debug mode and button position from global settings store
-  const debugMode = useSettingsStore((state) => state.debugMode);
+  // Story 7.1: Debug mode requires BOTH permission AND toggle (centralized logic)
+  const isDebugEnabled = useSettingsStore(selectIsDebugModeEnabled);
   const buttonPosition = useSettingsStore((state) => state.debugButtonPosition);
   const setButtonPosition = useSettingsStore((state) => state.setDebugButtonPosition);
 
@@ -154,8 +154,9 @@ export function DevPanel() {
     }
   }, [isOpen]);
 
-  // Only show DevPanel when debug mode is enabled
-  if (!debugMode) return null;
+  // Story 7.1: Only show DevPanel when debug mode is FULLY enabled
+  // (requires both backend permission AND user toggle)
+  if (!isDebugEnabled) return null;
 
   // Global dev tools tabs (always available)
   const globalTabs = [

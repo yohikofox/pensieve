@@ -9,6 +9,7 @@
 
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
+import { isDebugModeEnabled } from '../../../stores/settingsStore';
 
 export interface LogEntry {
   timestamp: Date;
@@ -63,12 +64,13 @@ export function setupConsoleInterception(): void {
   }
 
   const originalLog = console.log;
-  const originalError = console.error;
   const originalWarn = console.warn;
+  // NOTE: console.error NOT intercepted to preserve stack traces for debugging
 
   console.log = (...args) => {
     const { sniffing } = useLogsDebugStore.getState();
-    if (sniffing) {
+    // Story 7.1: Only capture logs when debug mode is FULLY enabled (permission + toggle)
+    if (sniffing && isDebugModeEnabled()) {
       const message = args
         .map((arg) =>
           typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
@@ -83,22 +85,10 @@ export function setupConsoleInterception(): void {
     originalLog(...args);
   };
 
-  console.error = (...args) => {
-    const { sniffing } = useLogsDebugStore.getState();
-    if (sniffing) {
-      const message = args.map((arg) => String(arg)).join(' ');
-      useLogsDebugStore.getState().addLog({
-        timestamp: new Date(),
-        level: 'error',
-        message,
-      });
-    }
-    originalError(...args);
-  };
-
   console.warn = (...args) => {
     const { sniffing } = useLogsDebugStore.getState();
-    if (sniffing) {
+    // Story 7.1: Only capture logs when debug mode is FULLY enabled (permission + toggle)
+    if (sniffing && isDebugModeEnabled()) {
       const message = args.map((arg) => String(arg)).join(' ');
       useLogsDebugStore.getState().addLog({
         timestamp: new Date(),
@@ -108,6 +98,9 @@ export function setupConsoleInterception(): void {
     }
     originalWarn(...args);
   };
+
+  // console.error left UNTOUCHED - preserves stack traces for debugging
+  // Errors will show in Metro console with correct file/line numbers
 
   isInterceptionSetup = true;
   console.log('[LogsDebugStore] ✅ Console interception setup');
