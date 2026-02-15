@@ -6,6 +6,7 @@
  * - Theme-aware (dark/light mode)
  * - Back button with native icon
  * - Matches Tab Navigator header design
+ * - Sync status indicator (Story 6.2 - Task 9.7)
  */
 
 import React from "react";
@@ -19,6 +20,7 @@ import {
   getBackgroundColorsForColorScheme,
   getPrimaryPaletteForColorScheme,
 } from "../../design-system/tokens";
+import { SyncStatusIndicator } from "../../components/SyncStatusIndicator";
 
 export function CustomStackHeader({
   options,
@@ -77,8 +79,8 @@ export function CustomStackHeader({
         {options.title || route.name}
       </Text>
 
-      {/* Espace pour équilibrer le layout */}
-      {back && <View style={styles.rightSpacer} />}
+      {/* Sync Status Indicator (Story 6.2 - Task 9.7) */}
+      <SyncStatusIndicator compact />
     </View>
   );
 }

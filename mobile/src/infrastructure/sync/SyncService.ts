@@ -4,6 +4,7 @@
  *
  * Story 6.1 - Task 3: Mobile Sync Service with OP-SQLite
  * Implements ADR-009 sync protocol with manual implementation
+ * Story 6.2 - Task 9.5: UI status updates integration
  */
 
 import { DatabaseConnection } from '../../database';
@@ -25,6 +26,8 @@ import {
 } from './SyncStorage';
 import { retryWithFibonacci, isRetryableError } from './retry-logic';
 import { getConflictHandler } from './ConflictHandler';
+import type { EventBus } from '@/contexts/shared/events/EventBus';
+import { useSyncStatusStore } from '@/stores/SyncStatusStore';
 
 // Sync configuration
 const CHUNK_SIZE = 100; // Task 3.7: Max records per sync batch
@@ -49,10 +52,12 @@ export class SyncService {
   private apiClient: AxiosInstance;
   private baseUrl: string;
   private authToken: string | null = null;
+  private eventBus: EventBus | null = null;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, eventBus?: EventBus) {
     this.baseUrl = baseUrl;
     this.db = DatabaseConnection.getInstance().getDatabase();
+    this.eventBus = eventBus || null;
 
     // Initialize HTTP client
     this.apiClient = axios.create({
@@ -75,15 +80,22 @@ export class SyncService {
   /**
    * Main sync method - orchestrates pull and push
    * Task 3.2: Implement sync(options) method
+   * Task 9.5: Update UI status during sync
    */
   async sync(options?: SyncOptions): Promise<SyncResponse> {
     console.log('[Sync] 🔄 Starting sync...', options);
 
+    // Task 9.5: Update UI status to syncing
+    useSyncStatusStore.getState().setSyncing();
+
     // Validate auth token
     if (!this.authToken) {
+      const errorMessage = 'No authentication token';
+      useSyncStatusStore.getState().setError(errorMessage);
+
       return {
         result: SyncResult.AUTH_ERROR,
-        error: 'No authentication token',
+        error: errorMessage,
         retryable: false,
       };
     }
@@ -119,6 +131,21 @@ export class SyncService {
 
       console.log('[Sync] ✅ Sync completed successfully');
 
+      // Task 9.5: Update UI status to synced with current timestamp
+      const syncCompletionTime = Date.now();
+      useSyncStatusStore.getState().setSynced(syncCompletionTime);
+
+      // Publish SyncSuccess event for UploadOrchestrator (Task 6.6)
+      if (this.eventBus && pushResult.syncedCaptureIds) {
+        this.eventBus.publish({
+          type: 'SyncSuccess',
+          timestamp: syncCompletionTime,
+          payload: {
+            syncedCaptureIds: pushResult.syncedCaptureIds,
+          },
+        });
+      }
+
       return {
         result: SyncResult.SUCCESS,
         retryable: false,
@@ -128,18 +155,20 @@ export class SyncService {
     } catch (error) {
       console.error('[Sync] ❌ Sync failed:', error);
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
       // Mark sync as error
-      await this.updateAllEntitiesStatus(
-        'error',
-        error instanceof Error ? error.message : 'Unknown error',
-      );
+      await this.updateAllEntitiesStatus('error', errorMessage);
+
+      // Task 9.5: Update UI status to error
+      useSyncStatusStore.getState().setError(errorMessage);
 
       // Determine if error is retryable
       const retryable = isRetryableError(error);
 
       return {
         result: this.categorizeError(error),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: errorMessage,
         retryable,
       };
     }
@@ -206,6 +235,7 @@ export class SyncService {
 
   /**
    * PUSH phase - Send local changes to server
+   * Story 6.2 - Task 2.5: Implements batching loop for > 100 records
    */
   private async performPush(options?: SyncOptions): Promise<SyncResponse> {
     console.log('[Sync] 📤 Starting PUSH phase...');
@@ -215,57 +245,96 @@ export class SyncService {
         ? [options.entity]
         : ['captures', 'thoughts', 'ideas', 'todos'];
 
-      // Detect local changes (Task 3.4)
-      const changes = await this.detectLocalChanges(entities);
-
-      // Skip push if no changes
-      if (this.isEmptyChanges(changes)) {
-        console.log('[Sync] ℹ️ No local changes to push');
-        return {
-          result: SyncResult.SUCCESS,
-          retryable: false,
-        };
-      }
-
       // Get lastPulledAt for conflict detection
       const lastPulledTimes = await Promise.all(
         entities.map((entity) => getLastPulledAt(entity)),
       );
       const lastPulledAt = Math.min(...lastPulledTimes);
 
-      // Call backend /api/sync/push
-      const response = await retryWithFibonacci(
-        async () => {
-          const payload: PushRequest = {
-            lastPulledAt: lastPulledAt,
-            changes,
-          };
+      // Task 2.5: Batching loop - send changes in batches of CHUNK_SIZE
+      let batchNumber = 1;
+      let allConflicts: any[] = [];
+      let syncedCaptureIds: string[] = []; // Task 6.6: Collect synced capture IDs
+      let hasMoreChanges = true;
 
-          const { data } = await this.apiClient.post('/api/sync/push', payload);
-          return data;
-        },
-        10,
-        (attempt, delay) => {
+      while (hasMoreChanges) {
+        // Detect local changes for current batch
+        const changes = await this.detectLocalChanges(entities, 0); // OFFSET 0 (after sync, _changed = 0)
+
+        // Skip if no changes in this batch
+        if (this.isEmptyChanges(changes)) {
           console.log(
-            `[Sync] PUSH retry attempt ${attempt}, waiting ${delay / 1000}s...`,
+            batchNumber === 1
+              ? '[Sync] ℹ️ No local changes to push'
+              : `[Sync] ✅ Batch ${batchNumber - 1} was the last batch`,
           );
-        },
-      );
+          hasMoreChanges = false;
+          break;
+        }
 
-      // Mark pushed records as synced (_changed = 0)
-      await this.markRecordsAsSynced(changes);
+        console.log(`[Sync] 📦 Pushing batch ${batchNumber}...`);
+
+        // Call backend /api/sync/push for this batch
+        const response = await retryWithFibonacci(
+          async () => {
+            const payload: PushRequest = {
+              lastPulledAt: lastPulledAt,
+              changes,
+            };
+
+            const { data } = await this.apiClient.post('/api/sync/push', payload);
+            return data;
+          },
+          10,
+          (attempt, delay) => {
+            console.log(
+              `[Sync] PUSH batch ${batchNumber} retry attempt ${attempt}, waiting ${delay / 1000}s...`,
+            );
+          },
+        );
+
+        // Mark pushed records as synced (_changed = 0)
+        await this.markRecordsAsSynced(changes);
+
+        // Collect capture IDs for SyncSuccess event (Task 6.6)
+        if (changes.captures) {
+          const captureIds = [
+            ...(changes.captures.updated?.map((c) => c.id) || []),
+            ...(changes.captures.deleted?.map((c) => c.id) || []),
+          ];
+          syncedCaptureIds = [...syncedCaptureIds, ...captureIds];
+        }
+
+        // Collect conflicts from this batch
+        if (response.conflicts && response.conflicts.length > 0) {
+          allConflicts = [...allConflicts, ...response.conflicts];
+        }
+
+        // Check if there are more changes (if current batch was full, likely more exist)
+        const totalRecordsInBatch = this.countRecordsInChanges(changes);
+        hasMoreChanges = totalRecordsInBatch >= CHUNK_SIZE;
+
+        console.log(
+          `[Sync] ✅ Batch ${batchNumber} pushed (${totalRecordsInBatch} records)`,
+        );
+
+        batchNumber++;
+      }
 
       // Update lastPushedAt for all entities
       for (const entity of entities) {
         await updateLastPushedAt(entity, Date.now());
       }
 
-      console.log('[Sync] ✅ PUSH phase completed');
+      console.log(
+        `[Sync] ✅ PUSH phase completed (${batchNumber - 1} batch${batchNumber > 2 ? 'es' : ''})`,
+      );
 
       return {
         result: SyncResult.SUCCESS,
         retryable: false,
-        conflicts: response.conflicts,
+        conflicts: allConflicts.length > 0 ? allConflicts : undefined,
+        syncedCaptureIds: syncedCaptureIds.length > 0 ? syncedCaptureIds : undefined,
       };
     } catch (error) {
       console.error('[Sync] ❌ PUSH failed:', error);
@@ -349,8 +418,10 @@ export class SyncService {
   private async upsertRecord(entity: string, record: any): Promise<void> {
     try {
       // Security: Validate entity to prevent SQL injection
+      // ADR-023 Fix: Log error instead of throw (private method, error logged)
       if (!validateEntity(entity)) {
-        throw new Error(`Invalid entity: ${entity} (SQL injection prevented)`);
+        console.error(`[Sync] Invalid entity: ${entity} (SQL injection prevented)`);
+        return; // Skip this record instead of throwing
       }
 
       // Check if record exists
@@ -397,8 +468,10 @@ export class SyncService {
   private async markRecordDeleted(entity: string, id: string): Promise<void> {
     try {
       // Security: Validate entity to prevent SQL injection
+      // ADR-023 Fix: Log error instead of throw (private method, error logged)
       if (!validateEntity(entity)) {
-        throw new Error(`Invalid entity: ${entity} (SQL injection prevented)`);
+        console.error(`[Sync] Invalid entity: ${entity} (SQL injection prevented)`);
+        return; // Skip this record instead of throwing
       }
 
       this.db.executeSync(
@@ -458,6 +531,22 @@ export class SyncService {
       !changes.todos?.updated &&
       !changes.todos?.deleted
     );
+  }
+
+  /**
+   * Count total records in changes payload
+   * Task 2.5: Used to determine if more batches are needed
+   */
+  private countRecordsInChanges(changes: ChangesPayload): number {
+    let count = 0;
+
+    for (const entityChanges of Object.values(changes)) {
+      if (entityChanges) {
+        count += (entityChanges.updated?.length || 0) + (entityChanges.deleted?.length || 0);
+      }
+    }
+
+    return count;
   }
 
   /**
