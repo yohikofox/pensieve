@@ -345,6 +345,22 @@ jest.mock('react-native-safe-area-context', () => ({
 }));
 
 // ==========================================
+// React Native NetInfo Mock
+// ==========================================
+// Mock @react-native-community/netinfo for network status tests
+jest.mock('@react-native-community/netinfo', () => ({
+  fetch: jest.fn(() =>
+    Promise.resolve({
+      isConnected: true,
+      isInternetReachable: true,
+      type: 'wifi',
+      details: {},
+    })
+  ),
+  addEventListener: jest.fn(() => jest.fn()), // Returns unsubscribe function
+}));
+
+// ==========================================
 // React i18next Mock
 // ==========================================
 // Mock react-i18next for internationalization tests
