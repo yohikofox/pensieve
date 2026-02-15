@@ -222,11 +222,13 @@ export class SyncService {
     }
 
     // Get updated records (active)
+    // Note: todo entity uses 'syncStatus' instead of 'status' (conflict with business status enum)
+    const statusField = entity === 'todo' ? 'syncStatus' : 'status';
     const updated = await repository.find({
       where: {
         userId,
-        last_modified_at: MoreThan(lastPulledAt),
-        _status: 'active',
+        lastModifiedAt: MoreThan(lastPulledAt),
+        [statusField]: 'active',
       } as any,
     });
 
@@ -234,8 +236,8 @@ export class SyncService {
     const deleted = await repository.find({
       where: {
         userId,
-        last_modified_at: MoreThan(lastPulledAt),
-        _status: 'deleted',
+        lastModifiedAt: MoreThan(lastPulledAt),
+        [statusField]: 'deleted',
       } as any,
       select: ['id'] as any,
     });

@@ -73,6 +73,13 @@ export class Todo {
   @Column({ type: 'timestamp', nullable: true })
   completedAt?: Date;
 
+  // Sync columns (Story 6.1)
+  @Column({ type: 'bigint', name: 'last_modified_at' })
+  lastModifiedAt!: number; // Milliseconds since epoch
+
+  @Column({ type: 'text', name: '_status', default: 'active' })
+  syncStatus!: string; // 'active' | 'deleted' (renamed to avoid conflict with business status)
+
   // Relationships
   @ManyToOne(() => Thought, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'thoughtId' })

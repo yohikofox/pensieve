@@ -40,6 +40,13 @@ export class Idea {
   @UpdateDateColumn()
   updatedAt!: Date;
 
+  // Sync columns (Story 6.1)
+  @Column({ type: 'bigint', name: 'last_modified_at' })
+  lastModifiedAt!: number; // Milliseconds since epoch
+
+  @Column({ type: 'text', name: '_status', default: 'active' })
+  status!: string; // 'active' | 'deleted'
+
   // Relationships
   @ManyToOne(() => Thought, (thought) => thought.ideas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'thoughtId' })
