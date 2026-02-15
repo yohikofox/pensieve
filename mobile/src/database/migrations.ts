@@ -1797,6 +1797,104 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v20 completed');
     },
   },
+  {
+    version: 21,
+    name: 'Add _changed column to captures for sync tracking (Story 6.2)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v21: Adding _changed column to captures');
+
+      // Add _changed column for sync tracking
+      // Default value 0 = not changed, 1 = changed (needs sync)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN _changed INTEGER NOT NULL DEFAULT 0
+      `);
+
+      // Create index for efficient sync queries (SELECT WHERE _changed = 1)
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_captures_changed
+        ON captures(_changed)
+      `);
+
+      console.log('[DB] ✅ Migration v21: _changed column added to captures');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v21');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE captures_v20 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          wav_path TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          retry_window_start_at INTEGER,
+          last_retry_at INTEGER,
+          transcription_error TEXT
+        )
+      `);
+
+      // Copy data back (excluding _changed)
+      db.executeSync(`
+        INSERT INTO captures_v20 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id,
+          conflict_data, retry_count, retry_window_start_at, last_retry_at, transcription_error
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id,
+          conflict_data, retry_count, retry_window_start_at, last_retry_at, transcription_error
+        FROM captures
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v20 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+
+      // Recreate FK constraints for dependent tables
+      console.log('[DB] 🔄 Recreating FK constraints for sync_queue');
+      db.executeSync(`
+        CREATE TABLE sync_queue_v20 (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          operation TEXT NOT NULL CHECK(operation IN ('create', 'update', 'delete', 'conflict')),
+          payload TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          last_error TEXT,
+          max_retries INTEGER NOT NULL DEFAULT 3,
+          FOREIGN KEY (entity_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      db.executeSync('INSERT INTO sync_queue_v20 SELECT * FROM sync_queue');
+      db.executeSync('DROP TABLE sync_queue');
+      db.executeSync('ALTER TABLE sync_queue_v20 RENAME TO sync_queue');
+
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_entity ON sync_queue(entity_type, entity_id)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_sync_queue_created_at ON sync_queue(created_at ASC)');
+
+      console.log('[DB] ✅ Rollback v21 completed');
+    },
+  },
 ];
 
 /**

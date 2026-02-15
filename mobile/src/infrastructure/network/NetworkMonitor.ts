@@ -32,13 +32,13 @@ export class NetworkMonitor {
   private listeners: Set<(isConnected: boolean) => void> = new Set();
   private syncTimeout: NodeJS.Timeout | null = null;
   private lastConnectedState: boolean | null = null;
-  private debounceDelayMs: number;
+  private readonly debounceDelayMs: number = 5000; // AC1: 5s debounce
 
   /**
-   * @param debounceDelayMs - Délai de debounce en ms (défaut: 5000ms = 5s selon AC1)
+   * Constructor - no parameters needed (debounceDelayMs hardcoded to 5000ms per AC1)
    */
-  constructor(debounceDelayMs: number = 5000) {
-    this.debounceDelayMs = debounceDelayMs;
+  constructor() {
+    // Debounce delay is hardcoded to avoid DI primitive injection issues
   }
 
   /**

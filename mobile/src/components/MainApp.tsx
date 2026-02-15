@@ -26,6 +26,7 @@ import { useCrashRecovery } from '../hooks/initialization/useCrashRecovery';
 import { useLLMDownloadRecovery } from '../hooks/initialization/useLLMDownloadRecovery';
 import { useNotificationSetup } from '../hooks/initialization/useNotificationSetup';
 import { useTranscriptionInitialization } from '../hooks/initialization/useTranscriptionInitialization';
+import { useSyncInitialization } from '../hooks/initialization/useSyncInitialization';
 
 /**
  * Main App Content with initialization hooks
@@ -45,6 +46,7 @@ function AppContent() {
   useLLMDownloadRecovery();
   useNotificationSetup();
   useTranscriptionInitialization();
+  useSyncInitialization(); // Sets token THEN starts AutoSyncOrchestrator
 
   if (loading) {
     return <LoadingView fullScreen />;
