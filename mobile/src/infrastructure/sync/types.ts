@@ -87,7 +87,7 @@ export interface SyncOptions {
    * Priority level for queue ordering
    * Default: undefined (normal priority)
    */
-  priority?: number;
+  priority?: 'low' | 'normal' | 'high' | string;
 
   /**
    * Force full sync (ignore lastPulledAt)

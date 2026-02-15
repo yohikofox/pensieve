@@ -34,13 +34,21 @@ jest.mock('@react-native-community/netinfo', () => ({
 }));
 
 // Mock DatabaseConnection (OP-SQLite)
-const mockDatabase = {
+const mockDatabase: {
+  _captures: any[];
+  _todos: any[];
+  _thoughts: any[];
+  _uploadQueue: any[];
+  execute: jest.Mock;
+  executeRawQuery: jest.Mock;
+  reset: () => void;
+} = {
   _captures: [] as any[],
   _todos: [] as any[],
   _thoughts: [] as any[],
   _uploadQueue: [] as any[],
 
-  execute: jest.fn((sql: string, params?: any[]) => {
+  execute: jest.fn((sql: string, params?: any[]): Promise<any> => {
     // Simulate INSERT/UPDATE/DELETE/SELECT queries
     if (sql.includes('INSERT INTO captures')) {
       const capture = params?.[0] || {};
@@ -50,7 +58,7 @@ const mockDatabase = {
 
     if (sql.includes('UPDATE captures SET _changed = 0')) {
       const ids = params || [];
-      mockDatabase._captures.forEach((c) => {
+      mockDatabase._captures.forEach((c: any) => {
         if (ids.includes(c.id)) c._changed = 0;
       });
       return Promise.resolve({ changes: ids.length });
@@ -60,8 +68,8 @@ const mockDatabase = {
       const limit = params?.[0] || 100;
       return Promise.resolve({
         rows: {
-          _array: mockDatabase._captures.filter((c) => c._changed === 1).slice(0, limit),
-          length: Math.min(mockDatabase._captures.filter((c) => c._changed === 1).length, limit),
+          _array: mockDatabase._captures.filter((c: any) => c._changed === 1).slice(0, limit),
+          length: Math.min(mockDatabase._captures.filter((c: any) => c._changed === 1).length, limit),
         },
       });
     }
@@ -74,7 +82,7 @@ const mockDatabase = {
 
     if (sql.includes('UPDATE upload_queue SET status')) {
       const uploadId = params?.[1];
-      const upload = mockDatabase._uploadQueue.find((u) => u.id === uploadId);
+      const upload = mockDatabase._uploadQueue.find((u: any) => u.id === uploadId);
       if (upload) upload.status = params?.[0];
       return Promise.resolve({ changes: 1 });
     }
@@ -104,10 +112,17 @@ jest.mock('../../src/database', () => ({
 }));
 
 // Mock AsyncStorage
-const mockAsyncStorage = {
+const mockAsyncStorage: {
+  _storage: Map<string, string>;
+  getItem: jest.Mock;
+  setItem: jest.Mock;
+  removeItem: jest.Mock;
+  clear: jest.Mock;
+  reset: () => void;
+} = {
   _storage: new Map<string, string>(),
 
-  getItem: jest.fn((key: string) => {
+  getItem: jest.fn((key: string): Promise<string | null> => {
     return Promise.resolve(mockAsyncStorage._storage.get(key) || null);
   }),
 
@@ -271,7 +286,7 @@ defineFeature(feature, (test) => {
     });
 
     and('que le compteur de captures en attente est à 3', () => {
-      expect(mockDatabase._captures.filter((c) => c._changed === 1).length).toBe(3);
+      expect(mockDatabase._captures.filter((c: any) => c._changed === 1).length).toBe(3);
       mockSyncStatusStore.setPending(3);
     });
 
@@ -373,7 +388,7 @@ defineFeature(feature, (test) => {
     });
 
     and('que toutes les captures ont le flag "_changed = 1"', () => {
-      expect(mockDatabase._captures.every((c) => c._changed === 1)).toBe(true);
+      expect(mockDatabase._captures.every((c: any) => c._changed === 1)).toBe(true);
     });
 
     when('la synchronisation est déclenchée', async () => {
@@ -425,9 +440,9 @@ defineFeature(feature, (test) => {
     });
 
     and('que les captures ont le statut "_status = \'deleted\'" et "_changed = 1"', () => {
-      const deleted = mockDatabase._captures.filter((c) => c._status === 'deleted');
+      const deleted = mockDatabase._captures.filter((c: any) => c._status === 'deleted');
       expect(deleted.length).toBe(2);
-      expect(deleted.every((c) => c._changed === 1)).toBe(true);
+      expect(deleted.every((c: any) => c._changed === 1)).toBe(true);
     });
 
     when('la synchronisation est déclenchée', async () => {
@@ -483,7 +498,7 @@ defineFeature(feature, (test) => {
     });
 
     then('la capture est sauvegardée localement immédiatement', () => {
-      expect(mockDatabase._captures.find((c) => c.id === 'capture-realtime')).toBeDefined();
+      expect(mockDatabase._captures.find((c: any) => c.id === 'capture-realtime')).toBeDefined();
     });
 
     and('une synchronisation est déclenchée après 3 secondes de debounce', () => {
@@ -571,13 +586,13 @@ defineFeature(feature, (test) => {
 
     and('la Todo modifiée est incluse dans la prochaine synchronisation', async () => {
       // Sync will pick up changed todo
-      expect(mockDatabase._todos.filter((t) => t._changed === 1).length).toBe(1);
+      expect(mockDatabase._todos.filter((t: any) => t._changed === 1).length).toBe(1);
     });
 
     when('la synchronisation réussit', async () => {
       await syncService.sync();
       // Simulate backend resetting _changed
-      mockDatabase._todos.forEach((t) => {
+      mockDatabase._todos.forEach((t: any) => {
         if (t._changed === 1) t._changed = 0;
       });
     });
@@ -587,7 +602,7 @@ defineFeature(feature, (test) => {
     });
 
     and("la Todo n'est plus dans la queue de synchronisation", () => {
-      expect(mockDatabase._todos.filter((t) => t._changed === 1).length).toBe(0);
+      expect(mockDatabase._todos.filter((t: any) => t._changed === 1).length).toBe(0);
     });
   });
 
@@ -687,7 +702,7 @@ defineFeature(feature, (test) => {
     });
 
     and('le flag "_changed = 1" est préservé jusqu\'au succès', () => {
-      expect(mockDatabase._captures.every((c) => c._changed === 1)).toBe(true);
+      expect(mockDatabase._captures.every((c: any) => c._changed === 1)).toBe(true);
     });
 
     when('la synchronisation réussit finalement à la 4ème tentative', async () => {
@@ -970,7 +985,7 @@ defineFeature(feature, (test) => {
 
     when('toutes les captures sont synchronisées avec succès', async () => {
       mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: mockDatabase._captures.map((c) => c.id),
+        syncedRecordIds: mockDatabase._captures.map((c: any) => c.id),
         conflicts: [],
         timestamp: Date.now(),
       });
@@ -992,7 +1007,7 @@ defineFeature(feature, (test) => {
     });
 
     and('la queue de synchronisation est vidée', () => {
-      expect(mockDatabase._captures.filter((c) => c._changed === 1).length).toBeLessThanOrEqual(10);
+      expect(mockDatabase._captures.filter((c: any) => c._changed === 1).length).toBeLessThanOrEqual(10);
     });
 
     and('le statut UI affiche "Synced ✓ just now"', () => {

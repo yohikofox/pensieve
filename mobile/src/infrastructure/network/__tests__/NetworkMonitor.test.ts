@@ -381,39 +381,25 @@ describe('NetworkMonitor', () => {
   });
 
   describe('Error handling', () => {
-    it('should catch errors in listeners and continue', () => {
+    it('should propagate errors from listeners (fail-fast, ADR-023)', () => {
       monitor.start();
 
-      const listener1 = jest.fn(() => {
-        throw new Error('Listener 1 error');
+      const listenerWithError = jest.fn(() => {
+        throw new Error('Listener error - bug in application code');
       });
-      const listener2 = jest.fn();
 
-      monitor.addListener(listener1);
-      monitor.addListener(listener2);
+      monitor.addListener(listenerWithError);
 
-      // Mock console.error to suppress error log
-      const consoleErrorSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation();
+      // Trigger offline - should throw error from listener
+      expect(() => {
+        networkChangeHandler({
+          isConnected: false,
+          isInternetReachable: false,
+        } as NetInfoState);
+      }).toThrow('Listener error - bug in application code');
 
-      // Trigger offline
-      networkChangeHandler({
-        isConnected: false,
-        isInternetReachable: false,
-      } as NetInfoState);
-
-      // Both listeners called despite error in listener1
-      expect(listener1).toHaveBeenCalled();
-      expect(listener2).toHaveBeenCalledWith(false);
-
-      // Error logged
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[NetworkMonitor] Listener error:',
-        expect.any(Error),
-      );
-
-      consoleErrorSpy.mockRestore();
+      // Listener was called before throwing
+      expect(listenerWithError).toHaveBeenCalled();
     });
   });
 });

@@ -109,8 +109,14 @@ describe('SyncTrigger', () => {
       });
     });
 
-    it('should not block when sync fails (fire and forget)', async () => {
-      mockSyncService.sync.mockRejectedValue(new Error('Network error'));
+    it('should not block when sync fails using Result Pattern (ADR-023)', async () => {
+      // Mock sync() to return Result with NETWORK_ERROR
+      mockSyncService.sync.mockResolvedValue({
+        result: SyncResult.NETWORK_ERROR,
+        error: 'Network timeout',
+        retryable: true,
+        timestamp: Date.now(),
+      });
 
       const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation();
 
@@ -118,17 +124,17 @@ describe('SyncTrigger', () => {
 
       jest.advanceTimersByTime(3000);
 
-      // Wait for promises to resolve/reject
+      // Wait for promises to resolve
       await Promise.resolve();
       await Promise.resolve(); // Extra tick for promise chain
 
       // Should have attempted sync
       expect(mockSyncService.sync).toHaveBeenCalled();
 
-      // Error logged but not thrown
+      // Error logged using Result Pattern (not exception handling)
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Background sync failed'),
-        expect.any(Error),
+        '[SyncTrigger] ❌ Background sync failed:',
+        undefined, // result.errors is undefined in mock
       );
 
       consoleErrorSpy.mockRestore();

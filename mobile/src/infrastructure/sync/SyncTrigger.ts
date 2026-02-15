@@ -1,5 +1,6 @@
 import { injectable } from 'tsyringe';
 import { SyncService } from './SyncService';
+import { SyncResult } from './types';
 import {
   type RepositoryResult,
   RepositoryResultType,
@@ -128,8 +129,8 @@ export class SyncTrigger {
    * @param options - Options de sync (priority, entity)
    */
   private async executeSync(options?: {
-    priority?: string;
-    entity?: string;
+    priority?: 'low' | 'normal' | 'high' | string;
+    entity?: 'captures' | 'thoughts' | 'ideas' | 'todos';
   }): Promise<void> {
     console.log('[SyncTrigger] ⏰ Executing queued sync...');
 
@@ -143,10 +144,10 @@ export class SyncTrigger {
         entity: options?.entity,
       })
       .then((result) => {
-        if (result.result === 'SUCCESS') {
+        if (result.result === SyncResult.SUCCESS) {
           console.log('[SyncTrigger] ✅ Background sync completed successfully');
         } else {
-          console.error('[SyncTrigger] ❌ Background sync failed:', result.errors);
+          console.error('[SyncTrigger] ❌ Background sync failed:', result.error);
           // Note: Pas de throw - on ne veut pas crash l'app pour un échec de sync
         }
       });

@@ -258,8 +258,8 @@ export class SyncService {
       let hasMoreChanges = true;
 
       while (hasMoreChanges) {
-        // Detect local changes for current batch
-        const changes = await this.detectLocalChanges(entities, 0); // OFFSET 0 (after sync, _changed = 0)
+        // Detect local changes for current batch (LIMIT 100 per batch)
+        const changes = await this.detectLocalChanges(entities);
 
         // Skip if no changes in this batch
         if (this.isEmptyChanges(changes)) {

@@ -211,8 +211,14 @@ describe('AutoSyncOrchestrator', () => {
       consoleErrorSpy.mockRestore();
     });
 
-    it('should handle sync exception gracefully', async () => {
-      mockSyncService.sync.mockRejectedValue(new Error('Unexpected error'));
+    it('should handle sync errors using Result Pattern (ADR-023)', async () => {
+      // Mock sync() to return Result with UNKNOWN_ERROR
+      mockSyncService.sync.mockResolvedValue({
+        result: SyncResult.UNKNOWN_ERROR,
+        error: 'Database connection lost',
+        retryable: true,
+        timestamp: Date.now(),
+      });
 
       const consoleErrorSpy = jest
         .spyOn(console, 'error')
@@ -222,9 +228,10 @@ describe('AutoSyncOrchestrator', () => {
       await networkChangeHandler(true);
 
       expect(mockSyncService.sync).toHaveBeenCalled();
+      // Should log error using Result Pattern, not exception handling
       expect(consoleErrorSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Auto-sync exception'),
-        expect.any(Error),
+        '[AutoSyncOrchestrator] ❌ Auto-sync failed:',
+        'Database connection lost',
       );
 
       consoleErrorSpy.mockRestore();
