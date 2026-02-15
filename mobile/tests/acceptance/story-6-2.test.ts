@@ -3,15 +3,23 @@
  * Acceptance Tests - Task 10: Integration Testing & BDD Scenarios
  *
  * Pattern: BDD avec jest-cucumber
- * Mocks: NetInfo, axios (HTTP), database, AsyncStorage, AudioUpload
+ * Mocks: NetInfo, fetch (HTTP), database, AsyncStorage, AudioUpload
+ * ADR-025: Migrated from axios to fetch
  */
 
 import { loadFeature, defineFeature } from 'jest-cucumber';
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
 
-// Mock axios globally
-const mockAxios = new MockAdapter(axios);
+// Mock global fetch
+global.fetch = jest.fn();
+
+// Track fetch calls for verification
+interface FetchCall {
+  url: string;
+  method: string;
+  data?: any;
+}
+
+const fetchHistory: FetchCall[] = [];
 
 // Mock NetInfo for network connectivity detection
 const mockNetInfoState = {
@@ -209,6 +217,43 @@ const { SyncTrigger } = require('../../src/infrastructure/sync/SyncTrigger');
 
 const feature = loadFeature('tests/acceptance/features/story-6-2-sync-local-cloud.feature');
 
+// Helper to setup default successful fetch mocks
+const setupSuccessfulFetchMocks = () => {
+  (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+    // Track call
+    fetchHistory.push({
+      url,
+      method: options?.method || 'GET',
+      data: options?.body ? JSON.parse(options.body) : undefined,
+    });
+
+    // PULL endpoint
+    if (url.includes('/api/sync/pull')) {
+      return new Response(
+        JSON.stringify({
+          changes: { captures: { updated: [], deleted: [] } },
+          timestamp: Date.now(),
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // PUSH endpoint
+    if (url.includes('/api/sync/push')) {
+      return new Response(
+        JSON.stringify({
+          syncedRecordIds: [],
+          conflicts: [],
+          timestamp: Date.now(),
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    throw new Error(`Unexpected fetch: ${url}`);
+  });
+};
+
 defineFeature(feature, (test) => {
   let syncService: any;
   let networkMonitor: any;
@@ -221,7 +266,8 @@ defineFeature(feature, (test) => {
 
   beforeEach(() => {
     // Reset mocks
-    mockAxios.reset();
+    (global.fetch as jest.Mock).mockReset();
+    fetchHistory.length = 0;
     mockDatabase.reset();
     mockAsyncStorage.reset();
     mockNetInfoListeners.length = 0;
@@ -243,23 +289,15 @@ defineFeature(feature, (test) => {
     networkChangeCount = 0;
 
     // Mock successful sync responses by default
-    mockAxios.onGet('/api/sync/pull').reply(200, {
-      changes: { captures: { updated: [], deleted: [] } },
-      timestamp: Date.now(),
-    });
-
-    mockAxios.onPost('/api/sync/push').reply(200, {
-      syncedRecordIds: [],
-      conflicts: [],
-      timestamp: Date.now(),
-    });
+    setupSuccessfulFetchMocks();
   });
 
   afterEach(() => {
     if (autoSyncOrchestrator) {
       autoSyncOrchestrator.stop();
     }
-    mockAxios.reset();
+    (global.fetch as jest.Mock).mockReset();
+    fetchHistory.length = 0;
   });
 
   // ==========================================================================
@@ -309,16 +347,15 @@ defineFeature(feature, (test) => {
     then('la synchronisation est automatiquement déclenchée dans les 5 secondes', () => {
       const triggerDelay = syncEndTime - syncStartTime;
       expect(triggerDelay).toBeLessThanOrEqual(6000); // 5s + 1s tolerance
-      expect(mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push')).length).toBeGreaterThan(0);
+      expect(fetchHistory.filter((r) => r.url.includes('/api/sync/push')).length).toBeGreaterThan(0);
     });
 
     and('les 3 captures sont envoyées au cloud', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBeGreaterThan(0);
 
       const lastPush = pushRequests[pushRequests.length - 1];
-      const payload = JSON.parse(lastPush.data);
-      expect(payload.changes).toBeDefined();
+      expect(lastPush.data.changes).toBeDefined();
     });
 
     and('le statut de synchronisation passe à "synced"', () => {
@@ -355,7 +392,7 @@ defineFeature(feature, (test) => {
     });
 
     then('une seule synchronisation est déclenchée après stabilisation', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBe(1); // Only one sync after debounce
     });
 
@@ -396,23 +433,21 @@ defineFeature(feature, (test) => {
     });
 
     then('les captures sont envoyées en 3 batches (100 + 100 + 50)', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       // Batching is handled internally - verify at least one push happened
       expect(pushRequests.length).toBeGreaterThan(0);
     });
 
     and('seuls les records modifiés sont inclus dans le payload', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       const lastPush = pushRequests[pushRequests.length - 1];
-      const payload = JSON.parse(lastPush.data);
-      expect(payload.changes).toBeDefined();
+      expect(lastPush.data.changes).toBeDefined();
     });
 
     and('le lastPulledAt est envoyé pour détection de conflits', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       const lastPush = pushRequests[pushRequests.length - 1];
-      const payload = JSON.parse(lastPush.data);
-      expect(payload.lastPulledAt).toBeDefined();
+      expect(lastPush.data.lastPulledAt).toBeDefined();
     });
   });
 
@@ -450,13 +485,13 @@ defineFeature(feature, (test) => {
     });
 
     then('les 2 suppressions sont incluses dans le payload PUSH', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBeGreaterThan(0);
     });
 
     and('le serveur propage les suppressions dans le cloud', () => {
       // Verified by successful push
-      expect(mockAxios.history.post.length).toBeGreaterThan(0);
+      expect(fetchHistory.length).toBeGreaterThan(0);
     });
 
     and('les records supprimés sont marqués comme synchronisés', () => {
@@ -502,12 +537,12 @@ defineFeature(feature, (test) => {
     });
 
     and('une synchronisation est déclenchée après 3 secondes de debounce', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBeGreaterThan(0);
     });
 
     and('la capture est uploadée au cloud via POST /api/sync/push', () => {
-      expect(mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push')).length).toBeGreaterThan(0);
+      expect(fetchHistory.filter((r) => r.url.includes('/api/sync/push')).length).toBeGreaterThan(0);
     });
 
     and("l'interface reste réactive pendant la synchronisation", () => {
@@ -545,7 +580,7 @@ defineFeature(feature, (test) => {
     });
 
     then('une seule synchronisation est déclenchée après 3 secondes de la dernière action', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBe(1); // Coalesced into one sync
     });
 
@@ -626,17 +661,40 @@ defineFeature(feature, (test) => {
     });
 
     when("la synchronisation s'exécute avec succès", async () => {
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: ['thought-1'],
-        conflicts: [],
-        timestamp: Date.now(),
+      // Override fetch mock for this specific response
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              syncedRecordIds: ['thought-1'],
+              conflicts: [],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       await syncService.sync();
     });
 
     then('le serveur confirme la réception de la Thought', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBeGreaterThan(0);
     });
 
@@ -677,12 +735,35 @@ defineFeature(feature, (test) => {
 
     and('que le réseau est instable (timeouts intermittents)', () => {
       // First 3 attempts fail, 4th succeeds
-      mockAxios.onPost('/api/sync/push').reply((config) => {
-        attemptCount++;
-        if (attemptCount < 4) {
-          return [500, { error: 'Network timeout' }];
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          attemptCount++;
+          if (attemptCount < 4) {
+            return new Response(
+              JSON.stringify({ error: 'Network timeout' }),
+              { status: 500, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
         }
-        return [200, { syncedRecordIds: [], conflicts: [], timestamp: Date.now() }];
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({ syncedRecordIds: [], conflicts: [], timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
     });
 
@@ -737,7 +818,23 @@ defineFeature(feature, (test) => {
     });
 
     when("la synchronisation échoue avec une erreur d'authentification (AUTH_ERROR)", async () => {
-      mockAxios.onPost('/api/sync/push').reply(401, { error: 'Unauthorized' });
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({ error: 'Unauthorized' }),
+            { status: 401, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
+      });
+
       await syncService.sync();
     });
 
@@ -786,17 +883,39 @@ defineFeature(feature, (test) => {
     });
 
     when('la synchronisation metadata réussit', async () => {
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: ['capture-audio-large'],
-        conflicts: [],
-        timestamp: Date.now(),
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              syncedRecordIds: ['capture-audio-large'],
+              conflicts: [],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       await syncService.sync();
     });
 
     then('la capture (sans audio_url) est synchronisée en premier', () => {
-      const pushRequests = mockAxios.history.post.filter((r) => r.url?.includes('/api/sync/push'));
+      const pushRequests = fetchHistory.filter((r) => r.url.includes('/api/sync/push'));
       expect(pushRequests.length).toBeGreaterThan(0);
     });
 
@@ -867,32 +986,53 @@ defineFeature(feature, (test) => {
     });
 
     when('Device A revient en ligne et synchronise (timestamp local: 900)', async () => {
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: [],
-        conflicts: [
-          {
-            entity: 'todo',
-            id: 'todo-conflict',
-            resolution: 'server_wins',
-            serverVersion: {
-              id: 'todo-conflict',
-              title: 'Acheter lait',
-              last_modified_at: 1000,
-            },
-          },
-        ],
-        timestamp: Date.now(),
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              syncedRecordIds: [],
+              conflicts: [
+                {
+                  entity: 'todo',
+                  id: 'todo-conflict',
+                  resolution: 'server_wins',
+                  serverVersion: {
+                    id: 'todo-conflict',
+                    title: 'Acheter lait',
+                    last_modified_at: 1000,
+                  },
+                },
+              ],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       await syncService.sync();
     });
 
     then('un conflit est détecté par le serveur (lastPulledAt < server.last_modified)', () => {
-      expect(mockAxios.history.post.length).toBeGreaterThan(0);
+      expect(fetchHistory.length).toBeGreaterThan(0);
     });
 
     and('le serveur retourne la version gagnante dans conflicts[]', () => {
-      const response = mockAxios.history.post[0];
       // Response mocked above with conflicts
       expect(true).toBe(true);
     });
@@ -919,18 +1059,40 @@ defineFeature(feature, (test) => {
     then,
   }) => {
     given("qu'un conflit de synchronisation se produit", () => {
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: [],
-        conflicts: [
-          {
-            entity: 'todo',
-            id: 'todo-123',
-            resolution: 'server_wins',
-            clientVersion: { title: 'Acheter pain' },
-            serverVersion: { title: 'Acheter lait' },
-          },
-        ],
-        timestamp: Date.now(),
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              syncedRecordIds: [],
+              conflicts: [
+                {
+                  entity: 'todo',
+                  id: 'todo-123',
+                  resolution: 'server_wins',
+                  clientVersion: { title: 'Acheter pain' },
+                  serverVersion: { title: 'Acheter lait' },
+                },
+              ],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
     });
 
@@ -984,17 +1146,39 @@ defineFeature(feature, (test) => {
     });
 
     when('toutes les captures sont synchronisées avec succès', async () => {
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        syncedRecordIds: mockDatabase._captures.map((c: any) => c.id),
-        conflicts: [],
-        timestamp: Date.now(),
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              syncedRecordIds: mockDatabase._captures.map((c: any) => c.id),
+              conflicts: [],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       await syncService.sync();
     });
 
     then('le lastPulledAt est mis à jour pour la table "captures"', async () => {
-      const lastPulled = await mockAsyncStorage.getItem('sync_last_pulled_captures');
+      await mockAsyncStorage.getItem('sync_last_pulled_captures');
       expect(mockAsyncStorage.setItem).toHaveBeenCalledWith(
         expect.stringContaining('sync_last_pulled'),
         expect.any(String)
@@ -1032,7 +1216,23 @@ defineFeature(feature, (test) => {
     });
 
     when('la synchronisation échoue avec une erreur serveur (500)', async () => {
-      mockAxios.onPost('/api/sync/push').reply(500, { error: 'Internal Server Error' });
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          data: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({ error: 'Internal Server Error' }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
+      });
+
       await syncService.sync();
     });
 

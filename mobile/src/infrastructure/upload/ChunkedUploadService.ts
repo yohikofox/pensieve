@@ -13,8 +13,8 @@
  * @pattern Chunked upload with offset tracking for resumability
  */
 
-import axios from 'axios';
 import * as FileSystem from 'expo-file-system';
+import { fetchWithRetry } from '../http/fetchWithRetry';
 import { database } from '../../database';
 import {
   RepositoryResult,
@@ -104,16 +104,30 @@ export class ChunkedUploadService {
     totalChunks: number,
   ): Promise<RepositoryResult<ChunkUploadResult>> {
     try {
-      const response = await axios.post(`${this.apiUrl}/api/uploads/chunk`, {
-        uploadId,
-        chunkIndex,
-        totalChunks,
-        chunkData,
+      const httpResponse = await fetchWithRetry(`${this.apiUrl}/api/uploads/chunk`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          uploadId,
+          chunkIndex,
+          totalChunks,
+          chunkData,
+        }),
+        timeout: 30000,
+        retries: 3,
       });
 
+      if (!httpResponse.ok) {
+        throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+      }
+
+      const data = await httpResponse.json();
+
       return success({
-        chunkUploaded: response.data.chunkUploaded,
-        nextOffset: response.data.nextOffset,
+        chunkUploaded: data.chunkUploaded,
+        nextOffset: data.nextOffset,
       });
     } catch (error: any) {
       return networkError(`Chunk upload failed: ${error.message}`);

@@ -3,17 +3,25 @@
  * Acceptance Tests - Task 3.8: Test sync avec mock backend
  *
  * Pattern: BDD avec jest-cucumber
- * Mocks: axios (HTTP calls), database via test-context
+ * Mocks: fetch (HTTP calls), database via test-context
+ * ADR-025: Migrated from axios to fetch
  */
 
 import { loadFeature, defineFeature } from 'jest-cucumber';
 import { testContext } from './support/test-context';
 import { SyncResult } from '../../src/infrastructure/sync/types';
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
 
-// Mock axios globally
-const mockAxios = new MockAdapter(axios);
+// Mock global fetch
+global.fetch = jest.fn();
+
+// Track fetch calls for verification
+interface FetchCall {
+  url: string;
+  method: string;
+  body?: any;
+}
+
+let fetchHistory: FetchCall[] = [];
 
 // Mock DatabaseConnection (OP-SQLite not available in Node.js tests)
 jest.mock('../../src/database', () => ({
@@ -68,7 +76,10 @@ defineFeature(feature, (test) => {
     // Reset test context
     testContext.db.reset();
     testContext.storage.reset();
-    mockAxios.reset();
+
+    // Reset fetch mock and history
+    (global.fetch as jest.Mock).mockReset();
+    fetchHistory = [];
 
     // Initialize sync service
     syncService = new SyncService('http://mock-backend.local');
@@ -85,7 +96,8 @@ defineFeature(feature, (test) => {
   });
 
   afterEach(() => {
-    mockAxios.reset();
+    (global.fetch as jest.Mock).mockReset();
+    fetchHistory = [];
   });
 
   // ========================================================================
@@ -100,8 +112,7 @@ defineFeature(feature, (test) => {
   }) => {
     given('le backend sync est offline', () => {
       // Mock backend offline: network error
-      mockAxios.onGet('/api/sync/pull').networkError();
-      mockAxios.onPost('/api/sync/push').networkError();
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
     });
 
     and(/^l'utilisateur crée une nouvelle capture "([^"]*)"$/, (captureTitle) => {
@@ -140,16 +151,42 @@ defineFeature(feature, (test) => {
 
     when('le backend sync revient online', () => {
       // Mock backend online: success
-      mockAxios.reset();
-      mockAxios.onGet('/api/sync/pull').reply(200, {
-        changes: {
-          captures: { updated: [], deleted: [] },
-        },
-        timestamp: Date.now(),
-      });
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        conflicts: [],
-        timestamp: Date.now(),
+      (global.fetch as jest.Mock).mockReset();
+      fetchHistory = [];
+
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        // Track call
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          body: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        // PULL endpoint
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({
+              changes: {
+                captures: { updated: [], deleted: [] },
+              },
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // PUSH endpoint
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({
+              conflicts: [],
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
     });
 
@@ -165,15 +202,14 @@ defineFeature(feature, (test) => {
 
     and(/^la capture "([^"]*)" est synchronisée$/, (captureTitle) => {
       // Verify capture was included in sync push
-      const pushRequests = mockAxios.history.post.filter((req) =>
-        req.url?.includes('/api/sync/push'),
+      const pushRequests = fetchHistory.filter((call) =>
+        call.url.includes('/api/sync/push') && call.method === 'POST'
       );
       expect(pushRequests.length).toBeGreaterThan(0);
 
       // Verify capture data was sent
       const lastPushRequest = pushRequests[pushRequests.length - 1];
-      const pushData = JSON.parse(lastPushRequest.data);
-      expect(pushData.changes).toBeDefined();
+      expect(lastPushRequest.body?.changes).toBeDefined();
     });
 
     and('le compteur de retry est réinitialisé', () => {

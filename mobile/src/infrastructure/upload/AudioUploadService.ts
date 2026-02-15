@@ -13,7 +13,7 @@
  * @pattern Repository-like service for upload queue management
  */
 
-import axios, { AxiosRequestConfig } from 'axios';
+import { fetchWithRetry } from '../http/fetchWithRetry';
 import { database } from '../../database';
 import {
   RepositoryResult,
@@ -134,30 +134,30 @@ export class AudioUploadService {
       } as any);
       formData.append('captureId', captureId);
 
-      // Upload config with progress tracking
-      const config: AxiosRequestConfig = {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-        onUploadProgress: (progressEvent: any) => {
-          if (progressEvent.total) {
-            const percentCompleted = progressEvent.loaded / progressEvent.total;
-
-            // Update database progress (synchronous - called from axios callback)
-            this.updateUploadProgress(uploadId, percentCompleted);
-
-            // Callback
-            if (onProgress) {
-              onProgress(percentCompleted);
-            }
-          }
-        },
-      };
-
       // Upload to backend
-      const response = await axios.post(`${this.apiUrl}/api/uploads/audio`, formData, config);
+      // TODO (ADR-025): Implement upload progress tracking with fetch
+      // fetch doesn't support onUploadProgress natively - requires ReadableStream or XHR
+      // For now, upload works but progress tracking is disabled during upload
+      const httpResponse = await fetchWithRetry(`${this.apiUrl}/api/uploads/audio`, {
+        method: 'POST',
+        body: formData,
+        // Note: Do NOT set Content-Type header for FormData
+        // Browser/fetch will set it automatically with correct boundary
+        timeout: 60000, // 60s for large file uploads
+        retries: 3,
+      });
 
-      const audioUrl = response.data.audioUrl;
+      if (!httpResponse.ok) {
+        throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+      }
+
+      const data = await httpResponse.json();
+      const audioUrl = data.audioUrl;
+
+      // Simulate progress completion (since we can't track during upload with fetch)
+      if (onProgress) {
+        onProgress(1.0);
+      }
 
       // Update status to 'completed'
       // Code Review Fix: Added await
@@ -256,7 +256,7 @@ export class AudioUploadService {
 
   /**
    * Update upload progress (private helper)
-   * Note: Remains synchronous as it's called from axios onUploadProgress callback
+   * TODO (ADR-025): Re-enable progress tracking when fetch upload progress is implemented
    */
   private updateUploadProgress(uploadId: string, progress: number): void {
     try {

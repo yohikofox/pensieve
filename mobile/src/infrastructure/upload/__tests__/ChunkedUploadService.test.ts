@@ -2,16 +2,15 @@
  * ChunkedUploadService Tests
  *
  * Story 6.2 - Task 6.4: Resumable upload with chunking
+ * ADR-025: Migrated from axios to fetch
  */
 
 import { ChunkedUploadService } from '../ChunkedUploadService';
 import { database } from '../../../database';
 import { RepositoryResultType } from '@/contexts/shared/domain/Result';
 
-// Mock axios for HTTP requests
-jest.mock('axios');
-import axios from 'axios';
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock global fetch
+global.fetch = jest.fn();
 
 // Mock database
 jest.mock('../../../database', () => ({
@@ -80,10 +79,12 @@ describe('ChunkedUploadService', () => {
     const mockTotalChunks = 10;
 
     it('should upload single chunk with metadata', async () => {
-      mockedAxios.post.mockResolvedValue({
-        data: { chunkUploaded: true, nextOffset: 3 },
-        status: 200,
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(
+          JSON.stringify({ chunkUploaded: true, nextOffset: 3 }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
 
       const result = await service.uploadChunk(
         mockUploadId,
@@ -95,20 +96,18 @@ describe('ChunkedUploadService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data?.chunkUploaded).toBe(true);
 
-      // Verify axios called with correct chunk metadata
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      // Verify fetch called with correct chunk metadata
+      expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/uploads/chunk'),
         expect.objectContaining({
-          uploadId: mockUploadId,
-          chunkIndex: mockChunkIndex,
-          totalChunks: mockTotalChunks,
-          chunkData: mockChunkData,
+          method: 'POST',
+          body: expect.stringContaining(mockUploadId),
         }),
       );
     });
 
     it('should handle chunk upload failure', async () => {
-      mockedAxios.post.mockRejectedValue(new Error('Chunk upload timeout'));
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Chunk upload timeout'));
 
       const result = await service.uploadChunk(
         mockUploadId,
@@ -202,14 +201,21 @@ describe('ChunkedUploadService', () => {
 
     it('should upload file in multiple chunks and track progress', async () => {
       // Mock successful chunk uploads
-      mockedAxios.post.mockResolvedValue({
-        data: { chunkUploaded: true },
-        status: 200,
+      (global.fetch as jest.Mock).mockImplementation(async () => {
+        return new Response(
+          JSON.stringify({ chunkUploaded: true }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
       });
 
-      // Mock database updates
-      (database.execute as jest.Mock).mockReturnValue({
-        rowsAffected: 1,
+      // Mock database queries
+      (database.execute as jest.Mock).mockImplementation((query: string) => {
+        // SELECT query for getUploadProgress - return NOT_FOUND so it starts from chunk 0
+        if (query.includes('SELECT')) {
+          return { rows: [] };
+        }
+        // UPDATE queries for saveUploadProgress
+        return { rowsAffected: 1 };
       });
 
       const progressCallback = jest.fn();
@@ -225,7 +231,7 @@ describe('ChunkedUploadService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Verify 3 chunks uploaded (15MB / 5MB)
-      const chunkCalls = (mockedAxios.post as jest.Mock).mock.calls.filter((call) =>
+      const chunkCalls = (global.fetch as jest.Mock).mock.calls.filter((call) =>
         call[0].includes('/chunk'),
       );
       expect(chunkCalls.length).toBe(3);
@@ -243,8 +249,8 @@ describe('ChunkedUploadService', () => {
         return { rowsAffected: 1 };
       });
 
-      // Mock axios: fail on chunk 2 (first call since we resume from chunk 2)
-      mockedAxios.post.mockRejectedValue(new Error('Network interrupted'));
+      // Mock fetch: fail on chunk 2 (first call since we resume from chunk 2)
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network interrupted'));
 
       const result = await service.uploadFileInChunks(
         mockUploadId,
@@ -256,15 +262,11 @@ describe('ChunkedUploadService', () => {
       expect(result.type).toBe(RepositoryResultType.NETWORK_ERROR);
 
       // Verify chunk 2 upload was attempted (resuming from last_chunk_uploaded = 1)
-      expect(mockedAxios.post).toHaveBeenCalledTimes(1);
-      expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/chunk'),
-        expect.objectContaining({
-          uploadId: mockUploadId,
-          chunkIndex: 2, // Resume from chunk 2
-          totalChunks: 3,
-        }),
-      );
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      const callArgs = (global.fetch as jest.Mock).mock.calls[0];
+      const body = JSON.parse(callArgs[1].body);
+      expect(body.chunkIndex).toBe(2); // Resume from chunk 2
+      expect(body.totalChunks).toBe(3);
     });
 
     it('should validate resumable upload on retry', async () => {
@@ -273,10 +275,12 @@ describe('ChunkedUploadService', () => {
         rows: [{ id: mockUploadId, last_chunk_uploaded: 1 }],
       });
 
-      mockedAxios.post.mockResolvedValue({
-        data: { chunkUploaded: true },
-        status: 200,
-      });
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(
+          JSON.stringify({ chunkUploaded: true }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
 
       // Call resume
       const result = await service.resumeUpload(mockUploadId, mockCaptureId, mockFilePath, mockFileSize);
@@ -284,7 +288,7 @@ describe('ChunkedUploadService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
 
       // Verify only chunk 2 uploaded (resume from index 2, skip 0-1)
-      const chunkCalls = (mockedAxios.post as jest.Mock).mock.calls.filter((call) =>
+      const chunkCalls = (global.fetch as jest.Mock).mock.calls.filter((call) =>
         call[0].includes('/chunk'),
       );
       expect(chunkCalls.length).toBe(1); // Only last chunk uploaded

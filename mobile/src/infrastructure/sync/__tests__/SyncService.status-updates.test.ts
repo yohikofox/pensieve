@@ -1,16 +1,17 @@
 /**
  * SyncService - UI Status Updates Integration Tests
  * Story 6.2 - Task 9.5: Verify SyncStatusStore integration
+ * ADR-025: Migrated from axios to fetch
  */
+
+import 'reflect-metadata';
 
 import { SyncService } from '../SyncService';
 import { useSyncStatusStore } from '@/stores/SyncStatusStore';
 import type { EventBus } from '@/contexts/shared/events/EventBus';
-import axios from 'axios';
 
-// Mock axios
-jest.mock('axios');
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock global fetch
+global.fetch = jest.fn();
 
 // Mock DatabaseConnection
 jest.mock('../../../database', () => ({
@@ -51,14 +52,30 @@ describe('SyncService - UI Status Updates (Task 9.5)', () => {
     subscribe: jest.fn(),
   } as any;
 
-  // Create reusable mock axios client
-  const createMockAxiosClient = () => ({
-    get: jest.fn().mockResolvedValue({ data: { changes: {}, timestamp: Date.now() } }),
-    post: jest.fn().mockResolvedValue({
-      data: { syncedRecordIds: [], conflicts: [], timestamp: Date.now() },
-    }),
-    defaults: { headers: { common: {} } },
-  });
+  // Helper to mock successful fetch responses
+  const mockSuccessfulFetch = () => {
+    (global.fetch as jest.Mock).mockImplementation(async (url: string) => {
+      if (url.includes('/api/sync/pull')) {
+        return new Response(
+          JSON.stringify({ changes: {}, timestamp: Date.now() }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (url.includes('/api/sync/push')) {
+        return new Response(
+          JSON.stringify({
+            syncedRecordIds: [],
+            conflicts: [],
+            timestamp: Date.now(),
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      }
+
+      throw new Error(`Unexpected fetch: ${url}`);
+    });
+  };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -66,10 +83,10 @@ describe('SyncService - UI Status Updates (Task 9.5)', () => {
     // Reset SyncStatusStore
     useSyncStatusStore.getState().reset();
 
-    // Mock axios.create BEFORE creating SyncService (called in constructor)
-    mockedAxios.create = jest.fn().mockReturnValue(createMockAxiosClient() as any);
+    // Mock successful fetch by default
+    mockSuccessfulFetch();
 
-    // Create SyncService instance (will use mocked axios.create)
+    // Create SyncService instance
     syncService = new SyncService('http://localhost:3000', mockEventBus);
     syncService.setAuthToken('mock-token');
   });
@@ -115,14 +132,10 @@ describe('SyncService - UI Status Updates (Task 9.5)', () => {
    * AC: After error → setError(message)
    */
   it('should set status to "error" with message when sync fails', async () => {
-    // ARRANGE - Mock axios to fail
+    // ARRANGE - Mock fetch to fail
     const mockError = new Error('Network timeout');
-    const mockClient = {
-      get: jest.fn().mockRejectedValue(mockError),
-      post: jest.fn(),
-      defaults: { headers: { common: {} } },
-    };
-    mockedAxios.create = jest.fn().mockReturnValue(mockClient as any);
+
+    (global.fetch as jest.Mock).mockRejectedValue(mockError);
 
     // Create new instance with failing mock
     const service = new SyncService('http://localhost:3000', mockEventBus);
@@ -142,7 +155,7 @@ describe('SyncService - UI Status Updates (Task 9.5)', () => {
    */
   it('should set error status when auth token is missing', async () => {
     // ARRANGE - Create service without auth token
-    mockedAxios.create = jest.fn().mockReturnValue(createMockAxiosClient() as any);
+    mockSuccessfulFetch();
     const service = new SyncService('http://localhost:3000', mockEventBus);
     // Do NOT set auth token
 

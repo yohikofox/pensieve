@@ -9,7 +9,7 @@
 
 import { DatabaseConnection } from '../../database';
 import type { DB } from '@op-engineering/op-sqlite';
-import axios, { type AxiosInstance } from 'axios';
+import { fetchWithRetry } from '../http/fetchWithRetry';
 import {
   SyncResult,
   type SyncResponse,
@@ -51,7 +51,6 @@ function validateEntity(entity: string): entity is typeof VALID_ENTITIES[number]
 @injectable()
 export class SyncService {
   private db: DB;
-  private apiClient: AxiosInstance;
   private baseUrl: string;
   private authToken: string | null = null;
   private eventBus: EventBus | null = null;
@@ -60,15 +59,6 @@ export class SyncService {
     this.baseUrl = baseUrl;
     this.db = DatabaseConnection.getInstance().getDatabase();
     this.eventBus = eventBus || null;
-
-    // Initialize HTTP client
-    this.apiClient = axios.create({
-      baseURL: baseUrl,
-      timeout: SYNC_TIMEOUT_MS,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
   }
 
   /**
@@ -76,7 +66,6 @@ export class SyncService {
    */
   setAuthToken(token: string): void {
     this.authToken = token;
-    this.apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
   }
 
   /**
@@ -198,13 +187,29 @@ export class SyncService {
         : 0;
 
       // Call backend /api/sync/pull
-      console.log(`[Sync] Calling PULL: ${this.baseUrl}/api/sync/pull`);
+      const queryParams = new URLSearchParams({
+        lastPulledAt: String(options?.forceFull ? 0 : lastPulledAt),
+      });
+      const pullUrl = `${this.baseUrl}/api/sync/pull?${queryParams}`;
+      console.log(`[Sync] Calling PULL: ${pullUrl}`);
+
       const response = await retryWithFibonacci(
         async () => {
-          const { data } = await this.apiClient.get('/api/sync/pull', {
-            params: { lastPulledAt: options?.forceFull ? 0 : lastPulledAt },
+          const httpResponse = await fetchWithRetry(pullUrl, {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.authToken}`,
+            },
+            timeout: SYNC_TIMEOUT_MS,
+            retries: 3,
           });
-          return data;
+
+          if (!httpResponse.ok) {
+            throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+          }
+
+          return httpResponse.json();
         },
         10,
         (attempt, delay) => {
@@ -232,7 +237,7 @@ export class SyncService {
       };
     } catch (error: any) {
       const url = `${this.baseUrl}/api/sync/pull`;
-      const status = error?.response?.status || 'unknown';
+      const status = this.extractStatusFromError(error);
       console.error(`[Sync] ❌ PULL failed (${status}): ${url}`, error?.message);
       throw error;
     }
@@ -280,6 +285,7 @@ export class SyncService {
         console.log(`[Sync] 📦 Pushing batch ${batchNumber}...`);
 
         // Call backend /api/sync/push for this batch
+        const pushUrl = `${this.baseUrl}/api/sync/push`;
         const response = await retryWithFibonacci(
           async () => {
             const payload: PushRequest = {
@@ -287,8 +293,22 @@ export class SyncService {
               changes,
             };
 
-            const { data } = await this.apiClient.post('/api/sync/push', payload);
-            return data;
+            const httpResponse = await fetchWithRetry(pushUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`,
+              },
+              body: JSON.stringify(payload),
+              timeout: SYNC_TIMEOUT_MS,
+              retries: 3,
+            });
+
+            if (!httpResponse.ok) {
+              throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+            }
+
+            return httpResponse.json();
           },
           10,
           (attempt, delay) => {
@@ -569,29 +589,55 @@ export class SyncService {
   }
 
   /**
-   * Categorize error into SyncResult enum
+   * Extract HTTP status code from error (fetch-compatible)
+   */
+  private extractStatusFromError(error: any): number | string {
+    // Extract from "HTTP 500: ..." error message
+    const match = error?.message?.match(/HTTP (\d+):/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+
+    return 'unknown';
+  }
+
+  /**
+   * Categorize error into SyncResult enum (fetch-compatible)
+   * ADR-025: Updated for fetch errors (no error.response.status)
    */
   private categorizeError(error: any): SyncResult {
-    if (error?.response?.status === 401 || error?.response?.status === 403) {
+    const status = this.extractStatusFromError(error);
+
+    // Auth errors (401, 403)
+    if (status === 401 || status === 403) {
       return SyncResult.AUTH_ERROR;
     }
 
-    if (error?.response?.status === 409) {
+    // Conflict error (409)
+    if (status === 409) {
       return SyncResult.CONFLICT;
     }
 
-    if (error?.response?.status >= 500) {
+    // Server errors (5xx)
+    if (typeof status === 'number' && status >= 500) {
       return SyncResult.SERVER_ERROR;
     }
 
+    // Timeout errors
     if (
-      error?.code === 'ETIMEDOUT' ||
-      error?.message?.includes('timeout')
+      error?.name === 'AbortError' ||
+      error?.message?.includes('timeout') ||
+      error?.message?.includes('aborted')
     ) {
       return SyncResult.TIMEOUT;
     }
 
-    if (error?.message?.includes('Network request failed')) {
+    // Network errors (fetch TypeError)
+    if (
+      error instanceof TypeError ||
+      error?.message?.includes('Network request failed') ||
+      error?.message?.includes('Failed to fetch')
+    ) {
       return SyncResult.NETWORK_ERROR;
     }
 

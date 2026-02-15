@@ -1,9 +1,4 @@
 import 'reflect-metadata';
-import axios from 'axios';
-import MockAdapter from 'axios-mock-adapter';
-
-// IMPORTANT: Mock axios.create BEFORE importing SyncService
-jest.spyOn(axios, 'create').mockReturnValue(axios as any);
 
 import { SyncService } from '../SyncService';
 import { SyncResult } from '../types';
@@ -37,34 +32,91 @@ jest.mock('../ConflictHandler', () => ({
   })),
 }));
 
+// Mock global fetch
+global.fetch = jest.fn();
+
+// Helper to track fetch calls
+interface FetchCall {
+  url: string;
+  method: string;
+  body?: any;
+  headers?: any;
+}
+
+let fetchHistory: FetchCall[] = [];
+
+function mockFetchResponse(url: string, response: any, status: number = 200) {
+  (global.fetch as jest.Mock).mockImplementation(async (callUrl: string, options?: any) => {
+    // Record call
+    fetchHistory.push({
+      url: callUrl,
+      method: options?.method || 'GET',
+      body: options?.body ? JSON.parse(options.body) : undefined,
+      headers: options?.headers,
+    });
+
+    // Match URL pattern
+    if (callUrl.includes(url)) {
+      return new Response(JSON.stringify(response), {
+        status,
+        statusText: status === 200 ? 'OK' : 'Error',
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    throw new Error(`Unexpected fetch call: ${callUrl}`);
+  });
+}
+
 describe('SyncService - Batching (Task 2.5, 2.6)', () => {
   let syncService: SyncService;
-  let mockAxios: MockAdapter;
 
   beforeEach(() => {
     jest.clearAllMocks();
+    fetchHistory = [];
 
     syncService = new SyncService('http://localhost:3000');
     syncService.setAuthToken('test-token');
-
-    mockAxios = new MockAdapter(axios);
-  });
-
-  afterEach(() => {
-    mockAxios.restore();
   });
 
   describe('Task 2.6: Batching scenario - 250 records → 3 batches', () => {
     it('should send 250 changed records in 3 batches (100 + 100 + 50)', async () => {
-      // Mock PULL response (empty - no server changes)
-      mockAxios.onGet('/api/sync/pull').reply(200, {
-        changes: {},
-        timestamp: Date.now(),
-      });
+      // Mock fetch responses
+      let pullCount = 0;
+      let pushCount = 0;
 
-      // Mock PUSH responses (3 batches)
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        conflicts: [],
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          body: options?.body ? JSON.parse(options.body) : undefined,
+          headers: options?.headers,
+        });
+
+        // PULL request
+        if (url.includes('/api/sync/pull')) {
+          pullCount++;
+          return new Response(
+            JSON.stringify({
+              changes: {},
+              timestamp: Date.now(),
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // PUSH requests
+        if (url.includes('/api/sync/push')) {
+          pushCount++;
+          return new Response(
+            JSON.stringify({
+              conflicts: [],
+            }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       // Simulate 250 changed records in captures table
@@ -135,15 +187,15 @@ describe('SyncService - Batching (Task 2.5, 2.6)', () => {
       expect(result.result).toBe(SyncResult.SUCCESS);
 
       // Should have made 3 PUSH requests (one per batch)
-      const pushRequests = mockAxios.history.post.filter((req) =>
-        req.url?.includes('/api/sync/push'),
+      const pushRequests = fetchHistory.filter((call) =>
+        call.url.includes('/api/sync/push')
       );
       expect(pushRequests).toHaveLength(3);
 
       // Verify batch sizes
-      const batch1 = JSON.parse(pushRequests[0].data);
-      const batch2 = JSON.parse(pushRequests[1].data);
-      const batch3 = JSON.parse(pushRequests[2].data);
+      const batch1 = pushRequests[0].body;
+      const batch2 = pushRequests[1].body;
+      const batch3 = pushRequests[2].body;
 
       expect(batch1.changes.captures.updated).toHaveLength(100);
       expect(batch2.changes.captures.updated).toHaveLength(100);
@@ -160,15 +212,29 @@ describe('SyncService - Batching (Task 2.5, 2.6)', () => {
     });
 
     it('should stop batching when no more changes exist', async () => {
-      // Mock PULL response
-      mockAxios.onGet('/api/sync/pull').reply(200, {
-        changes: {},
-        timestamp: Date.now(),
-      });
+      // Mock fetch responses
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          body: options?.body ? JSON.parse(options.body) : undefined,
+        });
 
-      // Mock PUSH responses
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        conflicts: [],
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({ conflicts: [] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       // Simulate exactly 100 changed records (1 batch only)
@@ -207,49 +273,64 @@ describe('SyncService - Batching (Task 2.5, 2.6)', () => {
       expect(result.result).toBe(SyncResult.SUCCESS);
 
       // Should have made only 1 PUSH request (batch not full, so no more batches)
-      const pushRequests = mockAxios.history.post.filter((req) =>
-        req.url?.includes('/api/sync/push'),
+      const pushRequests = fetchHistory.filter((call) =>
+        call.url.includes('/api/sync/push')
       );
       expect(pushRequests).toHaveLength(1);
     });
 
     it('should collect conflicts from all batches', async () => {
-      // Mock PULL response
-      mockAxios.onGet('/api/sync/pull').reply(200, {
-        changes: {},
-        timestamp: Date.now(),
-      });
-
-      // Mock PUSH responses with conflicts in batch 1 and 3
+      // Mock fetch responses with conflicts in batch 1 and 3
       let pushCount = 0;
-      mockAxios.onPost('/api/sync/push').reply(() => {
-        pushCount++;
 
-        if (pushCount === 1) {
-          // Batch 1: 2 conflicts
-          return [
-            200,
-            {
-              conflicts: [
-                { entity: 'captures', id: 'cap-1', serverVersion: {} },
-                { entity: 'captures', id: 'cap-2', serverVersion: {} },
-              ],
-            },
-          ];
-        } else if (pushCount === 2) {
-          // Batch 2: no conflicts
-          return [200, { conflicts: [] }];
-        } else {
-          // Batch 3: 1 conflict
-          return [
-            200,
-            {
-              conflicts: [
-                { entity: 'captures', id: 'cap-150', serverVersion: {} },
-              ],
-            },
-          ];
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          body: options?.body ? JSON.parse(options.body) : undefined,
+        });
+
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
         }
+
+        if (url.includes('/api/sync/push')) {
+          pushCount++;
+
+          if (pushCount === 1) {
+            // Batch 1: 2 conflicts
+            return new Response(
+              JSON.stringify({
+                conflicts: [
+                  { entity: 'captures', id: 'cap-1', serverVersion: {} },
+                  { entity: 'captures', id: 'cap-2', serverVersion: {} },
+                ],
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+          } else if (pushCount === 2) {
+            // Batch 2: no conflicts
+            return new Response(
+              JSON.stringify({ conflicts: [] }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+          } else {
+            // Batch 3: 1 conflict
+            return new Response(
+              JSON.stringify({
+                conflicts: [
+                  { entity: 'captures', id: 'cap-150', serverVersion: {} },
+                ],
+              }),
+              { status: 200, headers: { 'Content-Type': 'application/json' } }
+            );
+          }
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       // Simulate 250 changed records (3 batches: 100 + 100 + 50)
@@ -322,15 +403,29 @@ describe('SyncService - Batching (Task 2.5, 2.6)', () => {
 
   describe('Task 2.4: Soft deletes in payload', () => {
     it('should include deleted records in PUSH payload', async () => {
-      // Mock PULL response
-      mockAxios.onGet('/api/sync/pull').reply(200, {
-        changes: {},
-        timestamp: Date.now(),
-      });
+      // Mock fetch responses
+      (global.fetch as jest.Mock).mockImplementation(async (url: string, options?: any) => {
+        fetchHistory.push({
+          url,
+          method: options?.method || 'GET',
+          body: options?.body ? JSON.parse(options.body) : undefined,
+        });
 
-      // Mock PUSH response
-      mockAxios.onPost('/api/sync/push').reply(200, {
-        conflicts: [],
+        if (url.includes('/api/sync/pull')) {
+          return new Response(
+            JSON.stringify({ changes: {}, timestamp: Date.now() }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        if (url.includes('/api/sync/push')) {
+          return new Response(
+            JSON.stringify({ conflicts: [] }),
+            { status: 200, headers: { 'Content-Type': 'application/json' } }
+          );
+        }
+
+        throw new Error(`Unexpected fetch: ${url}`);
       });
 
       // Simulate mixed records: 5 updated + 3 deleted
@@ -407,12 +502,12 @@ describe('SyncService - Batching (Task 2.5, 2.6)', () => {
       expect(result.result).toBe(SyncResult.SUCCESS);
 
       // Verify PUSH payload structure
-      const pushRequest = mockAxios.history.post.find((req) =>
-        req.url?.includes('/api/sync/push'),
+      const pushRequest = fetchHistory.find((call) =>
+        call.url.includes('/api/sync/push')
       );
       expect(pushRequest).toBeDefined();
 
-      const payload = JSON.parse(pushRequest!.data);
+      const payload = pushRequest!.body;
 
       // Should have separated updated and deleted
       expect(payload.changes.captures.updated).toHaveLength(5);

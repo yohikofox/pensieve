@@ -2,16 +2,15 @@
  * AudioUploadService Tests
  *
  * Story 6.2 - Task 6.2: Audio upload service with multipart support
+ * ADR-025: Migrated from axios to fetch
  */
 
 import { AudioUploadService } from '../AudioUploadService';
 import { database } from '../../../database';
 import { RepositoryResultType } from '@/contexts/shared/domain/Result';
 
-// Mock axios for HTTP requests
-jest.mock('axios');
-import axios from 'axios';
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+// Mock global fetch
+global.fetch = jest.fn();
 
 // Mock database
 jest.mock('../../../database', () => ({
@@ -102,11 +101,13 @@ describe('AudioUploadService', () => {
     });
 
     it('should upload file and update progress', async () => {
-      // Mock axios post with progress callback
-      mockedAxios.post.mockResolvedValue({
-        data: { audioUrl: 'https://minio.test.com/audio/capture-789.m4a' },
-        status: 200,
-      });
+      // Mock fetch response
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(
+          JSON.stringify({ audioUrl: 'https://minio.test.com/audio/capture-789.m4a' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
 
       // Mock database updates
       (database.execute as jest.Mock).mockReturnValue({
@@ -126,15 +127,12 @@ describe('AudioUploadService', () => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data?.audioUrl).toBe('https://minio.test.com/audio/capture-789.m4a');
 
-      // Verify axios called with correct config
-      expect(mockedAxios.post).toHaveBeenCalledWith(
+      // Verify fetch called with FormData
+      expect(global.fetch).toHaveBeenCalledWith(
         expect.stringContaining('/api/uploads/audio'),
-        expect.any(Object), // FormData
         expect.objectContaining({
-          headers: expect.objectContaining({
-            'Content-Type': 'multipart/form-data',
-          }),
-          onUploadProgress: expect.any(Function),
+          method: 'POST',
+          body: expect.any(Object), // FormData
         }),
       );
 
@@ -145,16 +143,14 @@ describe('AudioUploadService', () => {
       expect(completedCall[0]).toContain('UPDATE upload_queue');
     });
 
-    it('should update progress during upload', async () => {
-      let capturedProgressFn: ((event: any) => void) | undefined;
-
-      mockedAxios.post.mockImplementation((_url, _data, config) => {
-        capturedProgressFn = config?.onUploadProgress;
-        return Promise.resolve({
-          data: { audioUrl: 'https://minio.test.com/audio/test.m4a' },
-          status: 200,
-        });
-      });
+    it('should call progress callback at completion', async () => {
+      // Mock fetch response
+      (global.fetch as jest.Mock).mockResolvedValue(
+        new Response(
+          JSON.stringify({ audioUrl: 'https://minio.test.com/audio/test.m4a' }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        )
+      );
 
       (database.execute as jest.Mock).mockReturnValue({ rowsAffected: 1 });
 
@@ -162,24 +158,13 @@ describe('AudioUploadService', () => {
 
       await service.uploadFile(mockUploadId, mockCaptureId, mockFilePath, mockFileSize, progressCallback);
 
-      // Simulate progress events
-      expect(capturedProgressFn).toBeDefined();
-      if (capturedProgressFn) {
-        capturedProgressFn({ loaded: 50000, total: 100000 });
-        capturedProgressFn({ loaded: 100000, total: 100000 });
-      }
-
-      // Verify progress callback was called
-      expect(progressCallback).toHaveBeenCalledWith(expect.any(Number));
-
-      // Verify database progress updates
-      const calls = (database.execute as jest.Mock).mock.calls;
-      const progressCall = calls.find((call) => call[0].includes('progress ='));
-      expect(progressCall).toBeDefined();
+      // ADR-025: fetch doesn't support onUploadProgress
+      // Progress callback is called only at completion (1.0)
+      expect(progressCallback).toHaveBeenCalledWith(1.0);
     });
 
     it('should handle network errors and update status to failed', async () => {
-      mockedAxios.post.mockRejectedValue(new Error('Network timeout'));
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Network timeout'));
 
       (database.execute as jest.Mock).mockReturnValue({ rowsAffected: 1 });
 
@@ -196,7 +181,7 @@ describe('AudioUploadService', () => {
     });
 
     it('should increment retry_count on failure', async () => {
-      mockedAxios.post.mockRejectedValue(new Error('Server error'));
+      (global.fetch as jest.Mock).mockRejectedValue(new Error('Server error'));
 
       (database.execute as jest.Mock).mockReturnValue({ rowsAffected: 1 });
 
