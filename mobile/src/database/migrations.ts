@@ -1695,6 +1695,108 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v18 completed');
     },
   },
+  {
+    version: 19,
+    name: 'Add upload_queue table for audio file upload tracking',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v19: Creating upload_queue table');
+
+      // Create upload_queue table for tracking audio uploads
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS upload_queue (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          file_size INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'uploading', 'completed', 'failed')),
+          progress REAL DEFAULT 0.0,
+          retry_count INTEGER DEFAULT 0,
+          error_message TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Create indexes for performance
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_upload_queue_status
+        ON upload_queue(status)
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_upload_queue_capture
+        ON upload_queue(capture_id)
+      `);
+
+      console.log('[DB] ✅ Migration v19: upload_queue table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v19');
+      db.executeSync('DROP TABLE IF EXISTS upload_queue');
+      console.log('[DB] ✅ Rollback v19 completed');
+    },
+  },
+  {
+    version: 20,
+    name: 'Add last_chunk_uploaded column to upload_queue for resumable uploads',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v20: Adding last_chunk_uploaded to upload_queue');
+
+      // Add last_chunk_uploaded column to track resumable upload progress
+      db.executeSync(`
+        ALTER TABLE upload_queue
+        ADD COLUMN last_chunk_uploaded INTEGER DEFAULT 0
+      `);
+
+      console.log('[DB] ✅ Migration v20: last_chunk_uploaded column added');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v20');
+
+      // SQLite doesn't support DROP COLUMN, so we need to recreate the table
+      db.executeSync(`
+        CREATE TABLE upload_queue_v19 (
+          id TEXT PRIMARY KEY NOT NULL,
+          capture_id TEXT NOT NULL,
+          file_path TEXT NOT NULL,
+          file_size INTEGER NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'uploading', 'completed', 'failed')),
+          progress REAL DEFAULT 0.0,
+          retry_count INTEGER DEFAULT 0,
+          error_message TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+        )
+      `);
+
+      // Copy data back (excluding last_chunk_uploaded)
+      db.executeSync(`
+        INSERT INTO upload_queue_v19 (
+          id, capture_id, file_path, file_size, status, progress, retry_count,
+          error_message, created_at, updated_at
+        )
+        SELECT
+          id, capture_id, file_path, file_size, status, progress, retry_count,
+          error_message, created_at, updated_at
+        FROM upload_queue
+      `);
+
+      db.executeSync('DROP TABLE upload_queue');
+      db.executeSync('ALTER TABLE upload_queue_v19 RENAME TO upload_queue');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_upload_queue_status ON upload_queue(status)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_upload_queue_capture ON upload_queue(capture_id)');
+
+      console.log('[DB] ✅ Rollback v20 completed');
+    },
+  },
 ];
 
 /**

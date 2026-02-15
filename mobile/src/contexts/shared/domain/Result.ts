@@ -9,6 +9,7 @@ export enum RepositoryResultType {
   NOT_FOUND = "not_found",
   DATABASE_ERROR = "database_error",
   VALIDATION_ERROR = "validation_error",
+  NETWORK_ERROR = "network_error",
 }
 
 export type RepositoryResult<T> = {
@@ -41,6 +42,13 @@ export function databaseError<T>(error: string): RepositoryResult<T> {
 export function validationError<T>(error: string): RepositoryResult<T> {
   return {
     type: RepositoryResultType.VALIDATION_ERROR,
+    error,
+  };
+}
+
+export function networkError<T>(error: string): RepositoryResult<T> {
+  return {
+    type: RepositoryResultType.NETWORK_ERROR,
     error,
   };
 }

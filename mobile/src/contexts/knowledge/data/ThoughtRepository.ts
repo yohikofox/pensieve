@@ -5,13 +5,18 @@
  * Repository for managing Thoughts with OP-SQLite local storage
  */
 
-import { injectable } from 'tsyringe';
+import { injectable, inject } from 'tsyringe';
 import { AbstractRepository } from '../../../shared/data/AbstractRepository';
 import type { IThoughtRepository } from '../domain/IThoughtRepository';
 import type { Thought } from '../domain/Thought.model';
+import { SyncTrigger } from '../../../infrastructure/sync/SyncTrigger';
+import { RepositoryResultType } from '../../shared/domain/Result';
 
 @injectable()
 export class ThoughtRepository extends AbstractRepository implements IThoughtRepository {
+  constructor(@inject(SyncTrigger) private syncTrigger: SyncTrigger) {
+    super();
+  }
 
   async findByCaptureId(captureId: string): Promise<Thought | null> {
     const row = this.executeQueryOne<any>(
@@ -23,12 +28,13 @@ export class ThoughtRepository extends AbstractRepository implements IThoughtRep
   }
 
   async create(thought: Thought): Promise<void> {
+    // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
     const query = `
       INSERT INTO thoughts (
         id, capture_id, user_id, summary, confidence_score,
-        processing_time_ms, created_at, updated_at
+        processing_time_ms, created_at, updated_at, _changed
       )
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
     `;
 
     this.executeQuery(query, [
@@ -41,6 +47,13 @@ export class ThoughtRepository extends AbstractRepository implements IThoughtRep
       thought.createdAt,
       thought.updatedAt,
     ]);
+
+    // Story 6.2 Task 3.3: Trigger real-time sync after create (AC3)
+    // ADR-023 Fix: SyncTrigger now returns Result<void>
+    const syncResult = this.syncTrigger.queueSync({ entity: 'thoughts' });
+    if (syncResult.type !== RepositoryResultType.SUCCESS) {
+      console.error("[ThoughtRepository] Failed to trigger sync:", syncResult.error);
+    }
   }
 
   async findById(id: string): Promise<Thought | null> {

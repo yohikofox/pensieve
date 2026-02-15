@@ -27,6 +27,7 @@ export interface SyncResponse {
   retryable: boolean;
   timestamp?: number; // New server timestamp from response
   conflicts?: SyncConflict[];
+  syncedCaptureIds?: string[]; // Capture IDs that were synced (for SyncSuccess event - Task 6.6)
 }
 
 /**

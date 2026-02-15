@@ -26,6 +26,7 @@ import {
 import { mapRowToCapture, type CaptureRow } from "./mappers/capture.mapper";
 import {
   type RepositoryResult,
+  RepositoryResultType,
   success,
   databaseError,
 } from "../domain/Result";
@@ -37,6 +38,7 @@ import type {
   CaptureRecordedEvent,
   CaptureDeletedEvent,
 } from "../events/CaptureEvents";
+import { SyncTrigger } from "../../../infrastructure/sync/SyncTrigger";
 
 export interface CreateCaptureData {
   type: CaptureType;
@@ -70,6 +72,7 @@ export class CaptureRepository implements ICaptureRepository {
     @inject(TOKENS.ISyncQueueService)
     private syncQueueService: ISyncQueueService,
     @inject("EventBus") private eventBus: EventBus,
+    @inject(SyncTrigger) private syncTrigger: SyncTrigger,
   ) {}
 
   /**
@@ -81,11 +84,12 @@ export class CaptureRepository implements ICaptureRepository {
 
     try {
       // Execute INSERT directly (SQLite has implicit transactions per statement)
+      // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
       database.execute(
         `INSERT INTO captures (
           id, type, state, raw_content, duration, file_size,
-          created_at, updated_at, sync_version
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          created_at, updated_at, sync_version, _changed
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
         [
           id,
           data.type,
@@ -116,6 +120,7 @@ export class CaptureRepository implements ICaptureRepository {
       const capture = mapRowToCapture(row);
 
       // Story 2.4 AC4: Add to sync queue automatically (all new captures need sync)
+      // TODO ADR-023: syncQueueService should return Result<number> instead of throwing
       try {
         await this.syncQueueService.enqueue("capture", capture.id, "create", {
           type: capture.type,
@@ -133,6 +138,18 @@ export class CaptureRepository implements ICaptureRepository {
         // Don't fail the capture creation if queue fails
       }
 
+      // Story 6.2 Task 3.3: Trigger real-time sync after save (AC3)
+      // ADR-023 Fix: SyncTrigger now returns Result<void>
+      const syncResult = this.syncTrigger.queueSync({ entity: 'captures' });
+      if (syncResult.type === RepositoryResultType.SUCCESS) {
+        console.log("[CaptureRepository] Triggered auto-sync (debounced 3s)");
+      } else {
+        console.error(
+          "[CaptureRepository] Failed to trigger sync:",
+          syncResult.error,
+        );
+      }
+
       // Story 2.5: Publish CaptureRecorded event (ADR-019)
       // IMPORTANT: Only publish if state='captured' (not 'recording')
       // Audio captures start with state='recording' and transition to 'captured' on stopRecording()
@@ -144,6 +161,8 @@ export class CaptureRepository implements ICaptureRepository {
         capture.type,
       );
       if (capture.state === CAPTURE_STATES.CAPTURED) {
+        // TODO ADR-023: EventBus should return Result<void> instead of throwing
+        // EventBus is a custom wrapper around RxJS Subject, should implement Result Pattern
         try {
           console.log(
             "[CaptureRepository] 🔔 Publishing CaptureRecorded event for capture:",
@@ -237,6 +256,9 @@ export class CaptureRepository implements ICaptureRepository {
 
       fields.push("sync_version = sync_version + 1");
 
+      // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
+      fields.push("_changed = 1");
+
       values.push(id);
 
       // Execute UPDATE directly (SQLite has implicit transactions per statement)
@@ -310,6 +332,18 @@ export class CaptureRepository implements ICaptureRepository {
         console.log(
           '[CaptureRepository] ⏭️  Skipping event publish (state update is not "captured")',
         );
+      }
+
+      // Story 6.2 Task 3.3: Trigger real-time sync after update (AC3)
+      try {
+        this.syncTrigger.queueSync({ entity: 'captures' });
+        console.log("[CaptureRepository] Triggered auto-sync (debounced 3s)");
+      } catch (syncTriggerError) {
+        console.error(
+          "[CaptureRepository] Failed to trigger sync:",
+          syncTriggerError,
+        );
+        // Don't fail the update if sync trigger fails
       }
 
       return success(capture);

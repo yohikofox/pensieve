@@ -64,6 +64,17 @@ import { TranscriptionEngineService } from '../../contexts/Normalization/service
 // Identity Services (Story 7.1)
 import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
 
+// Sync Infrastructure (Story 6.1 & 6.2)
+import { SyncService } from '../sync/SyncService';
+import { SyncTrigger } from '../sync/SyncTrigger';
+import { NetworkMonitor } from '../network/NetworkMonitor';
+import { AutoSyncOrchestrator } from '../sync/AutoSyncOrchestrator';
+
+// Upload Infrastructure (Story 6.2)
+import { AudioUploadService } from '../upload/AudioUploadService';
+import { ChunkedUploadService } from '../upload/ChunkedUploadService';
+import { UploadOrchestrator } from '../upload/UploadOrchestrator';
+
 // Platform Adapters
 import { ExpoAudioAdapter } from '../adapters/ExpoAudioAdapter';
 import { ExpoFileSystemAdapter } from '../adapters/ExpoFileSystemAdapter';
@@ -147,6 +158,29 @@ export function registerServices() {
   // Identity Services (Story 7.1 - Support Mode)
   container.registerSingleton(UserFeaturesService);
 
+  // Sync Infrastructure (Story 6.1 & 6.2)
+  container.registerSingleton(SyncService);
+  container.registerSingleton(SyncTrigger);
+  container.registerSingleton(NetworkMonitor);
+  container.registerSingleton(AutoSyncOrchestrator);
+
+  // Upload Infrastructure (Story 6.2 - Task 6-7)
+  // Note: AudioUploadService and ChunkedUploadService need API URL
+  // They will be resolved with factory pattern when needed
+  container.register(AudioUploadService, {
+    useFactory: () => {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      return new AudioUploadService(apiUrl);
+    },
+  });
+  container.register(ChunkedUploadService, {
+    useFactory: () => {
+      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      return new ChunkedUploadService(apiUrl);
+    },
+  });
+  container.registerSingleton(UploadOrchestrator);
+
   servicesRegistered = true;
-  console.log('[DI Container] ✅ Services registered');
+  console.log('[DI Container] ✅ Services registered (including Story 6.2 sync/upload infrastructure)');
 }

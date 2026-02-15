@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 18;
+export const SCHEMA_VERSION = 20;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -288,6 +288,36 @@ export const CREATE_ANALYSIS_TODOS_TABLE = `
 
 export const CREATE_INDEX_ANALYSIS_TODOS_ANALYSIS_ID = `
   CREATE INDEX IF NOT EXISTS idx_analysis_todos_analysis_id ON analysis_todos(analysis_id)
+`;
+
+/**
+ * Upload Queue Table - Audio File Upload Tracking
+ *
+ * Tracks audio file uploads to MinIO S3 storage with progress and retry logic.
+ * Story 6.2 - Task 6.1: Large audio file upload queue
+ */
+export const CREATE_UPLOAD_QUEUE_TABLE = `
+  CREATE TABLE IF NOT EXISTS upload_queue (
+    id TEXT PRIMARY KEY NOT NULL,
+    capture_id TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    file_size INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'uploading', 'completed', 'failed')),
+    progress REAL DEFAULT 0.0,
+    retry_count INTEGER DEFAULT 0,
+    error_message TEXT,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE
+  )
+`;
+
+export const CREATE_INDEX_UPLOAD_QUEUE_STATUS = `
+  CREATE INDEX IF NOT EXISTS idx_upload_queue_status ON upload_queue(status)
+`;
+
+export const CREATE_INDEX_UPLOAD_QUEUE_CAPTURE = `
+  CREATE INDEX IF NOT EXISTS idx_upload_queue_capture ON upload_queue(capture_id)
 `;
 
 /**

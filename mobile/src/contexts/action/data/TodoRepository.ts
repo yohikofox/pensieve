@@ -6,26 +6,31 @@
  * AC1, AC2: Query todos by ideaId with sorting (priority desc, createdAt asc)
  */
 
-import { injectable } from "tsyringe";
+import { injectable, inject } from "tsyringe";
 import { database } from "../../../database";
 import { Todo, TodoStatus } from "../domain/Todo.model";
 import { ITodoRepository, TodoWithSource } from "../domain/ITodoRepository";
 import { Thought } from "../../knowledge/domain/Thought.model";
 import { Idea } from "../../knowledge/domain/Idea.model";
+import { SyncTrigger } from "../../../infrastructure/sync/SyncTrigger";
+import { RepositoryResultType } from "../../shared/domain/Result";
 
 @injectable()
 export class TodoRepository implements ITodoRepository {
+  constructor(@inject(SyncTrigger) private syncTrigger: SyncTrigger) {}
+
   /**
    * Create a new todo
    * AC1: Store todos in OP-SQLite
    */
   async create(todo: Todo): Promise<void> {
+    // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
     database.execute(
       `INSERT INTO todos (
         id, thought_id, idea_id, capture_id, user_id,
         status, description, deadline, contact, priority, completed_at,
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        created_at, updated_at, _changed
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         todo.id,
         todo.thoughtId,
@@ -42,6 +47,13 @@ export class TodoRepository implements ITodoRepository {
         todo.updatedAt,
       ],
     );
+
+    // Story 6.2 Task 3.3: Trigger real-time sync after create (AC3)
+    // ADR-023 Fix: SyncTrigger now returns Result<void>
+    const syncResult = this.syncTrigger.queueSync({ entity: 'todos' });
+    if (syncResult.type !== RepositoryResultType.SUCCESS) {
+      console.error("[TodoRepository] Failed to trigger sync:", syncResult.error);
+    }
   }
 
   /**
@@ -168,6 +180,9 @@ export class TodoRepository implements ITodoRepository {
     fields.push("updated_at = ?");
     values.push(Date.now());
 
+    // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
+    fields.push("_changed = 1");
+
     // Add id to the end
     values.push(id);
 
@@ -184,6 +199,14 @@ export class TodoRepository implements ITodoRepository {
       `UPDATE todos SET ${fields.join(", ")} WHERE id = ?`,
       values,
     );
+
+    // Story 6.2 Task 3.3: Trigger real-time sync after update (AC3)
+    // ADR-023 Fix: SyncTrigger now returns Result<void>
+    const syncResult = this.syncTrigger.queueSync({ entity: 'todos' });
+    if (syncResult.type !== RepositoryResultType.SUCCESS) {
+      console.error("[TodoRepository] Failed to trigger sync:", syncResult.error);
+    }
+
     return true;
   }
 
@@ -218,6 +241,7 @@ export class TodoRepository implements ITodoRepository {
     // Fetch current todo
     const current = await this.findById(id);
 
+    // TODO ADR-023: Should return RepositoryResult<Todo> instead of throwing
     if (!current) {
       throw new Error(`Todo not found: ${id}`);
     }
@@ -228,16 +252,25 @@ export class TodoRepository implements ITodoRepository {
     const completedAt = newStatus === "completed" ? Date.now() : null;
 
     // Update status and completedAt
+    // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
     database.execute(
       `UPDATE todos
-       SET status = ?, completed_at = ?, updated_at = ?
+       SET status = ?, completed_at = ?, updated_at = ?, _changed = 1
        WHERE id = ?`,
       [newStatus, completedAt, Date.now(), id],
     );
 
+    // Story 6.2 Task 3.3: Trigger real-time sync after toggle (AC3)
+    // ADR-023 Fix: SyncTrigger now returns Result<void>
+    const syncResult = this.syncTrigger.queueSync({ entity: 'todos' });
+    if (syncResult.type !== RepositoryResultType.SUCCESS) {
+      console.error("[TodoRepository] Failed to trigger sync:", syncResult.error);
+    }
+
     // Fetch and return updated todo
     const updated = await this.findById(id);
 
+    // TODO ADR-023: Should return RepositoryResult<Todo> instead of throwing
     if (!updated) {
       throw new Error(`Todo disappeared after toggle: ${id}`);
     }

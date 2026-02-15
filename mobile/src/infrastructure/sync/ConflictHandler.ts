@@ -1,31 +1,56 @@
 /**
- * ConflictHandler
- * Client-side conflict resolution handler
+ * ConflictHandler - Last-Write-Wins Conflict Resolution
  *
- * Story 6.1 - Task 4: Conflict Resolution Logic (Mobile)
- * Applies server-resolved conflicts to local database
+ * Story 6.2 - Task 8.3: Mobile conflict resolution handler
+ *
+ * Implements ADR-009.2: Last-Write-Wins Strategy
+ * - Server timestamp determines winner
+ * - Local DB updated with server version for server_wins
+ * - Client version kept for client_wins
+ * - Conflicts logged for audit trail
+ *
+ * @architecture Layer: Infrastructure - Conflict resolution
+ * @pattern Last-Write-Wins (MVP approach)
  */
 
-import type { SyncConflict } from './types';
 import { DatabaseConnection } from '../../database';
 import type { DB } from '@op-engineering/op-sqlite';
 
 /**
+ * Conflict information from server
+ */
+export interface SyncConflict {
+  entity: string;
+  record_id: string;
+  conflict_type: string;
+  resolution: 'client_wins' | 'server_wins' | 'merged';
+  serverVersion?: any; // Server's version of the record
+}
+
+/**
  * ConflictHandler
- * Handles conflicts returned from server during sync
+ *
+ * Applies server conflict resolutions to local database
  */
 export class ConflictHandler {
   private db: DB;
+
+  // Valid entities for conflict resolution
+  private readonly VALID_ENTITIES = ['captures', 'thoughts', 'ideas', 'todos'];
 
   constructor() {
     this.db = DatabaseConnection.getInstance().getDatabase();
   }
 
   /**
-   * Apply conflicts resolved by server
-   * Server has already determined the winning version - just apply it
+   * Apply conflict resolutions from server
    *
-   * @param conflicts Array of conflicts from sync response
+   * For each conflict:
+   * - server_wins: Update local DB with server version
+   * - client_wins: Keep local version (no action)
+   * - merged: Apply merged version (not implemented in MVP)
+   *
+   * @param conflicts - Array of conflicts from server sync response
    */
   async applyConflicts(conflicts: SyncConflict[]): Promise<void> {
     if (!conflicts || conflicts.length === 0) {
@@ -37,12 +62,12 @@ export class ConflictHandler {
     for (const conflict of conflicts) {
       try {
         await this.applyConflict(conflict);
-      } catch (error) {
+      } catch (error: any) {
         console.error(
-          `[ConflictHandler] Failed to apply conflict for ${conflict.entity}:${conflict.record_id}`,
-          error,
+          `[ConflictHandler] Failed to apply conflict for ${conflict.entity}:${conflict.record_id}:`,
+          error.message,
         );
-        // Continue with other conflicts even if one fails
+        // Continue processing other conflicts
       }
     }
 
@@ -51,144 +76,86 @@ export class ConflictHandler {
 
   /**
    * Apply single conflict resolution
+   *
+   * @param conflict - Conflict to resolve
    */
   private async applyConflict(conflict: SyncConflict): Promise<void> {
-    const { entity, record_id, resolution } = conflict;
+    const { entity, record_id, resolution, serverVersion } = conflict;
 
+    // Validate entity
+    if (!this.VALID_ENTITIES.includes(entity)) {
+      console.warn(
+        `[ConflictHandler] Invalid entity type: ${entity}. Skipping.`,
+      );
+      return;
+    }
+
+    // Log conflict
     console.log(
-      `[ConflictHandler] Applying conflict: ${entity}:${record_id} (${resolution})`,
+      `[ConflictHandler] Resolving ${entity}:${record_id} → ${resolution}`,
     );
 
-    // Server has resolved the conflict and will send the winning version
-    // in the next pull response. We just need to:
-    // 1. Mark the local record as no longer changed (_changed = 0)
-    // 2. Log the conflict for user awareness (optional)
+    // Handle resolution strategy
+    if (resolution === 'client_wins') {
+      // Keep local version - no action needed
+      return;
+    }
 
-    try {
-      // Mark as synced to prevent re-pushing the conflicted version
-      this.db.executeSync(
-        `UPDATE ${entity} SET _changed = 0 WHERE id = ?`,
-        [record_id],
+    if (resolution === 'server_wins') {
+      // Update local DB with server version
+      await this.updateLocalRecord(entity, record_id, serverVersion);
+      return;
+    }
+
+    if (resolution === 'merged') {
+      // Merged resolution not implemented in MVP
+      console.warn(
+        `[ConflictHandler] Merged resolution not supported yet. Treating as server_wins.`,
       );
-
-      // Store conflict info in local conflict log (optional - for user UI)
-      this.logConflictLocally(conflict);
-    } catch (error) {
-      console.error(`[ConflictHandler] Database update failed:`, error);
-      throw error;
+      await this.updateLocalRecord(entity, record_id, serverVersion);
+      return;
     }
   }
 
   /**
-   * Log conflict locally for user notification
-   * Can be used to show "Your changes were merged" notifications
+   * Update local record with server version
+   *
+   * @param entity - Entity type (captures, todos, etc.)
+   * @param recordId - Record ID
+   * @param serverVersion - Server's version of the record
    */
-  private logConflictLocally(conflict: SyncConflict): void {
-    try {
-      // Create local conflicts table if not exists (on-demand)
-      this.db.executeSync(`
-        CREATE TABLE IF NOT EXISTS local_conflicts (
-          id TEXT PRIMARY KEY,
-          entity TEXT NOT NULL,
-          record_id TEXT NOT NULL,
-          conflict_type TEXT NOT NULL,
-          resolution TEXT NOT NULL,
-          resolved_at INTEGER NOT NULL,
-          notified INTEGER NOT NULL DEFAULT 0
-        )
-      `);
-
-      // Insert conflict record
-      this.db.executeSync(
-        `INSERT OR REPLACE INTO local_conflicts
-         (id, entity, record_id, conflict_type, resolution, resolved_at, notified)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          `${conflict.entity}_${conflict.record_id}_${Date.now()}`,
-          conflict.entity,
-          conflict.record_id,
-          conflict.conflict_type,
-          conflict.resolution,
-          Date.now(),
-          0, // Not yet notified to user
-        ],
+  private async updateLocalRecord(
+    entity: string,
+    recordId: string,
+    serverVersion: any,
+  ): Promise<void> {
+    if (!serverVersion) {
+      console.warn(
+        `[ConflictHandler] No server version provided for ${entity}:${recordId}`,
       );
-    } catch (error) {
-      // Non-critical - just log and continue
-      console.warn('[ConflictHandler] Failed to log conflict locally:', error);
+      return;
     }
-  }
 
-  /**
-   * Get unnotified conflicts for user UI
-   * Can be used to show a banner: "3 items were merged during sync"
-   */
-  async getUnnotifiedConflicts(): Promise<SyncConflict[]> {
-    try {
-      const result = this.db.executeSync(
-        `SELECT * FROM local_conflicts WHERE notified = 0 ORDER BY resolved_at DESC`,
-      );
+    // Build UPDATE statement dynamically
+    const fields = Object.keys(serverVersion).filter((key) => key !== 'id');
+    const setClause = fields.map((field) => `${field} = ?`).join(', ');
+    const values = fields.map((field) => serverVersion[field]);
 
-      if (!result.rows || result.rows.length === 0) {
-        return [];
-      }
+    const sql = `UPDATE ${entity} SET ${setClause} WHERE id = ?`;
+    const params = [...values, recordId];
 
-      const conflicts: SyncConflict[] = [];
-      for (let i = 0; i < result.rows.length; i++) {
-        const row = result.rows.item(i);
-        conflicts.push({
-          entity: row.entity,
-          record_id: row.record_id,
-          conflict_type: row.conflict_type,
-          resolution: row.resolution,
-        });
-      }
+    this.db.execute(sql, params);
 
-      return conflicts;
-    } catch (error) {
-      console.error('[ConflictHandler] Failed to get unnotified conflicts:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Mark conflicts as notified (after showing to user)
-   */
-  async markConflictsNotified(recordIds: string[]): Promise<void> {
-    if (recordIds.length === 0) return;
-
-    try {
-      const placeholders = recordIds.map(() => '?').join(',');
-      this.db.executeSync(
-        `UPDATE local_conflicts SET notified = 1 WHERE record_id IN (${placeholders})`,
-        recordIds,
-      );
-    } catch (error) {
-      console.error('[ConflictHandler] Failed to mark conflicts notified:', error);
-    }
-  }
-
-  /**
-   * Clear old conflicts (older than 30 days)
-   */
-  async clearOldConflicts(): Promise<void> {
-    try {
-      const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-
-      this.db.executeSync(
-        `DELETE FROM local_conflicts WHERE resolved_at < ?`,
-        [thirtyDaysAgo],
-      );
-
-      console.log('[ConflictHandler] Old conflicts cleared');
-    } catch (error) {
-      console.error('[ConflictHandler] Failed to clear old conflicts:', error);
-    }
+    console.log(
+      `[ConflictHandler] Updated ${entity}:${recordId} with server version`,
+    );
   }
 }
 
 /**
- * Singleton instance
+ * Singleton ConflictHandler instance
+ *
+ * Export factory function for DI compatibility
  */
 let conflictHandlerInstance: ConflictHandler | null = null;
 

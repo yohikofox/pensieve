@@ -118,4 +118,36 @@ export class MinioService implements OnModuleInit {
       throw error;
     }
   }
+
+  /**
+   * Upload object directly from buffer
+   *
+   * Story 6.2 - Task 7.3: Direct upload support
+   *
+   * @param objectName The name/path of the object in the bucket
+   * @param buffer File buffer to upload
+   * @param contentType MIME type of the file
+   * @returns The object name/path
+   */
+  async putObject(
+    objectName: string,
+    buffer: Buffer,
+    contentType: string,
+  ): Promise<string> {
+    try {
+      await this.client.putObject(
+        this.bucket,
+        objectName,
+        buffer,
+        buffer.length,
+        {
+          'Content-Type': contentType,
+        },
+      );
+      return objectName;
+    } catch (error) {
+      console.error('Error uploading object:', error);
+      throw error;
+    }
+  }
 }

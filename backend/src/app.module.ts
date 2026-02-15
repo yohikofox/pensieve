@@ -11,6 +11,7 @@ import { NotificationModule } from './modules/notification/notification.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Multi-level permissions system
 import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile ↔ Backend sync infrastructure
+import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: Audio file uploads
 
 @Module({
   imports: [
@@ -48,6 +49,8 @@ import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile �
     AdminAuthModule,
     // Sync module (Mobile ↔ Backend synchronization - Story 6.1)
     SyncModule,
+    // Uploads module (Audio file uploads to MinIO - Story 6.2)
+    UploadsModule,
   ],
   controllers: [AppController],
   providers: [],
