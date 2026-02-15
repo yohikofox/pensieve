@@ -1,11 +1,11 @@
-import { injectable } from 'tsyringe';
-import { SyncService } from './SyncService';
-import { SyncResult } from './types';
+import { injectable } from "tsyringe";
+import { SyncService } from "./SyncService";
+import { SyncResult } from "./types";
 import {
   type RepositoryResult,
   RepositoryResultType,
   success,
-} from '../../contexts/shared/domain/Result';
+} from "../../contexts/shared/domain/Result";
 
 /**
  * SyncTrigger
@@ -36,18 +36,14 @@ import {
 @injectable()
 export class SyncTrigger {
   private syncTimeout: NodeJS.Timeout | null = null;
-  private readonly debounceDelayMs: number;
+  private readonly debounceDelayMs: number = 3000; // AC3: 3s debounce
   private isEnabled: boolean = true;
 
   /**
-   * @param syncService - Service de synchronisation
-   * @param debounceDelayMs - Délai de debounce en ms (défaut: 3000ms = 3s selon AC3)
+   * @param syncService - Service de synchronisation (injected via tsyringe)
    */
-  constructor(
-    private syncService: SyncService,
-    debounceDelayMs: number = 3000,
-  ) {
-    this.debounceDelayMs = debounceDelayMs;
+  constructor(private syncService: SyncService) {
+    // Debounce delay is hardcoded to avoid DI primitive injection issues
   }
 
   /**
@@ -57,9 +53,12 @@ export class SyncTrigger {
    * AC3: Debounce 3 secondes pour éviter spam API.
    * ADR-023: Retourne Result<void> au lieu de throw.
    */
-  public queueSync(options?: { priority?: string; entity?: string }): RepositoryResult<void> {
+  public queueSync(options?: {
+    priority?: string;
+    entity?: string;
+  }): RepositoryResult<void> {
     if (!this.isEnabled) {
-      console.log('[SyncTrigger] Sync trigger disabled, skipping');
+      console.log("[SyncTrigger] Sync trigger disabled, skipping");
       return success(void 0);
     }
 
@@ -75,7 +74,7 @@ export class SyncTrigger {
     }, this.debounceDelayMs);
 
     console.log(
-      `[SyncTrigger] Sync queued (debounce ${this.debounceDelayMs}ms)${options?.entity ? ` for entity: ${options.entity}` : ''}`,
+      `[SyncTrigger] Sync queued (debounce ${this.debounceDelayMs}ms)${options?.entity ? ` for entity: ${options.entity}` : ""}`,
     );
 
     return success(void 0);
@@ -91,7 +90,7 @@ export class SyncTrigger {
     entity?: string;
   }): Promise<RepositoryResult<void>> {
     if (!this.isEnabled) {
-      console.log('[SyncTrigger] Sync trigger disabled, skipping');
+      console.log("[SyncTrigger] Sync trigger disabled, skipping");
       return success(void 0);
     }
 
@@ -118,7 +117,9 @@ export class SyncTrigger {
       this.syncTimeout = null;
     }
 
-    console.log(`[SyncTrigger] Sync trigger ${enabled ? 'enabled' : 'disabled'}`);
+    console.log(
+      `[SyncTrigger] Sync trigger ${enabled ? "enabled" : "disabled"}`,
+    );
   }
 
   /**
@@ -129,10 +130,10 @@ export class SyncTrigger {
    * @param options - Options de sync (priority, entity)
    */
   private async executeSync(options?: {
-    priority?: 'low' | 'normal' | 'high' | string;
-    entity?: 'captures' | 'thoughts' | 'ideas' | 'todos';
+    priority?: "low" | "normal" | "high" | string;
+    entity?: "captures" | "thoughts" | "ideas" | "todos";
   }): Promise<void> {
-    console.log('[SyncTrigger] ⏰ Executing queued sync...');
+    console.log("[SyncTrigger] ⏰ Executing queued sync...");
 
     // AC3: Non-blocking background sync
     // Note: On ne await PAS ici pour ne pas bloquer le caller
@@ -140,14 +141,20 @@ export class SyncTrigger {
     // ADR-023 Fix: Utiliser Result Pattern au lieu de .catch()
     this.syncService
       .sync({
-        priority: options?.priority || 'normal',
+        priority: options?.priority || "normal",
         entity: options?.entity,
       })
       .then((result) => {
         if (result.result === SyncResult.SUCCESS) {
-          console.log('[SyncTrigger] ✅ Background sync completed successfully');
+          console.log(
+            "[SyncTrigger] ✅ Background sync completed successfully",
+          );
         } else {
-          console.error('[SyncTrigger] ❌ Background sync failed:', result.error);
+          console.error(
+            "[SyncTrigger] ❌ Background sync failed:",
+            result.error,
+            result.result,
+          );
           // Note: Pas de throw - on ne veut pas crash l'app pour un échec de sync
         }
       });

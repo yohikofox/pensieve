@@ -28,6 +28,7 @@ import { retryWithFibonacci, isRetryableError } from './retry-logic';
 import { getConflictHandler } from './ConflictHandler';
 import type { EventBus } from '@/contexts/shared/events/EventBus';
 import { useSyncStatusStore } from '@/stores/SyncStatusStore';
+import { injectable } from 'tsyringe';
 
 // Sync configuration
 const CHUNK_SIZE = 100; // Task 3.7: Max records per sync batch
@@ -47,6 +48,7 @@ function validateEntity(entity: string): entity is typeof VALID_ENTITIES[number]
  * SyncService
  * Handles bidirectional sync between mobile and backend
  */
+@injectable()
 export class SyncService {
   private db: DB;
   private apiClient: AxiosInstance;
@@ -196,6 +198,7 @@ export class SyncService {
         : 0;
 
       // Call backend /api/sync/pull
+      console.log(`[Sync] Calling PULL: ${this.baseUrl}/api/sync/pull`);
       const response = await retryWithFibonacci(
         async () => {
           const { data } = await this.apiClient.get('/api/sync/pull', {
@@ -227,8 +230,10 @@ export class SyncService {
         timestamp: response.timestamp,
         data: response.changes,
       };
-    } catch (error) {
-      console.error('[Sync] ❌ PULL failed:', error);
+    } catch (error: any) {
+      const url = `${this.baseUrl}/api/sync/pull`;
+      const status = error?.response?.status || 'unknown';
+      console.error(`[Sync] ❌ PULL failed (${status}): ${url}`, error?.message);
       throw error;
     }
   }

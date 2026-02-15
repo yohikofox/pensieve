@@ -12,6 +12,24 @@ import 'reflect-metadata';
 import { container } from 'tsyringe';
 import { TOKENS } from './tokens';
 
+/**
+ * Re-export container for use in components/hooks
+ *
+ * Story 6.2 - Bug Fix: Container must be exported for lazy resolution
+ *
+ * Why export?
+ * - React hooks/components need to resolve services at runtime (not module load time)
+ * - Direct import from 'tsyringe' would create multiple container instances
+ * - Centralized export ensures single container instance across the app
+ *
+ * Example usage in hooks:
+ * ```typescript
+ * import { container } from '../../infrastructure/di/container';
+ * const authService = container.resolve<IAuthService>('IAuthService');
+ * ```
+ */
+export { container };
+
 // Infrastructure Services
 import { LoggerService } from '../logging/LoggerService';
 import type { ILogger } from '../logging/ILogger';
@@ -63,6 +81,8 @@ import { TranscriptionEngineService } from '../../contexts/Normalization/service
 
 // Identity Services (Story 7.1)
 import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
+import { SupabaseAuthService } from '../../contexts/identity/services/SupabaseAuthService';
+import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
 
 // Sync Infrastructure (Story 6.1 & 6.2)
 import { SyncService } from '../sync/SyncService';
@@ -158,8 +178,15 @@ export function registerServices() {
   // Identity Services (Story 7.1 - Support Mode)
   container.registerSingleton(UserFeaturesService);
 
+  // Story 6.2: Auth service abstraction to isolate Supabase dependency
+  container.registerSingleton<IAuthService>('IAuthService', SupabaseAuthService);
+
   // Sync Infrastructure (Story 6.1 & 6.2)
-  container.registerSingleton(SyncService);
+  // SyncService MUST be singleton - auth token is set on this instance
+  const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+  const syncServiceInstance = new SyncService(apiUrl, eventBus);
+  container.registerInstance(SyncService, syncServiceInstance);
+
   container.registerSingleton(SyncTrigger);
   container.registerSingleton(NetworkMonitor);
   container.registerSingleton(AutoSyncOrchestrator);
