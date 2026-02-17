@@ -12,6 +12,7 @@ import { AuthorizationModule } from './modules/authorization/authorization.modul
 import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Multi-level permissions system
 import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile ↔ Backend sync infrastructure
 import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: Audio file uploads
+import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: Persistance captures backend
 
 @Module({
   imports: [
@@ -47,6 +48,8 @@ import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: 
     // Authorization module (Multi-level permissions system)
     AuthorizationModule,
     AdminAuthModule,
+    // Capture module (Persistance captures backend - Story 6.3)
+    CaptureModule,
     // Sync module (Mobile ↔ Backend synchronization - Story 6.1)
     SyncModule,
     // Uploads module (Audio file uploads to MinIO - Story 6.2)

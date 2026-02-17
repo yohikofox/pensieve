@@ -8,6 +8,10 @@ import { SyncConflict } from './domain/entities/sync-conflict.entity';
 import { Thought } from '../knowledge/domain/entities/thought.entity';
 import { Idea } from '../knowledge/domain/entities/idea.entity';
 import { Todo } from '../action/domain/entities/todo.entity';
+import { Capture } from '../capture/domain/entities/capture.entity';
+import { CaptureType } from '../capture/domain/entities/capture-type.entity';
+import { CaptureState } from '../capture/domain/entities/capture-state.entity';
+import { CaptureSyncStatus } from '../capture/domain/entities/capture-sync-status.entity';
 
 /**
  * Sync Module (AC1 - Task 1.1)
@@ -31,7 +35,11 @@ import { Todo } from '../action/domain/entities/todo.entity';
       Thought,
       Idea,
       Todo,
-      // TODO: Add Capture entity when created
+      // Capture entities (Story 6.3)
+      Capture,
+      CaptureType,
+      CaptureState,
+      CaptureSyncStatus,
     ]),
     // Note: SupabaseAuthGuard is provided by @Global() SharedModule
   ],

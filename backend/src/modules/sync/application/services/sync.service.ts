@@ -4,6 +4,8 @@ import { Repository, MoreThan, DataSource } from 'typeorm';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
+import { Capture } from '../../../capture/domain/entities/capture.entity';
+import { CaptureSyncStatus } from '../../../capture/domain/entities/capture-sync-status.entity';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../../infrastructure/sync-conflict-resolver';
 import { PullRequestDto } from '../dto/pull-request.dto';
@@ -30,6 +32,10 @@ export class SyncService {
     private readonly ideaRepository: Repository<Idea>,
     @InjectRepository(Todo)
     private readonly todoRepository: Repository<Todo>,
+    @InjectRepository(Capture)
+    private readonly captureRepository: Repository<Capture>,
+    @InjectRepository(CaptureSyncStatus)
+    private readonly captureSyncStatusRepository: Repository<CaptureSyncStatus>,
     @InjectRepository(SyncLog)
     private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
@@ -58,8 +64,9 @@ export class SyncService {
       const changes: SyncResponseDto['changes'] = {};
 
       // Fetch changes for each entity
-      // TODO: Add Capture entity when it's created
-      const entities = dto.entities ? dto.entities.split(',') : ['thought', 'idea', 'todo'];
+      const entities = dto.entities
+        ? dto.entities.split(',')
+        : ['thought', 'idea', 'todo', 'captures'];
 
       for (const entity of entities) {
         const entityChanges = await this.getEntityChanges(
@@ -67,7 +74,10 @@ export class SyncService {
           userId,
           lastPulledAt,
         );
-        if (entityChanges.updated.length > 0 || entityChanges.deleted.length > 0) {
+        if (
+          entityChanges.updated.length > 0 ||
+          entityChanges.deleted.length > 0
+        ) {
           changes[entity] = entityChanges;
         }
       }
@@ -85,7 +95,8 @@ export class SyncService {
         timestamp,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       this.logger.error(
@@ -130,6 +141,7 @@ export class SyncService {
           thought: manager.getRepository(Thought),
           idea: manager.getRepository(Idea),
           todo: manager.getRepository(Todo),
+          captures: manager.getRepository(Capture),
         };
 
         // Process each entity
@@ -189,7 +201,8 @@ export class SyncService {
         conflicts: conflicts.length > 0 ? conflicts : undefined,
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       this.logger.error(
@@ -214,6 +227,11 @@ export class SyncService {
     userId: string,
     lastPulledAt: number,
   ): Promise<{ updated: any[]; deleted: string[] }> {
+    // Capture utilise des FK relations pour syncStatus — traitement spécifique
+    if (entity === 'captures') {
+      return this.getCaptureChanges(userId, lastPulledAt);
+    }
+
     const repository = this.getRepository(entity);
 
     if (!repository) {
@@ -245,6 +263,39 @@ export class SyncService {
     return {
       updated,
       deleted: deleted.map((r: any) => r.id),
+    };
+  }
+
+  /**
+   * Get capture changes for PULL — filtre via la relation syncStatus
+   * Retourne clientId + id pour que le mobile puisse réconcilier
+   */
+  private async getCaptureChanges(
+    userId: string,
+    lastPulledAt: number,
+  ): Promise<{ updated: any[]; deleted: string[] }> {
+    const updated = await this.captureRepository.find({
+      where: {
+        userId,
+        lastModifiedAt: MoreThan(lastPulledAt),
+        syncStatus: { name: 'active' },
+      } as any,
+      relations: ['syncStatus', 'type', 'state'],
+    });
+
+    const deleted = await this.captureRepository.find({
+      where: {
+        userId,
+        lastModifiedAt: MoreThan(lastPulledAt),
+        syncStatus: { name: 'deleted' },
+      } as any,
+      relations: ['syncStatus'],
+      select: ['id', 'clientId'] as any,
+    });
+
+    return {
+      updated,
+      deleted: deleted.map((r) => r.clientId), // Le mobile identifie par clientId
     };
   }
 
@@ -346,10 +397,19 @@ export class SyncService {
     lastPulledAt: number,
     transactionalRepos: Record<string, Repository<any>>,
   ): Promise<{ conflict: boolean; strategy?: string }> {
+    // Capture nécessite un traitement spécifique (clientId ≠ id backend)
+    if (entity === 'captures') {
+      return this.applyCapturePushInTransaction(
+        userId,
+        clientRecord,
+        lastPulledAt,
+        transactionalRepos['captures'],
+      );
+    }
+
     const repository = transactionalRepos[entity];
 
     if (!repository) {
-      // TODO: Add Capture entity when it's created. Skip unknown entities for now.
       this.logger.warn(`Skipping PUSH for unsupported entity: ${entity}`);
       return { conflict: false };
     }
@@ -405,6 +465,75 @@ export class SyncService {
   }
 
   /**
+   * Applique un PUSH capture dans une transaction.
+   *
+   * Le mobile envoie son id local comme clientId.
+   * La recherche se fait par (clientId, userId) et non (id, userId).
+   * Si la capture n'existe pas → CREATE avec un nouvel UUID backend.
+   */
+  private async applyCapturePushInTransaction(
+    userId: string,
+    clientRecord: any,
+    lastPulledAt: number,
+    repository: Repository<any>,
+  ): Promise<{ conflict: boolean; strategy?: string }> {
+    if (!repository) {
+      this.logger.warn('Skipping PUSH for captures: repository not available');
+      return { conflict: false };
+    }
+
+    // clientRecord.id est l'ID mobile → devient clientId côté backend
+    const clientId = clientRecord.id;
+
+    const serverRecord = await repository.findOne({
+      where: { clientId, userId },
+    });
+
+    if (!serverRecord) {
+      // Nouvelle capture : génère un nouvel UUID backend, stocke clientId
+      const { id: _mobileId, ...rest } = clientRecord;
+      await repository.save({
+        ...rest,
+        clientId,
+        userId,
+        last_modified_at: Date.now(),
+      });
+      return { conflict: false };
+    }
+
+    // Vérifie conflit
+    const hasConflict = this.conflictResolver.hasConflict(
+      serverRecord,
+      lastPulledAt,
+    );
+
+    if (hasConflict) {
+      const resolution = await this.conflictResolver.resolve(
+        serverRecord,
+        clientRecord,
+        'capture',
+      );
+      await repository.save({
+        ...resolution.resolvedRecord,
+        id: serverRecord.id,
+        clientId: serverRecord.clientId,
+        userId,
+      });
+      return { conflict: true, strategy: resolution.strategy };
+    } else {
+      const { id: _mobileId, ...rest } = clientRecord;
+      await repository.save({
+        ...rest,
+        id: serverRecord.id,
+        clientId: serverRecord.clientId,
+        userId,
+        last_modified_at: Date.now(),
+      });
+      return { conflict: false };
+    }
+  }
+
+  /**
    * Apply client delete within transaction (atomicity for PUSH)
    */
   private async applyClientDeleteInTransaction(
@@ -413,10 +542,34 @@ export class SyncService {
     recordId: string,
     transactionalRepos: Record<string, Repository<any>>,
   ): Promise<void> {
+    // Capture : suppression soft via syncStatusId, recherche par clientId
+    if (entity === 'captures') {
+      const captureRepo = transactionalRepos['captures'];
+      if (!captureRepo) {
+        this.logger.warn('Skipping DELETE for captures: repository not available');
+        return;
+      }
+      // recordId = clientId côté mobile
+      const deletedStatus = await this.captureSyncStatusRepository.findOne({
+        where: { name: 'deleted' },
+      });
+      if (!deletedStatus) {
+        this.logger.warn('capture_sync_statuses: status "deleted" not found');
+        return;
+      }
+      await captureRepo.update(
+        { clientId: recordId, userId } as any,
+        {
+          syncStatusId: deletedStatus.id,
+          last_modified_at: Date.now(),
+        } as any,
+      );
+      return;
+    }
+
     const repository = transactionalRepos[entity];
 
     if (!repository) {
-      // TODO: Add Capture entity when it's created. Skip unknown entities for now.
       this.logger.warn(`Skipping DELETE for unsupported entity: ${entity}`);
       return;
     }
@@ -441,7 +594,8 @@ export class SyncService {
         return this.ideaRepository;
       case 'todo':
         return this.todoRepository;
-      // TODO: Add Capture repository when entity is created
+      case 'captures':
+        return this.captureRepository;
       default:
         return null;
     }
@@ -453,8 +607,8 @@ export class SyncService {
   private countRecords(changes: Record<string, any>): number {
     let count = 0;
     for (const entityChanges of Object.values(changes)) {
-      count += (entityChanges.updated?.length || 0);
-      count += (entityChanges.deleted?.length || 0);
+      count += entityChanges.updated?.length || 0;
+      count += entityChanges.deleted?.length || 0;
     }
     return count;
   }
@@ -491,7 +645,8 @@ export class SyncService {
 
       await this.syncLogRepository.save(log);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       const errorStack = error instanceof Error ? error.stack : undefined;
 
       this.logger.error(
