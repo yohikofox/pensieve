@@ -1,12 +1,15 @@
 /**
  * Custom hook for managing audio playback in captures
  * Handles play/pause/stop state and audio player lifecycle
+ * Story 6.3 - Task 2.5: Lazy audio loading integration
  */
 import { useState, useEffect, useCallback } from 'react';
 import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
 import { useTranslation } from 'react-i18next';
 import type { Capture } from '../contexts/capture/domain/Capture.model';
 import { useToast } from '../design-system/components';
+import { container } from '../infrastructure/di/container';
+import { LazyAudioDownloader } from '../infrastructure/sync/LazyAudioDownloader';
 
 export function useCaptureAudioPlayer() {
   const { t } = useTranslation();
@@ -16,9 +19,14 @@ export function useCaptureAudioPlayer() {
   const [currentAudioPath, setCurrentAudioPath] = useState<string | null>(null);
   const [shouldAutoPlay, setShouldAutoPlay] = useState(false);
   const [playingWavCaptureId, setPlayingWavCaptureId] = useState<string | null>(null);
+  const [isDownloadingAudio, setIsDownloadingAudio] = useState(false);
 
   const player = useAudioPlayer(currentAudioPath);
   const playerStatus = useAudioPlayerStatus(player);
+
+  // Lazy audio downloader (Story 6.3 - Task 2.5)
+  // Create instance directly (not using DI for simplicity)
+  const lazyAudioDownloader = new LazyAudioDownloader();
 
   // Auto-play when source is loaded and shouldAutoPlay is true
   useEffect(() => {
@@ -48,12 +56,33 @@ export function useCaptureAudioPlayer() {
   }, [playerStatus.didJustFinish, player, playingCaptureId]);
 
   const handlePlayPause = useCallback(
-    (capture: Capture) => {
-      const audioPath = capture.rawContent;
+    async (capture: Capture) => {
+      // Story 6.3 - Task 2.5: Lazy audio loading
+      // First try to get local audio path (either rawContent or audio_local_path)
+      let audioPath = capture.rawContent;
+
+      // If no local path, try lazy loading from server (audio_url)
       if (!audioPath) {
-        console.error('[AudioPlayer] Play failed: no audio file');
-        toast.error(t('capture.alerts.noAudioFile'));
-        return;
+        console.log('[AudioPlayer] No local audio, attempting lazy download...');
+        setIsDownloadingAudio(true);
+
+        try {
+          const downloadedPath = await lazyAudioDownloader.downloadAudioIfNeeded(capture.id);
+          setIsDownloadingAudio(false);
+
+          if (!downloadedPath) {
+            console.error('[AudioPlayer] Play failed: audio download returned null');
+            toast.error(t('capture.alerts.noAudioFile'));
+            return;
+          }
+
+          audioPath = downloadedPath;
+        } catch (error) {
+          setIsDownloadingAudio(false);
+          console.error('[AudioPlayer] Audio download failed:', error);
+          toast.error('Échec du téléchargement audio');
+          return;
+        }
       }
 
       // If same capture and already loaded, toggle play/pause
@@ -70,7 +99,7 @@ export function useCaptureAudioPlayer() {
         setShouldAutoPlay(true);
       }
     },
-    [playingCaptureId, currentAudioPath, playerStatus.playing, player, t, toast]
+    [playingCaptureId, currentAudioPath, playerStatus.playing, player, t, toast, lazyAudioDownloader]
   );
 
   const handleStop = useCallback(
@@ -127,5 +156,6 @@ export function useCaptureAudioPlayer() {
     handleStop,
     handlePlayWav,
     stopWavPlayback,
+    isDownloadingAudio, // Story 6.3 - Task 2.5: Expose download state
   };
 }

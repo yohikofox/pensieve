@@ -22,9 +22,15 @@
  */
 
 import { useEffect } from 'react';
+import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import { container } from 'tsyringe';
 import { EventBus } from '../contexts/shared/events/EventBus';
 import { useCapturesStore } from '../stores/capturesStore';
+
+// Enable LayoutAnimation on Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import type {
   QueueItemCompletedEvent,
   QueueItemFailedEvent,
@@ -36,6 +42,7 @@ import type {
   CaptureDeletedEvent,
   CaptureUpdatedEvent
 } from '../contexts/capture/events/CaptureEvents';
+import type { SyncCompletedEvent } from '../infrastructure/sync/events/SyncEvents';
 
 /**
  * Hook qui synchronise les événements du EventBus avec le CapturesStore
@@ -95,6 +102,27 @@ export function useCapturesListener() {
       updateCapture(event.payload.captureId);
     };
 
+    // Story 6.3 - Task 3.4 & 3.5: Reactive UI update after sync with subtle animation
+    const handleSyncCompleted = (event: SyncCompletedEvent) => {
+      // Only reload if captures were synced
+      if (event.payload.entities.includes('captures')) {
+        console.log('[CapturesListener] 🔄 Sync completed, reloading captures...');
+
+        // Task 3.5: Subtle fade-in animation for new items (AC3)
+        // LayoutAnimation provides a subtle, system-level animation that's not distracting
+        LayoutAnimation.configureNext(
+          LayoutAnimation.create(
+            200, // duration: short for subtlety
+            LayoutAnimation.Types.easeInEaseOut,
+            LayoutAnimation.Properties.opacity
+          )
+        );
+
+        const { loadCaptures } = useCapturesStore.getState();
+        loadCaptures(); // Reload all captures from DB
+      }
+    };
+
     // S'abonner aux événements
     const subscriptions = [
       eventBus.subscribe<QueueItemAddedEvent>('QueueItemAdded', handleAdded),
@@ -104,6 +132,7 @@ export function useCapturesListener() {
       eventBus.subscribe<CaptureRecordedEvent>('CaptureRecorded', handleRecorded),
       eventBus.subscribe<CaptureDeletedEvent>('CaptureDeleted', handleDeleted),
       eventBus.subscribe<CaptureUpdatedEvent>('CaptureUpdated', handleUpdated),
+      eventBus.subscribe<SyncCompletedEvent>('SyncCompleted', handleSyncCompleted),
     ];
 
     console.log('[CapturesListener] ✓ Event listeners active');

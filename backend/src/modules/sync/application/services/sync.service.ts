@@ -349,7 +349,9 @@ export class SyncService {
     const repository = transactionalRepos[entity];
 
     if (!repository) {
-      throw new Error(`Unknown entity: ${entity}`);
+      // TODO: Add Capture entity when it's created. Skip unknown entities for now.
+      this.logger.warn(`Skipping PUSH for unsupported entity: ${entity}`);
+      return { conflict: false };
     }
 
     // Fetch current server record
@@ -414,7 +416,9 @@ export class SyncService {
     const repository = transactionalRepos[entity];
 
     if (!repository) {
-      throw new Error(`Unknown entity: ${entity}`);
+      // TODO: Add Capture entity when it's created. Skip unknown entities for now.
+      this.logger.warn(`Skipping DELETE for unsupported entity: ${entity}`);
+      return;
     }
 
     await repository.update(

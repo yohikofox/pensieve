@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 21;
+export const SCHEMA_VERSION = 23;
 
 /**
  * Captures Table - Audio and Text Captures

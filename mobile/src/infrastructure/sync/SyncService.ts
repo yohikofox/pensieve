@@ -27,6 +27,7 @@ import {
 import { retryWithFibonacci, isRetryableError } from './retry-logic';
 import { getConflictHandler } from './ConflictHandler';
 import type { EventBus } from '@/contexts/shared/events/EventBus';
+import type { SyncCompletedEvent } from './events/SyncEvents';
 import { useSyncStatusStore } from '@/stores/SyncStatusStore';
 import { injectable } from 'tsyringe';
 
@@ -186,54 +187,119 @@ export class SyncService {
         ? Math.min(...lastPulledTimes)
         : 0;
 
-      // Call backend /api/sync/pull
-      const queryParams = new URLSearchParams({
-        lastPulledAt: String(options?.forceFull ? 0 : lastPulledAt),
-      });
-      const pullUrl = `${this.baseUrl}/api/sync/pull?${queryParams}`;
-      console.log(`[Sync] Calling PULL: ${pullUrl}`);
+      // Story 6.3 - Task 4.4: Batching for large datasets (100 records max per batch)
+      let batchNumber = 1;
+      let offset = 0;
+      let totalChangesCount = 0;
+      let hasMoreBatches = true;
+      let finalTimestamp = Date.now();
+      let allConflicts: any[] = []; // Story 6.3 - Task 7.3: Collect conflicts from all batches
 
-      const response = await retryWithFibonacci(
-        async () => {
-          const httpResponse = await fetchWithRetry(pullUrl, {
-            method: 'GET',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${this.authToken}`,
-            },
-            timeout: SYNC_TIMEOUT_MS,
-            retries: 3,
-          });
+      while (hasMoreBatches) {
+        // Call backend /api/sync/pull with limit/offset for batching
+        const queryParams = new URLSearchParams({
+          lastPulledAt: String(options?.forceFull ? 0 : lastPulledAt),
+          limit: String(CHUNK_SIZE), // 100 records max per batch
+          offset: String(offset),
+        });
+        const pullUrl = `${this.baseUrl}/api/sync/pull?${queryParams}`;
+        console.log(`[Sync] 📦 Pulling batch ${batchNumber} (offset: ${offset})...`);
 
-          if (!httpResponse.ok) {
-            throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+        const response = await retryWithFibonacci(
+          async () => {
+            const httpResponse = await fetchWithRetry(pullUrl, {
+              method: 'GET',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.authToken}`,
+              },
+              timeout: SYNC_TIMEOUT_MS,
+              retries: 3,
+            });
+
+            if (!httpResponse.ok) {
+              throw new Error(`HTTP ${httpResponse.status}: ${httpResponse.statusText}`);
+            }
+
+            return httpResponse.json();
+          },
+          10,
+          (attempt, delay) => {
+            console.log(
+              `[Sync] PULL batch ${batchNumber} retry attempt ${attempt}, waiting ${delay / 1000}s...`,
+            );
+          },
+        );
+
+        // Apply server changes to local database
+        const changesCount = await this.applyServerChanges(response.changes);
+        totalChangesCount += changesCount;
+
+        // Story 6.3 - Task 7.3: Collect conflicts from this batch
+        if (response.conflicts && response.conflicts.length > 0) {
+          allConflicts = [...allConflicts, ...response.conflicts];
+          console.log(`[Sync] 📦 Batch ${batchNumber}: ${response.conflicts.length} conflict(s) detected`);
+        }
+
+        // Story 6.3 - Task 4.5: Update lastPulledAt after each batch success
+        if (changesCount > 0) {
+          for (const entity of entities) {
+            await updateLastPulledAt(entity, response.timestamp);
           }
+        }
 
-          return httpResponse.json();
-        },
-        10,
-        (attempt, delay) => {
-          console.log(
-            `[Sync] PULL retry attempt ${attempt}, waiting ${delay / 1000}s...`,
-          );
-        },
-      );
+        finalTimestamp = response.timestamp;
 
-      // Apply server changes to local database
-      await this.applyServerChanges(response.changes);
+        // Check if there are more batches
+        // If current batch returned fewer records than CHUNK_SIZE, it's the last batch
+        hasMoreBatches = changesCount >= CHUNK_SIZE;
 
-      // Update lastPulledAt for all entities
-      for (const entity of entities) {
-        await updateLastPulledAt(entity, response.timestamp);
+        console.log(
+          `[Sync] ✅ Batch ${batchNumber} completed (${changesCount} changes)`,
+        );
+
+        if (hasMoreBatches) {
+          offset += CHUNK_SIZE;
+          batchNumber++;
+        }
       }
 
-      console.log('[Sync] ✅ PULL phase completed');
+      // Story 6.3 - Task 7.3: Apply conflict resolutions from all batches
+      if (allConflicts.length > 0) {
+        console.log(`[Sync] 🔀 Resolving ${allConflicts.length} conflict(s) from PULL...`);
+        try {
+          const conflictHandler = getConflictHandler();
+          await conflictHandler.applyConflicts(allConflicts);
+        } catch (conflictError) {
+          // Log error but continue sync (conflicts are not critical to core sync)
+          console.error('[Sync] ⚠️ Conflict resolution failed:', conflictError);
+        }
+      }
+
+      // Story 6.3 - Task 3.4: Emit SyncCompleted event for reactive UI updates
+      if (this.eventBus && totalChangesCount > 0) {
+        const event: SyncCompletedEvent = {
+          type: 'SyncCompleted',
+          timestamp: Date.now(),
+          payload: {
+            entities,
+            direction: 'pull',
+            changesCount: totalChangesCount,
+            source: options?.source || 'manual',
+          },
+        };
+        this.eventBus.publish(event);
+        console.log(`[Sync] 📢 Emitted SyncCompleted event (${totalChangesCount} total changes)`);
+      }
+
+      console.log(`[Sync] ✅ PULL phase completed (${batchNumber} batch(es), ${totalChangesCount} total changes)`);
 
       return {
         result: SyncResult.SUCCESS,
         retryable: false,
-        timestamp: response.timestamp,
-        data: response.changes,
+        timestamp: finalTimestamp,
+        data: {}, // Note: data is empty in batched mode (changes already applied)
+        conflicts: allConflicts, // Return conflicts for testing/logging
       };
     } catch (error: any) {
       const url = `${this.baseUrl}/api/sync/pull`;
@@ -413,8 +479,10 @@ export class SyncService {
   /**
    * Apply server changes to local database
    */
-  private async applyServerChanges(changes: ChangesPayload): Promise<void> {
+  private async applyServerChanges(changes: ChangesPayload): Promise<number> {
     console.log('[Sync] 📝 Applying server changes...');
+
+    let changesCount = 0;
 
     for (const [entity, entityChanges] of Object.entries(changes)) {
       if (!entityChanges) continue;
@@ -423,6 +491,7 @@ export class SyncService {
       if (entityChanges.updated) {
         for (const record of entityChanges.updated) {
           await this.upsertRecord(entity, record);
+          changesCount++;
         }
       }
 
@@ -430,11 +499,13 @@ export class SyncService {
       if (entityChanges.deleted) {
         for (const record of entityChanges.deleted) {
           await this.markRecordDeleted(entity, record.id);
+          changesCount++;
         }
       }
     }
 
-    console.log('[Sync] ✅ Server changes applied');
+    console.log(`[Sync] ✅ Server changes applied (${changesCount} changes)`);
+    return changesCount;
   }
 
   /**

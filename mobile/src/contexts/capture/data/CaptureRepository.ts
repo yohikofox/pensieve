@@ -375,8 +375,9 @@ export class CaptureRepository implements ICaptureRepository {
    * Find all Captures
    */
   async findAll(): Promise<Capture[]> {
+    // Story 6.3 - Task 5.4: Filter deleted items from UI
     const result = database.execute(
-      "SELECT * FROM captures ORDER BY created_at DESC",
+      "SELECT * FROM captures WHERE (_status IS NULL OR _status != 'deleted') ORDER BY created_at DESC",
     );
 
     const rows = (result.rows ?? []) as CaptureRow[];
@@ -389,8 +390,9 @@ export class CaptureRepository implements ICaptureRepository {
    * @param offset - Number of captures to skip
    */
   async findAllPaginated(limit: number, offset: number): Promise<Capture[]> {
+    // Story 6.3 - Task 5.4: Filter deleted items from UI
     const result = database.execute(
-      "SELECT * FROM captures ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      "SELECT * FROM captures WHERE (_status IS NULL OR _status != 'deleted') ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [limit, offset],
     );
 
@@ -402,7 +404,8 @@ export class CaptureRepository implements ICaptureRepository {
    * Get total count of captures (Story 3.1 - for pagination)
    */
   async count(): Promise<number> {
-    const result = database.execute("SELECT COUNT(*) as count FROM captures");
+    // Story 6.3 - Task 5.4: Filter deleted items from count
+    const result = database.execute("SELECT COUNT(*) as count FROM captures WHERE (_status IS NULL OR _status != 'deleted')");
     const row = result.rows?.[0] as { count: number } | undefined;
     return row?.count ?? 0;
   }

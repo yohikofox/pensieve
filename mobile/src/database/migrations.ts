@@ -1895,6 +1895,75 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v21 completed');
     },
   },
+
+  {
+    version: 22,
+    name: 'Add audio_url and audio_local_path for lazy loading (Story 6.3)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v22: Adding audio_url and audio_local_path columns');
+
+      // Add audio_url column (MinIO S3 URL from server)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN audio_url TEXT
+      `);
+
+      // Add audio_local_path column (cached local file path)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN audio_local_path TEXT
+      `);
+
+      console.log('[DB] ✅ Migration v22: Audio columns added to captures');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v22 (audio columns cannot be dropped in SQLite)');
+      // SQLite doesn't support DROP COLUMN
+      // If rollback is needed, would require table recreation
+    },
+  },
+  {
+    version: 23,
+    name: 'Add _status column for soft deletes (Story 6.3 - Task 5)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v23: Adding _status column for soft deletes');
+
+      // Add _status column to captures (for sync deletion propagation)
+      db.executeSync(`
+        ALTER TABLE captures
+        ADD COLUMN _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted'))
+      `);
+
+      // Add _status column to thoughts
+      db.executeSync(`
+        ALTER TABLE thoughts
+        ADD COLUMN _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted'))
+      `);
+
+      // Add _status column to ideas
+      db.executeSync(`
+        ALTER TABLE ideas
+        ADD COLUMN _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted'))
+      `);
+
+      // Add _status column to todos
+      db.executeSync(`
+        ALTER TABLE todos
+        ADD COLUMN _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted'))
+      `);
+
+      console.log('[DB] ✅ Migration v23: _status column added to all tables');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v23 (_status columns cannot be dropped in SQLite)');
+      // SQLite doesn't support DROP COLUMN
+      // If rollback is needed, would require table recreation
+    },
+  },
 ];
 
 /**
