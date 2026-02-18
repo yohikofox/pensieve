@@ -19,9 +19,9 @@ const feature = loadFeature(
   './test/acceptance/features/story-12-2-backend-pk-domaine.feature',
 );
 
-/** Regex UUID v4 ou v7 */
+/** Regex UUID v4 ou v7 — valide la version (4 ou 7) et le variant (8/9/a/b) */
 const UUID_REGEX =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[47][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 // =============================================================================
 // Mock DataSource Factory
@@ -259,6 +259,7 @@ defineFeature(feature, (test) => {
       'src/modules/knowledge/domain/entities/thought.entity.ts',
       'src/modules/knowledge/domain/entities/idea.entity.ts',
       'src/modules/action/domain/entities/todo.entity.ts',
+      'src/modules/capture/domain/entities/capture.entity.ts',
       'src/modules/capture/domain/entities/capture-state.entity.ts',
       'src/modules/capture/domain/entities/capture-type.entity.ts',
       'src/modules/capture/domain/entities/capture-sync-status.entity.ts',
@@ -279,7 +280,7 @@ defineFeature(feature, (test) => {
     });
 
     then(
-      "les entités Thought, Idea, Todo, CaptureState, CaptureType et CaptureSyncStatus n'utilisent pas @PrimaryGeneratedColumn",
+      "les entités Thought, Idea, Todo, Capture, CaptureState, CaptureType et CaptureSyncStatus n'utilisent pas @PrimaryGeneratedColumn",
       () => {
         for (const [filePath, content] of Object.entries(entityContents)) {
           expect(content).not.toContain('@PrimaryGeneratedColumn');
@@ -287,9 +288,13 @@ defineFeature(feature, (test) => {
       },
     );
 
-    and('toutes ces entités héritent de BaseEntity', () => {
+    and('toutes ces entités héritent de BaseEntity ou BaseReferentialEntity', () => {
       for (const [filePath, content] of Object.entries(entityContents)) {
-        expect(content).toContain('extends BaseEntity');
+        const extendsBaseEntity = content.includes('extends BaseEntity');
+        const extendsBaseReferentialEntity = content.includes(
+          'extends BaseReferentialEntity',
+        );
+        expect(extendsBaseEntity || extendsBaseReferentialEntity).toBe(true);
       }
     });
   });

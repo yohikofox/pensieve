@@ -24,6 +24,78 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // ============================================================
+    // 0. Pre-flight validations (M5, H3)
+    //    Vérifie que les tables référentielles n'ont que des valeurs connues
+    //    et que les FKs des captures sont toutes mappables.
+    // ============================================================
+
+    // M5: capture_types — valeurs attendues uniquement
+    const unknownTypes: { name: string }[] = await queryRunner.query(`
+      SELECT name FROM capture_types WHERE name NOT IN ('audio', 'text')
+    `);
+    if (unknownTypes.length > 0) {
+      throw new Error(
+        `Migration pre-flight failed: capture_types contient des valeurs inattendues: ${unknownTypes.map((r) => r.name).join(', ')}. Nettoyez les données avant de relancer.`,
+      );
+    }
+
+    // M5: capture_states — valeurs attendues uniquement
+    const unknownStates: { name: string }[] = await queryRunner.query(`
+      SELECT name FROM capture_states WHERE name NOT IN ('recording', 'captured', 'failed')
+    `);
+    if (unknownStates.length > 0) {
+      throw new Error(
+        `Migration pre-flight failed: capture_states contient des valeurs inattendues: ${unknownStates.map((r) => r.name).join(', ')}. Nettoyez les données avant de relancer.`,
+      );
+    }
+
+    // M5: capture_sync_statuses — valeurs attendues uniquement
+    const unknownSyncStatuses: { name: string }[] = await queryRunner.query(`
+      SELECT name FROM capture_sync_statuses WHERE name NOT IN ('active', 'deleted')
+    `);
+    if (unknownSyncStatuses.length > 0) {
+      throw new Error(
+        `Migration pre-flight failed: capture_sync_statuses contient des valeurs inattendues: ${unknownSyncStatuses.map((r) => r.name).join(', ')}. Nettoyez les données avant de relancer.`,
+      );
+    }
+
+    // H3: captures avec typeId orphelin (nullable — avertissement)
+    const orphanedTypeIds: { count: string }[] = await queryRunner.query(`
+      SELECT COUNT(*)::text AS count FROM captures c
+      LEFT JOIN capture_types ct ON c."typeId" = ct.id
+      WHERE c."typeId" IS NOT NULL AND ct.id IS NULL
+    `);
+    if (parseInt(orphanedTypeIds[0]?.count ?? '0') > 0) {
+      console.warn(
+        `[Migration Warning] ${orphanedTypeIds[0].count} captures ont un typeId orphelin (référence inexistante). Ces typeId seront mis à NULL après migration.`,
+      );
+    }
+
+    // H3: captures avec stateId orphelin (nullable — avertissement)
+    const orphanedStateIds: { count: string }[] = await queryRunner.query(`
+      SELECT COUNT(*)::text AS count FROM captures c
+      LEFT JOIN capture_states cs ON c."stateId" = cs.id
+      WHERE c."stateId" IS NOT NULL AND cs.id IS NULL
+    `);
+    if (parseInt(orphanedStateIds[0]?.count ?? '0') > 0) {
+      console.warn(
+        `[Migration Warning] ${orphanedStateIds[0].count} captures ont un stateId orphelin (référence inexistante). Ces stateId seront mis à NULL après migration.`,
+      );
+    }
+
+    // H2: captures avec syncStatusId orphelin (NOT NULL — erreur bloquante)
+    const orphanedSyncStatusIds: { count: string }[] = await queryRunner.query(`
+      SELECT COUNT(*)::text AS count FROM captures c
+      LEFT JOIN capture_sync_statuses css ON c."syncStatusId" = css.id
+      WHERE css.id IS NULL
+    `);
+    if (parseInt(orphanedSyncStatusIds[0]?.count ?? '0') > 0) {
+      throw new Error(
+        `Migration pre-flight failed: ${orphanedSyncStatusIds[0].count} captures ont un syncStatusId orphelin. La contrainte NOT NULL échouerait. Corrigez les données (ex: SET syncStatusId=1 pour les captures orphelines).`,
+      );
+    }
+
+    // ============================================================
     // 1. thoughts, ideas, todos : Supprimer le DEFAULT PostgreSQL
     //    Les UUIDs existants sont préservés — on retire juste la génération auto DB
     // ============================================================
@@ -106,6 +178,11 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       FOREIGN KEY ("typeId") REFERENCES capture_types(id) ON DELETE SET NULL
     `);
 
+    // M6: Recréer l'index sur la FK UUID (perdu avec DROP COLUMN CASCADE)
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_captures_typeId" ON captures ("typeId")
+    `);
+
     // ============================================================
     // 3. capture_states : integer → UUID (avec données)
     //    UUIDs déterministes: recording=b001, captured=b002, failed=b003
@@ -167,6 +244,11 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       ALTER TABLE captures
       ADD CONSTRAINT "FK_captures_stateId"
       FOREIGN KEY ("stateId") REFERENCES capture_states(id) ON DELETE SET NULL
+    `);
+
+    // M6: Recréer l'index sur la FK UUID (perdu avec DROP COLUMN CASCADE)
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_captures_stateId" ON captures ("stateId")
     `);
 
     // ============================================================
@@ -231,6 +313,11 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       ALTER TABLE captures
       ADD CONSTRAINT "FK_captures_syncStatusId"
       FOREIGN KEY ("syncStatusId") REFERENCES capture_sync_statuses(id) ON DELETE RESTRICT
+    `);
+
+    // M6: Recréer l'index sur la FK UUID (perdu avec DROP COLUMN CASCADE)
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS "IDX_captures_syncStatusId" ON captures ("syncStatusId")
     `);
 
     // ============================================================
@@ -319,6 +406,14 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // ============================================================
+    // 0. Supprimer les index FK UUID créés dans up()
+    // ============================================================
+
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_typeId"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_stateId"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_syncStatusId"`);
+
     // ============================================================
     // 1. Remettre le DEFAULT PostgreSQL sur thoughts, ideas, todos
     // ============================================================

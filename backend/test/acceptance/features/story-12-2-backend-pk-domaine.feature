@@ -24,5 +24,5 @@ Feature: Story 12.2 — PKs UUID générées dans le domaine pour les entités b
   Scenario: Aucune entité backend n'utilise @PrimaryGeneratedColumn
     Given le code source des entités backend
     When on inspecte les fichiers d'entités
-    Then les entités Thought, Idea, Todo, CaptureState, CaptureType et CaptureSyncStatus n'utilisent pas @PrimaryGeneratedColumn
-    And toutes ces entités héritent de BaseEntity
+    Then les entités Thought, Idea, Todo, Capture, CaptureState, CaptureType et CaptureSyncStatus n'utilisent pas @PrimaryGeneratedColumn
+    And toutes ces entités héritent de BaseEntity ou BaseReferentialEntity

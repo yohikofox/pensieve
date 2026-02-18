@@ -13,6 +13,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, Repository, EntityManager } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { Todo } from '../../domain/entities/todo.entity';
 
 /**
@@ -53,7 +54,7 @@ export class TodoRepository {
     );
 
     const todo = this.todoRepo.create({
-      id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
+      id: uuidv7(), // ADR-026 R1: UUID généré dans la couche applicative
       thoughtId: dto.thoughtId,
       ideaId: dto.ideaId,
       captureId: dto.captureId,
@@ -96,7 +97,7 @@ export class TodoRepository {
 
     const todos = dtos.map((dto) =>
       manager.create(Todo, {
-        id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
+        id: uuidv7(), // ADR-026 R1: UUID généré dans la couche applicative
         thoughtId: dto.thoughtId,
         ideaId: dto.ideaId,
         captureId: dto.captureId,

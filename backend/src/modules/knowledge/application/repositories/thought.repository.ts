@@ -12,6 +12,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { Thought } from '../../domain/entities/thought.entity';
 import { Idea } from '../../domain/entities/idea.entity';
 
@@ -53,7 +54,7 @@ export class ThoughtRepository {
     // Subtask 4.5: Use transaction to ensure atomic creation
     return await this.dataSource.transaction(async (manager) => {
       // ADR-026 R1: UUID généré dans la couche applicative (pas par PostgreSQL DEFAULT)
-      const thoughtId = crypto.randomUUID();
+      const thoughtId = uuidv7();
 
       // Create Thought entity
       const thought = manager.create(Thought, {
@@ -72,7 +73,7 @@ export class ThoughtRepository {
       // Create Idea entities with orderIndex (Subtask 4.4)
       const ideaEntities = ideas.map((ideaText, index) =>
         manager.create(Idea, {
-          id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
+          id: uuidv7(), // ADR-026 R1: UUID généré dans la couche applicative
           thoughtId: savedThought.id,
           ownerId: userId,
           text: ideaText,
