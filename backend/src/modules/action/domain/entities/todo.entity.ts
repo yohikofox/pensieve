@@ -7,25 +7,19 @@
  *
  * Action Context (Supporting Domain) - Manages actionable tasks
  * Many-to-One relationship with Thought (Knowledge Context)
+ *
+ * Story 12.2: Extends BaseEntity (ADR-026 R1, R6)
+ * - id, createdAt, updatedAt, deletedAt hérités — ne pas les redéclarer
+ * - UUID généré dans la couche applicative via crypto.randomUUID()
  */
 
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base.entity';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 
 @Entity('todos')
-export class Todo {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Todo extends BaseEntity {
   @Column('uuid')
   thoughtId!: string;
 
@@ -63,12 +57,6 @@ export class Todo {
 
   @Column({ type: 'float', nullable: true })
   priorityConfidence?: number; // 0-1, for inferred priorities (AC4)
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 
   @Column({ type: 'timestamp', nullable: true })
   completedAt?: Date;

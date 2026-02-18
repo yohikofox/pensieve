@@ -4,24 +4,18 @@
  *
  * Covers Subtask 4.2: Define Idea entity schema (PostgreSQL + TypeORM)
  * AC4: Thought and Ideas Entity Creation
+ *
+ * Story 12.2: Extends BaseEntity (ADR-026 R1, R6)
+ * - id, createdAt, updatedAt, deletedAt hérités — ne pas les redéclarer
+ * - UUID généré dans la couche applicative via crypto.randomUUID()
  */
 
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base.entity';
 import { Thought } from './thought.entity';
 
 @Entity('ideas')
-export class Idea {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Idea extends BaseEntity {
   @Column('uuid')
   thoughtId!: string;
 
@@ -33,12 +27,6 @@ export class Idea {
 
   @Column({ type: 'int', nullable: true })
   orderIndex?: number; // Preserve order from GPT response (AC4)
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 
   // Sync columns (Story 6.1)
   @Column({ type: 'bigint', name: 'last_modified_at' })

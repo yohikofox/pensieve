@@ -4,25 +4,18 @@
  *
  * Covers Subtask 4.1: Define Thought entity schema (PostgreSQL + TypeORM)
  * AC4: Thought and Ideas Entity Creation
+ *
+ * Story 12.2: Extends BaseEntity (ADR-026 R1, R6)
+ * - id, createdAt, updatedAt, deletedAt hérités — ne pas les redéclarer
+ * - UUID généré dans la couche applicative via crypto.randomUUID()
  */
 
-import {
-  Entity,
-  PrimaryGeneratedColumn,
-  Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  OneToMany,
-  JoinColumn,
-} from 'typeorm';
+import { Entity, Column, OneToMany } from 'typeorm';
+import { BaseEntity } from '../../../../common/entities/base.entity';
 import { Idea } from './idea.entity';
 
 @Entity('thoughts')
-export class Thought {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Thought extends BaseEntity {
   @Column('uuid')
   captureId!: string;
 
@@ -37,12 +30,6 @@ export class Thought {
 
   @Column('int')
   processingTimeMs!: number; // Performance monitoring (AC4)
-
-  @CreateDateColumn()
-  createdAt!: Date;
-
-  @UpdateDateColumn()
-  updatedAt!: Date;
 
   // Sync columns (Story 6.1)
   @Column({ type: 'bigint', name: 'last_modified_at' })

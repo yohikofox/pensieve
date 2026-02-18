@@ -53,6 +53,7 @@ export class TodoRepository {
     );
 
     const todo = this.todoRepo.create({
+      id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
       thoughtId: dto.thoughtId,
       ideaId: dto.ideaId,
       captureId: dto.captureId,
@@ -63,6 +64,7 @@ export class TodoRepository {
       priority: dto.priority,
       priorityConfidence: dto.priorityConfidence ?? undefined,
       status: dto.status || 'todo',
+      lastModifiedAt: Date.now(),
     });
 
     const saved = await this.todoRepo.save(todo);
@@ -94,6 +96,7 @@ export class TodoRepository {
 
     const todos = dtos.map((dto) =>
       manager.create(Todo, {
+        id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
         thoughtId: dto.thoughtId,
         ideaId: dto.ideaId,
         captureId: dto.captureId,
@@ -104,6 +107,7 @@ export class TodoRepository {
         priority: dto.priority,
         priorityConfidence: dto.priorityConfidence ?? undefined,
         status: dto.status || 'todo',
+        lastModifiedAt: Date.now(),
       }),
     );
 

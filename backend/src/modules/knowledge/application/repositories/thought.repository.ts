@@ -52,13 +52,18 @@ export class ThoughtRepository {
 
     // Subtask 4.5: Use transaction to ensure atomic creation
     return await this.dataSource.transaction(async (manager) => {
+      // ADR-026 R1: UUID généré dans la couche applicative (pas par PostgreSQL DEFAULT)
+      const thoughtId = crypto.randomUUID();
+
       // Create Thought entity
       const thought = manager.create(Thought, {
+        id: thoughtId,
         captureId,
         userId,
         summary,
         confidenceScore,
         processingTimeMs, // Subtask 4.7: Processing time logging
+        lastModifiedAt: Date.now(),
       });
 
       // Save Thought first to get ID
@@ -67,10 +72,12 @@ export class ThoughtRepository {
       // Create Idea entities with orderIndex (Subtask 4.4)
       const ideaEntities = ideas.map((ideaText, index) =>
         manager.create(Idea, {
+          id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
           thoughtId: savedThought.id,
           userId,
           text: ideaText,
           orderIndex: index, // Preserve order from GPT response
+          lastModifiedAt: Date.now(),
         }),
       );
 

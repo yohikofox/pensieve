@@ -16,6 +16,8 @@ import { CaptureSyncStatus } from './capture-sync-status.entity';
  *
  * Le PUSH mobile envoie son id local comme clientId.
  * Le PULL retourne id (backend) + clientId pour la réconciliation mobile.
+ *
+ * Story 12.2: FKs typeId/stateId/syncStatusId migrées de integer vers UUID (ADR-026 AC4)
  */
 @Entity('captures')
 @Index('IDX_CAPTURES_CLIENT_USER', ['clientId', 'userId'], { unique: true })
@@ -29,17 +31,17 @@ export class Capture extends BaseEntity {
   @Column('uuid')
   userId!: string;
 
-  /** FK vers capture_types (colonne explicite pour accès direct) */
-  @Column({ name: 'typeId', nullable: true })
-  typeId?: number;
+  /** FK vers capture_types (UUID — ADR-026 AC4) */
+  @Column({ type: 'uuid', name: 'typeId', nullable: true })
+  typeId?: string;
 
   @ManyToOne(() => CaptureType, { nullable: true, eager: false })
   @JoinColumn({ name: 'typeId' })
   type?: CaptureType;
 
-  /** FK vers capture_states (colonne explicite pour accès direct) */
-  @Column({ name: 'stateId', nullable: true })
-  stateId?: number;
+  /** FK vers capture_states (UUID — ADR-026 AC4) */
+  @Column({ type: 'uuid', name: 'stateId', nullable: true })
+  stateId?: string;
 
   @ManyToOne(() => CaptureState, { nullable: true, eager: false })
   @JoinColumn({ name: 'stateId' })
@@ -64,9 +66,9 @@ export class Capture extends BaseEntity {
   @Column({ type: 'bigint', name: 'last_modified_at' })
   lastModifiedAt!: number;
 
-  /** FK vers capture_sync_statuses (colonne explicite pour filtrage direct) */
-  @Column({ name: 'syncStatusId', default: 1 })
-  syncStatusId!: number;
+  /** FK vers capture_sync_statuses (UUID — ADR-026 AC4) */
+  @Column({ type: 'uuid', name: 'syncStatusId' })
+  syncStatusId!: string;
 
   @ManyToOne(() => CaptureSyncStatus, { nullable: false, eager: false })
   @JoinColumn({ name: 'syncStatusId' })
