@@ -1,5 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createClient } from '@supabase/supabase-js';
+// ADR-022 + ADR-010: auth tokens must use expo-secure-store (Keychain iOS), NOT AsyncStorage
+import { LargeSecureStore } from './large-secure-store';
 
 // Supabase configuration from environment variables
 // IMPORTANT: These MUST be set in .env or app will fail
@@ -14,7 +15,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    storage: AsyncStorage,
+    storage: LargeSecureStore,
     autoRefreshToken: true,
     persistSession: true,
     detectSessionInUrl: false,

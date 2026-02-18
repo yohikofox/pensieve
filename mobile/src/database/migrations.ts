@@ -1964,6 +1964,41 @@ export const migrations: Migration[] = [
       // If rollback is needed, would require table recreation
     },
   },
+  {
+    version: 24,
+    name: 'Add sync_metadata table — migrate sync timestamps from AsyncStorage to OP-SQLite (ADR-022)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v24: Creating sync_metadata table (ADR-022 compliance)');
+
+      // Create sync_metadata table to replace AsyncStorage usage in SyncStorage.ts
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS sync_metadata (
+          entity TEXT PRIMARY KEY NOT NULL,
+          last_pulled_at INTEGER NOT NULL DEFAULT 0,
+          last_pushed_at INTEGER NOT NULL DEFAULT 0,
+          last_sync_status TEXT NOT NULL DEFAULT 'success'
+            CHECK(last_sync_status IN ('success', 'error', 'in_progress')),
+          last_sync_error TEXT,
+          updated_at INTEGER NOT NULL DEFAULT 0
+        )
+      `);
+
+      // Create index for efficient lookups
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_sync_metadata_entity
+        ON sync_metadata(entity)
+      `);
+
+      console.log('[DB] ✅ Migration v24: sync_metadata table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v24');
+      db.executeSync('DROP TABLE IF EXISTS sync_metadata');
+      console.log('[DB] ✅ Rollback v24 completed');
+    },
+  },
 ];
 
 /**

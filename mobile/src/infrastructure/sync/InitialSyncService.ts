@@ -5,7 +5,8 @@
  * Handles first-time sync with progress tracking
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+// ADR-022: sync metadata must use OP-SQLite (via SyncStorage), NOT AsyncStorage
+import { getLastPulledAt, updateLastPulledAt } from './SyncStorage';
 import type { SyncService } from './SyncService';
 import { SyncResult } from './types';
 
@@ -31,12 +32,12 @@ export class InitialSyncService {
   }
 
   /**
-   * Task 1.1: Detect first login (no lastPulledAt in AsyncStorage)
+   * Task 1.1: Detect first login (no lastPulledAt in OP-SQLite sync_metadata)
    * Checks if captures entity has been synced before
    */
   async isFirstSync(): Promise<boolean> {
-    const lastPulled = await AsyncStorage.getItem('sync_last_pulled_captures');
-    return lastPulled === null;
+    const lastPulled = await getLastPulledAt('captures');
+    return lastPulled === 0; // 0 = never synced (default value)
   }
 
   /**
@@ -68,12 +69,9 @@ export class InitialSyncService {
     if (syncResult.result === SyncResult.SUCCESS && syncResult.timestamp) {
       console.log('[InitialSync] Sync successful, updating lastPulledAt...');
 
-      // Update lastPulledAt for all entities
+      // Update lastPulledAt for all entities via OP-SQLite (ADR-022)
       for (const entity of this.ENTITIES) {
-        await AsyncStorage.setItem(
-          `sync_last_pulled_${entity}`,
-          String(syncResult.timestamp)
-        );
+        await updateLastPulledAt(entity, syncResult.timestamp);
       }
 
       // Task 1.4: Report 100% completion

@@ -7,6 +7,7 @@
 
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
+// ASYNC_STORAGE_OK: UI preference cache only (user feature flags, TTL-based, non-authoritative) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { IUserFeaturesRepository } from '../domain/user-features-repository.interface';
 import type { UserFeatures, UserFeaturesCache } from '../domain/user-features.model';

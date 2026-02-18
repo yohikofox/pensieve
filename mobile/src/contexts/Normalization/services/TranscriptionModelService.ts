@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { injectable, container } from 'tsyringe';
 import { fetch } from 'expo/fetch';
 import { File, Paths } from 'expo-file-system';
+// ASYNC_STORAGE_OK: UI preferences only (Whisper model selection, custom vocabulary) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileHash } from '@preeternal/react-native-file-hash';
 import { TOKENS } from '../../../infrastructure/di/tokens';

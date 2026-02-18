@@ -11,6 +11,7 @@
 
 import { create } from 'zustand';
 import { devtools, persist, createJSONStorage } from 'zustand/middleware';
+// ASYNC_STORAGE_OK: UI preferences only (theme, color scheme, debug mode, haptic, LLM settings) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { LLMModelId, LLMTask } from '../contexts/Normalization/services/LLMModelService';
 import type { ColorScheme } from '../design-system/tokens';

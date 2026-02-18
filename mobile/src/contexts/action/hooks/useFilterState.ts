@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+// ASYNC_STORAGE_OK: UI preferences only (filter/sort state for Tab Actions) — not critical data (ADR-022)
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type FilterType = "all" | "active" | "completed";

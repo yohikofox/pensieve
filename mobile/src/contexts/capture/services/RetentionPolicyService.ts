@@ -13,6 +13,7 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+// ASYNC_STORAGE_OK: UI preferences only (retention config, last cleanup date) — not critical domain data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { type ICaptureRepository } from '../domain/ICaptureRepository';

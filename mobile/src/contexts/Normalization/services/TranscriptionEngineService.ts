@@ -7,6 +7,7 @@
 
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+// ASYNC_STORAGE_OK: UI preference only (transcription engine type selection) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   ITranscriptionEngine,

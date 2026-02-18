@@ -12,6 +12,7 @@
  * - Provides suggestions for vocabulary screen
  */
 
+// ASYNC_STORAGE_OK: UI preference data only (transcription correction learning history — behavioral cache) — not critical domain data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { diff_match_patch, Diff } from 'diff-match-patch';
 

@@ -2,25 +2,37 @@
  * InitialSyncService Unit Tests
  * Story 6.3 - Task 1: Initial Full Sync on First Login
  *
- * Tests TDD - RED phase first
+ * ADR-022: sync metadata now stored in OP-SQLite via SyncStorage, NOT AsyncStorage.
+ * Updated by Story 14.2 (AsyncStorage audit).
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { InitialSyncService } from '../InitialSyncService';
 import { SyncService } from '../SyncService';
 import { DatabaseConnection } from '../../../database';
 
-// Mock dependencies
-jest.mock('@react-native-async-storage/async-storage');
+// Mock SyncStorage (OP-SQLite layer) instead of AsyncStorage
+jest.mock('../SyncStorage', () => ({
+  getLastPulledAt: jest.fn(),
+  updateLastPulledAt: jest.fn(),
+}));
+
 jest.mock('../SyncService');
 jest.mock('../../../database');
+
+import * as SyncStorage from '../SyncStorage';
 
 describe('InitialSyncService', () => {
   let initialSyncService: InitialSyncService;
   let mockSyncService: jest.Mocked<SyncService>;
+  const mockGetLastPulledAt = SyncStorage.getLastPulledAt as jest.Mock;
+  const mockUpdateLastPulledAt = SyncStorage.updateLastPulledAt as jest.Mock;
 
   beforeEach(() => {
     jest.clearAllMocks();
+
+    // Default: no prior sync (first sync)
+    mockGetLastPulledAt.mockResolvedValue(0);
+    mockUpdateLastPulledAt.mockResolvedValue(undefined);
 
     // Mock SyncService with default success response
     mockSyncService = {
@@ -39,21 +51,21 @@ describe('InitialSyncService', () => {
   });
 
   describe('Task 1.1: Detect first login', () => {
-    it('should return true when no lastPulledAt exists in AsyncStorage', async () => {
+    it('should return true when no lastPulledAt exists in OP-SQLite (value = 0)', async () => {
       // ARRANGE - Simulate first login (no lastPulledAt)
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      mockGetLastPulledAt.mockResolvedValue(0);
 
       // ACT
       const isFirstLogin = await initialSyncService.isFirstSync();
 
       // ASSERT
       expect(isFirstLogin).toBe(true);
-      expect(AsyncStorage.getItem).toHaveBeenCalledWith('sync_last_pulled_captures');
+      expect(mockGetLastPulledAt).toHaveBeenCalledWith('captures');
     });
 
-    it('should return false when lastPulledAt exists', async () => {
+    it('should return false when lastPulledAt exists (value > 0)', async () => {
       // ARRANGE - Simulate existing user (has lastPulledAt)
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue('1736760600000');
+      mockGetLastPulledAt.mockResolvedValue(1736760600000);
 
       // ACT
       const isFirstLogin = await initialSyncService.isFirstSync();
@@ -64,13 +76,13 @@ describe('InitialSyncService', () => {
 
     it('should check captures entity for first sync detection', async () => {
       // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
+      mockGetLastPulledAt.mockResolvedValue(0);
 
       // ACT
       await initialSyncService.isFirstSync();
 
       // ASSERT
-      expect(AsyncStorage.getItem).toHaveBeenCalledWith('sync_last_pulled_captures');
+      expect(mockGetLastPulledAt).toHaveBeenCalledWith('captures');
     });
   });
 
@@ -89,7 +101,6 @@ describe('InitialSyncService', () => {
     it('should report progress during sync', async () => {
       // ARRANGE
       const onProgress = jest.fn();
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null); // First sync
 
       // ACT
       await initialSyncService.performInitialSync('test-token', onProgress);
@@ -102,7 +113,6 @@ describe('InitialSyncService', () => {
     it('should report 100% when sync completes', async () => {
       // ARRANGE
       const onProgress = jest.fn();
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
 
       // ACT
       await initialSyncService.performInitialSync('test-token', onProgress);
@@ -116,11 +126,10 @@ describe('InitialSyncService', () => {
   describe('Task 1.2: Trigger full sync automatically', () => {
     it('should call SyncService.sync with forceFull option', async () => {
       // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
       mockSyncService.sync.mockResolvedValue({
         result: 'success',
         retryable: false,
-        timestamp: 1736760900000, // Required for success path
+        timestamp: 1736760900000,
       });
 
       // ACT
@@ -131,9 +140,6 @@ describe('InitialSyncService', () => {
     });
 
     it('should set auth token before syncing', async () => {
-      // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
-
       // ACT
       await initialSyncService.performInitialSync('my-jwt-token');
 
@@ -142,10 +148,9 @@ describe('InitialSyncService', () => {
     });
   });
 
-  describe('Task 1.7: Set lastPulledAt after success', () => {
-    it('should set lastPulledAt timestamp after successful sync', async () => {
+  describe('Task 1.7: Set lastPulledAt after success (OP-SQLite via SyncStorage)', () => {
+    it('should update lastPulledAt via updateLastPulledAt after successful sync', async () => {
       // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
       mockSyncService.sync.mockResolvedValue({
         result: 'success',
         retryable: false,
@@ -155,16 +160,12 @@ describe('InitialSyncService', () => {
       // ACT
       await initialSyncService.performInitialSync('test-token');
 
-      // ASSERT - lastPulledAt should be updated for all entities
-      expect(AsyncStorage.setItem).toHaveBeenCalledWith(
-        'sync_last_pulled_captures',
-        '1736760900000'
-      );
+      // ASSERT - lastPulledAt should be updated for captures entity (and others)
+      expect(mockUpdateLastPulledAt).toHaveBeenCalledWith('captures', 1736760900000);
     });
 
     it('should NOT set lastPulledAt if sync fails', async () => {
       // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
       mockSyncService.sync.mockResolvedValue({
         result: 'network_error',
         retryable: true,
@@ -179,20 +180,37 @@ describe('InitialSyncService', () => {
       }
 
       // ASSERT - lastPulledAt should NOT be set on failure
-      expect(AsyncStorage.setItem).not.toHaveBeenCalled();
+      expect(mockUpdateLastPulledAt).not.toHaveBeenCalled();
     });
   });
 
   describe('Task 1.5: Download all entities', () => {
     it('should sync all entities: captures, thoughts, ideas, todos', async () => {
-      // ARRANGE
-      (AsyncStorage.getItem as jest.Mock).mockResolvedValue(null);
-
       // ACT
       await initialSyncService.performInitialSync('test-token');
 
       // ASSERT - forceFull should trigger all entities sync
       expect(mockSyncService.sync).toHaveBeenCalledWith({ forceFull: true });
+    });
+
+    it('should update lastPulledAt for all entities after successful sync', async () => {
+      // ARRANGE
+      const timestamp = 1736760900000;
+      mockSyncService.sync.mockResolvedValue({
+        result: 'success',
+        retryable: false,
+        timestamp,
+      });
+
+      // ACT
+      await initialSyncService.performInitialSync('test-token');
+
+      // ASSERT - all 4 entities should be updated
+      const entities = ['captures', 'thoughts', 'ideas', 'todos'];
+      entities.forEach((entity) => {
+        expect(mockUpdateLastPulledAt).toHaveBeenCalledWith(entity, timestamp);
+      });
+      expect(mockUpdateLastPulledAt).toHaveBeenCalledTimes(entities.length);
     });
   });
 });

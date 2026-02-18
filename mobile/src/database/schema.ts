@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 23;
+export const SCHEMA_VERSION = 24;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -318,6 +318,28 @@ export const CREATE_INDEX_UPLOAD_QUEUE_STATUS = `
 
 export const CREATE_INDEX_UPLOAD_QUEUE_CAPTURE = `
   CREATE INDEX IF NOT EXISTS idx_upload_queue_capture ON upload_queue(capture_id)
+`;
+
+/**
+ * Sync Metadata Table — ADR-022 compliance
+ *
+ * Replaces AsyncStorage usage in SyncStorage.ts (Story 14.2 — ADR-022 audit).
+ * Stores per-entity sync timestamps and status for incremental sync protocol.
+ */
+export const CREATE_SYNC_METADATA_TABLE = `
+  CREATE TABLE IF NOT EXISTS sync_metadata (
+    entity TEXT PRIMARY KEY NOT NULL,
+    last_pulled_at INTEGER NOT NULL DEFAULT 0,
+    last_pushed_at INTEGER NOT NULL DEFAULT 0,
+    last_sync_status TEXT NOT NULL DEFAULT 'success'
+      CHECK(last_sync_status IN ('success', 'error', 'in_progress')),
+    last_sync_error TEXT,
+    updated_at INTEGER NOT NULL DEFAULT 0
+  )
+`;
+
+export const CREATE_INDEX_SYNC_METADATA_ENTITY = `
+  CREATE INDEX IF NOT EXISTS idx_sync_metadata_entity ON sync_metadata(entity)
 `;
 
 /**

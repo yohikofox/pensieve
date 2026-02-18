@@ -1,22 +1,16 @@
 /**
  * SyncStorage
- * Manages sync metadata persistence in AsyncStorage
+ * Manages sync metadata persistence in OP-SQLite
+ *
+ * ADR-022 compliance: sync metadata (lastPulledAt, sync queue) MUST use OP-SQLite.
+ * Previously used AsyncStorage — migrated by Story 14.2 (audit ADR-022).
  *
  * Story 6.1 - Task 3.3: Implement tracking lastPulledAt per table
  * Stores sync timestamps for incremental sync protocol
  */
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { database } from '../../database';
 import type { SyncMetadata } from './types';
-
-const SYNC_PREFIX = 'sync_metadata_';
-
-/**
- * Get storage key for entity
- */
-function getKey(entity: string): string {
-  return `${SYNC_PREFIX}${entity}`;
-}
 
 /**
  * Get sync metadata for entity
@@ -25,14 +19,24 @@ export async function getSyncMetadata(
   entity: string,
 ): Promise<SyncMetadata | null> {
   try {
-    const key = getKey(entity);
-    const json = await AsyncStorage.getItem(key);
-
-    if (!json) {
+    const db = database.getDatabase();
+    const result = db.executeSync(
+      'SELECT * FROM sync_metadata WHERE entity = ?',
+      [entity],
+    );
+    const rows = result.rows ?? [];
+    if (rows.length === 0) {
       return null;
     }
-
-    return JSON.parse(json) as SyncMetadata;
+    const row = rows[0] as any;
+    return {
+      entity: row.entity,
+      last_pulled_at: row.last_pulled_at,
+      last_pushed_at: row.last_pushed_at,
+      last_sync_status: row.last_sync_status,
+      last_sync_error: row.last_sync_error ?? undefined,
+      updated_at: row.updated_at,
+    } as SyncMetadata;
   } catch (error) {
     console.error(`[SyncStorage] Failed to get metadata for ${entity}:`, error);
     return null;
@@ -47,9 +51,26 @@ export async function setSyncMetadata(
   metadata: SyncMetadata,
 ): Promise<void> {
   try {
-    const key = getKey(entity);
-    const json = JSON.stringify(metadata);
-    await AsyncStorage.setItem(key, json);
+    const db = database.getDatabase();
+    db.executeSync(
+      `INSERT INTO sync_metadata (
+        entity, last_pulled_at, last_pushed_at, last_sync_status, last_sync_error, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?)
+      ON CONFLICT(entity) DO UPDATE SET
+        last_pulled_at = excluded.last_pulled_at,
+        last_pushed_at = excluded.last_pushed_at,
+        last_sync_status = excluded.last_sync_status,
+        last_sync_error = excluded.last_sync_error,
+        updated_at = excluded.updated_at`,
+      [
+        entity,
+        metadata.last_pulled_at,
+        metadata.last_pushed_at,
+        metadata.last_sync_status,
+        metadata.last_sync_error ?? null,
+        metadata.updated_at,
+      ],
+    );
   } catch (error) {
     console.error(`[SyncStorage] Failed to set metadata for ${entity}:`, error);
     throw error;
@@ -133,12 +154,11 @@ export async function updateSyncStatus(
  */
 export async function clearAllSyncMetadata(): Promise<void> {
   try {
+    const db = database.getDatabase();
     const entities = ['captures', 'thoughts', 'ideas', 'todos'];
-
-    await Promise.all(
-      entities.map((entity) => AsyncStorage.removeItem(getKey(entity))),
-    );
-
+    entities.forEach((entity) => {
+      db.executeSync('DELETE FROM sync_metadata WHERE entity = ?', [entity]);
+    });
     console.log('[SyncStorage] Cleared all sync metadata');
   } catch (error) {
     console.error('[SyncStorage] Failed to clear metadata:', error);

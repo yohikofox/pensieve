@@ -23,6 +23,7 @@
 import "reflect-metadata";
 import { inject, injectable } from "tsyringe";
 import { File, Paths } from "expo-file-system";
+// ASYNC_STORAGE_OK: UI preferences only (model selection, postprocessing flags, download resume state) — not critical data (ADR-022)
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   setConfig,
