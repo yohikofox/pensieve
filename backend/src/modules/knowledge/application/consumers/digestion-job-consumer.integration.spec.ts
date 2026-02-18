@@ -135,7 +135,7 @@ describe('DigestionJobConsumer Integration Tests (Task 5.6)', () => {
                   const thought: Thought = {
                     id: 'thought-123',
                     captureId,
-                    userId,
+                    ownerId: userId,
                     summary,
                     confidenceScore,
                     processingTimeMs,

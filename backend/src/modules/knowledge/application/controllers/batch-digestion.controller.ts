@@ -77,7 +77,7 @@ export class BatchDigestionController {
 
     // Validate all captures belong to the authenticated user
     const unauthorizedCaptures = captures.filter(
-      (capture) => capture.ownerId !== user.id,
+      (capture) => capture.userId !== user.id,
     );
     if (unauthorizedCaptures.length > 0) {
       throw new ForbiddenException(
