@@ -1,12 +1,8 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useToast } from '../../../design-system/components';
+import { Button } from '../../../design-system/components/Button';
+import { Input } from '../../../design-system/components/Input';
 import { supabase } from '../../../lib/supabase';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StandardLayout } from '../../../components/layouts';
@@ -40,9 +36,7 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(
         email.toLowerCase().trim(),
-        {
-          redirectTo: 'pensine://reset-password',
-        },
+        { redirectTo: 'pensine://reset-password' },
       );
 
       if (error) throw error;
@@ -58,91 +52,50 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
 
   return (
     <StandardLayout>
-      <View style={styles.container}>
-        <Text style={styles.title}>Forgot Password</Text>
-        <Text style={styles.subtitle}>
-          Enter your email address and we'll send you a link to reset your
-          password.
+      <View className="flex-1 px-6 justify-center">
+
+        {/* Header */}
+        <Text className="text-3xl font-bold text-text-primary mb-3">
+          Forgot Password
+        </Text>
+        <Text className="text-base text-text-secondary mb-8">
+          Enter your email address and we'll send you a link to reset your password.
         </Text>
 
-        <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="username"
-        editable={!loading}
-      />
+        {/* Email Input */}
+        <View className="mb-6">
+          <Input
+            label="Email"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="username"
+            editable={!loading}
+          />
+        </View>
 
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleResetPassword}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Sending...' : 'Send Reset Link'}
-        </Text>
-      </TouchableOpacity>
+        {/* Send Reset Link Button */}
+        <Button
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleResetPassword}
+          className="mb-4"
+        >
+          Send Reset Link
+        </Button>
 
-      <TouchableOpacity
-        style={styles.backButton}
-        onPress={() => navigation.goBack()}
-      >
-        <Text style={styles.backButtonText}>Back to Login</Text>
-      </TouchableOpacity>
+        {/* Back to Login */}
+        <TouchableOpacity
+          className="items-center"
+          onPress={() => navigation.goBack()}
+        >
+          <Text className="text-base text-text-link">Back to Login</Text>
+        </TouchableOpacity>
+
       </View>
     </StandardLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 32,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  backButton: {
-    marginTop: 16,
-    alignItems: 'center',
-  },
-  backButtonText: {
-    color: '#007AFF',
-    fontSize: 16,
-  },
-});
