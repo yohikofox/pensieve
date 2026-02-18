@@ -10,6 +10,6 @@ import { AuditLog } from '../shared/infrastructure/persistence/typeorm/entities/
   imports: [TypeOrmModule.forFeature([User, AuditLog])],
   controllers: [RgpdController],
   providers: [RgpdService, SupabaseAdminService],
-  exports: [RgpdService],
+  exports: [RgpdService, SupabaseAdminService],
 })
 export class RgpdModule {}

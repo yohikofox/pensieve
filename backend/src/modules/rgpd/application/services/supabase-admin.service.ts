@@ -71,4 +71,23 @@ export class SupabaseAdminService {
     });
     return !error && !!data.user;
   }
+
+  /**
+   * Force reset a user's password via Supabase Admin API
+   *
+   * Supabase is the source of truth for auth — never modify passwords directly in PostgreSQL.
+   * Note: to be migrated to Better Auth admin API when Epic 15 is implemented.
+   */
+  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
+    const { error } = await this.adminClient.auth.admin.updateUserById(
+      userId,
+      { password: newPassword },
+    );
+
+    if (error) {
+      throw new Error(
+        `Failed to reset password for user ${userId}: ${error.message}`,
+      );
+    }
+  }
 }

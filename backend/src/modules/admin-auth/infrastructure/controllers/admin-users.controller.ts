@@ -1,20 +1,26 @@
 import {
   Controller,
   Patch,
+  Post,
   Param,
   Body,
   UseGuards,
   Logger,
   Get,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { AdminJwtGuard } from '../guards/admin-jwt.guard';
 import { UserFeaturesService } from '../../../identity/application/services/user-features.service';
+import { SupabaseAdminService } from '../../../rgpd/application/services/supabase-admin.service';
 import { UpdateUserFeaturesDto } from '../../application/dtos/update-user-features.dto';
+import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password.dto';
 import { UserFeaturesDto } from '../../../identity/application/dtos/user-features.dto';
 
 /**
  * Admin controller for managing user features/permissions
  * Story 7.1: Support Mode avec Permissions Backend - Task 2
+ * Story 8.18: Admin Reset Password via Supabase Admin API
  *
  * Protected by AdminJwtGuard - requires admin authentication
  */
@@ -23,7 +29,10 @@ import { UserFeaturesDto } from '../../../identity/application/dtos/user-feature
 export class AdminUsersController {
   private readonly logger = new Logger(AdminUsersController.name);
 
-  constructor(private readonly userFeaturesService: UserFeaturesService) {}
+  constructor(
+    private readonly userFeaturesService: UserFeaturesService,
+    private readonly supabaseAdminService: SupabaseAdminService,
+  ) {}
 
   /**
    * Get user's feature flags (admin view)
@@ -69,5 +78,25 @@ export class AdminUsersController {
     );
 
     return updatedFeatures;
+  }
+
+  /**
+   * Force reset a user's password via Supabase Admin API
+   * POST /api/admin/users/:userId/reset-password
+   * Story 8.18: Admin Reset Password
+   *
+   * Supabase is the source of truth — password never modified directly in PostgreSQL.
+   * Note: to be migrated to Better Auth admin API when Epic 15 is implemented.
+   */
+  @Post(':userId/reset-password')
+  @HttpCode(HttpStatus.OK)
+  async resetUserPassword(
+    @Param('userId') userId: string,
+    @Body() dto: ResetUserPasswordDto,
+  ): Promise<{ message: string }> {
+    this.logger.log(`Admin resetting password for user ${userId}`);
+    await this.supabaseAdminService.resetUserPassword(userId, dto.newPassword);
+    this.logger.log(`Password reset successfully for user ${userId}`);
+    return { message: 'Password reset successfully' };
   }
 }

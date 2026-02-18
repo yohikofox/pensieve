@@ -9,6 +9,7 @@ import { AdminAuthController } from './infrastructure/controllers/admin-auth.con
 import { AdminUsersController } from './infrastructure/controllers/admin-users.controller';
 import { AdminJwtGuard } from './infrastructure/guards/admin-jwt.guard';
 import { IdentityModule } from '../identity/identity.module';
+import { RgpdModule } from '../rgpd/rgpd.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { IdentityModule } from '../identity/identity.module';
       inject: [ConfigService],
     }),
     IdentityModule, // Import IdentityModule to access UserFeaturesService
+    RgpdModule, // Import RgpdModule to access SupabaseAdminService (reset password)
   ],
   controllers: [AdminAuthController, AdminUsersController],
   providers: [AdminUserRepository, AdminAuthService, AdminJwtGuard],

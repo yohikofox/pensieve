@@ -70,6 +70,16 @@ export class ApiClient {
     });
   }
 
+  async resetUserPassword(userId: string, newPassword: string) {
+    return this.fetch<{ message: string }>(
+      `/api/admin/users/${userId}/reset-password`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ newPassword }),
+      }
+    );
+  }
+
   // ========================================
   // Roles Management
   // ========================================
