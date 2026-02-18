@@ -5,7 +5,11 @@
  * Import this file in App.tsx to initialize the container.
  *
  * Story: 2.1 - Capture Audio 1-Tap
- * Architecture Decision: ADR-IoC - TSyringe for Dependency Injection
+ * Architecture Decision: ADR-017 - IoC/DI with TSyringe
+ *
+ * Lifecycle Strategy: ADR-021 — Transient First
+ * - Repositories and stateless services → Transient (container.register)
+ * - Singletons only when explicitly justified (see inline comments)
  */
 
 import 'reflect-metadata';
@@ -113,6 +117,7 @@ let servicesRegistered = false;
  *
  * Story: 2.1 - Capture Audio 1-Tap
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
+ * Lifecycle Strategy: ADR-021 — Transient First
  */
 export function registerServices() {
   if (servicesRegistered) {
@@ -120,94 +125,135 @@ export function registerServices() {
     return;
   }
 
-  // Infrastructure Services
+  // ── SINGLETONS ─────────────────────────────────────────────────────────────
+  // Justification requise pour chaque singleton (ADR-021)
+
+  // SINGLETON: Logger global — configuration et état partagés sur toute la session (ADR-021)
   container.registerSingleton<ILogger>(TOKENS.ILogger, LoggerService);
 
   // Event Infrastructure (ADR-019)
-  // Register EventBus singleton instance (shared message bus)
+  // SINGLETON: EventBus instance — bus de messages partagé entre tous les contextes (ADR-021)
   container.registerInstance('EventBus', eventBus);
 
-  // Domain Repositories
-  container.registerSingleton(TOKENS.ICaptureRepository, CaptureRepository);
-  container.registerSingleton(TOKENS.ICaptureMetadataRepository, CaptureMetadataRepository);
-  container.registerSingleton(TOKENS.ICaptureAnalysisRepository, CaptureAnalysisRepository);
-  container.registerSingleton(TOKENS.IThoughtRepository, ThoughtRepository);
-  container.registerSingleton(TOKENS.IIdeaRepository, IdeaRepository);
-  container.registerSingleton(TOKENS.ITodoRepository, TodoRepository);
-  container.registerSingleton(TOKENS.IAnalysisTodoRepository, AnalysisTodoRepository);
-  container.registerSingleton(TOKENS.IUserFeaturesRepository, UserFeaturesRepository);
-
-  // Platform Adapters (Hardware/SDK wrappers)
+  // SINGLETON: Hardware adapter AudioRecorder — exception ADR-021 (coût initialisation natif)
   container.registerSingleton(TOKENS.IAudioRecorder, ExpoAudioAdapter);
+
+  // SINGLETON: Hardware adapter FileSystem — exception ADR-021 (coût initialisation natif)
   container.registerSingleton(TOKENS.IFileSystem, ExpoFileSystemAdapter);
 
-  // Application Services
-  container.registerSingleton(RecordingService); // Direct class registration
-  container.registerSingleton(FileStorageService); // Direct class registration
-  container.registerSingleton(WaveformExtractionService); // Waveform auto-extraction
-  container.registerSingleton(TOKENS.IPermissionService, PermissionService);
-  container.registerSingleton(TOKENS.IFileStorageService, FileStorageService);
-  container.registerSingleton(TOKENS.IOfflineSyncService, OfflineSyncService);
-  container.registerSingleton(TOKENS.ICrashRecoveryService, CrashRecoveryService);
-  container.registerSingleton(TOKENS.ISyncQueueService, SyncQueueService);
-  container.registerSingleton(TOKENS.IStorageMonitorService, StorageMonitorService);
-  container.registerSingleton(TOKENS.IRetentionPolicyService, RetentionPolicyService);
-  container.registerSingleton(TOKENS.IEncryptionService, EncryptionService);
+  // SINGLETON: RecordingService — maintient l'état de l'enregistrement actif en cours de session (ADR-021 exception)
+  container.registerSingleton(RecordingService);
 
-  // Normalization Services (Story 2.5 - Transcription)
-  container.registerSingleton('IFileSystem', ExpoFileSystem); // Filesystem abstraction for AudioConversionService
-  container.registerSingleton(AudioConversionService);
+  // SINGLETON: SyncQueueService — queue de synchronisation en mémoire, état partagé entre résolutions (ADR-021)
+  container.registerSingleton(TOKENS.ISyncQueueService, SyncQueueService);
+
+  // SINGLETON: StorageMonitorService — écouteurs d'événements de stockage actifs, état partagé (ADR-021)
+  container.registerSingleton(TOKENS.IStorageMonitorService, StorageMonitorService);
+
+  // SINGLETON: TranscriptionModelService — modèle Whisper chargé en mémoire, coût d'initialisation élevé (ADR-021)
   container.registerSingleton(TranscriptionModelService);
+
+  // SINGLETON: TranscriptionService — dépend de TranscriptionModelService singleton (ADR-021)
   container.registerSingleton(TranscriptionService);
+
+  // SINGLETON: TranscriptionQueueService — queue de transcription en mémoire, état partagé (ADR-021)
   container.registerSingleton(TranscriptionQueueService);
+
+  // SINGLETON: TranscriptionQueueProcessor — processeur lié à la queue singleton (ADR-021)
   container.registerSingleton(TranscriptionQueueProcessor);
 
-  // Post-processing Services (LLM enhancement)
+  // SINGLETON: HuggingFaceAuthService — token d'authentification partagé pour la session (ADR-021)
   container.registerSingleton<IHuggingFaceAuthService>(TOKENS.IHuggingFaceAuthService, HuggingFaceAuthService);
+
+  // SINGLETON: NPUDetectionService — cache la détection hardware NPU (une seule détection nécessaire) (ADR-021)
   container.registerSingleton(NPUDetectionService);
-  container.registerSingleton(DeviceCapabilitiesService); // Task 7.3
+
+  // SINGLETON: DeviceCapabilitiesService — cache les capacités du device (ADR-021)
+  container.registerSingleton(DeviceCapabilitiesService);
+
+  // SINGLETON: LLMModelService — modèle LLM chargé en mémoire, coût d'initialisation très élevé (ADR-021)
   container.registerSingleton<ILLMModelService>(TOKENS.ILLMModelService, LLMModelService);
+
+  // SINGLETON: PostProcessingService — dépend de LLMModelService singleton (ADR-021)
   container.registerSingleton(PostProcessingService);
-  container.registerSingleton(CaptureAnalysisService);
+
+  // SINGLETON: TranscriptionWorker — worker Whisper, coût d'initialisation élevé (ADR-021)
   container.registerSingleton(TranscriptionWorker);
 
-  // Native Speech Recognition Engine
+  // SINGLETON: NativeTranscriptionEngine — moteur de transcription natif, coût d'initialisation élevé (ADR-021)
   container.registerSingleton(NativeTranscriptionEngine);
+
+  // SINGLETON: TranscriptionEngineService — orchestre les engines, maintient l'état de sélection (ADR-021)
   container.registerSingleton(TranscriptionEngineService);
 
-  // Identity Services (Story 7.1 - Support Mode)
-  container.registerSingleton(UserFeaturesService);
-
-  // Story 6.2: Auth service abstraction to isolate Supabase dependency
+  // SINGLETON: SupabaseAuthService — session d'authentification partagée sur toute la session (ADR-021)
   container.registerSingleton<IAuthService>('IAuthService', SupabaseAuthService);
 
   // Sync Infrastructure (Story 6.1 & 6.2)
-  // SyncService MUST be singleton - auth token is set on this instance
+  // SINGLETON: SyncService — auth token est défini sur cette instance et doit être partagé (ADR-021)
   const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
   const syncServiceInstance = new SyncService(apiUrl, eventBus);
   container.registerInstance(SyncService, syncServiceInstance);
 
+  // SINGLETON: SyncTrigger — maintient l'état cooldown/debounce de la synchronisation (ADR-021)
   container.registerSingleton(SyncTrigger);
+
+  // SINGLETON: NetworkMonitor — écouteur d'événements réseau natif, doit rester unique (ADR-021)
   container.registerSingleton(NetworkMonitor);
+
+  // SINGLETON: AutoSyncOrchestrator — orchestrateur avec état, dépend de singletons sync (ADR-021)
   container.registerSingleton(AutoSyncOrchestrator);
+
+  // SINGLETON: UploadOrchestrator — dépend de services avec état (ADR-021)
+  container.registerSingleton(UploadOrchestrator);
+
+  // ── TRANSIENT ──────────────────────────────────────────────────────────────
+  // Services et repositories stateless — nouvelle instance à chaque résolution (ADR-021)
+
+  // Domain Repositories — stateless, accès DB sans état mutable (ADR-021 Transient First)
+  container.register(TOKENS.ICaptureRepository, { useClass: CaptureRepository });
+  container.register(TOKENS.ICaptureMetadataRepository, { useClass: CaptureMetadataRepository });
+  container.register(TOKENS.ICaptureAnalysisRepository, { useClass: CaptureAnalysisRepository });
+  container.register(TOKENS.IThoughtRepository, { useClass: ThoughtRepository });
+  container.register(TOKENS.IIdeaRepository, { useClass: IdeaRepository });
+  container.register(TOKENS.ITodoRepository, { useClass: TodoRepository });
+  container.register(TOKENS.IAnalysisTodoRepository, { useClass: AnalysisTodoRepository });
+  container.register(TOKENS.IUserFeaturesRepository, { useClass: UserFeaturesRepository });
+
+  // Application Services — stateless, sans dépendances sur état partagé (ADR-021 Transient First)
+  container.register(TOKENS.IPermissionService, { useClass: PermissionService });
+  container.register(FileStorageService, { useClass: FileStorageService });
+  container.register(TOKENS.IFileStorageService, { useClass: FileStorageService });
+  container.register(WaveformExtractionService, { useClass: WaveformExtractionService });
+  container.register(TOKENS.IOfflineSyncService, { useClass: OfflineSyncService });
+  container.register(TOKENS.ICrashRecoveryService, { useClass: CrashRecoveryService });
+  container.register(TOKENS.IRetentionPolicyService, { useClass: RetentionPolicyService });
+  container.register(TOKENS.IEncryptionService, { useClass: EncryptionService });
+
+  // Normalization Services — stateless (ADR-021 Transient First)
+  container.register('IFileSystem', { useClass: ExpoFileSystem });
+  container.register(AudioConversionService, { useClass: AudioConversionService });
+  container.register(CaptureAnalysisService, { useClass: CaptureAnalysisService });
+
+  // Identity Services — stateless (ADR-021 Transient First)
+  container.register(UserFeaturesService, { useClass: UserFeaturesService });
 
   // Upload Infrastructure (Story 6.2 - Task 6-7)
   // Note: AudioUploadService and ChunkedUploadService need API URL
-  // They will be resolved with factory pattern when needed
+  // They use factory pattern for API URL injection
   container.register(AudioUploadService, {
     useFactory: () => {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-      return new AudioUploadService(apiUrl);
+      const url = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      return new AudioUploadService(url);
     },
   });
   container.register(ChunkedUploadService, {
     useFactory: () => {
-      const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
-      return new ChunkedUploadService(apiUrl);
+      const url = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:3000';
+      return new ChunkedUploadService(url);
     },
   });
-  container.registerSingleton(UploadOrchestrator);
 
   servicesRegistered = true;
-  console.log('[DI Container] ✅ Services registered (including Story 6.2 sync/upload infrastructure)');
+  console.log('[DI Container] ✅ Services registered (ADR-021 Transient First applied)');
 }
