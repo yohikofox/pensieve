@@ -91,6 +91,10 @@ interface SettingsState {
   setAutoTranscription: (enabled: boolean) => void;
   setHapticFeedback: (enabled: boolean) => void;
 
+  // Story 6.4: Sync only on Wi-Fi
+  syncOnWifiOnly: boolean;
+  setSyncOnWifiOnly: (enabled: boolean) => void;
+
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
   setLLMAutoPostProcess: (enabled: boolean) => void;
@@ -132,6 +136,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Initial state - haptic feedback enabled by default (Story 5.2 Code Review Fix #7)
         hapticFeedbackEnabled: true,
+
+        // Story 6.4: Sync only on Wi-Fi - disabled by default (sync on all connections)
+        syncOnWifiOnly: false,
 
         // Initial LLM state - disabled by default
         llm: {
@@ -213,6 +220,12 @@ export const useSettingsStore = create<SettingsState>()(
         setHapticFeedback: (enabled: boolean) => {
           set({ hapticFeedbackEnabled: enabled });
           console.log('[SettingsStore] Haptic feedback:', enabled ? 'ON' : 'OFF');
+        },
+
+        // Story 6.4: Sync on Wi-Fi only
+        setSyncOnWifiOnly: (enabled: boolean) => {
+          set({ syncOnWifiOnly: enabled });
+          console.log('[SettingsStore] Sync on Wi-Fi only:', enabled ? 'ON' : 'OFF');
         },
 
         // LLM Actions

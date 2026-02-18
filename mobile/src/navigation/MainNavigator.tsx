@@ -10,7 +10,7 @@
  * - Dynamic data (badges, counts) is injected via hooks
  */
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -19,6 +19,8 @@ import { TabBarIcon } from "./components";
 import { useTabBarStyle, useTabHeaderOptions } from "../hooks/useNavigationTheme";
 import { useActiveTodoCount } from "../contexts/action/hooks/useActiveTodoCount";
 import { tabScreens, type TabScreenConfig } from "../screens/registry";
+import { SyncStatusIndicatorButton } from "../components/SyncStatusIndicatorButton";
+import { SyncStatusDetailModal } from "../components/SyncStatusDetailModal";
 
 const Tab = createBottomTabNavigator();
 
@@ -26,6 +28,7 @@ export const MainNavigator = () => {
   const { t } = useTranslation();
   const tabBarStyle = useTabBarStyle();
   const tabHeaderOptions = useTabHeaderOptions();
+  const [syncModalVisible, setSyncModalVisible] = useState(false);
 
   // Dynamic badge count for Actions tab
   const { data: activeTodoCount } = useActiveTodoCount();
@@ -87,6 +90,9 @@ export const MainNavigator = () => {
         screenOptions={{
           ...tabHeaderOptions,
           headerShown: true,
+          headerRight: () => (
+            <SyncStatusIndicatorButton onPress={() => setSyncModalVisible(true)} />
+          ),
           tabBarActiveTintColor: tabBarStyle.activeTintColor,
           tabBarInactiveTintColor: tabBarStyle.inactiveTintColor,
           tabBarLabelStyle: tabBarStyle.labelStyle,
@@ -129,6 +135,10 @@ export const MainNavigator = () => {
         })}
       </Tab.Navigator>
       <OfflineIndicator />
+      <SyncStatusDetailModal
+        visible={syncModalVisible}
+        onClose={() => setSyncModalVisible(false)}
+      />
     </>
   );
 };

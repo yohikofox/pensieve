@@ -53,6 +53,7 @@ import {
   getBackgroundColorsForColorScheme,
 } from '../../design-system/tokens';
 import { StandardLayout } from '../../components/layouts';
+import { useManualSync } from '../../hooks/useManualSync';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
@@ -80,6 +81,7 @@ interface FlatTodoItem {
 export const ActionsScreen = () => {
   const { isDark, colorSchemePreference } = useTheme();
   const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
+  const { triggerManualSync, isManualSyncing } = useManualSync();
 
   // Story 5.3: Filter and sort state (AC1, AC8)
   const { filter, sort, setFilter, setSort, isLoading: isFilterLoading } = useFilterState();
@@ -390,7 +392,10 @@ export const ActionsScreen = () => {
               renderItem={renderCalendarItem}
               contentContainerStyle={styles.calendarListContent}
               refreshControl={
-                <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+                <RefreshControl
+                  refreshing={isRefetching || isManualSyncing}
+                  onRefresh={() => { refetch(); triggerManualSync(); }}
+                />
               }
               windowSize={10}
               initialNumToRender={15}

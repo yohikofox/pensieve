@@ -41,6 +41,7 @@ import { useCaptureTranscription } from "../../hooks/useCaptureTranscription";
 import { useDialogState } from "../../hooks/useDialogState";
 import { useCaptureActions } from "../../hooks/useCaptureActions";
 import { useSyncService } from "../../hooks/useServices";
+import { useManualSync } from "../../hooks/useManualSync";
 import { useTheme } from "../../hooks/useTheme";
 import { colors } from "../../design-system/tokens";
 import { Button, AlertDialog } from "../../design-system/components";
@@ -96,6 +97,7 @@ export function CapturesListScreen() {
   const dialogs = useDialogState();
   const actions = useCaptureActions();
   const syncService = useSyncService();
+  const { triggerManualSync } = useManualSync();
 
   // Listen to capture events
   useCapturesListener();
@@ -146,7 +148,7 @@ export function CapturesListScreen() {
     await measureAsync("Pull to refresh", async () => {
       if (syncService && !isOffline) {
         await Promise.all([
-          syncService.syncCaptures().catch(() => {}),
+          triggerManualSync().catch(() => {}),
           loadCaptures(),
           minDelay,
         ]);
@@ -156,7 +158,7 @@ export function CapturesListScreen() {
     });
 
     setRefreshing(false);
-  }, [syncService, loadCaptures, isOffline]);
+  }, [syncService, triggerManualSync, loadCaptures, isOffline]);
 
   const handleCapturePress = useCallback(
     (captureId: string) => {

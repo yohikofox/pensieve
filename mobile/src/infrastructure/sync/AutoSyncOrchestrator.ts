@@ -1,7 +1,9 @@
 import { injectable, inject } from 'tsyringe';
+import NetInfo from '@react-native-community/netinfo';
 import { NetworkMonitor } from '../network/NetworkMonitor';
 import { SyncService } from './SyncService';
 import { SyncResult } from './types';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 /**
  * AutoSyncOrchestrator
@@ -100,6 +102,19 @@ export class AutoSyncOrchestrator {
     console.log(
       '[AutoSyncOrchestrator] 📶 Network online, triggering sync...',
     );
+
+    // Story 6.4: Check syncOnWifiOnly setting before proceeding
+    const { syncOnWifiOnly } = useSettingsStore.getState();
+    if (syncOnWifiOnly) {
+      const netState = await NetInfo.fetch();
+      const isWifi = netState.type === 'wifi';
+      if (!isWifi) {
+        console.log(
+          '[AutoSyncOrchestrator] 📵 Sync skipped: syncOnWifiOnly=true but connection is not Wi-Fi',
+        );
+        return;
+      }
+    }
 
     // AC1: Trigger sync automatique (NetworkMonitor a déjà fait le debounce 5s)
     // ADR-023 Fix: SyncService.sync() retourne Result Pattern, pas besoin de try/catch

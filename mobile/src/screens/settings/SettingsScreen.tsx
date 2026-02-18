@@ -62,6 +62,10 @@ export const SettingsScreen = () => {
   const autoTranscriptionEnabled = useSettingsStore((state) => state.autoTranscriptionEnabled);
   const setAutoTranscription = useSettingsStore((state) => state.setAutoTranscription);
 
+  // Story 6.4: Sync only on Wi-Fi from global settings store
+  const syncOnWifiOnly = useSettingsStore((state) => state.syncOnWifiOnly);
+  const setSyncOnWifiOnly = useSettingsStore((state) => state.setSyncOnWifiOnly);
+
   // Get theme label for display
   const getThemeLabel = (preference: ThemePreference): string => {
     const labels: Record<ThemePreference, string> = {
@@ -520,6 +524,30 @@ export const SettingsScreen = () => {
             <Switch
               value={autoTranscriptionEnabled}
               onValueChange={setAutoTranscription}
+              trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+              thumbColor={colors.neutral[0]}
+            />
+          </View>
+        </Card>
+
+        {/* Sync Section */}
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+            Synchronisation
+          </Text>
+
+          <View className="flex-row items-center py-3 px-4">
+            <View className="flex-1">
+              <Text className="text-lg text-text-primary">
+                Sync Wi-Fi uniquement
+              </Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
+                Synchroniser seulement en Wi-Fi (économise les données mobiles)
+              </Text>
+            </View>
+            <Switch
+              value={syncOnWifiOnly}
+              onValueChange={setSyncOnWifiOnly}
               trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
               thumbColor={colors.neutral[0]}
             />

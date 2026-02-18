@@ -30,6 +30,8 @@ import { useLLMDownloadRecovery } from '../hooks/initialization/useLLMDownloadRe
 import { useNotificationSetup } from '../hooks/initialization/useNotificationSetup';
 import { useTranscriptionInitialization } from '../hooks/initialization/useTranscriptionInitialization';
 import { useSyncInitialization } from '../hooks/initialization/useSyncInitialization';
+import { useSyncStatusBridge } from '../hooks/useSyncStatusBridge';
+import { useLongOfflineReminder } from '../hooks/useLongOfflineReminder';
 
 /**
  * Check the initial deep link URL for a password recovery token.
@@ -95,6 +97,12 @@ function AppContent() {
   useNotificationSetup();
   useTranscriptionInitialization();
   useSyncInitialization();
+
+  // Story 6.4: Connect EventBus sync events to SyncStatusStore
+  useSyncStatusBridge();
+
+  // Story 6.4: Remind user when offline for too long
+  useLongOfflineReminder();
 
   // Wait for both auth session AND initial URL check to complete
   if (loading || !initialUrlChecked) {
