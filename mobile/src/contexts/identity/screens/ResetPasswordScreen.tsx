@@ -1,43 +1,18 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text } from 'react-native';
 import { useToast } from '../../../design-system/components';
+import { Button } from '../../../design-system/components/Button';
+import { Input } from '../../../design-system/components/Input';
 import { supabase } from '../../../lib/supabase';
-import { useRoute, RouteProp } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useAuthRecoveryStore } from '../../../stores/authRecoveryStore';
 import { StandardLayout } from '../../../components/layouts';
 
-type AuthStackParamList = {
-  Login: undefined;
-  ResetPassword: {
-    accessToken?: string;
-  };
-};
-
-type ResetPasswordScreenNavigationProp = NativeStackNavigationProp<
-  AuthStackParamList,
-  'ResetPassword'
->;
-
-type ResetPasswordScreenRouteProp = RouteProp<AuthStackParamList, 'ResetPassword'>;
-
-interface ResetPasswordScreenProps {
-  navigation: ResetPasswordScreenNavigationProp;
-}
-
-export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) => {
-  const route = useRoute<ResetPasswordScreenRouteProp>();
-  const { accessToken } = route.params || {};
-
+export const ResetPasswordScreen = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const toast = useToast();
+  const setPasswordRecovery = useAuthRecoveryStore((s) => s.setPasswordRecovery);
 
   const validatePassword = (pwd: string): string | null => {
     if (pwd.length < 8) return 'Password must be at least 8 characters';
@@ -65,14 +40,15 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: newPassword,
-      });
-
+      const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
 
-      toast.success('Your password has been reset successfully');
-      navigation.replace('Login');
+      // Sign out the recovery session — user must re-authenticate with new password
+      await supabase.auth.signOut();
+      setPasswordRecovery(false);
+
+      toast.success('Password reset successfully. Please sign in with your new password.');
+      // Navigation is handled by auth state: signOut → user=null → AuthNavigator(Login)
     } catch (error: any) {
       toast.error(error.message || 'Failed to reset password');
     } finally {
@@ -82,89 +58,61 @@ export const ResetPasswordScreen = ({ navigation }: ResetPasswordScreenProps) =>
 
   return (
     <StandardLayout>
-      <View style={styles.container}>
-        <Text style={styles.title}>Reset Password</Text>
+      <View className="flex-1 px-6 justify-center">
 
-        <TextInput
-        style={styles.input}
-        placeholder="New Password"
-        value={newPassword}
-        onChangeText={setNewPassword}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        editable={!loading}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        editable={!loading}
-      />
-
-      <Text style={styles.requirements}>
-        Password must contain:
-        {'\n'}• At least 8 characters
-        {'\n'}• At least 1 uppercase letter
-        {'\n'}• At least 1 number
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleResetPassword}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Resetting...' : 'Reset Password'}
+        {/* Header */}
+        <Text className="text-3xl font-bold text-text-primary mb-2">
+          Reset Password
         </Text>
-      </TouchableOpacity>
+        <Text className="text-base text-text-secondary mb-8">
+          Choose a strong new password for your account.
+        </Text>
+
+        {/* New Password */}
+        <View className="mb-4">
+          <Input
+            label="New Password"
+            placeholder="••••••••"
+            value={newPassword}
+            onChangeText={setNewPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
+
+        {/* Confirm Password */}
+        <View className="mb-4">
+          <Input
+            label="Confirm Password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
+
+        {/* Requirements */}
+        <Text className="text-sm text-text-tertiary mb-6 leading-5">
+          Password must contain:{'\n'}
+          {'  '}• At least 8 characters{'\n'}
+          {'  '}• At least 1 uppercase letter{'\n'}
+          {'  '}• At least 1 number
+        </Text>
+
+        {/* Reset Button */}
+        <Button
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleResetPassword}
+        >
+          Reset Password
+        </Button>
+
       </View>
     </StandardLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginBottom: 32,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  requirements: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-});

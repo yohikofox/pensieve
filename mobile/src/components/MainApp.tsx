@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from '../contexts/identity/hooks/useDeepLinkAuth';
+import { useAuthRecoveryStore } from '../stores/authRecoveryStore';
 import { useLLMSettingsListener } from '../hooks/useLLMSettingsListener';
 import { useNavigationTheme } from '../hooks/useNavigationTheme';
 import { useThemeContext } from '../contexts/theme/ThemeProvider';
@@ -33,6 +34,7 @@ import { useSyncInitialization } from '../hooks/initialization/useSyncInitializa
  */
 function AppContent() {
   const { user, loading } = useAuthListener();
+  const isPasswordRecovery = useAuthRecoveryStore((s) => s.isPasswordRecovery);
   const navigationRef = useNavigationContainerRef();
   const navigationTheme = useNavigationTheme();
 
@@ -55,7 +57,10 @@ function AppContent() {
   return (
     <DevPanelProvider>
       <NavigationContainer ref={navigationRef} theme={navigationTheme}>
-        {user ? <MainNavigator /> : <AuthNavigator />}
+        {user && !isPasswordRecovery
+          ? <MainNavigator />
+          : <AuthNavigator initialRouteName={isPasswordRecovery ? 'ResetPassword' : 'Login'} />
+        }
       </NavigationContainer>
       <DevPanel />
       <CalibrationGridWrapper />

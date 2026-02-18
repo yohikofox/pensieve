@@ -26,12 +26,17 @@ export type AuthStackParamList = {
 
 const Stack = createNativeStackNavigator<AuthStackParamList>();
 
-export const AuthNavigator = () => {
+interface AuthNavigatorProps {
+  initialRouteName?: keyof AuthStackParamList;
+}
+
+export const AuthNavigator = ({ initialRouteName = 'Login' }: AuthNavigatorProps) => {
   const { t } = useTranslation();
   const stackScreenOptions = useStackScreenOptions();
 
   return (
     <Stack.Navigator
+      initialRouteName={initialRouteName}
       screenOptions={{
         ...stackScreenOptions,
         headerShown: false,
