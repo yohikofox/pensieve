@@ -93,7 +93,7 @@ Modules in `backend/src/modules/`:
 
 - **DI**: tsyringe with decorator-based injection (`src/infrastructure/di/`)
 - **State**: Zustand for global state, React Query for server state
-- **Local DB**: WatermelonDB (offline-first)
+- **Local DB**: `@op-engineering/op-sqlite` (offline-first, synchronous queries)
 - **Contexts** in `src/contexts/`: capture, knowledge, action, identity, shared (mirrors backend DDD)
 - **Navigation**: React Navigation (bottom tabs + native stack)
 - **i18n**: i18next
@@ -112,7 +112,7 @@ Uses `jest-cucumber`. Features in `*.feature` files, step definitions in `*.test
 
 **Mobile test structure**:
 - `tests/acceptance/features/` - Gherkin .feature files
-- `tests/acceptance/support/test-context.ts` - 12 in-memory mocks (Supabase, WatermelonDB, API)
+- `tests/acceptance/support/test-context.ts` - 12 in-memory mocks (Supabase, OP-SQLite, API)
 - `tests/acceptance/story-*.test.ts` - Step definitions
 
 **Backend test structure**:
