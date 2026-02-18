@@ -25,10 +25,10 @@ export class SyncLog {
   })
   syncType!: 'pull' | 'push';
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   startedAt!: Date;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   completedAt!: Date | null;
 
   @Column({

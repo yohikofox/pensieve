@@ -21,7 +21,7 @@ export class TierPermission {
   @PrimaryColumn({ name: 'permission_id', type: 'uuid' })
   permissionId!: string;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamp' })
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt!: Date;
 
   // Relations

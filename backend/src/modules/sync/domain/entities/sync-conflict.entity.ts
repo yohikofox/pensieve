@@ -61,6 +61,6 @@ export class SyncConflict {
   })
   resolvedData!: Record<string, any>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   resolvedAt!: Date;
 }

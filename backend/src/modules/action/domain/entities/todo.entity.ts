@@ -42,7 +42,7 @@ export class Todo extends BaseEntity {
   })
   status!: 'todo' | 'launched' | 'in_progress' | 'completed' | 'abandoned';
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   deadline?: Date;
 
   @Column({ type: 'float', nullable: true })
@@ -58,7 +58,7 @@ export class Todo extends BaseEntity {
   @Column({ type: 'float', nullable: true })
   priorityConfidence?: number; // 0-1, for inferred priorities (AC4)
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   completedAt?: Date;
 
   // Sync columns (Story 6.1)

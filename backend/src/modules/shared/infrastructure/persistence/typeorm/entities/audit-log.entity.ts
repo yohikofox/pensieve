@@ -25,7 +25,7 @@ export class AuditLog {
   @Column({ type: 'varchar', length: 100 })
   action!: AuditAction;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamptz' })
   timestamp!: Date;
 
   @Column({ type: 'varchar', length: 45, nullable: true })

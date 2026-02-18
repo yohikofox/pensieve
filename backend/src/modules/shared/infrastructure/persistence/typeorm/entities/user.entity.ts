@@ -19,13 +19,13 @@ export class User {
   @Column({ type: 'varchar', length: 50, default: 'active' })
   status!: 'active' | 'deletion_pending' | 'deleted';
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   deletion_requested_at!: Date | null;
 
-  @CreateDateColumn({ type: 'timestamp' })
+  @CreateDateColumn({ type: 'timestamptz' })
   created_at!: Date;
 
-  @UpdateDateColumn({ type: 'timestamp' })
+  @UpdateDateColumn({ type: 'timestamptz' })
   updated_at!: Date;
 
   // Notification preferences (Story 4.4 - AC7)
