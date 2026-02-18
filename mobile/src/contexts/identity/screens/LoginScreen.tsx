@@ -1,12 +1,8 @@
 import React, { useState } from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from "react-native";
+import { View, Text, TouchableOpacity } from "react-native";
 import { useToast } from "../../../design-system/components";
+import { Button } from "../../../design-system/components/Button";
+import { Input } from "../../../design-system/components/Input";
 import { supabase } from "../../../lib/supabase";
 import * as WebBrowser from "expo-web-browser";
 import { makeRedirectUri } from "expo-auth-session";
@@ -36,7 +32,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
   const [loading, setLoading] = useState(false);
   const toast = useToast();
 
-  // Email/Password Login
   const handleEmailLogin = async () => {
     if (!email || !password) {
       toast.error("Please fill in all fields");
@@ -45,14 +40,12 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await supabase.auth.signInWithPassword({
         email: email.toLowerCase().trim(),
         password,
       });
 
       if (error) throw error;
-
-      // Navigation handled by auth state listener
     } catch (error: any) {
       toast.error(error.message || "Login failed");
     } finally {
@@ -60,7 +53,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
   };
 
-  // Google Sign-In
   const handleGoogleSignIn = async () => {
     setLoading(true);
     try {
@@ -76,7 +68,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
 
       if (error) throw error;
 
-      // Open browser for OAuth
       const result = await WebBrowser.openAuthSessionAsync(
         data.url,
         redirectUrl,
@@ -85,18 +76,14 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
       if (result.type === "success") {
         const { url } = result;
         try {
-          // Extract tokens from URL fragment (after #)
           const fragment = url.split("#")[1];
-          if (!fragment) {
-            throw new Error("No tokens in callback URL");
-          }
+          if (!fragment) throw new Error("No tokens in callback URL");
 
           const params = new URLSearchParams(fragment);
           const accessToken = params.get("access_token");
           const refreshToken = params.get("refresh_token");
 
           if (accessToken && refreshToken) {
-            // Set session
             await supabase.auth.setSession({
               access_token: accessToken,
               refresh_token: refreshToken,
@@ -116,187 +103,91 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
   };
 
-
   return (
     <StandardLayout>
-      <View style={styles.container}>
-        <Text style={styles.title}>Welcome to Pensine</Text>
-      <Text style={styles.subtitle}>
-        Capture your thoughts, incubate your ideas
-      </Text>
+      <View className="flex-1 px-6 justify-center">
 
-      {/* Email Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="username"
-        editable={!loading}
-      />
-
-      {/* Password Input */}
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        editable={!loading}
-      />
-
-      {/* Login Button */}
-      <TouchableOpacity
-        style={[
-          styles.button,
-          styles.primaryButton,
-          loading && styles.buttonDisabled,
-        ]}
-        onPress={handleEmailLogin}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? "Signing in..." : "Sign In"}
+        {/* Header */}
+        <Text className="text-3xl font-bold text-center text-text-primary mb-2">
+          Welcome to Pensine
         </Text>
-      </TouchableOpacity>
+        <Text className="text-base text-center text-text-secondary mb-8">
+          Capture your thoughts, incubate your ideas
+        </Text>
 
-      {/* Forgot Password */}
-      <TouchableOpacity
-        style={styles.forgotPasswordButton}
-        onPress={() => navigation.navigate("ForgotPassword")}
-      >
-        <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
-      </TouchableOpacity>
+        {/* Email Input */}
+        <View className="mb-4">
+          <Input
+            label="Email"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="username"
+            editable={!loading}
+          />
+        </View>
 
-      {/* Divider */}
-      <View style={styles.divider}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.dividerLine} />
-      </View>
+        {/* Password Input */}
+        <View className="mb-6">
+          <Input
+            label="Password"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
 
-      {/* Google Sign-In */}
-      <TouchableOpacity
-        style={[styles.button, styles.googleButton]}
-        onPress={handleGoogleSignIn}
-        disabled={loading}
-      >
-        <Text style={styles.googleButtonText}>Continue with Google</Text>
-      </TouchableOpacity>
+        {/* Sign In Button */}
+        <Button
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleEmailLogin}
+          className="mb-3"
+        >
+          Sign In
+        </Button>
 
-      {/* Register Link */}
-      <View style={styles.registerContainer}>
-        <Text style={styles.registerText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-          <Text style={styles.registerLink}>Sign Up</Text>
+        {/* Forgot Password */}
+        <TouchableOpacity
+          className="items-center mb-6"
+          onPress={() => navigation.navigate("ForgotPassword")}
+        >
+          <Text className="text-sm text-text-link">Forgot Password?</Text>
         </TouchableOpacity>
-      </View>
+
+        {/* Divider */}
+        <View className="flex-row items-center mb-6">
+          <View className="flex-1 h-px bg-border-default" />
+          <Text className="mx-4 text-sm text-text-tertiary">OR</Text>
+          <View className="flex-1 h-px bg-border-default" />
+        </View>
+
+        {/* Google Sign-In */}
+        <Button
+          variant="secondary"
+          size="lg"
+          onPress={handleGoogleSignIn}
+          disabled={loading}
+          className="mb-6"
+        >
+          Continue with Google
+        </Button>
+
+        {/* Register Link */}
+        <View className="flex-row justify-center">
+          <Text className="text-sm text-text-secondary">Don't have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Register")}>
+            <Text className="text-sm font-semibold text-text-link">Sign Up</Text>
+          </TouchableOpacity>
+        </View>
+
       </View>
     </StandardLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  subtitle: {
-    fontSize: 16,
-    color: "#666",
-    marginBottom: 32,
-    textAlign: "center",
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: "#ddd",
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    color: "#000",
-    backgroundColor: "#fff",
-  },
-  button: {
-    padding: 16,
-    borderRadius: 8,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  primaryButton: {
-    backgroundColor: "#007AFF",
-  },
-  googleButton: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ddd",
-  },
-  appleButton: {
-    backgroundColor: "#000",
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  googleButtonText: {
-    color: "#000",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  appleButtonText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  forgotPasswordButton: {
-    alignItems: "center",
-    marginBottom: 24,
-  },
-  forgotPasswordText: {
-    color: "#007AFF",
-    fontSize: 14,
-  },
-  divider: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginVertical: 24,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: "#ddd",
-  },
-  dividerText: {
-    marginHorizontal: 16,
-    color: "#999",
-    fontSize: 14,
-  },
-  registerContainer: {
-    flexDirection: "row",
-    justifyContent: "center",
-    marginTop: 24,
-  },
-  registerText: {
-    color: "#666",
-    fontSize: 14,
-  },
-  registerLink: {
-    color: "#007AFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-});
