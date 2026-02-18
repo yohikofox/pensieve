@@ -1,6 +1,7 @@
 /**
  * CaptureListItem - Wrapper for individual capture items in the list
  * Handles animations, gestures (swipe, long-press), and delegates to CaptureCard
+ * Story 6.4 - AC6: Shows CaptureSyncBadge overlay when capture is not synced
  */
 import React from 'react';
 import { View } from 'react-native';
@@ -9,6 +10,7 @@ import type { Capture } from '../../contexts/capture/domain/Capture.model';
 import { AnimatedCaptureCard } from '../animations/AnimatedCaptureCard';
 import { SwipeableCard } from '../cards/SwipeableCard';
 import { CaptureCard } from './CaptureCard';
+import { CaptureSyncBadge } from '../CaptureSyncBadge';
 
 type CaptureWithTranscription = Capture & {
   transcriptionStatus?: 'pending' | 'processing' | 'completed' | 'failed';
@@ -68,6 +70,10 @@ export function CaptureListItem({
               handlers={cardHandlers}
             />
           </SwipeableCard>
+          {/* Story 6.4 - AC6: Sync status badge (top-right overlay) */}
+          <View style={{ position: 'absolute', top: 8, right: 8 }} pointerEvents="none">
+            <CaptureSyncBadge capture={item} />
+          </View>
         </View>
       </LongPressGestureHandler>
     </AnimatedCaptureCard>

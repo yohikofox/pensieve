@@ -19,6 +19,7 @@ Fonctionnalité: Indicateurs de Statut de Synchronisation
     Et le SyncStatusStore est à l'état "syncing"
     Quand un SyncFailedEvent retryable est publié sur l'EventBus
     Alors le SyncStatusStore passe à l'état "pending"
+    Et le pendingCount est préservé (pas réinitialisé à 0)
 
   @story-6.4 @AC2 @task-1
   Scénario: L'indicateur passe à "error" après un SyncFailedEvent non-retryable

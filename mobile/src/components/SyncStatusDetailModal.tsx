@@ -126,6 +126,16 @@ export const SyncStatusDetailModal: React.FC<SyncStatusDetailModalProps> = ({
               </Text>
             </View>
 
+            {/* AC2: Progress label when syncing */}
+            {details.progressLabel && (
+              <View style={styles.row}>
+                <Text style={{ fontSize: 14, color: '#6b7280' }}>Progression</Text>
+                <Text style={{ fontSize: 14, color: '#3b82f6', fontWeight: '500' }}>
+                  {details.progressLabel}
+                </Text>
+              </View>
+            )}
+
             {/* Last sync time */}
             <View style={styles.row}>
               <Text style={{ fontSize: 14, color: '#6b7280' }}>Dernière sync</Text>
@@ -134,13 +144,30 @@ export const SyncStatusDetailModal: React.FC<SyncStatusDetailModalProps> = ({
               </Text>
             </View>
 
-            {/* Pending count */}
+            {/* AC9: Pending items with estimated time */}
             {details.pendingCount > 0 && (
-              <View style={styles.row}>
-                <Text style={{ fontSize: 14, color: '#6b7280' }}>En attente</Text>
-                <Text style={{ fontSize: 14, color: '#f59e0b', fontWeight: '500' }}>
-                  {details.pendingCount} élément{details.pendingCount > 1 ? 's' : ''}
-                </Text>
+              <View>
+                <View style={styles.row}>
+                  <Text style={{ fontSize: 14, color: '#6b7280' }}>En attente</Text>
+                  <Text style={{ fontSize: 14, color: '#f59e0b', fontWeight: '500' }}>
+                    {details.pendingCount} élément{details.pendingCount > 1 ? 's' : ''}
+                  </Text>
+                </View>
+                {/* AC9: Estimated remaining time */}
+                {details.estimatedTimeLabel && (
+                  <View style={styles.row}>
+                    <Text style={{ fontSize: 13, color: '#6b7280' }}>Temps estimé</Text>
+                    <Text style={{ fontSize: 13, color: '#9ca3af' }}>
+                      {details.estimatedTimeLabel}
+                    </Text>
+                  </View>
+                )}
+                {/* AC9: Priority note */}
+                <View style={{ marginBottom: 8, padding: 10, backgroundColor: '#fffbeb', borderRadius: 6 }}>
+                  <Text style={{ fontSize: 12, color: '#92400e' }}>
+                    📋 Les modifications locales sont synchronisées en priorité.
+                  </Text>
+                </View>
               </View>
             )}
 

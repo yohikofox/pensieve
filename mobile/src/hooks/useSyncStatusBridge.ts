@@ -24,7 +24,7 @@ import {
  *
  * Handles:
  * - SyncCompletedEvent → setSynced(timestamp)
- * - SyncFailedEvent (retryable) → setPending(0) (retry in progress)
+ * - SyncFailedEvent (retryable) → setPending(currentCount) — preserves existing count
  * - SyncFailedEvent (non-retryable) → setError(message)
  *
  * Must be called inside AppContent to run after bootstrap completes.
@@ -40,8 +40,9 @@ export const useSyncStatusBridge = (): void => {
         setSynced(Date.now());
       } else if (isSyncFailedEvent(event)) {
         if (event.payload.retryable) {
-          // Retry in progress — show pending state
-          setPending(0);
+          // Retry in progress — preserve existing pendingCount, only update status
+          const currentCount = useSyncStatusStore.getState().pendingCount;
+          setPending(currentCount);
         } else {
           // Non-retryable failure — show error
           setError(event.payload.error);

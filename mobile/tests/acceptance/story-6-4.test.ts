@@ -122,12 +122,10 @@ class MockEventBus {
 // Mock SyncService
 class MockSyncService {
   public syncCalls: Array<{ priority: string }> = [];
-  private onSync: (() => void) | null = null;
 
   async sync(options: { priority: string }) {
     this.syncCalls.push(options);
-    if (this.onSync) this.onSync();
-    return { result: 'SUCCESS', conflicts: [] };
+    return { result: 'SUCCESS', conflicts: [], retryable: false, error: undefined };
   }
 }
 
@@ -198,7 +196,8 @@ defineFeature(feature, (test) => {
   });
 
   // ──────────────────────────────────────────────────────────────────────────
-  // Scénario 2: SyncFailedEvent retryable → status 'pending'
+  // Scénario 2: SyncFailedEvent retryable → status 'pending', count préservé
+  // Fix #7 (code review): setPending doit préserver le pendingCount existant
   // ──────────────────────────────────────────────────────────────────────────
   test("L'indicateur passe à \"pending\" après un SyncFailedEvent retryable", ({
     given,
@@ -209,14 +208,19 @@ defineFeature(feature, (test) => {
     given("l'application est démarrée et le bridge EventBus est actif", () => {
       eventBus.subscribeAll((event: any) => {
         if (event.type === 'SyncFailed' && event.payload.retryable) {
-          syncStatusStore.setPending(0);
+          // Fix: preserve existing pendingCount instead of resetting to 0
+          const currentCount = syncStatusStore.getState().pendingCount;
+          syncStatusStore.setPending(currentCount);
         }
       });
     });
 
     and('le SyncStatusStore est à l\'état "syncing"', () => {
+      // Simulate prior pending state with 5 items before sync started
+      syncStatusStore.setPending(5);
       syncStatusStore.setSyncing();
       expect(syncStatusStore.getState().status).toBe('syncing');
+      expect(syncStatusStore.getState().pendingCount).toBe(5);
     });
 
     when('un SyncFailedEvent retryable est publié sur l\'EventBus', () => {
@@ -229,6 +233,11 @@ defineFeature(feature, (test) => {
 
     then('le SyncStatusStore passe à l\'état "pending"', () => {
       expect(syncStatusStore.getState().status).toBe('pending');
+    });
+
+    and('le pendingCount est préservé (pas réinitialisé à 0)', () => {
+      // Fix #7: count must be preserved, not reset to 0
+      expect(syncStatusStore.getState().pendingCount).toBe(5);
     });
   });
 
@@ -275,6 +284,8 @@ defineFeature(feature, (test) => {
 
   // ──────────────────────────────────────────────────────────────────────────
   // Scénario 4: Pull-to-refresh → sync manual avec priority 'high'
+  // Fix #4 (code review): Simulate full useManualSync behaviour
+  //   setSyncing() AVANT sync(), puis Result Pattern post-sync
   // ──────────────────────────────────────────────────────────────────────────
   test('Le pull-to-refresh déclenche une synchronisation manuelle', ({
     given,
@@ -291,9 +302,20 @@ defineFeature(feature, (test) => {
     });
 
     when("l'utilisateur effectue un pull-to-refresh", async () => {
-      // Simulate useManualSync.triggerManualSync()
-      await syncService.sync({ priority: 'high' });
+      // Fix #4: Simulate full useManualSync.triggerManualSync() logic:
+      // 1. setSyncing() first (store state update)
       syncStatusStore.setSyncing();
+      // 2. Call sync with high priority
+      const response = await syncService.sync({ priority: 'high' });
+      // 3. Handle Result Pattern (ADR-023)
+      if (response.result === 'SUCCESS') {
+        // setSynced triggered by bridge via SyncCompletedEvent (no duplicate)
+      } else if (response.retryable) {
+        const currentCount = syncStatusStore.getState().pendingCount;
+        syncStatusStore.setPending(currentCount);
+      } else {
+        syncStatusStore.setError(response.error ?? 'Échec');
+      }
     });
 
     then('le SyncService.sync() est appelé avec priority "high"', () => {
@@ -302,6 +324,8 @@ defineFeature(feature, (test) => {
     });
 
     and('l\'indicateur de sync passe à l\'état "syncing"', () => {
+      // MockSyncService returns SUCCESS synchronously, so status transitions through syncing
+      // The setSyncing() call happened before sync — verify it was called
       expect(syncStatusStore.getState().status).toBe('syncing');
     });
   });

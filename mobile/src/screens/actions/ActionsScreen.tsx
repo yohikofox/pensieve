@@ -436,7 +436,11 @@ export const ActionsScreen = () => {
         renderItem={({ item }) => renderTodoCard(item)}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={() => refetch()} />
+          // Story 6.4 - AC7: trigger manual sync on pull-to-refresh (all sort modes)
+          <RefreshControl
+            refreshing={isRefetching || isManualSyncing}
+            onRefresh={() => { refetch(); triggerManualSync(); }}
+          />
         }
         windowSize={10}
         initialNumToRender={15}

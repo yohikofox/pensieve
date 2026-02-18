@@ -11,9 +11,13 @@
 
 import { useCallback, useState } from 'react';
 import { useSyncService } from './useServices';
+import { useSyncStatusStore } from '../stores/SyncStatusStore';
+import { SyncResult } from '../infrastructure/sync/types';
 
 /**
  * Hook to trigger manual sync.
+ *
+ * ADR-023: Uses Result Pattern — never throws, handles SyncResult.
  *
  * @returns triggerManualSync - async function to trigger sync
  * @returns isManualSyncing - boolean loading state
@@ -28,10 +32,23 @@ export const useManualSync = () => {
     }
 
     setIsManualSyncing(true);
-    try {
-      await syncService.sync({ priority: 'high' });
-    } finally {
-      setIsManualSyncing(false);
+    useSyncStatusStore.getState().setSyncing();
+
+    const response = await syncService.sync({ priority: 'high' });
+
+    setIsManualSyncing(false);
+
+    // ADR-023: Handle Result Pattern — no throw, drive store state from result
+    if (response.result === SyncResult.SUCCESS) {
+      // setSynced will be triggered by useSyncStatusBridge via SyncCompletedEvent
+      // No duplicate state update needed here
+    } else if (response.retryable) {
+      const currentCount = useSyncStatusStore.getState().pendingCount;
+      useSyncStatusStore.getState().setPending(currentCount);
+    } else {
+      const errorMessage =
+        response.error ?? 'Échec de la synchronisation. Veuillez réessayer.';
+      useSyncStatusStore.getState().setError(errorMessage);
     }
   }, [syncService, isManualSyncing]);
 
