@@ -10,6 +10,9 @@ export enum RepositoryResultType {
   DATABASE_ERROR = "database_error",
   VALIDATION_ERROR = "validation_error",
   NETWORK_ERROR = "network_error",
+  AUTH_ERROR = "auth_error",
+  BUSINESS_ERROR = "business_error",
+  UNKNOWN_ERROR = "unknown_error",
 }
 
 export type RepositoryResult<T> = {
@@ -49,6 +52,27 @@ export function validationError<T>(error: string): RepositoryResult<T> {
 export function networkError<T>(error: string): RepositoryResult<T> {
   return {
     type: RepositoryResultType.NETWORK_ERROR,
+    error,
+  };
+}
+
+export function authError<T>(error: string): RepositoryResult<T> {
+  return {
+    type: RepositoryResultType.AUTH_ERROR,
+    error,
+  };
+}
+
+export function businessError<T>(error: string): RepositoryResult<T> {
+  return {
+    type: RepositoryResultType.BUSINESS_ERROR,
+    error,
+  };
+}
+
+export function unknownError<T>(error: string): RepositoryResult<T> {
+  return {
+    type: RepositoryResultType.UNKNOWN_ERROR,
     error,
   };
 }

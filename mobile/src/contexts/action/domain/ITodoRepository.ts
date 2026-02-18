@@ -10,6 +10,7 @@
 import { Todo } from "./Todo.model";
 import { Thought } from "../../knowledge/domain/Thought.model";
 import { Idea } from "../../knowledge/domain/Idea.model";
+import { RepositoryResult } from "../../shared/domain/Result";
 
 /**
  * Todo with source context (Thought + Idea)
@@ -74,9 +75,9 @@ export interface ITodoRepository {
    * Toggle todo status between 'todo' and 'completed'
    * AC8, FR19: Checkbox toggle with optimistic UI
    * @param id - Todo UUID
-   * @returns Updated todo
+   * @returns Result with updated todo, or not_found / database_error
    */
-  toggleStatus(id: string): Promise<Todo>;
+  toggleStatus(id: string): Promise<RepositoryResult<Todo>>;
 
   /**
    * Get all todos (for debugging/testing)

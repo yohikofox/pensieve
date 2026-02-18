@@ -52,6 +52,7 @@ import {
 } from '../../../shared/utils/notificationUtils';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import type { TranscriptionEngineType } from '../services/ITranscriptionEngine';
+import { RepositoryResultType } from '../../shared/domain/Result';
 
 /**
  * Worker state
@@ -229,16 +230,15 @@ export class TranscriptionWorker {
     console.log(`[TranscriptionWorker] 📦 Using Whisper model: ${selectedModel}`);
 
     // Load the model
-    try {
-      const modelPath = this.whisperModelService.getModelPath(selectedModel);
-      await this.transcriptionService.loadModel(modelPath);
-      this.currentWhisperModel = selectedModel;
-      return true;
-    } catch (error) {
-      console.error('[TranscriptionWorker] ❌ Failed to load Whisper model:', error);
+    const modelPath = this.whisperModelService.getModelPath(selectedModel);
+    const loadResult = await this.transcriptionService.loadModel(modelPath);
+    if (loadResult.type !== RepositoryResultType.SUCCESS) {
+      console.error('[TranscriptionWorker] ❌ Failed to load Whisper model:', loadResult.error);
       this.currentWhisperModel = null;
       return false;
     }
+    this.currentWhisperModel = selectedModel;
+    return true;
   }
 
   /**
@@ -539,10 +539,14 @@ export class TranscriptionWorker {
           nativeRecognitionResults = nativeResult.nativeResults;
         } else {
           // Use Whisper.rn via TranscriptionService
-          const transcriptionResult = await this.transcriptionService.transcribe(
+          const transcriptionRaw = await this.transcriptionService.transcribe(
             queuedCapture.audioPath,
             queuedCapture.audioDuration
           );
+          if (transcriptionRaw.type !== RepositoryResultType.SUCCESS) {
+            throw new Error(transcriptionRaw.error ?? 'Transcription failed');
+          }
+          const transcriptionResult = transcriptionRaw.data!;
           rawTranscript = transcriptionResult.text;
           wavPath = transcriptionResult.wavPath;
           transcriptPrompt = transcriptionResult.transcriptPrompt;
@@ -750,10 +754,14 @@ export class TranscriptionWorker {
         });
 
         // Transcribe using Whisper.rn
-        const transcriptionResult = await this.transcriptionService.transcribe(
+        const transcriptionRaw = await this.transcriptionService.transcribe(
           queuedCapture.audioPath,
           queuedCapture.audioDuration
         );
+        if (transcriptionRaw.type !== RepositoryResultType.SUCCESS) {
+          throw new Error(transcriptionRaw.error ?? 'Transcription failed');
+        }
+        const transcriptionResult = transcriptionRaw.data!;
 
         // Store raw Whisper transcript
         const rawTranscript = transcriptionResult.text;

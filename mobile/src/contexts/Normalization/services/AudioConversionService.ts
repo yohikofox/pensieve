@@ -25,6 +25,12 @@ import {
 } from "react-native-audio-api";
 // FileSystem now injected via IFileSystem interface (DIP)
 import { useSettingsStore } from "../../../stores/settingsStore";
+import {
+  type RepositoryResult,
+  success,
+  businessError,
+  unknownError,
+} from "../../shared/domain/Result";
 
 // Whisper.rn requirements
 const WHISPER_SAMPLE_RATE = 16000;
@@ -94,10 +100,9 @@ export class AudioConversionService {
    * Whisper.rn requires: WAV PCM 16kHz mono 16-bit
    *
    * @param inputPath - Path to input audio file (m4a, aac, mp3, etc.)
-   * @returns Path to converted WAV file (caller must delete after use)
-   * @throws Error if conversion fails or file doesn't exist
+   * @returns Result with path to converted WAV file (caller must delete after use)
    */
-  async convertToWhisperFormat(inputPath: string): Promise<string> {
+  async convertToWhisperFormat(inputPath: string): Promise<RepositoryResult<string>> {
     console.log(
       "[AudioConversionService] 🎵 Converting audio to Whisper format:",
       inputPath,
@@ -115,7 +120,7 @@ export class AudioConversionService {
         "[AudioConversionService] ❌ Input file does not exist:",
         inputPath,
       );
-      throw new Error(`Audio file not found: ${inputPath}`);
+      return businessError(`Audio file not found: ${inputPath}`);
     }
     console.log(
       "[AudioConversionService] 📁 Input file exists, size:",
@@ -168,10 +173,10 @@ export class AudioConversionService {
         "[AudioConversionService] ✅ Conversion successful:",
         outputPath,
       );
-      return outputPath;
+      return success(outputPath);
     } catch (error) {
       console.error("[AudioConversionService] ❌ Conversion failed:", error);
-      throw new Error(
+      return unknownError(
         `Audio conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
@@ -185,10 +190,9 @@ export class AudioConversionService {
    * has time to finalize the last word before EOF.
    *
    * @param inputPath - Path to input audio file (m4a, aac, mp3, etc.)
-   * @returns Path to converted WAV file (caller must delete after use)
-   * @throws Error if conversion fails or file doesn't exist
+   * @returns Result with path to converted WAV file (caller must delete after use)
    */
-  async convertToWhisperFormatWithPadding(inputPath: string): Promise<string> {
+  async convertToWhisperFormatWithPadding(inputPath: string): Promise<RepositoryResult<string>> {
     console.log(
       "[AudioConversionService] 🎵 Converting audio to Whisper format (with end padding):",
       inputPath,
@@ -206,7 +210,7 @@ export class AudioConversionService {
         "[AudioConversionService] ❌ Input file does not exist:",
         inputPath,
       );
-      throw new Error(`Audio file not found: ${inputPath}`);
+      return businessError(`Audio file not found: ${inputPath}`);
     }
     console.log(
       "[AudioConversionService] 📁 Input file exists, size:",
@@ -257,10 +261,10 @@ export class AudioConversionService {
         "[AudioConversionService] ✅ Conversion successful (with padding):",
         outputPath,
       );
-      return outputPath;
+      return success(outputPath);
     } catch (error) {
       console.error("[AudioConversionService] ❌ Conversion failed:", error);
-      throw new Error(
+      return unknownError(
         `Audio conversion failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }

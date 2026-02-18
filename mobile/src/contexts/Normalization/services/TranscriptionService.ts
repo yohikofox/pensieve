@@ -5,6 +5,14 @@ import { File } from "expo-file-system";
 import { initWhisper, WhisperContext } from "whisper.rn";
 import { AudioConversionService } from "./AudioConversionService";
 import { TranscriptionModelService } from "./TranscriptionModelService";
+import {
+  type RepositoryResult,
+  RepositoryResultType,
+  success,
+  validationError,
+  businessError,
+  unknownError,
+} from "../../shared/domain/Result";
 
 export interface PerformanceMetrics {
   audioDuration: number; // Audio file duration in ms
@@ -45,19 +53,18 @@ export class TranscriptionService {
    *
    * @param audioFilePath - Absolute path to audio file
    * @param audioDuration - Duration of audio file in milliseconds (for performance monitoring)
-   * @returns TranscriptionResult with text and optional wavPath (if debug mode enabled)
-   * @throws Error if audio path invalid, model not loaded, or transcription fails
+   * @returns Result with TranscriptionResult or error description
    */
   async transcribe(
     audioFilePath: string,
     audioDuration?: number,
-  ): Promise<TranscriptionResult> {
+  ): Promise<RepositoryResult<TranscriptionResult>> {
     if (!audioFilePath || audioFilePath.trim() === "") {
-      throw new Error("Invalid audio file path");
+      return validationError("Invalid audio file path");
     }
 
     if (!this.whisperContext) {
-      throw new Error("Whisper model not loaded. Call loadModel() first.");
+      return validationError("Whisper model not loaded. Call loadModel() first.");
     }
 
     let wavFilePath: string | null = null;
@@ -72,8 +79,13 @@ export class TranscriptionService {
         audioFilePath,
       );
 
-      wavFilePath =
+      const conversionResult =
         await this.audioConversionService.convertToWhisperFormat(audioFilePath);
+
+      if (conversionResult.type !== RepositoryResultType.SUCCESS) {
+        return businessError(conversionResult.error ?? "Audio conversion failed");
+      }
+      wavFilePath = conversionResult.data!;
 
       // Step 2: Normalize path for whisper.rn (remove file:// prefix on iOS)
       let normalizedPath = wavFilePath;
@@ -83,9 +95,6 @@ export class TranscriptionService {
 
       // Step 3: Get custom vocabulary prompt
       const vocabulary = await this.whisperModelService.getPromptString();
-      // const prompt = `Transcription d'une note vocale en français. Vocabulaire technique possible.
-      //   ${vocabulary ? `Termes spécifiques à inclure: ${vocabulary}` : ""}
-      //   `;
 
       const prompt = `
 Transcription fidèle d'une note vocale en français.
@@ -168,11 +177,11 @@ ${vocabulary}
         promptUsed: prompt || null,
       });
 
-      return {
+      return success({
         text: result.result,
         wavPath: isDebugMode ? wavFilePath : null,
         transcriptPrompt: prompt || null,
-      };
+      });
     } catch (error) {
       // Cleanup WAV file on error (even in debug mode - failed transcription = broken file)
       if (wavFilePath) {
@@ -182,7 +191,7 @@ ${vocabulary}
           // Ignore cleanup error
         }
       }
-      throw new Error(
+      return businessError(
         `Transcription failed: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
@@ -195,12 +204,13 @@ ${vocabulary}
    * Call releaseModel() to free memory when done.
    *
    * @param modelPath - Absolute path to Whisper model file (.bin)
+   * @returns Result<void> — success or validation/unknown error
    */
-  async loadModel(modelPath: string): Promise<void> {
+  async loadModel(modelPath: string): Promise<RepositoryResult<void>> {
     // Return if model already loaded (cached)
     if (this.whisperContext) {
       console.log("[TranscriptionService] Model already loaded, skipping");
-      return;
+      return success(undefined);
     }
 
     console.log(
@@ -221,11 +231,11 @@ ${vocabulary}
     });
 
     if (!exists) {
-      throw new Error(`Whisper model file not found: ${modelPath}`);
+      return validationError(`Whisper model file not found: ${modelPath}`);
     }
 
     if (size === 0) {
-      throw new Error(`Whisper model file is empty (0 bytes): ${modelPath}`);
+      return validationError(`Whisper model file is empty (0 bytes): ${modelPath}`);
     }
 
     try {
@@ -252,8 +262,9 @@ ${vocabulary}
         "[TranscriptionService] ✅ Model loaded successfully, GPU:",
         this.whisperContext.gpu,
       );
+      return success(undefined);
     } catch (error) {
-      throw new Error(
+      return unknownError(
         `Failed to load Whisper model: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }

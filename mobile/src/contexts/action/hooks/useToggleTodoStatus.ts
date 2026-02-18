@@ -16,6 +16,7 @@ import { container } from "tsyringe";
 import { ITodoRepository } from "../domain/ITodoRepository";
 import { Todo } from "../domain/Todo.model";
 import { TOKENS } from "../../../infrastructure/di/tokens";
+import { RepositoryResultType } from "../../shared/domain/Result";
 
 /**
  * Toggle todo status between 'todo' and 'completed'
@@ -34,7 +35,13 @@ export const useToggleTodoStatus = (): UseMutationResult<
   );
 
   return useMutation({
-    mutationFn: (todoId: string) => todoRepository.toggleStatus(todoId),
+    mutationFn: async (todoId: string) => {
+      const result = await todoRepository.toggleStatus(todoId);
+      if (result.type !== RepositoryResultType.SUCCESS || !result.data) {
+        throw new Error(result.error ?? 'Toggle failed');
+      }
+      return result.data;
+    },
 
     // Optimistic update (Subtask 5.8)
     onMutate: async (todoId: string) => {

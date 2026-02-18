@@ -25,6 +25,7 @@ import {
   NativeRecognitionResultsSchema,
   type NativeRecognitionResults,
 } from "../../capture/domain/NativeRecognitionResults.schema";
+import { RepositoryResultType } from "../../shared/domain/Result";
 
 const SpeechRecognitionResultSchema = z.object({
   results: z.array(
@@ -118,8 +119,12 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
     // Convert audio to WAV format (16kHz mono 16-bit PCM) with end padding
     // The padding ensures the native recognition engine has time to finalize the last word
     console.log("[NativeTranscription] Converting audio to WAV format with end padding...");
-    const wavPath =
+    const conversionResult =
       await this.audioConversionService.convertToWhisperFormatWithPadding(audioFilePath);
+    if (conversionResult.type !== RepositoryResultType.SUCCESS) {
+      throw new Error(conversionResult.error ?? "Audio conversion failed");
+    }
+    const wavPath = conversionResult.data!;
     console.log("[NativeTranscription] WAV conversion complete (with padding):", wavPath);
 
     try {

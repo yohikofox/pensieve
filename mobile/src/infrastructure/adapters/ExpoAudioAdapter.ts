@@ -25,7 +25,7 @@ import {
   success,
   validationError,
   databaseError,
-} from '../../contexts/capture/domain/Result';
+} from '../../contexts/shared/domain/Result';
 
 /**
  * Default recording configuration

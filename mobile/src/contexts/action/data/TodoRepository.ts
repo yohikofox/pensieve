@@ -13,7 +13,13 @@ import { ITodoRepository, TodoWithSource } from "../domain/ITodoRepository";
 import { Thought } from "../../knowledge/domain/Thought.model";
 import { Idea } from "../../knowledge/domain/Idea.model";
 import { SyncTrigger } from "../../../infrastructure/sync/SyncTrigger";
-import { RepositoryResultType } from "../../shared/domain/Result";
+import {
+  RepositoryResult,
+  RepositoryResultType,
+  success,
+  notFound,
+  databaseError,
+} from "../../shared/domain/Result";
 
 @injectable()
 export class TodoRepository implements ITodoRepository {
@@ -235,15 +241,14 @@ export class TodoRepository implements ITodoRepository {
    * Toggle todo status between 'todo' and 'completed'
    * AC8, FR19: Checkbox toggle with optimistic UI
    * @param id - Todo UUID
-   * @returns Updated todo
+   * @returns Result with updated todo, or not_found / database_error
    */
-  async toggleStatus(id: string): Promise<Todo> {
+  async toggleStatus(id: string): Promise<RepositoryResult<Todo>> {
     // Fetch current todo
     const current = await this.findById(id);
 
-    // TODO ADR-023: Should return RepositoryResult<Todo> instead of throwing
     if (!current) {
-      throw new Error(`Todo not found: ${id}`);
+      return notFound(`Todo not found: ${id}`);
     }
 
     // Determine new status and completedAt
@@ -270,12 +275,11 @@ export class TodoRepository implements ITodoRepository {
     // Fetch and return updated todo
     const updated = await this.findById(id);
 
-    // TODO ADR-023: Should return RepositoryResult<Todo> instead of throwing
     if (!updated) {
-      throw new Error(`Todo disappeared after toggle: ${id}`);
+      return databaseError(`Todo disappeared after toggle: ${id}`);
     }
 
-    return updated;
+    return success(updated);
   }
 
   /**

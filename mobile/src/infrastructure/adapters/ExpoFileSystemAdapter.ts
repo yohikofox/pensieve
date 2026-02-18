@@ -26,7 +26,7 @@ import {
   success,
   validationError,
   databaseError,
-} from '../../contexts/capture/domain/Result';
+} from '../../contexts/shared/domain/Result';
 
 @injectable()
 export class ExpoFileSystemAdapter implements IFileSystem {

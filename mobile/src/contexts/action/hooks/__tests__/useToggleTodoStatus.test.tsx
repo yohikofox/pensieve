@@ -14,6 +14,7 @@ import { container } from 'tsyringe';
 import { TOKENS } from '../../../../infrastructure/di/tokens';
 import type { ITodoRepository } from '../../domain/ITodoRepository';
 import { Todo } from '../../domain/Todo.model';
+import { success, notFound } from '../../../shared/domain/Result';
 
 // Mock TodoRepository
 const mockTodoRepository: jest.Mocked<ITodoRepository> = {
@@ -80,7 +81,7 @@ describe('useToggleTodoStatus', () => {
       updatedAt: Date.now(),
     };
 
-    mockTodoRepository.toggleStatus.mockResolvedValue(mockTodo);
+    mockTodoRepository.toggleStatus.mockResolvedValue(success(mockTodo));
 
     const { result } = renderHook(() => useToggleTodoStatus(), {
       wrapper: createWrapper(),
@@ -116,7 +117,7 @@ describe('useToggleTodoStatus', () => {
       updatedAt: Date.now(),
     };
 
-    mockTodoRepository.toggleStatus.mockResolvedValue(mockTodo);
+    mockTodoRepository.toggleStatus.mockResolvedValue(success(mockTodo));
 
     const { result } = renderHook(() => useToggleTodoStatus(), {
       wrapper: createWrapper(),
@@ -134,9 +135,8 @@ describe('useToggleTodoStatus', () => {
 
   it('should handle error when toggle fails', async () => {
     const todoId = 'test-todo-id-3';
-    const mockError = new Error('Todo not found');
 
-    mockTodoRepository.toggleStatus.mockRejectedValue(mockError);
+    mockTodoRepository.toggleStatus.mockResolvedValue(notFound('Todo not found'));
 
     const { result } = renderHook(() => useToggleTodoStatus(), {
       wrapper: createWrapper(),
@@ -149,15 +149,14 @@ describe('useToggleTodoStatus', () => {
     });
 
     expect(mockTodoRepository.toggleStatus).toHaveBeenCalledWith(todoId);
-    expect(result.current.error).toEqual(mockError);
+    expect(result.current.error?.message).toBe('Todo not found');
   });
 
   it('should call onError callback on mutation failure', async () => {
     const todoId = 'test-todo-id-4';
-    const mockError = new Error('Database error');
     const onErrorSpy = jest.fn();
 
-    mockTodoRepository.toggleStatus.mockRejectedValue(mockError);
+    mockTodoRepository.toggleStatus.mockResolvedValue(notFound('Database error'));
 
     const { result } = renderHook(() => useToggleTodoStatus(), {
       wrapper: createWrapper(),
@@ -174,7 +173,7 @@ describe('useToggleTodoStatus', () => {
     // onError is called with (error, variables, context, meta)
     // context contains previousTodos from onMutate
     expect(onErrorSpy).toHaveBeenCalled();
-    expect(onErrorSpy.mock.calls[0][0]).toEqual(mockError);
+    expect(onErrorSpy.mock.calls[0][0]?.message).toBe('Database error');
     expect(onErrorSpy.mock.calls[0][1]).toBe(todoId);
   });
 
