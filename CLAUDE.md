@@ -131,6 +131,28 @@ cd mobile && npx jest src/path/to/file.test.ts
 cd mobile && npx jest --config jest.config.acceptance.js tests/acceptance/story-2-1-simple.test.ts
 ```
 
+## ⛔ Gouvernance Architecturale — Règles Absolues pour l'Agent Dev
+
+Ces règles sont non négociables. Elles ont été établies suite à une substitution unilatérale de librairie non autorisée (story 14.3, Pino vs Winston).
+
+### Interdictions strictes
+
+- **JAMAIS remplacer une librairie prescrite dans un ADR** sans mandat explicite de l'architecte (Winston)
+- **JAMAIS reporter un Acceptance Criterion** d'une story sans en informer l'architecte et documenter la raison comme un point en attente de validation, pas comme une "décision"
+- **JAMAIS introduire une dépendance structurante** (nouvelle librairie, nouveau pattern d'infrastructure) sans qu'elle soit référencée dans un ADR ou une story
+
+### Procédure si divergence identifiée
+
+Si un ADR prescrit X mais que Y semble techniquement supérieur :
+
+1. **SIGNALER** la divergence explicitement dans la story en cours (section "Blockers / Questions architecturales")
+2. **NE PAS implémenter** la substitution de manière autonome
+3. **ATTENDRE** validation de l'architecte avant de procéder
+
+La conformité aux ADRs prime sur l'optimisation technique unilatérale.
+
+---
+
 ## Code Style
 
 - **Backend**: ESLint 9 flat config + Prettier (single quotes, trailing commas). Source in CommonJS module style (NestJS convention).
