@@ -82,12 +82,24 @@ describe('SyncService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SyncService,
-        { provide: getRepositoryToken(Thought), useValue: mockThoughtRepository },
+        {
+          provide: getRepositoryToken(Thought),
+          useValue: mockThoughtRepository,
+        },
         { provide: getRepositoryToken(Idea), useValue: mockIdeaRepository },
         { provide: getRepositoryToken(Todo), useValue: mockTodoRepository },
-        { provide: getRepositoryToken(Capture), useValue: mockCaptureRepository },
-        { provide: getRepositoryToken(CaptureSyncStatus), useValue: mockCaptureSyncStatusRepository },
-        { provide: getRepositoryToken(SyncLog), useValue: mockSyncLogRepository },
+        {
+          provide: getRepositoryToken(Capture),
+          useValue: mockCaptureRepository,
+        },
+        {
+          provide: getRepositoryToken(CaptureSyncStatus),
+          useValue: mockCaptureSyncStatusRepository,
+        },
+        {
+          provide: getRepositoryToken(SyncLog),
+          useValue: mockSyncLogRepository,
+        },
         { provide: SyncConflictResolver, useValue: mockConflictResolver },
         { provide: DataSource, useValue: mockDataSource },
       ],

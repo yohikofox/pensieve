@@ -227,9 +227,7 @@ export class AdminController {
 
   @Get('stats/users')
   async getUserStats() {
-    const total = await this.dataSource
-      .getRepository(User)
-      .count();
+    const total = await this.dataSource.getRepository(User).count();
 
     const active = await this.dataSource
       .getRepository(User)
@@ -262,9 +260,10 @@ export class AdminController {
       })
       .getCount();
 
-    const growthRate = previousPeriodUsers > 0
-      ? ((recentUsers - previousPeriodUsers) / previousPeriodUsers) * 100
-      : 0;
+    const growthRate =
+      previousPeriodUsers > 0
+        ? ((recentUsers - previousPeriodUsers) / previousPeriodUsers) * 100
+        : 0;
 
     return {
       total,
@@ -304,27 +303,36 @@ export class AdminController {
   @Get('stats/content')
   async getContentStats() {
     // Import Thought and Idea entities from knowledge module
-    const thoughtsCount = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM thoughts');
+    const thoughtsCount = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM thoughts',
+    );
 
-    const ideasCount = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM ideas');
+    const ideasCount = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM ideas',
+    );
 
-    const todosCount = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM todos');
+    const todosCount = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM todos',
+    );
 
     // Recent counts (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    const recentThoughts = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM thoughts WHERE "createdAt" > $1', [sevenDaysAgo]);
+    const recentThoughts = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM thoughts WHERE "createdAt" > $1',
+      [sevenDaysAgo],
+    );
 
-    const recentIdeas = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM ideas WHERE "createdAt" > $1', [sevenDaysAgo]);
+    const recentIdeas = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM ideas WHERE "createdAt" > $1',
+      [sevenDaysAgo],
+    );
 
-    const recentTodos = await this.dataSource
-      .query('SELECT COUNT(*) as count FROM todos WHERE "createdAt" > $1', [sevenDaysAgo]);
+    const recentTodos = await this.dataSource.query(
+      'SELECT COUNT(*) as count FROM todos WHERE "createdAt" > $1',
+      [sevenDaysAgo],
+    );
 
     return {
       thoughts: {
@@ -347,7 +355,10 @@ export class AdminController {
     const dbVersion = await this.dataSource.query('SELECT version()');
 
     return {
-      database: dbVersion[0].version.split(' ')[0] + ' ' + dbVersion[0].version.split(' ')[1],
+      database:
+        dbVersion[0].version.split(' ')[0] +
+        ' ' +
+        dbVersion[0].version.split(' ')[1],
       timestamp: new Date().toISOString(),
     };
   }

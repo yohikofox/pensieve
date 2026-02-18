@@ -63,7 +63,9 @@ describe('UploadsController', () => {
     it('should upload audio file to MinIO with user isolation', async () => {
       const captureId = 'capture-456';
 
-      minioService.putObject.mockResolvedValue('audio/user-123/capture-456.m4a');
+      minioService.putObject.mockResolvedValue(
+        'audio/user-123/capture-456.m4a',
+      );
 
       const result = await controller.uploadAudio(
         mockFile,
@@ -91,7 +93,11 @@ describe('UploadsController', () => {
 
     it('should reject if file missing', async () => {
       await expect(
-        controller.uploadAudio(null, { captureId: 'capture-456' }, mockRequest as any),
+        controller.uploadAudio(
+          null,
+          { captureId: 'capture-456' },
+          mockRequest as any,
+        ),
       ).rejects.toThrow('No file uploaded');
     });
 
@@ -99,7 +105,11 @@ describe('UploadsController', () => {
       const invalidFile = { ...mockFile, mimetype: 'image/png' };
 
       await expect(
-        controller.uploadAudio(invalidFile, { captureId: 'capture-456' }, mockRequest as any),
+        controller.uploadAudio(
+          invalidFile,
+          { captureId: 'capture-456' },
+          mockRequest as any,
+        ),
       ).rejects.toThrow('Invalid file type');
     });
 
@@ -107,15 +117,25 @@ describe('UploadsController', () => {
       const largeFile = { ...mockFile, size: 600 * 1024 * 1024 }; // 600MB
 
       await expect(
-        controller.uploadAudio(largeFile, { captureId: 'capture-456' }, mockRequest as any),
+        controller.uploadAudio(
+          largeFile,
+          { captureId: 'capture-456' },
+          mockRequest as any,
+        ),
       ).rejects.toThrow('File too large');
     });
 
     it('should handle MinIO upload errors', async () => {
-      minioService.putObject.mockRejectedValue(new Error('MinIO connection failed'));
+      minioService.putObject.mockRejectedValue(
+        new Error('MinIO connection failed'),
+      );
 
       await expect(
-        controller.uploadAudio(mockFile, { captureId: 'capture-456' }, mockRequest as any),
+        controller.uploadAudio(
+          mockFile,
+          { captureId: 'capture-456' },
+          mockRequest as any,
+        ),
       ).rejects.toThrow('Upload failed: MinIO connection failed');
     });
   });

@@ -76,15 +76,21 @@ defineFeature(feature, (test) => {
     });
 
     then("createdAt utilise le type 'timestamptz'", () => {
-      expect(content).toMatch(/CreateDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/);
+      expect(content).toMatch(
+        /CreateDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/,
+      );
     });
 
     and("updatedAt utilise le type 'timestamptz'", () => {
-      expect(content).toMatch(/UpdateDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/);
+      expect(content).toMatch(
+        /UpdateDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/,
+      );
     });
 
     and("deletedAt utilise le type 'timestamptz'", () => {
-      expect(content).toMatch(/DeleteDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/);
+      expect(content).toMatch(
+        /DeleteDateColumn\s*\(\s*\{\s*type:\s*'timestamptz'/,
+      );
     });
   });
 
@@ -151,9 +157,12 @@ defineFeature(feature, (test) => {
       );
     });
 
-    then("aucune colonne de date n'utilise le type 'timestamp' sans timezone", () => {
-      expect(violations).toEqual([]);
-    });
+    then(
+      "aucune colonne de date n'utilise le type 'timestamp' sans timezone",
+      () => {
+        expect(violations).toEqual([]);
+      },
+    );
   });
 
   // ============================================================
@@ -180,9 +189,12 @@ defineFeature(feature, (test) => {
       );
     });
 
-    then("aucune colonne de date n'utilise le type 'timestamp' sans timezone", () => {
-      expect(violations).toEqual([]);
-    });
+    then(
+      "aucune colonne de date n'utilise le type 'timestamp' sans timezone",
+      () => {
+        expect(violations).toEqual([]);
+      },
+    );
   });
 
   // ============================================================
@@ -209,9 +221,12 @@ defineFeature(feature, (test) => {
       );
     });
 
-    then("aucune colonne de date n'utilise le type 'timestamp' sans timezone", () => {
-      expect(violations).toEqual([]);
-    });
+    then(
+      "aucune colonne de date n'utilise le type 'timestamp' sans timezone",
+      () => {
+        expect(violations).toEqual([]);
+      },
+    );
   });
 
   // ============================================================
@@ -241,9 +256,12 @@ defineFeature(feature, (test) => {
       ];
     });
 
-    then("aucune colonne de date n'utilise le type 'timestamp' sans timezone", () => {
-      expect(allViolations).toEqual([]);
-    });
+    then(
+      "aucune colonne de date n'utilise le type 'timestamp' sans timezone",
+      () => {
+        expect(allViolations).toEqual([]);
+      },
+    );
   });
 
   // ============================================================
@@ -254,36 +272,42 @@ defineFeature(feature, (test) => {
     when,
     then,
   }) => {
-    let allViolations: string[] = [];
+    const allViolations: string[] = [];
 
     given("les fichiers sources des entités d'autorisation", () => {
       // loaded in 'when' step
     });
 
-    when("j'inspecte les décorateurs de colonnes de date dans chaque fichier", () => {
-      const authEntityFiles = [
-        'modules/authorization/implementations/postgresql/entities/role.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/permission.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/subscription-tier.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/user-role.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/user-permission.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/user-subscription.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/resource-share.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/role-permission.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/tier-permission.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/share-role.entity.ts',
-        'modules/authorization/implementations/postgresql/entities/share-role-permission.entity.ts',
-      ];
+    when(
+      "j'inspecte les décorateurs de colonnes de date dans chaque fichier",
+      () => {
+        const authEntityFiles = [
+          'modules/authorization/implementations/postgresql/entities/role.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/permission.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/subscription-tier.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/user-role.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/user-permission.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/user-subscription.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/resource-share.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/role-permission.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/tier-permission.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/share-role.entity.ts',
+          'modules/authorization/implementations/postgresql/entities/share-role-permission.entity.ts',
+        ];
 
-      authEntityFiles.forEach((filePath) => {
-        const content = readEntityFile(filePath);
-        allViolations.push(...getViolatingLines(content, filePath));
-      });
-    });
+        authEntityFiles.forEach((filePath) => {
+          const content = readEntityFile(filePath);
+          allViolations.push(...getViolatingLines(content, filePath));
+        });
+      },
+    );
 
-    then("aucun fichier d'entité d'autorisation n'utilise le type 'timestamp' sans timezone", () => {
-      expect(allViolations).toEqual([]);
-    });
+    then(
+      "aucun fichier d'entité d'autorisation n'utilise le type 'timestamp' sans timezone",
+      () => {
+        expect(allViolations).toEqual([]);
+      },
+    );
   });
 
   // ============================================================
@@ -315,14 +339,17 @@ defineFeature(feature, (test) => {
       }
     });
 
-    then('une migration nommée AlterTimestampColumnsToTimestamptz existe', () => {
-      const found = migrationFiles.some((f) =>
-        f.includes('AlterTimestampColumnsToTimestamptz'),
-      );
-      expect(found).toBe(true);
-    });
+    then(
+      'une migration nommée AlterTimestampColumnsToTimestamptz existe',
+      () => {
+        const found = migrationFiles.some((f) =>
+          f.includes('AlterTimestampColumnsToTimestamptz'),
+        );
+        expect(found).toBe(true);
+      },
+    );
 
-    and("elle contient des instructions ALTER COLUMN TYPE TIMESTAMPTZ", () => {
+    and('elle contient des instructions ALTER COLUMN TYPE TIMESTAMPTZ', () => {
       expect(migrationContent).toMatch(/ALTER\s+COLUMN.*TYPE\s+TIMESTAMPTZ/i);
     });
   });
@@ -330,7 +357,7 @@ defineFeature(feature, (test) => {
   // ============================================================
   // Scenario 9: No integer FKs in Capture entity (AC5)
   // ============================================================
-  test("Les FKs entières résiduelles sont absentes de capture.entity.ts (AC5)", ({
+  test('Les FKs entières résiduelles sont absentes de capture.entity.ts (AC5)', ({
     given,
     when,
     then,
@@ -339,7 +366,9 @@ defineFeature(feature, (test) => {
     let content = '';
 
     given("le fichier source de l'entité Capture", () => {
-      content = readEntityFile('modules/capture/domain/entities/capture.entity.ts');
+      content = readEntityFile(
+        'modules/capture/domain/entities/capture.entity.ts',
+      );
     });
 
     when("j'inspecte les colonnes FK de type entier", () => {

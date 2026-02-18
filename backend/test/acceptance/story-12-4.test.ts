@@ -39,9 +39,11 @@ const createMockDataSource = (
   };
 
   const ideaRepo = {
-    find: jest.fn().mockResolvedValue(
-      ideaIds.map((id) => ({ id, thoughtId: 'thought-abc' })),
-    ),
+    find: jest
+      .fn()
+      .mockResolvedValue(
+        ideaIds.map((id) => ({ id, thoughtId: 'thought-abc' })),
+      ),
     softDelete: jest.fn().mockImplementation(async (ids: string[]) => {
       if (mockState.shouldFailOnIdeaSoftDelete) {
         throw new Error('Simulated Idea soft-delete failure');
@@ -93,16 +95,19 @@ defineFeature(feature, (test) => {
   // ---------------------------------------------------------------------------
   // Scénario 1: Les Ideas liées sont soft-deletées
   // ---------------------------------------------------------------------------
-  test("Les Ideas liées sont soft-deletées quand un Thought est supprimé", ({
+  test('Les Ideas liées sont soft-deletées quand un Thought est supprimé', ({
     given,
     when,
     then,
     and,
   }) => {
-    given('un ThoughtDeleteService configuré avec un DataSource en mémoire', () => {
-      mockDataSource = createMockDataSource(['idea-001', 'idea-002']);
-      service = new ThoughtDeleteService(mockDataSource as any);
-    });
+    given(
+      'un ThoughtDeleteService configuré avec un DataSource en mémoire',
+      () => {
+        mockDataSource = createMockDataSource(['idea-001', 'idea-002']);
+        service = new ThoughtDeleteService(mockDataSource as any);
+      },
+    );
 
     given(
       'un Thought "thought-abc" avec 2 Ideas liées "idea-001" et "idea-002"',
@@ -111,9 +116,12 @@ defineFeature(feature, (test) => {
       },
     );
 
-    when('le ThoughtDeleteService supprime le Thought "thought-abc"', async () => {
-      deletionResult = await service.softDeleteWithRelated('thought-abc');
-    });
+    when(
+      'le ThoughtDeleteService supprime le Thought "thought-abc"',
+      async () => {
+        deletionResult = await service.softDeleteWithRelated('thought-abc');
+      },
+    );
 
     then('le résultat est un succès', () => {
       expect(isSuccess(deletionResult)).toBe(true);
@@ -140,12 +148,15 @@ defineFeature(feature, (test) => {
     then,
     and,
   }) => {
-    given('un ThoughtDeleteService configuré avec un DataSource en mémoire', () => {
-      mockDataSource = createMockDataSource(['idea-001'], {
-        shouldFailOnIdeaSoftDelete: true,
-      });
-      service = new ThoughtDeleteService(mockDataSource as any);
-    });
+    given(
+      'un ThoughtDeleteService configuré avec un DataSource en mémoire',
+      () => {
+        mockDataSource = createMockDataSource(['idea-001'], {
+          shouldFailOnIdeaSoftDelete: true,
+        });
+        service = new ThoughtDeleteService(mockDataSource as any);
+      },
+    );
 
     given('un Thought "thought-fail" avec des Ideas liées', () => {
       // Configuré dans le mock
@@ -192,11 +203,14 @@ defineFeature(feature, (test) => {
   }) => {
     let thoughtEntityContent: string;
 
-    given('un ThoughtDeleteService configuré avec un DataSource en mémoire', () => {
-      // Non utilisé dans ce scénario de vérification structurelle
-    });
+    given(
+      'un ThoughtDeleteService configuré avec un DataSource en mémoire',
+      () => {
+        // Non utilisé dans ce scénario de vérification structurelle
+      },
+    );
 
-    given('le code source de l\'entité Thought', () => {
+    given("le code source de l'entité Thought", () => {
       const entityPath = path.resolve(
         __dirname,
         '../../src/modules/knowledge/domain/entities/thought.entity.ts',

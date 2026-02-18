@@ -546,7 +546,9 @@ export class SyncService {
     if (entity === 'captures') {
       const captureRepo = transactionalRepos['captures'];
       if (!captureRepo) {
-        this.logger.warn('Skipping DELETE for captures: repository not available');
+        this.logger.warn(
+          'Skipping DELETE for captures: repository not available',
+        );
         return;
       }
       // recordId = clientId côté mobile

@@ -39,7 +39,9 @@ const createSoftDeleteMockDataSource = (
   const findOneCalls: Array<{ options: any }> = [];
 
   const repo = {
-    create: jest.fn().mockImplementation((_cls: any, data: any) => ({ ...data })),
+    create: jest
+      .fn()
+      .mockImplementation((_cls: any, data: any) => ({ ...data })),
     save: jest.fn().mockImplementation(async (entity: any) => entity),
     softDelete: jest.fn().mockImplementation(async (id: string) => {
       softDeleteCalls.push(id);
@@ -53,7 +55,10 @@ const createSoftDeleteMockDataSource = (
       findOneCalls.push({ options });
       // Si withDeleted est true, retourner un résultat simulé
       if (options?.withDeleted) {
-        return { id: options?.where?.id ?? 'deleted-id', deletedAt: new Date() };
+        return {
+          id: options?.where?.id ?? 'deleted-id',
+          deletedAt: new Date(),
+        };
       }
       // Sinon retourner null (soft-deleted filtré automatiquement par TypeORM)
       return findOneResult;
@@ -62,13 +67,17 @@ const createSoftDeleteMockDataSource = (
   };
 
   const dataSource = {
-    transaction: jest.fn().mockImplementation(async (fn: any) => fn({
-      create: jest.fn().mockImplementation((_cls: any, data: any) => ({ ...data })),
-      save: jest.fn().mockImplementation(async (_cls: any, entity: any) => {
-        if (Array.isArray(entity)) return entity.map((e) => ({ ...e }));
-        return { ...entity };
+    transaction: jest.fn().mockImplementation(async (fn: any) =>
+      fn({
+        create: jest
+          .fn()
+          .mockImplementation((_cls: any, data: any) => ({ ...data })),
+        save: jest.fn().mockImplementation(async (_cls: any, entity: any) => {
+          if (Array.isArray(entity)) return entity.map((e) => ({ ...e }));
+          return { ...entity };
+        }),
       }),
-    })),
+    ),
     getRepository: jest.fn().mockReturnValue(repo),
     _repo: repo,
   };
@@ -98,14 +107,20 @@ defineFeature(feature, (test) => {
     then,
     and,
   }) => {
-    given('un ThoughtRepository configuré avec un DataSource en mémoire', () => {
-      mockResult = createSoftDeleteMockDataSource();
-      thoughtRepository = new ThoughtRepository(mockResult.dataSource as any);
-    });
+    given(
+      'un ThoughtRepository configuré avec un DataSource en mémoire',
+      () => {
+        mockResult = createSoftDeleteMockDataSource();
+        thoughtRepository = new ThoughtRepository(mockResult.dataSource);
+      },
+    );
 
-    when('la méthode delete() est appelée pour un Thought existant', async () => {
-      await thoughtRepository.delete('thought-001');
-    });
+    when(
+      'la méthode delete() est appelée pour un Thought existant',
+      async () => {
+        await thoughtRepository.delete('thought-001');
+      },
+    );
 
     then('softDelete() est invoqué sur le repository TypeORM', () => {
       expect(mockResult.softDeleteCalls).toContain('thought-001');
@@ -119,7 +134,7 @@ defineFeature(feature, (test) => {
   // ---------------------------------------------------------------------------
   // Scénario 2: findById() retourne null après soft delete → 404
   // ---------------------------------------------------------------------------
-  test('Un Thought soft-deleté n\'est plus retourné par findById()', ({
+  test("Un Thought soft-deleté n'est plus retourné par findById()", ({
     given,
     when,
     then,
@@ -127,20 +142,26 @@ defineFeature(feature, (test) => {
   }) => {
     const thoughtId = 'thought-to-delete-001';
 
-    given('un ThoughtRepository configuré avec un DataSource en mémoire', () => {
-      // findOne retourne null pour un soft-deleted (TypeORM filtre automatiquement)
-      mockResult = createSoftDeleteMockDataSource(null);
-      thoughtRepository = new ThoughtRepository(mockResult.dataSource as any);
-    });
+    given(
+      'un ThoughtRepository configuré avec un DataSource en mémoire',
+      () => {
+        // findOne retourne null pour un soft-deleted (TypeORM filtre automatiquement)
+        mockResult = createSoftDeleteMockDataSource(null);
+        thoughtRepository = new ThoughtRepository(mockResult.dataSource);
+      },
+    );
 
     and(`un Thought avec l'id "${thoughtId}" existe`, () => {
       // Le Thought est supposé exister avant le delete
       // Dans notre mock, softDelete() simule la suppression
     });
 
-    when(`la méthode delete() est appelée pour le Thought "${thoughtId}"`, async () => {
-      await thoughtRepository.delete(thoughtId);
-    });
+    when(
+      `la méthode delete() est appelée pour le Thought "${thoughtId}"`,
+      async () => {
+        await thoughtRepository.delete(thoughtId);
+      },
+    );
 
     then(`findById("${thoughtId}") retourne null`, async () => {
       const result = await thoughtRepository.findById(thoughtId);
@@ -171,16 +192,19 @@ defineFeature(feature, (test) => {
   }) => {
     given('un TodoRepository configuré avec un DataSource en mémoire', () => {
       mockResult = createSoftDeleteMockDataSource();
-      todoRepository = new TodoRepository(mockResult.dataSource as any);
+      todoRepository = new TodoRepository(mockResult.dataSource);
     });
 
     when('la méthode delete() est appelée pour un Todo existant', async () => {
       await todoRepository.delete('todo-001');
     });
 
-    then('softDelete() est invoqué sur le repository TypeORM pour les todos', () => {
-      expect(mockResult.softDeleteCalls).toContain('todo-001');
-    });
+    then(
+      'softDelete() est invoqué sur le repository TypeORM pour les todos',
+      () => {
+        expect(mockResult.softDeleteCalls).toContain('todo-001');
+      },
+    );
 
     and("delete() standard n'est pas invoqué pour les todos", () => {
       expect(mockResult.deleteCalls).toHaveLength(0);
@@ -190,7 +214,7 @@ defineFeature(feature, (test) => {
   // ---------------------------------------------------------------------------
   // Scénario 4: Vérification structurelle — absence de _status dans les entités
   // ---------------------------------------------------------------------------
-  test("Aucune entité backend ne possède de champ _status textuel", ({
+  test('Aucune entité backend ne possède de champ _status textuel', ({
     given,
     when,
     then,
@@ -202,7 +226,7 @@ defineFeature(feature, (test) => {
       'src/modules/action/domain/entities/todo.entity.ts',
     ];
 
-    let entityContents: Record<string, string> = {};
+    const entityContents: Record<string, string> = {};
 
     given('le code source des entités backend knowledge et action', () => {
       const backendRoot = path.resolve(__dirname, '../../');

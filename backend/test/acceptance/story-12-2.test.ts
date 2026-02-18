@@ -53,13 +53,15 @@ const createMockDataSource = (): MockDataSourceResult => {
       }
       return entity;
     }),
-    save: jest.fn().mockImplementation(async (_EntityClass: any, entity: any) => {
-      // Simuler save: retourne l'entité avec id si déjà défini
-      if (Array.isArray(entity)) {
-        return entity.map((e) => ({ ...e, id: e.id ?? 'db-generated-id' }));
-      }
-      return { ...entity, id: entity.id ?? 'db-generated-id' };
-    }),
+    save: jest
+      .fn()
+      .mockImplementation(async (_EntityClass: any, entity: any) => {
+        // Simuler save: retourne l'entité avec id si déjà défini
+        if (Array.isArray(entity)) {
+          return entity.map((e) => ({ ...e, id: e.id ?? 'db-generated-id' }));
+        }
+        return { ...entity, id: entity.id ?? 'db-generated-id' };
+      }),
   };
 
   const dataSource = {
@@ -102,9 +104,12 @@ defineFeature(feature, (test) => {
     then,
     and,
   }) => {
-    given('un ThoughtRepository configuré avec un DataSource en mémoire', () => {
-      thoughtRepository = new ThoughtRepository(mockResult.dataSource as any);
-    });
+    given(
+      'un ThoughtRepository configuré avec un DataSource en mémoire',
+      () => {
+        thoughtRepository = new ThoughtRepository(mockResult.dataSource);
+      },
+    );
 
     when(
       'une nouvelle capture est traitée avec captureId "capture-test-001" et résumé "Résumé de test"',
@@ -147,19 +152,25 @@ defineFeature(feature, (test) => {
     then,
     and,
   }) => {
-    given('un ThoughtRepository configuré avec un DataSource en mémoire', () => {
-      thoughtRepository = new ThoughtRepository(mockResult.dataSource as any);
-    });
+    given(
+      'un ThoughtRepository configuré avec un DataSource en mémoire',
+      () => {
+        thoughtRepository = new ThoughtRepository(mockResult.dataSource);
+      },
+    );
 
-    when('une nouvelle capture est traitée avec 3 idées associées', async () => {
-      await thoughtRepository.createWithIdeas(
-        'capture-test-002',
-        'user-001',
-        'Résumé multi-idées',
-        ['Idée A', 'Idée B', 'Idée C'],
-        200,
-      );
-    });
+    when(
+      'une nouvelle capture est traitée avec 3 idées associées',
+      async () => {
+        await thoughtRepository.createWithIdeas(
+          'capture-test-002',
+          'user-001',
+          'Résumé multi-idées',
+          ['Idée A', 'Idée B', 'Idée C'],
+          200,
+        );
+      },
+    );
 
     then('chaque Idea a un UUID unique et valide', () => {
       expect(mockResult.ideaCreations).toHaveLength(3);
@@ -190,7 +201,7 @@ defineFeature(feature, (test) => {
     then,
   }) => {
     given('un TodoRepository configuré avec un DataSource en mémoire', () => {
-      todoRepository = new TodoRepository(mockResult.dataSource as any);
+      todoRepository = new TodoRepository(mockResult.dataSource);
     });
 
     when(
@@ -253,7 +264,7 @@ defineFeature(feature, (test) => {
       'src/modules/capture/domain/entities/capture-sync-status.entity.ts',
     ];
 
-    let entityContents: Record<string, string> = {};
+    const entityContents: Record<string, string> = {};
 
     given('le code source des entités backend', () => {
       const backendRoot = path.resolve(__dirname, '../../');
@@ -263,12 +274,12 @@ defineFeature(feature, (test) => {
       }
     });
 
-    when('on inspecte les fichiers d\'entités', () => {
+    when("on inspecte les fichiers d'entités", () => {
       // Lecture déjà faite dans given
     });
 
     then(
-      'les entités Thought, Idea, Todo, CaptureState, CaptureType et CaptureSyncStatus n\'utilisent pas @PrimaryGeneratedColumn',
+      "les entités Thought, Idea, Todo, CaptureState, CaptureType et CaptureSyncStatus n'utilisent pas @PrimaryGeneratedColumn",
       () => {
         for (const [filePath, content] of Object.entries(entityContents)) {
           expect(content).not.toContain('@PrimaryGeneratedColumn');

@@ -16,9 +16,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
 
 const THOUGHT_STATUS_ACTIVE_UUID = 'd0000000-0000-7000-8000-000000000001';
 
-export class AddThoughtStatusIdFkToThoughts1771700000000
-  implements MigrationInterface
-{
+export class AddThoughtStatusIdFkToThoughts1771700000000 implements MigrationInterface {
   name = 'AddThoughtStatusIdFkToThoughts1771700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

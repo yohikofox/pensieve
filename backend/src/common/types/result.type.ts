@@ -50,8 +50,9 @@ export const validationError = (error: string): Result<never> => ({
   error,
 });
 
-export const isSuccess = <T>(result: Result<T>): result is Result<T> & { data: T } =>
-  result.type === 'success';
+export const isSuccess = <T>(
+  result: Result<T>,
+): result is Result<T> & { data: T } => result.type === 'success';
 
 export const isError = <T>(result: Result<T>): boolean =>
   result.type !== 'success';

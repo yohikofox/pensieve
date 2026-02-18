@@ -184,7 +184,7 @@ describe('ThoughtDeleteService', () => {
       expect(thoughtDeleteCall).toBeUndefined();
     });
 
-    it("retourne transactionError si le soft-delete du Thought échoue", async () => {
+    it('retourne transactionError si le soft-delete du Thought échoue', async () => {
       const dataSource = createMockDataSource({
         shouldFailOnThoughtSoftDelete: true,
       });

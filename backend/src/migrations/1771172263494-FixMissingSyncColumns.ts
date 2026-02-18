@@ -17,7 +17,10 @@ export class FixMissingSyncColumns1771172263494 implements MigrationInterface {
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     // Helper function to check if column exists
-    const columnExists = async (table: string, column: string): Promise<boolean> => {
+    const columnExists = async (
+      table: string,
+      column: string,
+    ): Promise<boolean> => {
       const result = await queryRunner.query(
         `SELECT column_name FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
         [table, column],
@@ -64,7 +67,9 @@ export class FixMissingSyncColumns1771172263494 implements MigrationInterface {
     }
 
     if (!(await columnExists('ideas', '_status'))) {
-      await queryRunner.query(`ALTER TABLE "ideas" ADD COLUMN "_status" TEXT NOT NULL DEFAULT 'active'`);
+      await queryRunner.query(
+        `ALTER TABLE "ideas" ADD COLUMN "_status" TEXT NOT NULL DEFAULT 'active'`,
+      );
       await queryRunner.query(
         `COMMENT ON COLUMN "ideas"."_status" IS 'Record status: active | deleted (soft delete for sync)'`,
       );
@@ -87,7 +92,9 @@ export class FixMissingSyncColumns1771172263494 implements MigrationInterface {
     }
 
     if (!(await columnExists('todos', '_status'))) {
-      await queryRunner.query(`ALTER TABLE "todos" ADD COLUMN "_status" TEXT NOT NULL DEFAULT 'active'`);
+      await queryRunner.query(
+        `ALTER TABLE "todos" ADD COLUMN "_status" TEXT NOT NULL DEFAULT 'active'`,
+      );
       await queryRunner.query(
         `COMMENT ON COLUMN "todos"."_status" IS 'Record status: active | deleted (soft delete for sync)'`,
       );
@@ -150,22 +157,42 @@ export class FixMissingSyncColumns1771172263494 implements MigrationInterface {
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop triggers
-    await queryRunner.query(`DROP TRIGGER IF EXISTS thoughts_update_last_modified ON thoughts`);
-    await queryRunner.query(`DROP TRIGGER IF EXISTS ideas_update_last_modified ON ideas`);
-    await queryRunner.query(`DROP TRIGGER IF EXISTS todos_update_last_modified ON todos`);
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS thoughts_update_last_modified ON thoughts`,
+    );
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS ideas_update_last_modified ON ideas`,
+    );
+    await queryRunner.query(
+      `DROP TRIGGER IF EXISTS todos_update_last_modified ON todos`,
+    );
     await queryRunner.query(`DROP FUNCTION IF EXISTS update_last_modified()`);
 
     // Drop indexes
-    await queryRunner.query(`DROP INDEX IF EXISTS "IDX_THOUGHTS_LAST_MODIFIED"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "IDX_THOUGHTS_LAST_MODIFIED"`,
+    );
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_IDEAS_LAST_MODIFIED"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_TODOS_LAST_MODIFIED"`);
 
     // Drop columns
-    await queryRunner.query(`ALTER TABLE "thoughts" DROP COLUMN IF EXISTS "last_modified_at"`);
-    await queryRunner.query(`ALTER TABLE "thoughts" DROP COLUMN IF EXISTS "_status"`);
-    await queryRunner.query(`ALTER TABLE "ideas" DROP COLUMN IF EXISTS "last_modified_at"`);
-    await queryRunner.query(`ALTER TABLE "ideas" DROP COLUMN IF EXISTS "_status"`);
-    await queryRunner.query(`ALTER TABLE "todos" DROP COLUMN IF EXISTS "last_modified_at"`);
-    await queryRunner.query(`ALTER TABLE "todos" DROP COLUMN IF EXISTS "_status"`);
+    await queryRunner.query(
+      `ALTER TABLE "thoughts" DROP COLUMN IF EXISTS "last_modified_at"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "thoughts" DROP COLUMN IF EXISTS "_status"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "ideas" DROP COLUMN IF EXISTS "last_modified_at"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "ideas" DROP COLUMN IF EXISTS "_status"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "todos" DROP COLUMN IF EXISTS "last_modified_at"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "todos" DROP COLUMN IF EXISTS "_status"`,
+    );
   }
 }

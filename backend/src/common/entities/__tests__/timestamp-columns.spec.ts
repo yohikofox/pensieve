@@ -193,8 +193,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
       const storage = getMetadataArgsStorage();
       const cols = storage.columns.filter(
         (col) =>
-          col.target === User &&
-          col.propertyName === 'deletion_requested_at',
+          col.target === User && col.propertyName === 'deletion_requested_at',
       );
       expect(cols).toHaveLength(1);
       expect((cols[0].options as any).type).toBe('timestamptz');
@@ -257,8 +256,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
     it('completedAt (SyncLog) doit utiliser timestamptz', () => {
       const storage = getMetadataArgsStorage();
       const cols = storage.columns.filter(
-        (col) =>
-          col.target === SyncLog && col.propertyName === 'completedAt',
+        (col) => col.target === SyncLog && col.propertyName === 'completedAt',
       );
       expect(cols).toHaveLength(1);
       expect((cols[0].options as any).type).toBe('timestamptz');

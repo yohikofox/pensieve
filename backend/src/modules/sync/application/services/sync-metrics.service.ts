@@ -67,7 +67,8 @@ export class SyncMetricsService {
     });
 
     // Success rate
-    const successRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 0;
+    const successRate =
+      totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 0;
 
     // Average duration (only successful syncs)
     const avgDurationResult = await this.syncLogRepository
@@ -77,17 +78,24 @@ export class SyncMetricsService {
       .andWhere('log.durationMs IS NOT NULL')
       .getRawOne();
 
-    const avgDurationMs = avgDurationResult?.avg ? Math.round(parseFloat(avgDurationResult.avg)) : 0;
+    const avgDurationMs = avgDurationResult?.avg
+      ? Math.round(parseFloat(avgDurationResult.avg))
+      : 0;
 
     // 95th percentile duration (for performance monitoring)
     const p95DurationResult = await this.syncLogRepository
       .createQueryBuilder('log')
-      .select('PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY log.durationMs)', 'p95')
+      .select(
+        'PERCENTILE_CONT(0.95) WITHIN GROUP (ORDER BY log.durationMs)',
+        'p95',
+      )
       .where('log.status = :status', { status: 'success' })
       .andWhere('log.durationMs IS NOT NULL')
       .getRawOne();
 
-    const p95DurationMs = p95DurationResult?.p95 ? Math.round(parseFloat(p95DurationResult.p95)) : 0;
+    const p95DurationMs = p95DurationResult?.p95
+      ? Math.round(parseFloat(p95DurationResult.p95))
+      : 0;
 
     // Total records synced
     const recordsResult = await this.syncLogRepository
@@ -95,18 +103,20 @@ export class SyncMetricsService {
       .select('SUM(log.recordsSynced)', 'total')
       .getRawOne();
 
-    const totalRecordsSynced = recordsResult?.total ? parseInt(recordsResult.total, 10) : 0;
+    const totalRecordsSynced = recordsResult?.total
+      ? parseInt(recordsResult.total, 10)
+      : 0;
 
     // Syncs in last 24 hours
     const syncsLast24h = await this.syncLogRepository
       .createQueryBuilder('log')
-      .where('log.startedAt > NOW() - INTERVAL \'24 hours\'')
+      .where("log.startedAt > NOW() - INTERVAL '24 hours'")
       .getCount();
 
     // Syncs in last 7 days
     const syncsLast7d = await this.syncLogRepository
       .createQueryBuilder('log')
-      .where('log.startedAt > NOW() - INTERVAL \'7 days\'')
+      .where("log.startedAt > NOW() - INTERVAL '7 days'")
       .getCount();
 
     // Recent failures (last 24h, for alerting)
@@ -157,7 +167,9 @@ export class SyncMetricsService {
       .andWhere('log.durationMs IS NOT NULL')
       .getRawOne();
 
-    const avgDurationMs = avgDurationResult?.avg ? Math.round(parseFloat(avgDurationResult.avg)) : 0;
+    const avgDurationMs = avgDurationResult?.avg
+      ? Math.round(parseFloat(avgDurationResult.avg))
+      : 0;
 
     // Consecutive failures (for alerting - Task 6.5)
     const consecutiveFailures = await this.countConsecutiveFailures(userId);
@@ -179,7 +191,7 @@ export class SyncMetricsService {
     const failures = await this.syncLogRepository
       .createQueryBuilder('log')
       .where('log.status = :status', { status: 'error' })
-      .andWhere('log.startedAt > NOW() - INTERVAL \'24 hours\'')
+      .andWhere("log.startedAt > NOW() - INTERVAL '24 hours'")
       .orderBy('log.startedAt', 'DESC')
       .limit(50)
       .getMany();
@@ -188,7 +200,9 @@ export class SyncMetricsService {
     const failuresWithCount: RecentFailure[] = [];
 
     for (const failure of failures) {
-      const consecutiveFailures = await this.countConsecutiveFailures(failure.userId);
+      const consecutiveFailures = await this.countConsecutiveFailures(
+        failure.userId,
+      );
 
       failuresWithCount.push({
         userId: failure.userId,
@@ -244,7 +258,7 @@ export class SyncMetricsService {
       .createQueryBuilder('log')
       .select('DISTINCT log.userId', 'userId')
       .where('log.status = :status', { status: 'error' })
-      .andWhere('log.startedAt > NOW() - INTERVAL \'24 hours\'')
+      .andWhere("log.startedAt > NOW() - INTERVAL '24 hours'")
       .getRawMany();
 
     const usersAboveThreshold: UserSyncStats[] = [];
@@ -264,13 +278,18 @@ export class SyncMetricsService {
    * Get daily sync volume trend (last 7 days)
    * For monitoring dashboard charts
    */
-  async getDailySyncTrend(): Promise<Array<{ date: string; syncs: number; failures: number }>> {
+  async getDailySyncTrend(): Promise<
+    Array<{ date: string; syncs: number; failures: number }>
+  > {
     const trend = await this.syncLogRepository
       .createQueryBuilder('log')
       .select('DATE(log.startedAt)', 'date')
       .addSelect('COUNT(*)', 'syncs')
-      .addSelect('SUM(CASE WHEN log.status = \'error\' THEN 1 ELSE 0 END)', 'failures')
-      .where('log.startedAt > NOW() - INTERVAL \'7 days\'')
+      .addSelect(
+        "SUM(CASE WHEN log.status = 'error' THEN 1 ELSE 0 END)",
+        'failures',
+      )
+      .where("log.startedAt > NOW() - INTERVAL '7 days'")
       .groupBy('DATE(log.startedAt)')
       .orderBy('date', 'ASC')
       .getRawMany();

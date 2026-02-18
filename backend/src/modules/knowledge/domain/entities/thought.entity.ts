@@ -52,5 +52,4 @@ export class Thought extends BaseEntity {
   // par ThoughtDeleteService via une transaction atomique (Story 12.4)
   @OneToMany(() => Idea, (idea) => idea.thought)
   ideas!: Idea[];
-
 }

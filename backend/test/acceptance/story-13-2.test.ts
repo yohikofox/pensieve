@@ -12,9 +12,7 @@
 import { defineFeature, loadFeature } from 'jest-cucumber';
 import * as fs from 'fs';
 import * as path from 'path';
-import {
-  THOUGHT_STATUS_IDS,
-} from '../../src/common/constants/reference-data.constants';
+import { THOUGHT_STATUS_IDS } from '../../src/common/constants/reference-data.constants';
 
 const feature = loadFeature(
   './test/acceptance/features/story-13-2-backend-statuts-referentiels.feature',

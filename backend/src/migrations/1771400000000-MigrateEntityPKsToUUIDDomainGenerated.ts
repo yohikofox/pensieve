@@ -19,9 +19,7 @@
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MigrateEntityPKsToUUIDDomainGenerated1771400000000
-  implements MigrationInterface
-{
+export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements MigrationInterface {
   name = 'MigrateEntityPKsToUUIDDomainGenerated1771400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

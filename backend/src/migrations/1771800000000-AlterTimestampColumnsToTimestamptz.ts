@@ -31,9 +31,7 @@
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AlterTimestampColumnsToTimestamptz1771800000000
-  implements MigrationInterface
-{
+export class AlterTimestampColumnsToTimestamptz1771800000000 implements MigrationInterface {
   name = 'AlterTimestampColumnsToTimestamptz1771800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

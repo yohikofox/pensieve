@@ -130,9 +130,7 @@ describe('SyncConflictResolver', () => {
 
       // Assert - Client wins on business state
       expect(result.resolvedRecord.state).toBe('done');
-      expect(result.resolvedRecord.completed_at).toBe(
-        '2026-02-13T10:00:00Z',
-      );
+      expect(result.resolvedRecord.completed_at).toBe('2026-02-13T10:00:00Z');
       expect(result.resolvedRecord.title).toBe('Client Title - User edited');
       expect(result.resolvedRecord.description).toBe(
         'Client description - User edited',

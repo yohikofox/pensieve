@@ -123,9 +123,7 @@ export class UploadsController {
       return { audioUrl: key };
     } catch (error: any) {
       console.error('[UploadsController] Upload failed:', error);
-      throw new InternalServerErrorException(
-        `Upload failed: ${error.message}`,
-      );
+      throw new InternalServerErrorException(`Upload failed: ${error.message}`);
     }
   }
 }

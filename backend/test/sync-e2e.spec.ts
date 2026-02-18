@@ -60,7 +60,9 @@ describe('Sync Infrastructure E2E', () => {
 
   beforeEach(async () => {
     // Clean database before each test
-    await dataSource.query('TRUNCATE thoughts, ideas, todos, sync_logs, sync_conflicts CASCADE');
+    await dataSource.query(
+      'TRUNCATE thoughts, ideas, todos, sync_logs, sync_conflicts CASCADE',
+    );
   });
 
   describe('Task 7.1 - Full Sync Round-Trip', () => {
@@ -128,7 +130,9 @@ describe('Sync Infrastructure E2E', () => {
       expect(response.body.changes.thought).toBeDefined();
       expect(response.body.changes.thought.updated).toHaveLength(1);
       expect(response.body.changes.thought.updated[0].id).toBe('thought-2');
-      expect(response.body.changes.thought.updated[0].summary).toBe('Test thought from backend');
+      expect(response.body.changes.thought.updated[0].summary).toBe(
+        'Test thought from backend',
+      );
     });
 
     it('should complete full round-trip: PUSH → backend persist → PULL from another client', async () => {
@@ -168,7 +172,9 @@ describe('Sync Infrastructure E2E', () => {
 
       expect(pullResponse.body.changes.todo).toBeDefined();
       expect(pullResponse.body.changes.todo.updated).toHaveLength(1);
-      expect(pullResponse.body.changes.todo.updated[0].description).toBe('Task from client 1');
+      expect(pullResponse.body.changes.todo.updated[0].description).toBe(
+        'Task from client 1',
+      );
     });
 
     it('should log sync operations in sync_logs table', async () => {
@@ -319,7 +325,9 @@ describe('Sync Infrastructure E2E', () => {
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
 
-      expect(response.body.changes.thought.deleted).toContain('thought-deleted-server');
+      expect(response.body.changes.thought.deleted).toContain(
+        'thought-deleted-server',
+      );
     });
   });
 

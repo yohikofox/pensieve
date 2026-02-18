@@ -52,7 +52,10 @@ export class SyncConflictResolver {
 
     switch (entity) {
       case 'capture':
-        resolvedRecord = this.resolveCaptureConflict(serverRecord, clientRecord);
+        resolvedRecord = this.resolveCaptureConflict(
+          serverRecord,
+          clientRecord,
+        );
         strategy = 'per-column-hybrid';
         conflictType = 'capture-user-vs-technical';
         break;
@@ -66,7 +69,10 @@ export class SyncConflictResolver {
       case 'thought':
       case 'idea':
       case 'project':
-        resolvedRecord = this.resolveDefaultConflict(serverRecord, clientRecord);
+        resolvedRecord = this.resolveDefaultConflict(
+          serverRecord,
+          clientRecord,
+        );
         strategy = 'client-wins';
         conflictType = 'simple-client-wins';
         break;
@@ -199,7 +205,8 @@ export class SyncConflictResolver {
         `Conflict logged: ${entity}/${recordId} resolved with ${resolutionStrategy}`,
       );
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
       this.logger.error(
         `Failed to log conflict for ${entity}/${recordId}: ${errorMessage}`,
       );

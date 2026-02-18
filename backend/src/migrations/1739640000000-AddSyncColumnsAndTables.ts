@@ -1,4 +1,10 @@
-import { MigrationInterface, QueryRunner, Table, TableColumn, TableIndex } from 'typeorm';
+import {
+  MigrationInterface,
+  QueryRunner,
+  Table,
+  TableColumn,
+  TableIndex,
+} from 'typeorm';
 
 /**
  * Migration: Add Sync Columns and Tables
@@ -149,7 +155,8 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
             name: 'resolutionStrategy',
             type: 'text',
             isNullable: false,
-            comment: "Resolution: 'client_wins' | 'server_wins' | 'per_column_merge'",
+            comment:
+              "Resolution: 'client_wins' | 'server_wins' | 'per_column_merge'",
           },
           {
             name: 'clientValue',
@@ -205,7 +212,7 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
         name: 'last_modified_at',
         type: 'bigint',
         isNullable: false,
-        default: "(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        default: '(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint',
         comment: 'Last modification timestamp in milliseconds (sync protocol)',
       }),
     );
@@ -238,7 +245,7 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
         name: 'last_modified_at',
         type: 'bigint',
         isNullable: false,
-        default: "(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        default: '(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint',
         comment: 'Last modification timestamp in milliseconds (sync protocol)',
       }),
     );
@@ -271,7 +278,7 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
         name: 'last_modified_at',
         type: 'bigint',
         isNullable: false,
-        default: "(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint",
+        default: '(EXTRACT(EPOCH FROM NOW()) * 1000)::bigint',
         comment: 'Last modification timestamp in milliseconds (sync protocol)',
       }),
     );
@@ -333,9 +340,15 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
 
   public async down(queryRunner: QueryRunner): Promise<void> {
     // Drop triggers
-    await queryRunner.query('DROP TRIGGER IF EXISTS thoughts_update_last_modified ON thoughts');
-    await queryRunner.query('DROP TRIGGER IF EXISTS ideas_update_last_modified ON ideas');
-    await queryRunner.query('DROP TRIGGER IF EXISTS todos_update_last_modified ON todos');
+    await queryRunner.query(
+      'DROP TRIGGER IF EXISTS thoughts_update_last_modified ON thoughts',
+    );
+    await queryRunner.query(
+      'DROP TRIGGER IF EXISTS ideas_update_last_modified ON ideas',
+    );
+    await queryRunner.query(
+      'DROP TRIGGER IF EXISTS todos_update_last_modified ON todos',
+    );
 
     // Drop trigger function
     await queryRunner.query('DROP FUNCTION IF EXISTS update_last_modified()');
@@ -356,7 +369,10 @@ export class AddSyncColumnsAndTables1739640000000 implements MigrationInterface 
     await queryRunner.dropColumn('thoughts', 'last_modified_at');
 
     // Drop sync_conflicts table
-    await queryRunner.dropIndex('sync_conflicts', 'IDX_SYNC_CONFLICTS_USER_ENTITY');
+    await queryRunner.dropIndex(
+      'sync_conflicts',
+      'IDX_SYNC_CONFLICTS_USER_ENTITY',
+    );
     await queryRunner.dropTable('sync_conflicts');
 
     // Drop sync_logs table

@@ -76,7 +76,8 @@ export class SyncAdminController {
     const totalRecords = logs.reduce((sum, l) => sum + l.recordsSynced, 0);
 
     // Success rate
-    const successRate = totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 0;
+    const successRate =
+      totalSyncs > 0 ? (successfulSyncs / totalSyncs) * 100 : 0;
 
     // Get conflict stats
     const conflicts = await this.syncConflictRepo.find({
@@ -164,7 +165,10 @@ export class SyncAdminController {
    * GET /api/admin/sync/conflicts?limit=100
    */
   @Get('conflicts')
-  async getConflicts(@Query('limit') limit?: string, @Query('userId') userId?: string) {
+  async getConflicts(
+    @Query('limit') limit?: string,
+    @Query('userId') userId?: string,
+  ) {
     const take = Math.min(parseInt(limit || '100', 10), 1000);
 
     const where: any = {};

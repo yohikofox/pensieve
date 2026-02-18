@@ -33,7 +33,8 @@ export class SyncConflict {
 
   @Column({
     type: 'text',
-    comment: 'Type of conflict: capture-user-vs-technical, todo-state-vs-ai, etc.',
+    comment:
+      'Type of conflict: capture-user-vs-technical, todo-state-vs-ai, etc.',
   })
   conflictType!: string;
 

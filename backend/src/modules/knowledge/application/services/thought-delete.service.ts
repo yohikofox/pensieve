@@ -74,7 +74,9 @@ export class ThoughtDeleteService {
       return success(undefined);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Unknown error during deletion';
+        error instanceof Error
+          ? error.message
+          : 'Unknown error during deletion';
 
       this.logger.error('thought.delete.failed', {
         thoughtId,
