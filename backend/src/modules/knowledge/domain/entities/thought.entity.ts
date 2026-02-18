@@ -38,16 +38,9 @@ export class Thought extends BaseEntity {
   // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Relationships
-  @OneToMany(() => Idea, (idea) => idea.thought, { cascade: true })
+  // ADR-026 R3: cascade supprimé — la suppression des Ideas liées est gérée explicitement
+  // par ThoughtDeleteService via une transaction atomique (Story 12.4)
+  @OneToMany(() => Idea, (idea) => idea.thought)
   ideas!: Idea[];
 
-  // Story 4.3: OneToMany relationship with Todos (Action Context)
-  // Lazy import to avoid circular dependency
-  // @OneToMany('Todo', 'thought', { cascade: true })
-  // todos!: any[]; // Type will be Todo[] but we avoid direct import
-
-  // Note: ManyToOne to Capture will be added when Capture Context is integrated
-  // @ManyToOne(() => Capture)
-  // @JoinColumn({ name: 'captureId' })
-  // capture: Capture;
 }

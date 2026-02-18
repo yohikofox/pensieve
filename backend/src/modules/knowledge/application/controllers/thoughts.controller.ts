@@ -20,9 +20,12 @@ import {
   UseGuards,
   Inject,
   NotFoundException,
+  InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
 import { ThoughtRepository } from '../repositories/thought.repository';
+import { ThoughtDeleteService } from '../services/thought-delete.service';
+import { isError } from '../../../../common/types/result.type';
 import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
 import { ResourceOwnershipGuard } from '../../../authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../../../authorization/infrastructure/guards/permission.guard';
@@ -55,6 +58,7 @@ export class ThoughtsController {
 
   constructor(
     private readonly thoughtRepository: ThoughtRepository,
+    private readonly thoughtDeleteService: ThoughtDeleteService,
     @Inject('IAuthorizationService')
     private readonly authService: IAuthorizationService,
     private readonly resourceShareRepo: ResourceShareRepository,
@@ -139,14 +143,19 @@ export class ThoughtsController {
   /**
    * Delete thought
    * Authorization: ResourceOwnershipGuard ensures user owns the thought
-   * Cascade deletes associated ideas
+   *
+   * Story 12.4 (ADR-026 R3): La suppression des Ideas liées est gérée
+   * explicitement par ThoughtDeleteService via une transaction atomique.
    */
   @Delete(':id')
   @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteThought(@Param('id') id: string) {
-    await this.thoughtRepository.delete(id);
+    const result = await this.thoughtDeleteService.softDeleteWithRelated(id);
+    if (isError(result)) {
+      throw new InternalServerErrorException(result.error);
+    }
   }
 
   // ========================================

@@ -35,6 +35,10 @@ export class Idea extends BaseEntity {
   // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Relationships
+  // ADR-026 R3 — Décision documentée : onDelete: 'CASCADE' est une contrainte FK SQL,
+  // différente du cascade ORM TypeORM. Elle est intentionnellement conservée pour garantir
+  // l'intégrité référentielle lors de suppressions DB directes (maintenance admin, cleanup tests).
+  // Avec softDelete() TypeORM, cette contrainte n'est jamais déclenchée (UPDATE, pas DELETE SQL).
   @ManyToOne(() => Thought, (thought) => thought.ideas, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'thoughtId' })
   thought!: Thought;
