@@ -73,6 +73,38 @@ export class SupabaseAdminService {
   }
 
   /**
+   * List all users from Supabase Auth (paginated, returns all pages)
+   */
+  async listAllUsers(): Promise<Array<{ id: string; email: string; created_at: string }>> {
+    const allUsers: Array<{ id: string; email: string; created_at: string }> = [];
+    let page = 1;
+    const perPage = 1000;
+
+    while (true) {
+      const { data, error } = await this.adminClient.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+
+      if (error) {
+        throw new Error(`Failed to list Supabase users: ${error.message}`);
+      }
+
+      const users = data?.users ?? [];
+      for (const u of users) {
+        if (u.email) {
+          allUsers.push({ id: u.id, email: u.email, created_at: u.created_at });
+        }
+      }
+
+      if (users.length < perPage) break;
+      page++;
+    }
+
+    return allUsers;
+  }
+
+  /**
    * Force reset a user's password via Supabase Admin API
    *
    * Supabase is the source of truth for auth — never modify passwords directly in PostgreSQL.

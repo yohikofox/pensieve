@@ -29,6 +29,10 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Sync state
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ created: number; updated: number; unchanged: number } | null>(null);
+
   // Reset password dialog state
   const [resetTarget, setResetTarget] = useState<User | null>(null);
   const [newPassword, setNewPassword] = useState('');
@@ -51,6 +55,20 @@ export default function UsersPage() {
       setError(error instanceof Error ? error.message : 'Failed to load users');
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleSyncFromSupabase() {
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const result = await apiClient.syncUsersFromSupabase();
+      setSyncResult({ created: result.created, updated: result.updated, unchanged: result.unchanged });
+      await loadUsers();
+    } catch (err) {
+      console.error('Sync failed:', err);
+    } finally {
+      setIsSyncing(false);
     }
   }
 
@@ -160,7 +178,19 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      <PageHeader title="Utilisateurs" description="Gérer les utilisateurs de l'application" />
+      <div className="flex items-center justify-between">
+        <PageHeader title="Utilisateurs" description="Gérer les utilisateurs de l'application" />
+        <div className="flex items-center gap-3">
+          {syncResult && (
+            <p className="text-sm text-muted-foreground">
+              Sync : +{syncResult.created} créés, {syncResult.updated} mis à jour, {syncResult.unchanged} inchangés
+            </p>
+          )}
+          <Button variant="outline" onClick={handleSyncFromSupabase} disabled={isSyncing}>
+            {isSyncing ? 'Sync en cours...' : 'Sync depuis Supabase'}
+          </Button>
+        </div>
+      </div>
       <DataTable columns={columns} data={users} />
 
       <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) closeResetDialog(); }}>

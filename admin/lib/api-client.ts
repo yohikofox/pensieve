@@ -80,6 +80,13 @@ export class ApiClient {
     );
   }
 
+  async syncUsersFromSupabase() {
+    return this.fetch<{ message: string; created: number; updated: number; unchanged: number }>(
+      `/api/admin/users/sync-from-supabase`,
+      { method: 'POST' }
+    );
+  }
+
   // ========================================
   // Roles Management
   // ========================================

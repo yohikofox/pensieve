@@ -13,6 +13,7 @@ import {
 import { AdminJwtGuard } from '../guards/admin-jwt.guard';
 import { UserFeaturesService } from '../../../identity/application/services/user-features.service';
 import { SupabaseAdminService } from '../../../rgpd/application/services/supabase-admin.service';
+import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
 import { UpdateUserFeaturesDto } from '../../application/dtos/update-user-features.dto';
 import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password.dto';
 import { UserFeaturesDto } from '../../../identity/application/dtos/user-features.dto';
@@ -32,6 +33,7 @@ export class AdminUsersController {
   constructor(
     private readonly userFeaturesService: UserFeaturesService,
     private readonly supabaseAdminService: SupabaseAdminService,
+    private readonly rgpdService: RgpdService,
   ) {}
 
   /**
@@ -78,6 +80,31 @@ export class AdminUsersController {
     );
 
     return updatedFeatures;
+  }
+
+  /**
+   * Sync all Supabase Auth users → backend PostgreSQL
+   * POST /api/admin/users/sync-from-supabase
+   * Story 8.19: Sync utilisateurs Supabase → Backend
+   *
+   * Match by email: if email found in DB → overwrite values (including provider id).
+   * If not found → create new record.
+   * Note: to be migrated to Better Auth provider sync when Epic 15 is implemented.
+   */
+  @Post('sync-from-supabase')
+  @HttpCode(HttpStatus.OK)
+  async syncUsersFromSupabase(): Promise<{
+    message: string;
+    created: number;
+    updated: number;
+    unchanged: number;
+  }> {
+    this.logger.log('Admin triggering Supabase → backend user sync');
+    const result = await this.rgpdService.syncUsersFromSupabase();
+    this.logger.log(
+      `Sync complete: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged`,
+    );
+    return { message: 'Sync completed', ...result };
   }
 
   /**

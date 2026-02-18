@@ -182,4 +182,58 @@ Pour toute question, contactez: support@pensine.app
 
     return user;
   }
+
+  /**
+   * Sync all Supabase Auth users → backend PostgreSQL (descending sync)
+   *
+   * Match strategy: email is the stable identifier.
+   * - If match by id → update email if changed.
+   * - If match by email (different id) → overwrite id via raw SQL + update email.
+   * - If no match → create new record.
+   *
+   * Note: to be migrated to Better Auth provider sync when Epic 15 is implemented.
+   */
+  async syncUsersFromSupabase(): Promise<{ created: number; updated: number; unchanged: number }> {
+    const supabaseUsers = await this.supabaseAdminService.listAllUsers();
+
+    let created = 0;
+    let updated = 0;
+    let unchanged = 0;
+
+    for (const supabaseUser of supabaseUsers) {
+      const { id, email } = supabaseUser;
+
+      // 1. Try match by provider id (Supabase UUID)
+      const byId = await this.userRepo.findOne({ where: { id } });
+      if (byId) {
+        if (byId.email !== email) {
+          await this.userRepo.update({ id }, { email });
+          updated++;
+        } else {
+          unchanged++;
+        }
+        continue;
+      }
+
+      // 2. Try match by email (user may exist with different provider id)
+      const byEmail = await this.userRepo.findOne({ where: { email } });
+      if (byEmail) {
+        // Overwrite provider id and email via raw SQL (PK update)
+        await this.userRepo.query(
+          'UPDATE users SET id = $1, email = $2 WHERE email = $3',
+          [id, email, email],
+        );
+        updated++;
+        continue;
+      }
+
+      // 3. No match — create new record
+      await this.userRepo.save(
+        this.userRepo.create({ id, email, status: 'active' }),
+      );
+      created++;
+    }
+
+    return { created, updated, unchanged };
+  }
 }
