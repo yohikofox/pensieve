@@ -65,8 +65,7 @@ export class Todo extends BaseEntity {
   @Column({ type: 'bigint', name: 'last_modified_at' })
   lastModifiedAt!: number; // Milliseconds since epoch
 
-  @Column({ type: 'text', name: '_status', default: 'active' })
-  syncStatus!: string; // 'active' | 'deleted' (renamed to avoid conflict with business status)
+  // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Relationships
   @ManyToOne(() => Thought, { onDelete: 'CASCADE' })

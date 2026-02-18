@@ -243,14 +243,29 @@ export class TodoRepository {
   }
 
   /**
-   * Delete Todo (soft or hard delete)
+   * Soft-delete Todo — positionne deletedAt (ADR-026 R4)
    * AC7: False Positive Correction
    *
-   * @param todoId - Todo to delete
+   * @param todoId - Todo à soft-supprimer
    */
   async delete(todoId: string): Promise<void> {
-    await this.todoRepo.delete(todoId);
-    this.logger.log(`🗑️  Todo deleted: ${todoId}`);
+    await this.todoRepo.softDelete(todoId);
+    this.logger.log(`🗑️  Todo soft-deleted: ${todoId}`);
+  }
+
+  /**
+   * Trouver un Todo par ID en incluant les enregistrements soft-deleted
+   * Réservé aux requêtes admin/audit (AC5 ADR-026 R4)
+   *
+   * @param todoId - Todo à trouver (y compris supprimés)
+   * @returns Todo ou null
+   */
+  async findByIdWithDeleted(todoId: string): Promise<Todo | null> {
+    return await this.todoRepo.findOne({
+      where: { id: todoId },
+      relations: ['thought', 'idea'],
+      withDeleted: true,
+    });
   }
 
   /**

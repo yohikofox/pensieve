@@ -103,13 +103,28 @@ export class IdeaRepository {
   }
 
   /**
-   * Delete Idea
+   * Soft-delete Idea — positionne deletedAt (ADR-026 R4)
    *
-   * @param ideaId - Idea to delete
+   * @param ideaId - Idea à soft-supprimer
    */
   async delete(ideaId: string): Promise<void> {
-    await this.ideaRepo.delete(ideaId);
-    this.logger.log(`🗑️  Idea deleted: ${ideaId}`);
+    await this.ideaRepo.softDelete(ideaId);
+    this.logger.log(`🗑️  Idea soft-deleted: ${ideaId}`);
+  }
+
+  /**
+   * Trouver une Idea par ID en incluant les enregistrements soft-deleted
+   * Réservé aux requêtes admin/audit (AC5 ADR-026 R4)
+   *
+   * @param ideaId - Idea à trouver (y compris supprimées)
+   * @returns Idea avec Thought ou null
+   */
+  async findByIdWithDeleted(ideaId: string): Promise<Idea | null> {
+    return await this.ideaRepo.findOne({
+      where: { id: ideaId },
+      relations: ['thought'],
+      withDeleted: true,
+    });
   }
 
   /**

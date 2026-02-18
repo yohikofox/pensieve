@@ -32,8 +32,7 @@ export class Idea extends BaseEntity {
   @Column({ type: 'bigint', name: 'last_modified_at' })
   lastModifiedAt!: number; // Milliseconds since epoch
 
-  @Column({ type: 'text', name: '_status', default: 'active' })
-  status!: string; // 'active' | 'deleted'
+  // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Relationships
   @ManyToOne(() => Thought, (thought) => thought.ideas, { onDelete: 'CASCADE' })

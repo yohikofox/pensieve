@@ -136,13 +136,32 @@ export class ThoughtRepository {
   }
 
   /**
-   * Delete Thought (cascade deletes Ideas)
+   * Soft-delete Thought — positionne deletedAt (ADR-026 R4)
    *
-   * @param thoughtId - Thought to delete
+   * TypeORM filtre automatiquement les enregistrements soft-deleted
+   * dans les requêtes standard (find/findOne).
+   * Utiliser findByIdWithDeleted() pour l'accès audit/admin.
+   *
+   * @param thoughtId - Thought à soft-supprimer
    */
   async delete(thoughtId: string): Promise<void> {
-    await this.thoughtRepo.delete(thoughtId);
-    this.logger.log(`🗑️  Thought deleted: ${thoughtId}`);
+    await this.thoughtRepo.softDelete(thoughtId);
+    this.logger.log(`🗑️  Thought soft-deleted: ${thoughtId}`);
+  }
+
+  /**
+   * Trouver un Thought par ID en incluant les enregistrements soft-deleted
+   * Réservé aux requêtes admin/audit (AC5 ADR-026 R4)
+   *
+   * @param thoughtId - Thought à trouver (y compris supprimés)
+   * @returns Thought avec Ideas ou null
+   */
+  async findByIdWithDeleted(thoughtId: string): Promise<Thought | null> {
+    return await this.thoughtRepo.findOne({
+      where: { id: thoughtId },
+      relations: ['ideas'],
+      withDeleted: true,
+    });
   }
 
   /**
