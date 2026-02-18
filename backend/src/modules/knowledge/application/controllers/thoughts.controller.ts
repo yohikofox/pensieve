@@ -110,7 +110,7 @@ export class ThoughtsController {
     }
 
     // Ensure user owns the thought (additional security layer)
-    if (thought.userId !== user.id) {
+    if (thought.ownerId !== user.id) {
       throw new NotFoundException('Thought not found for this capture');
     }
 

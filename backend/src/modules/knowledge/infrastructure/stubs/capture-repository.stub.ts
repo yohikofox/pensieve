@@ -52,7 +52,7 @@ export class CaptureRepositoryStub implements ICaptureRepository {
     // Return mock data for now
     return {
       id: captureId,
-      userId: 'stub-user-id',
+      ownerId: 'stub-user-id',
       type: 'AUDIO',
       status: 'transcribed',
     };

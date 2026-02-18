@@ -41,7 +41,7 @@ export class IdeaRepository {
    */
   async findByUserId(userId: string): Promise<Idea[]> {
     return await this.ideaRepo.find({
-      where: { userId },
+      where: { ownerId: userId },
       relations: ['thought'],
       order: { createdAt: 'DESC' },
     });
@@ -77,7 +77,7 @@ export class IdeaRepository {
   ): Promise<Idea> {
     const idea = this.ideaRepo.create({
       thoughtId,
-      userId,
+      ownerId: userId,
       text,
       orderIndex,
     });

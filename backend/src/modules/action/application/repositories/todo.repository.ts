@@ -22,7 +22,7 @@ export interface CreateTodoDto {
   thoughtId: string;
   ideaId?: string;
   captureId: string;
-  userId: string;
+  ownerId: string;
   description: string;
   deadline?: Date | null;
   deadlineConfidence?: number | null;
@@ -57,7 +57,7 @@ export class TodoRepository {
       thoughtId: dto.thoughtId,
       ideaId: dto.ideaId,
       captureId: dto.captureId,
-      userId: dto.userId,
+      ownerId: dto.ownerId,
       description: dto.description,
       deadline: dto.deadline ?? undefined,
       deadlineConfidence: dto.deadlineConfidence ?? undefined,
@@ -100,7 +100,7 @@ export class TodoRepository {
         thoughtId: dto.thoughtId,
         ideaId: dto.ideaId,
         captureId: dto.captureId,
-        userId: dto.userId,
+        ownerId: dto.ownerId,
         description: dto.description,
         deadline: dto.deadline ?? undefined,
         deadlineConfidence: dto.deadlineConfidence ?? undefined,
@@ -157,7 +157,7 @@ export class TodoRepository {
     userId: string,
     status?: 'todo' | 'launched' | 'in_progress' | 'completed' | 'abandoned',
   ): Promise<Todo[]> {
-    const where: any = { userId };
+    const where: any = { ownerId: userId };
     if (status) {
       where.status = status;
     }
@@ -284,7 +284,7 @@ export class TodoRepository {
   ): Promise<Todo[]> {
     return await this.todoRepo
       .createQueryBuilder('todo')
-      .where('todo.userId = :userId', { userId })
+      .where('todo.ownerId = :ownerId', { ownerId: userId })
       .andWhere('todo.deadline IS NOT NULL')
       .andWhere('todo.deadline >= :startDate', { startDate })
       .andWhere('todo.deadline <= :endDate', { endDate })
@@ -313,7 +313,7 @@ export class TodoRepository {
    */
   async countByStatus(userId: string): Promise<Record<string, number>> {
     const todos = await this.todoRepo.find({
-      where: { userId },
+      where: { ownerId: userId },
       select: ['status'],
     });
 

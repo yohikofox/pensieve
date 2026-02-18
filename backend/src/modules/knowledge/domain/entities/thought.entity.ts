@@ -20,8 +20,8 @@ export class Thought extends BaseEntity {
   @Column('uuid')
   captureId!: string;
 
-  @Column('uuid')
-  userId!: string;
+  @Column({ type: 'uuid', name: 'owner_id' })
+  ownerId!: string;
 
   @Column('text')
   summary!: string;

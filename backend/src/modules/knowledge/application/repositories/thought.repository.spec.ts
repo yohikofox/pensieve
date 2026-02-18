@@ -64,7 +64,7 @@ describe('ThoughtRepository', () => {
       const mockThought: Thought = {
         id: 'thought-789',
         captureId,
-        userId,
+        ownerId: userId,
         summary,
         processingTimeMs,
         statusId: 'd0000000-0000-7000-8000-000000000001',
@@ -78,7 +78,7 @@ describe('ThoughtRepository', () => {
       const mockIdeas: Idea[] = ideas.map((text, index) => ({
         id: `idea-${index}`,
         thoughtId: mockThought.id,
-        userId,
+        ownerId: userId,
         text,
         orderIndex: index,
         createdAt: new Date(),
@@ -121,7 +121,7 @@ describe('ThoughtRepository', () => {
       const mockThought: Thought = {
         id: thoughtId,
         captureId: 'capture-456',
-        userId: 'user-789',
+        ownerId: 'user-789',
         summary: 'Test summary',
         processingTimeMs: 1000,
         statusId: 'd0000000-0000-7000-8000-000000000001',
@@ -159,7 +159,7 @@ describe('ThoughtRepository', () => {
         {
           id: 'thought-1',
           captureId: 'capture-1',
-          userId,
+          ownerId: userId,
           summary: 'Summary 1',
           processingTimeMs: 1000,
           statusId: 'd0000000-0000-7000-8000-000000000001',
@@ -177,7 +177,7 @@ describe('ThoughtRepository', () => {
 
       expect(result).toEqual(mockThoughts);
       expect(mockThoughtRepo.find).toHaveBeenCalledWith({
-        where: { userId },
+        where: { ownerId: userId },
         relations: ['ideas'],
         order: { createdAt: 'DESC' },
       });
@@ -190,7 +190,7 @@ describe('ThoughtRepository', () => {
       const mockThought: Thought = {
         id: 'thought-456',
         captureId,
-        userId: 'user-789',
+        ownerId: 'user-789',
         summary: 'Test summary',
         processingTimeMs: 1000,
         statusId: 'd0000000-0000-7000-8000-000000000001',

@@ -243,7 +243,7 @@ export class SyncService {
     const statusField = entity === 'todo' ? 'syncStatus' : 'status';
     const updated = await repository.find({
       where: {
-        userId,
+        ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
         [statusField]: 'active',
       } as any,
@@ -252,7 +252,7 @@ export class SyncService {
     // Get deleted records (soft deletes)
     const deleted = await repository.find({
       where: {
-        userId,
+        ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
         [statusField]: 'deleted',
       } as any,
@@ -275,7 +275,7 @@ export class SyncService {
   ): Promise<{ updated: any[]; deleted: string[] }> {
     const updated = await this.captureRepository.find({
       where: {
-        userId,
+        ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
         syncStatus: { name: 'active' },
       } as any,
@@ -284,7 +284,7 @@ export class SyncService {
 
     const deleted = await this.captureRepository.find({
       where: {
-        userId,
+        ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
         syncStatus: { name: 'deleted' },
       } as any,
@@ -315,14 +315,14 @@ export class SyncService {
 
     // Fetch current server record
     const serverRecord = await repository.findOne({
-      where: { id: clientRecord.id, userId } as any,
+      where: { id: clientRecord.id, ownerId: userId } as any,
     });
 
     // New record - no conflict
     if (!serverRecord) {
       await repository.save({
         ...clientRecord,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
       return { conflict: false };
@@ -344,7 +344,7 @@ export class SyncService {
 
       await repository.save({
         ...resolution.resolvedRecord,
-        userId,
+        ownerId: userId,
       });
 
       return {
@@ -355,7 +355,7 @@ export class SyncService {
       // No conflict - accept client changes
       await repository.save({
         ...clientRecord,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
 
@@ -378,7 +378,7 @@ export class SyncService {
     }
 
     await repository.update(
-      { id: recordId, userId } as any,
+      { id: recordId, ownerId: userId } as any,
       {
         _status: 'deleted',
         last_modified_at: Date.now(),
@@ -415,14 +415,14 @@ export class SyncService {
 
     // Fetch current server record
     const serverRecord = await repository.findOne({
-      where: { id: clientRecord.id, userId } as any,
+      where: { id: clientRecord.id, ownerId: userId } as any,
     });
 
     // New record - no conflict
     if (!serverRecord) {
       await repository.save({
         ...clientRecord,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
       return { conflict: false };
@@ -444,7 +444,7 @@ export class SyncService {
 
       await repository.save({
         ...resolution.resolvedRecord,
-        userId,
+        ownerId: userId,
       });
 
       return {
@@ -455,7 +455,7 @@ export class SyncService {
       // No conflict - accept client changes
       await repository.save({
         ...clientRecord,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
 
@@ -485,7 +485,7 @@ export class SyncService {
     const clientId = clientRecord.id;
 
     const serverRecord = await repository.findOne({
-      where: { clientId, userId },
+      where: { clientId, ownerId: userId },
     });
 
     if (!serverRecord) {
@@ -494,7 +494,7 @@ export class SyncService {
       await repository.save({
         ...rest,
         clientId,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
       return { conflict: false };
@@ -516,7 +516,7 @@ export class SyncService {
         ...resolution.resolvedRecord,
         id: serverRecord.id,
         clientId: serverRecord.clientId,
-        userId,
+        ownerId: userId,
       });
       return { conflict: true, strategy: resolution.strategy };
     } else {
@@ -525,7 +525,7 @@ export class SyncService {
         ...rest,
         id: serverRecord.id,
         clientId: serverRecord.clientId,
-        userId,
+        ownerId: userId,
         last_modified_at: Date.now(),
       });
       return { conflict: false };
@@ -557,7 +557,7 @@ export class SyncService {
         return;
       }
       await captureRepo.update(
-        { clientId: recordId, userId } as any,
+        { clientId: recordId, ownerId: userId } as any,
         {
           syncStatusId: deletedStatus.id,
           last_modified_at: Date.now(),
@@ -574,7 +574,7 @@ export class SyncService {
     }
 
     await repository.update(
-      { id: recordId, userId } as any,
+      { id: recordId, ownerId: userId } as any,
       {
         _status: 'deleted',
         last_modified_at: Date.now(),

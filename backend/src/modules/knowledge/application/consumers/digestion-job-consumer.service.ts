@@ -437,7 +437,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       // 1. Create Thought entity
       const thought = manager.create(Thought, {
         captureId,
-        userId,
+        ownerId: userId,
         summary,
         confidenceScore,
         processingTimeMs,
@@ -450,7 +450,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
       const ideaEntities = ideas.map((ideaText, index) =>
         manager.create(Idea, {
           thoughtId: savedThought.id,
-          userId,
+          ownerId: userId,
           text: ideaText,
           orderIndex: index,
         }),
@@ -477,7 +477,7 @@ export class DigestionJobConsumer implements OnModuleDestroy {
           todoDtos.push({
             thoughtId: savedThought.id,
             captureId,
-            userId,
+            ownerId: userId,
             description: todo.description,
             deadline: deadlineDate,
             deadlineConfidence,

@@ -157,7 +157,7 @@ describe('SyncService', () => {
             updated: [
               {
                 id: 'thought-1',
-                userId,
+                ownerId: userId,
                 summary: 'test',
                 lastModifiedAt: 1000001,
               },
@@ -169,7 +169,7 @@ describe('SyncService', () => {
       await service.processPush(userId, dto);
 
       expect(mockThoughtRepository.findOne).toHaveBeenCalledWith({
-        where: { id: 'thought-1', userId },
+        where: { id: 'thought-1', ownerId: userId },
       });
     });
 
@@ -196,7 +196,7 @@ describe('SyncService', () => {
       mockCaptureRepository.save.mockResolvedValueOnce({
         id: 'backend-uuid',
         clientId: 'mobile-uuid',
-        userId,
+        ownerId: userId,
       });
 
       const dto: PushRequestDto = {
@@ -221,14 +221,14 @@ describe('SyncService', () => {
 
       // La recherche se fait par clientId (pas id)
       expect(mockCaptureRepository.findOne).toHaveBeenCalledWith({
-        where: { clientId: 'mobile-uuid', userId },
+        where: { clientId: 'mobile-uuid', ownerId: userId },
       });
 
       // La sauvegarde stocke clientId (pas id mobile comme id backend)
       expect(mockCaptureRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           clientId: 'mobile-uuid',
-          userId,
+          ownerId: userId,
           typeId: 1,
           stateId: 2,
         }),
@@ -242,7 +242,7 @@ describe('SyncService', () => {
       const existingCapture = {
         id: 'backend-uuid',
         clientId: 'mobile-uuid',
-        userId,
+        ownerId: userId,
         lastModifiedAt: 999000, // Antérieur à lastPulledAt → pas de conflit
         syncStatusId: 1,
       };
@@ -271,7 +271,7 @@ describe('SyncService', () => {
 
       // La recherche se fait par clientId
       expect(mockCaptureRepository.findOne).toHaveBeenCalledWith({
-        where: { clientId: 'mobile-uuid', userId },
+        where: { clientId: 'mobile-uuid', ownerId: userId },
       });
 
       // L'id backend est préservé (pas de doublon)
@@ -301,7 +301,7 @@ describe('SyncService', () => {
 
       // La suppression se fait par clientId
       expect(mockCaptureRepository.update).toHaveBeenCalledWith(
-        { clientId: 'mobile-uuid-to-delete', userId },
+        { clientId: 'mobile-uuid-to-delete', ownerId: userId },
         expect.objectContaining({
           syncStatusId: 2, // id du statut 'deleted'
         }),

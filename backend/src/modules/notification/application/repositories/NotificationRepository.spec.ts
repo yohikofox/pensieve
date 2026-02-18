@@ -46,7 +46,7 @@ describe('NotificationRepository', () => {
     it('should create a new notification', async () => {
       const notification: Notification = {
         id: 'notif-1',
-        userId: 'user-123',
+        ownerId: 'user-123',
         type: NotificationType.QUEUED,
         title: 'Processing your thought...',
         body: 'Position in queue: 5',
@@ -72,7 +72,7 @@ describe('NotificationRepository', () => {
     it('should find notification by ID', async () => {
       const notification: Notification = {
         id: 'notif-1',
-        userId: 'user-123',
+        ownerId: 'user-123',
         type: NotificationType.COMPLETED,
       } as Notification;
 
@@ -98,8 +98,8 @@ describe('NotificationRepository', () => {
   describe('findByUserId', () => {
     it('should find all notifications for a user with default limit', async () => {
       const notifications: Notification[] = [
-        { id: 'notif-1', userId: 'user-123' } as Notification,
-        { id: 'notif-2', userId: 'user-123' } as Notification,
+        { id: 'notif-1', ownerId: 'user-123' } as Notification,
+        { id: 'notif-2', ownerId: 'user-123' } as Notification,
       ];
 
       mockRepository.find.mockResolvedValue(notifications);
@@ -108,7 +108,7 @@ describe('NotificationRepository', () => {
 
       expect(result).toEqual(notifications);
       expect(mockRepository.find).toHaveBeenCalledWith({
-        where: { userId: 'user-123' },
+        where: { ownerId: 'user-123' },
         order: { createdAt: 'DESC' },
         take: 50,
       });
@@ -121,7 +121,7 @@ describe('NotificationRepository', () => {
       await repository.findByUserId('user-123', 10);
 
       expect(mockRepository.find).toHaveBeenCalledWith({
-        where: { userId: 'user-123' },
+        where: { ownerId: 'user-123' },
         order: { createdAt: 'DESC' },
         take: 10,
       });
@@ -230,7 +230,7 @@ describe('NotificationRepository', () => {
       expect(result).toBe(3);
       expect(mockRepository.count).toHaveBeenCalledWith({
         where: {
-          userId: 'user-123',
+          ownerId: 'user-123',
           deliveryStatus: DeliveryStatus.SENT,
         },
       });

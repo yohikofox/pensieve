@@ -53,7 +53,7 @@ export enum DeliveryMethod {
 }
 
 @Entity('notifications')
-@Index(['userId'])
+@Index(['ownerId'])
 @Index(['type'])
 @Index(['deliveryStatus'])
 @Index(['relatedEntityId'])
@@ -62,8 +62,8 @@ export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column('uuid')
-  userId!: string;
+  @Column({ type: 'uuid', name: 'owner_id' })
+  ownerId!: string;
 
   @Column({
     type: 'varchar',
@@ -114,6 +114,6 @@ export class Notification {
 
   // Relationships
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'userId' })
+  @JoinColumn({ name: 'owner_id' })
   user!: User;
 }

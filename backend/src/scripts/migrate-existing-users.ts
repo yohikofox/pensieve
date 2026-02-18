@@ -33,11 +33,11 @@ async function migrateUsers() {
       console.log('👥 Fetching existing users...');
 
       const users = await queryRunner.query(`
-        SELECT DISTINCT "userId" as id FROM thoughts
+        SELECT DISTINCT "owner_id" as id FROM thoughts
         UNION
-        SELECT DISTINCT "userId" as id FROM ideas
+        SELECT DISTINCT "owner_id" as id FROM ideas
         UNION
-        SELECT DISTINCT "userId" as id FROM todos
+        SELECT DISTINCT "owner_id" as id FROM todos
       `);
 
       console.log(`Found ${users.length} unique users`);

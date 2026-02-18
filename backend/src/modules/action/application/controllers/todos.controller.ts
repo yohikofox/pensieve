@@ -98,6 +98,6 @@ export class TodosController {
     const todos = await this.todoRepository.findByThoughtId(thoughtId);
 
     // Filter to only return user's own todos (NFR13)
-    return todos.filter((todo) => todo.userId === user.id);
+    return todos.filter((todo) => todo.ownerId === user.id);
   }
 }

@@ -19,8 +19,8 @@ export class Idea extends BaseEntity {
   @Column('uuid')
   thoughtId!: string;
 
-  @Column('uuid')
-  userId!: string;
+  @Column({ type: 'uuid', name: 'owner_id' })
+  ownerId!: string;
 
   @Column('text')
   text!: string;

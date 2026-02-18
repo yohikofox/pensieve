@@ -59,7 +59,7 @@ export class ThoughtRepository {
       const thought = manager.create(Thought, {
         id: thoughtId,
         captureId,
-        userId,
+        ownerId: userId,
         summary,
         confidenceScore,
         processingTimeMs, // Subtask 4.7: Processing time logging
@@ -74,7 +74,7 @@ export class ThoughtRepository {
         manager.create(Idea, {
           id: crypto.randomUUID(), // ADR-026 R1: UUID généré dans la couche applicative
           thoughtId: savedThought.id,
-          userId,
+          ownerId: userId,
           text: ideaText,
           orderIndex: index, // Preserve order from GPT response
           lastModifiedAt: Date.now(),
@@ -116,7 +116,7 @@ export class ThoughtRepository {
    */
   async findByUserId(userId: string): Promise<Thought[]> {
     return await this.thoughtRepo.find({
-      where: { userId },
+      where: { ownerId: userId },
       relations: ['ideas'],
       order: { createdAt: 'DESC' },
     });

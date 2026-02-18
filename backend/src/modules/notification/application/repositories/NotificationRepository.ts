@@ -42,7 +42,7 @@ export class NotificationRepository implements INotificationRepository {
     limit: number = 50,
   ): Promise<Notification[]> {
     const notifications = await this.repository.find({
-      where: { userId },
+      where: { ownerId: userId },
       order: { createdAt: 'DESC' },
       take: limit,
     });
@@ -97,7 +97,7 @@ export class NotificationRepository implements INotificationRepository {
     // Future enhancement: add 'read' field to Notification entity
     const count = await this.repository.count({
       where: {
-        userId,
+        ownerId: userId,
         deliveryStatus: DeliveryStatus.SENT,
       },
     });

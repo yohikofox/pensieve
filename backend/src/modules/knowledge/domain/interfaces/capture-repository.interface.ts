@@ -42,7 +42,7 @@ export interface CaptureStatusMetadata {
 
 export interface CaptureBasicInfo {
   id: string;
-  userId: string;
+  ownerId: string;
   type: 'AUDIO' | 'TEXT';
   status: string;
 }

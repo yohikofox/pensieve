@@ -29,8 +29,8 @@ export class Todo extends BaseEntity {
   @Column('uuid')
   captureId!: string;
 
-  @Column('uuid')
-  userId!: string; // User isolation (NFR13)
+  @Column({ type: 'uuid', name: 'owner_id' })
+  ownerId!: string; // User isolation (NFR13)
 
   @Column('text')
   description!: string;

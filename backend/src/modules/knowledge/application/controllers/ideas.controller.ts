@@ -99,7 +99,7 @@ export class IdeasController {
     const ideas = await this.ideaRepository.findByThoughtId(thoughtId);
 
     // Filter to only return user's own ideas
-    return ideas.filter((idea) => idea.userId === user.id);
+    return ideas.filter((idea) => idea.ownerId === user.id);
   }
 
   /**

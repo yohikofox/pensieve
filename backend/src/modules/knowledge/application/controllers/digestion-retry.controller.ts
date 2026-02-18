@@ -63,13 +63,13 @@ export class DigestionRetryController {
     }
 
     // Verify the authenticated user owns this capture
-    if (capture.userId !== user.id) {
+    if (capture.ownerId !== user.id) {
       throw new ForbiddenException('Access denied');
     }
 
     const captureInput: CreateDigestionJobInput = {
       captureId: capture.id,
-      userId: capture.userId,
+      userId: capture.ownerId,
       type: capture.type,
       state: capture.status as 'transcribed', // Assume ready for retry
       userInitiated: false, // Manual retry is not user-initiated

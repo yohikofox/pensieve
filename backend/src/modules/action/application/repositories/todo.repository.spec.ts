@@ -53,7 +53,7 @@ describe('TodoRepository', () => {
       const dto: CreateTodoDto = {
         thoughtId: 'thought-123',
         captureId: 'capture-456',
-        userId: 'user-789',
+        ownerId: 'user-789',
         description: 'Send invoice to client',
         deadline: new Date('2026-02-07'),
         deadlineConfidence: 1.0,
@@ -85,7 +85,7 @@ describe('TodoRepository', () => {
       const dto: CreateTodoDto = {
         thoughtId: 'thought-123',
         captureId: 'capture-456',
-        userId: 'user-789',
+        ownerId: 'user-789',
         description: 'Buy milk',
         priority: 'low',
       };
@@ -107,7 +107,7 @@ describe('TodoRepository', () => {
         {
           thoughtId: 'thought-123',
           captureId: 'capture-456',
-          userId: 'user-789',
+          ownerId: 'user-789',
           description: 'Send invoice',
           deadline: new Date('2026-02-07'),
           priority: 'high',
@@ -115,7 +115,7 @@ describe('TodoRepository', () => {
         {
           thoughtId: 'thought-123',
           captureId: 'capture-456',
-          userId: 'user-789',
+          ownerId: 'user-789',
           description: 'Buy milk',
           priority: 'low',
         },
@@ -197,14 +197,14 @@ describe('TodoRepository', () => {
   describe('findByUserId', () => {
     it('should find all Todos for a user', async () => {
       const userId = 'user-789';
-      const mockTodos = [{ id: 'todo-1', userId }] as any;
+      const mockTodos = [{ id: 'todo-1', ownerId: userId }] as any;
 
       mockTodoRepo.find.mockResolvedValue(mockTodos);
 
       const result = await repository.findByUserId(userId);
 
       expect(mockTodoRepo.find).toHaveBeenCalledWith({
-        where: { userId },
+        where: { ownerId: userId },
         order: { deadline: 'ASC', priority: 'DESC', createdAt: 'ASC' },
         relations: ['thought'],
       });
@@ -214,14 +214,14 @@ describe('TodoRepository', () => {
     it('should filter by status if provided', async () => {
       const userId = 'user-789';
       const status = 'completed';
-      const mockTodos = [{ id: 'todo-1', userId, status }] as any;
+      const mockTodos = [{ id: 'todo-1', ownerId: userId, status }] as any;
 
       mockTodoRepo.find.mockResolvedValue(mockTodos);
 
       const result = await repository.findByUserId(userId, status);
 
       expect(mockTodoRepo.find).toHaveBeenCalledWith({
-        where: { userId, status },
+        where: { ownerId: userId, status },
         order: { deadline: 'ASC', priority: 'DESC', createdAt: 'ASC' },
         relations: ['thought'],
       });

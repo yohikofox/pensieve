@@ -12,7 +12,7 @@ import { CaptureSyncStatus } from './capture-sync-status.entity';
  * Design clé :
  * - id       : UUID backend (source of truth serveur)
  * - clientId : UUID assigné par le mobile (référence locale)
- * - UNIQUE(clientId, userId) : protège contre les doublons cross-device
+ * - UNIQUE(clientId, ownerId) : protège contre les doublons cross-device
  *
  * Le PUSH mobile envoie son id local comme clientId.
  * Le PULL retourne id (backend) + clientId pour la réconciliation mobile.
@@ -20,16 +20,16 @@ import { CaptureSyncStatus } from './capture-sync-status.entity';
  * Story 12.2: FKs typeId/stateId/syncStatusId migrées de integer vers UUID (ADR-026 AC4)
  */
 @Entity('captures')
-@Index('IDX_CAPTURES_CLIENT_USER', ['clientId', 'userId'], { unique: true })
+@Index('IDX_CAPTURES_CLIENT_OWNER', ['clientId', 'ownerId'], { unique: true })
 @Index('IDX_CAPTURES_LAST_MODIFIED', ['lastModifiedAt'])
-@Index('IDX_CAPTURES_USER_ID', ['userId'])
+@Index('IDX_CAPTURES_OWNER_ID', ['ownerId'])
 export class Capture extends BaseEntity {
   /** ID assigné par le client mobile — référence locale */
   @Column('uuid')
   clientId!: string;
 
-  @Column('uuid')
-  userId!: string;
+  @Column({ type: 'uuid', name: 'owner_id' })
+  ownerId!: string;
 
   /** FK vers capture_types (UUID — ADR-026 AC4) */
   @Column({ type: 'uuid', name: 'typeId', nullable: true })
