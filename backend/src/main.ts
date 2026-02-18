@@ -1,9 +1,11 @@
 import { NestFactory } from '@nestjs/core';
+import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';
 import { getRabbitMQOptions } from './modules/knowledge/infrastructure/rabbitmq/rabbitmq.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.useLogger(app.get(Logger));
 
   // Enable CORS for admin frontend and mobile app
   app.enableCors({
@@ -24,7 +26,8 @@ async function bootstrap() {
   await app.startAllMicroservices();
   await app.listen(process.env.PORT ?? 3000);
 
-  console.log(`🚀 HTTP Server running on port ${process.env.PORT ?? 3000}`);
-  console.log(`🐰 RabbitMQ Consumer connected and listening for jobs`);
+  const pinoLogger = app.get(Logger);
+  pinoLogger.log(`HTTP Server running on port ${process.env.PORT ?? 3000}`);
+  pinoLogger.log('RabbitMQ Consumer connected and listening for jobs');
 }
-bootstrap();
+void bootstrap();

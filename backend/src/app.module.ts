@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { LoggerModule } from 'nestjs-pino';
+import { buildLoggerConfig } from './config/logger.config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { SharedModule } from './modules/shared/shared.module';
@@ -20,6 +22,15 @@ import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: 
     ConfigModule.forRoot({
       isGlobal: true,
       envFilePath: '.env',
+    }),
+    // Structured JSON logger (pino) — ADR-015 / Story 14.3
+    LoggerModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) =>
+        buildLoggerConfig(
+          config.get<string>('LOG_LEVEL'),
+          config.get<string>('NODE_ENV') !== 'production',
+        ),
     }),
     // PostgreSQL database connection
     TypeOrmModule.forRootAsync({
