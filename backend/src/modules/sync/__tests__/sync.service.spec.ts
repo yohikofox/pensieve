@@ -6,7 +6,7 @@ import { Thought } from '../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../action/domain/entities/todo.entity';
 import { Capture } from '../../capture/domain/entities/capture.entity';
-import { CaptureSyncStatus } from '../../capture/domain/entities/capture-sync-status.entity';
+import { CaptureSyncStatusRepository } from '../../capture/infrastructure/repositories/capture-sync-status.repository';
 import { SyncLog } from '../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../infrastructure/sync-conflict-resolver';
 import { PushRequestDto } from '../application/dto/push-request.dto';
@@ -44,7 +44,7 @@ describe('SyncService', () => {
   };
 
   const mockCaptureSyncStatusRepository = {
-    findOne: jest.fn().mockResolvedValue({ id: 2, name: 'deleted' }),
+    findByNaturalKey: jest.fn().mockResolvedValue({ id: 2, name: 'deleted' }),
   };
 
   const mockSyncLogRepository = {
@@ -93,7 +93,7 @@ describe('SyncService', () => {
           useValue: mockCaptureRepository,
         },
         {
-          provide: getRepositoryToken(CaptureSyncStatus),
+          provide: CaptureSyncStatusRepository,
           useValue: mockCaptureSyncStatusRepository,
         },
         {
@@ -282,7 +282,7 @@ describe('SyncService', () => {
 
     it('should soft-delete a capture by setting syncStatusId=deleted', async () => {
       // Le status 'deleted' a l'id=2 dans les fixtures
-      mockCaptureSyncStatusRepository.findOne.mockResolvedValueOnce({
+      mockCaptureSyncStatusRepository.findByNaturalKey.mockResolvedValueOnce({
         id: 2,
         name: 'deleted',
       });

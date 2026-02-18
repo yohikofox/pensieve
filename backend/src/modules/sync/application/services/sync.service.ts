@@ -5,7 +5,7 @@ import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
 import { Capture } from '../../../capture/domain/entities/capture.entity';
-import { CaptureSyncStatus } from '../../../capture/domain/entities/capture-sync-status.entity';
+import { CaptureSyncStatusRepository } from '../../../capture/infrastructure/repositories/capture-sync-status.repository';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../../infrastructure/sync-conflict-resolver';
 import { PullRequestDto } from '../dto/pull-request.dto';
@@ -34,8 +34,7 @@ export class SyncService {
     private readonly todoRepository: Repository<Todo>,
     @InjectRepository(Capture)
     private readonly captureRepository: Repository<Capture>,
-    @InjectRepository(CaptureSyncStatus)
-    private readonly captureSyncStatusRepository: Repository<CaptureSyncStatus>,
+    private readonly captureSyncStatusRepository: CaptureSyncStatusRepository,
     @InjectRepository(SyncLog)
     private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
@@ -552,9 +551,7 @@ export class SyncService {
         return;
       }
       // recordId = clientId côté mobile
-      const deletedStatus = await this.captureSyncStatusRepository.findOne({
-        where: { name: 'deleted' },
-      });
+      const deletedStatus = await this.captureSyncStatusRepository.findByNaturalKey('deleted');
       if (!deletedStatus) {
         this.logger.warn('capture_sync_statuses: status "deleted" not found');
         return;
