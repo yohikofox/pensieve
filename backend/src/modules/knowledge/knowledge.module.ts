@@ -32,6 +32,7 @@ import { ContentExtractorService } from './application/services/content-extracto
 import { ContentChunkerService } from './application/services/content-chunker.service';
 import { ThoughtRepository } from './application/repositories/thought.repository';
 import { IdeaRepository } from './application/repositories/idea.repository';
+import { ThoughtStatusRepository } from './infrastructure/repositories/thought-status.repository';
 import { ThoughtDeleteService } from './application/services/thought-delete.service';
 import { DigestionRetryController } from './application/controllers/digestion-retry.controller';
 import { MetricsController } from './application/controllers/metrics.controller';
@@ -43,7 +44,6 @@ import { CaptureContentRepositoryStub } from './infrastructure/stubs/capture-con
 import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progress.store';
 import { RedisProgressStore } from './infrastructure/stores/redis-progress.store';
 import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
-import { QueueNames } from './infrastructure/rabbitmq/queue-names.constants';
 import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-events.gateway';
 
 @Module({
@@ -100,6 +100,7 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     ContentChunkerService, // Long content chunking with overlap (Story 4.2 Task 7)
     ThoughtRepository, // Thought + Ideas persistence (Story 4.2 Task 4)
     IdeaRepository, // Individual idea operations
+    ThoughtStatusRepository, // Referential cache repository (ADR-027)
     ThoughtDeleteService, // Soft-delete atomique Thought + Ideas liées (Story 12.4 — ADR-026 R3)
     // Capture Repository stub - replaces when Capture Context is integrated
     {
@@ -135,6 +136,7 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     DigestionJobConsumer,
     ProgressTrackerService, // Export for monitoring
     QueueMonitoringService, // Export for metrics access
+    ThoughtStatusRepository, // Referential cache repository (ADR-027)
   ],
 })
 export class KnowledgeModule {}

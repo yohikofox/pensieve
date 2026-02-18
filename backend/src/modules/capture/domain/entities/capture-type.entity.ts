@@ -1,16 +1,15 @@
 import { Entity, Column } from 'typeorm';
-import { BaseEntity } from '../../../../common/entities/base.entity';
+import { BaseReferentialEntity } from '../../../../common/entities/base-referential.entity';
 
 /**
  * CaptureType — Table référentielle
  * Valeurs: 'audio', 'text'
  *
- * Story 12.2: Extends BaseEntity (ADR-026 R1, R6)
- * - id UUID généré dans la couche applicative (pas par PostgreSQL DEFAULT)
- * - UUIDs déterministes dans reference-data.constants.ts pour usage sans lookup DB
+ * ADR-026 R6: Extends BaseReferentialEntity (isActive, sans deletedAt)
+ * ADR-027: Cache via CaptureTypeRepository
  */
 @Entity('capture_types')
-export class CaptureType extends BaseEntity {
+export class CaptureType extends BaseReferentialEntity {
   @Column({ type: 'text', unique: true })
   name!: string;
 }
