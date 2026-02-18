@@ -17,6 +17,7 @@ import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
 import { Thought } from './domain/entities/thought.entity';
 import { Idea } from './domain/entities/idea.entity';
+import { ThoughtStatus } from './domain/entities/thought-status.entity';
 import { ActionModule } from '../action/action.module'; // Story 4.3: Import ActionModule for TodoRepository
 import { NotificationModule } from '../notification/notification.module'; // Story 4.4: Import NotificationModule for ProgressNotificationService
 import { AuthorizationModule } from '../authorization/authorization.module';
@@ -47,8 +48,8 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
 
 @Module({
   imports: [
-    // Register TypeORM entities for Knowledge Context (Story 4.2 Task 4)
-    TypeOrmModule.forFeature([Thought, Idea]),
+    // Register TypeORM entities for Knowledge Context (Story 4.2 Task 4 + Story 13.2)
+    TypeOrmModule.forFeature([Thought, Idea, ThoughtStatus]),
     // Story 4.3: Import ActionModule for TodoRepository and DeadlineParserService
     ActionModule,
     // Story 4.4: Import NotificationModule for ProgressNotificationService (forward ref to avoid circular dependency)

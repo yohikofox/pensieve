@@ -139,8 +139,12 @@ describe('DigestionJobConsumer Integration Tests (Task 5.6)', () => {
                     summary,
                     confidenceScore,
                     processingTimeMs,
+                    statusId: 'd0000000-0000-7000-8000-000000000001',
+                    lastModifiedAt: Date.now(),
+                    ideas: [],
                     createdAt: new Date(),
                     updatedAt: new Date(),
+                    deletedAt: null,
                   };
                   return thought;
                 },

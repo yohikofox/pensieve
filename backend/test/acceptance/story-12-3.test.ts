@@ -219,9 +219,12 @@ defineFeature(feature, (test) => {
     then(
       'les entités Thought, Idea et Todo ne contiennent pas de colonne _status',
       () => {
-        for (const [filePath, content] of Object.entries(entityContents)) {
+        for (const [, content] of Object.entries(entityContents)) {
+          // Vérifie l'absence du NOM DE COLONNE _status (pattern TypeORM exact)
+          // Note: '_status' peut apparaître en sous-chaîne dans 'thought_statuses'
+          // qui est légitime — on cible uniquement la déclaration @Column
           expect(content).not.toContain("name: '_status'");
-          expect(content).not.toContain('_status');
+          expect(content).not.toMatch(/@Column.*_status['"]/);
         }
       },
     );

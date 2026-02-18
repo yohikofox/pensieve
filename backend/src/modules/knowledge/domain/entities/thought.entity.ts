@@ -10,9 +10,10 @@
  * - UUID généré dans la couche applicative via crypto.randomUUID()
  */
 
-import { Entity, Column, OneToMany } from 'typeorm';
+import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
 import { BaseEntity } from '../../../../common/entities/base.entity';
 import { Idea } from './idea.entity';
+import { ThoughtStatus } from './thought-status.entity';
 
 @Entity('thoughts')
 export class Thought extends BaseEntity {
@@ -36,6 +37,15 @@ export class Thought extends BaseEntity {
   lastModifiedAt!: number; // Milliseconds since epoch
 
   // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
+
+  // Story 13.2: FK vers thought_statuses — statut fonctionnel (ADR-026 R2)
+  /** UUID du statut du Thought — FK vers thought_statuses.id (ADR-026 R2) */
+  @Column({ type: 'uuid', name: 'status_id' })
+  statusId!: string;
+
+  @ManyToOne(() => ThoughtStatus, { nullable: false, eager: false })
+  @JoinColumn({ name: 'status_id' })
+  status?: ThoughtStatus;
 
   // Relationships
   // ADR-026 R3: cascade supprimé — la suppression des Ideas liées est gérée explicitement

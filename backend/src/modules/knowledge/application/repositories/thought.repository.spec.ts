@@ -67,9 +67,12 @@ describe('ThoughtRepository', () => {
         userId,
         summary,
         processingTimeMs,
+        statusId: 'd0000000-0000-7000-8000-000000000001',
+        lastModifiedAt: Date.now(),
         ideas: [],
         createdAt: new Date(),
         updatedAt: new Date(),
+        deletedAt: null,
       };
 
       const mockIdeas: Idea[] = ideas.map((text, index) => ({
@@ -121,9 +124,12 @@ describe('ThoughtRepository', () => {
         userId: 'user-789',
         summary: 'Test summary',
         processingTimeMs: 1000,
+        statusId: 'd0000000-0000-7000-8000-000000000001',
+        lastModifiedAt: Date.now(),
         ideas: [],
         createdAt: new Date(),
         updatedAt: new Date(),
+        deletedAt: null,
       };
 
       mockThoughtRepo.findOne.mockResolvedValue(mockThought);
@@ -156,9 +162,12 @@ describe('ThoughtRepository', () => {
           userId,
           summary: 'Summary 1',
           processingTimeMs: 1000,
+          statusId: 'd0000000-0000-7000-8000-000000000001',
+          lastModifiedAt: Date.now(),
           ideas: [],
           createdAt: new Date(),
           updatedAt: new Date(),
+          deletedAt: null,
         },
       ];
 
@@ -184,9 +193,12 @@ describe('ThoughtRepository', () => {
         userId: 'user-789',
         summary: 'Test summary',
         processingTimeMs: 1000,
+        statusId: 'd0000000-0000-7000-8000-000000000001',
+        lastModifiedAt: Date.now(),
         ideas: [],
         createdAt: new Date(),
         updatedAt: new Date(),
+        deletedAt: null,
       };
 
       mockThoughtRepo.findOne.mockResolvedValue(mockThought);
