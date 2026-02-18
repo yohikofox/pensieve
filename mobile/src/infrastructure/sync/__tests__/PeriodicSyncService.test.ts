@@ -33,9 +33,9 @@ describe('PeriodicSyncService', () => {
       }),
     } as any;
 
-    // Mock NetworkMonitor
+    // Mock NetworkMonitor (getCurrentState is the public async method)
     mockNetworkMonitor = {
-      isConnected: jest.fn().mockReturnValue(true),
+      getCurrentState: jest.fn().mockResolvedValue(true),
     } as any;
 
     periodicSync = new PeriodicSyncService(mockSyncService, mockNetworkMonitor);
@@ -54,7 +54,7 @@ describe('PeriodicSyncService', () => {
       expect(periodicSync.isRunning()).toBe(true);
     });
 
-    it('should NOT start if already running', () => {
+    it('should NOT start if already running', async () => {
       // ARRANGE
       periodicSync.start();
       const firstCallCount = mockSyncService.sync.mock.calls.length;
@@ -64,28 +64,31 @@ describe('PeriodicSyncService', () => {
 
       // Fast-forward 15 minutes
       jest.advanceTimersByTime(15 * 60 * 1000);
+      await Promise.resolve(); // Flush getCurrentState promise
 
       // ASSERT - Should not double-sync
       expect(mockSyncService.sync).toHaveBeenCalledTimes(firstCallCount + 1); // Only one more call
     });
 
-    it('should trigger sync every 15 minutes', () => {
+    it('should trigger sync every 15 minutes', async () => {
       // ARRANGE
       periodicSync.start();
 
       // ACT - Fast-forward 45 minutes (3 intervals)
       jest.advanceTimersByTime(45 * 60 * 1000);
+      await Promise.resolve(); // Flush getCurrentState promises (3 concurrent)
 
       // ASSERT - Sync called 3 times (after 15min, 30min, 45min)
       expect(mockSyncService.sync).toHaveBeenCalledTimes(3);
     });
 
-    it('should pass priority "low" to sync', () => {
+    it('should pass priority "low" to sync', async () => {
       // ARRANGE
       periodicSync.start();
 
       // ACT
       jest.advanceTimersByTime(15 * 60 * 1000);
+      await Promise.resolve(); // Flush getCurrentState promise
 
       // ASSERT
       expect(mockSyncService.sync).toHaveBeenCalledWith({
@@ -96,29 +99,32 @@ describe('PeriodicSyncService', () => {
   });
 
   describe('Task 3.3: Only sync when app is active and online', () => {
-    it('should NOT sync when network is offline', () => {
+    it('should NOT sync when network is offline', async () => {
       // ARRANGE - Network offline
-      mockNetworkMonitor.isConnected.mockReturnValue(false);
+      mockNetworkMonitor.getCurrentState.mockResolvedValue(false);
       periodicSync.start();
 
       // ACT
       jest.advanceTimersByTime(15 * 60 * 1000);
+      await Promise.resolve(); // Flush getCurrentState promise
 
       // ASSERT - Sync NOT called
       expect(mockSyncService.sync).not.toHaveBeenCalled();
     });
 
-    it('should resume sync when network comes back online', () => {
+    it('should resume sync when network comes back online', async () => {
       // ARRANGE - Start offline
-      mockNetworkMonitor.isConnected.mockReturnValue(false);
+      mockNetworkMonitor.getCurrentState.mockResolvedValue(false);
       periodicSync.start();
       jest.advanceTimersByTime(15 * 60 * 1000);
+      await Promise.resolve();
 
       expect(mockSyncService.sync).not.toHaveBeenCalled();
 
       // ACT - Network comes back online
-      mockNetworkMonitor.isConnected.mockReturnValue(true);
+      mockNetworkMonitor.getCurrentState.mockResolvedValue(true);
       jest.advanceTimersByTime(15 * 60 * 1000);
+      await Promise.resolve();
 
       // ASSERT - Sync called after network recovery
       expect(mockSyncService.sync).toHaveBeenCalledTimes(1);
@@ -176,9 +182,9 @@ describe('PeriodicSyncService', () => {
 
       // ACT - Advance 30 minutes (2 syncs)
       jest.advanceTimersByTime(15 * 60 * 1000);
-      await Promise.resolve(); // Flush promises
+      await Promise.resolve(); // Flush getCurrentState + sync attempt 1
       jest.advanceTimersByTime(15 * 60 * 1000);
-      await Promise.resolve(); // Flush promises
+      await Promise.resolve(); // Flush getCurrentState + sync attempt 2
 
       // ASSERT - Both syncs attempted
       expect(mockSyncService.sync).toHaveBeenCalledTimes(2);

@@ -76,7 +76,8 @@ export class PeriodicSyncService {
    */
   private async performPeriodicSync(): Promise<void> {
     // Skip if offline
-    if (!this.networkMonitor.isConnected()) {
+    const isOnline = await this.networkMonitor.getCurrentState();
+    if (!isOnline) {
       return;
     }
 

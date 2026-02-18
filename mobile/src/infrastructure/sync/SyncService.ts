@@ -141,7 +141,7 @@ export class SyncService {
       return {
         result: SyncResult.SUCCESS,
         retryable: false,
-        timestamp: pushResult.timestamp,
+        timestamp: pushResult.timestamp ?? pullResult.timestamp,
         conflicts: pushResult.conflicts,
       };
     } catch (error) {

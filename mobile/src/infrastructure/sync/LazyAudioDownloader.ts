@@ -5,7 +5,7 @@
  * Downloads audio files on-demand with priority queue
  */
 
-import * as FileSystem from 'expo-file-system';
+import { Paths, File as ExpoFile, Directory } from 'expo-file-system';
 import { DatabaseConnection } from '../../database';
 import type { DB } from '@op-engineering/op-sqlite';
 
@@ -21,8 +21,8 @@ export class LazyAudioDownloader {
   private processing = false;
   private downloadingIds = new Set<string>(); // Track downloads in progress
 
-  // Task 2.7: Audio cache directory
-  private readonly AUDIO_CACHE_DIR = `${FileSystem.documentDirectory}audio`;
+  // Task 2.7: Audio cache directory (new expo-file-system SDK 54 API)
+  private readonly AUDIO_CACHE_DIR = new Directory(Paths.document, 'audio');
 
   constructor() {
     this.db = DatabaseConnection.getInstance().getDatabase();
@@ -57,31 +57,30 @@ export class LazyAudioDownloader {
       return null;
     }
 
-    // Task 2.4: Return local path if already downloaded
+    // Task 2.4: Return local path if already downloaded (sync exists check)
     if (capture.audio_local_path) {
-      const fileInfo = await FileSystem.getInfoAsync(capture.audio_local_path);
-      if (fileInfo.exists) {
+      const file = new ExpoFile(capture.audio_local_path);
+      if (file.exists) {
         console.log(`[LazyAudio] ✅ Audio already cached: ${capture.audio_local_path}`);
         return capture.audio_local_path;
       }
     }
 
-    // Task 2.7: Ensure audio directory exists
-    await this.ensureAudioDirectoryExists();
+    // Task 2.7: Ensure audio directory exists (synchronous in new API)
+    this.ensureAudioDirectoryExists();
 
     // Task 2.4: Download audio file
-    const localPath = `${this.AUDIO_CACHE_DIR}/${captureId}.m4a`;
-    console.log(`[LazyAudio] 📥 Downloading audio: ${capture.audio_url} → ${localPath}`);
+    const localFile = new ExpoFile(this.AUDIO_CACHE_DIR, `${captureId}.m4a`);
+    console.log(`[LazyAudio] 📥 Downloading audio: ${capture.audio_url} → ${localFile.uri}`);
 
-    const downloadResult = await FileSystem.downloadAsync(
-      capture.audio_url,
-      localPath
-    );
-
-    if (downloadResult.status !== 200) {
-      console.error(`[LazyAudio] ❌ Download failed: ${downloadResult.status}`);
+    try {
+      await ExpoFile.downloadFileAsync(capture.audio_url, localFile);
+    } catch (error) {
+      console.error(`[LazyAudio] ❌ Download failed:`, error);
       return null;
     }
+
+    const localPath = localFile.uri;
 
     // Task 2.4: Update database with local path
     this.db.executeSync(
@@ -146,16 +145,12 @@ export class LazyAudioDownloader {
   }
 
   /**
-   * Task 2.7: Ensure audio cache directory exists
+   * Task 2.7: Ensure audio cache directory exists (synchronous in new API)
    */
-  private async ensureAudioDirectoryExists(): Promise<void> {
-    const dirInfo = await FileSystem.getInfoAsync(this.AUDIO_CACHE_DIR);
-
-    if (!dirInfo.exists) {
-      console.log(`[LazyAudio] 📁 Creating audio cache directory: ${this.AUDIO_CACHE_DIR}`);
-      await FileSystem.makeDirectoryAsync(this.AUDIO_CACHE_DIR, {
-        intermediates: true,
-      });
+  private ensureAudioDirectoryExists(): void {
+    if (!this.AUDIO_CACHE_DIR.exists) {
+      console.log(`[LazyAudio] 📁 Creating audio cache directory: ${this.AUDIO_CACHE_DIR.uri}`);
+      this.AUDIO_CACHE_DIR.create({ intermediates: true });
     }
   }
 }

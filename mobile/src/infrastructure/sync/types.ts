@@ -94,6 +94,12 @@ export interface SyncOptions {
    * Default: false
    */
   forceFull?: boolean;
+
+  /**
+   * Source identifier for telemetry/logging
+   * ADR-009.1: Sync timing strategy
+   */
+  source?: 'manual' | 'periodic' | 'auto' | 'initial';
 }
 
 /**
