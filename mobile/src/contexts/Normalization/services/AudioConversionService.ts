@@ -37,10 +37,6 @@ const WHISPER_SAMPLE_RATE = 16000;
 const WHISPER_NUM_CHANNELS = 1;
 const WHISPER_BIT_DEPTH = 16;
 
-// Task 7.2: Audio preprocessing constants
-const SILENCE_THRESHOLD = 0.001; // RMS threshold for silence detection (0.1% of max amplitude) - very low to avoid cutting soft speech
-const SILENCE_MARGIN_MS = 500; // Safety margin at end (ms) to avoid cutting last word
-const SILENCE_MIN_DURATION_MS = 1000; // Minimum silence duration to trim (1 second) - avoids cutting short pauses
 const MAX_AUDIO_DURATION_MS = 10 * 60 * 1000; // 10 minutes max per segment
 
 // Native recognition: add silence padding at end to ensure last word is recognized
@@ -152,10 +148,7 @@ export class AudioConversionService {
       // Step 2: Mix to mono if stereo using OfflineAudioContext
       const monoBuffer = await this.mixToMono(audioBuffer);
 
-      // Step 2.5: Task 7.2 - Trim silence from beginning and end
-      // DISABLED: User reported last word being cut off, so we keep full audio
-      // const trimmedBuffer = this.trimSilence(monoBuffer);
-      const trimmedBuffer = monoBuffer; // No trimming
+      const trimmedBuffer = monoBuffer;
 
       // Step 2.6: Task 7.2 - Check for long audio (>10min)
       this.checkLongAudio(trimmedBuffer);
@@ -377,137 +370,6 @@ export class AudioConversionService {
   }
 
   /**
-   * Task 7.2: Trim silence from beginning and end of audio
-   *
-   * Detects silence using RMS (root mean square) threshold.
-   * Removes silent sections to reduce transcription time.
-   *
-   * @param audioBuffer - Input audio buffer
-   * @returns Trimmed audio buffer (or original if no silence detected)
-   */
-  private trimSilence(audioBuffer: RNAudioBuffer): RNAudioBuffer {
-    const channelData = audioBuffer.getChannelData(0);
-    const sampleRate = audioBuffer.sampleRate;
-
-    // Window size for RMS calculation (100ms)
-    const windowSize = Math.floor(sampleRate * 0.1);
-
-    // Find first non-silent sample
-    // We need at least SILENCE_MIN_DURATION_MS of consecutive silence to trim
-    const minSilenceSamples = Math.floor((SILENCE_MIN_DURATION_MS / 1000) * sampleRate);
-    let startIndex = 0;
-    let consecutiveSilentSamplesStart = 0;
-
-    for (let i = 0; i < channelData.length; i += windowSize) {
-      const rms = this.calculateRMS(
-        channelData,
-        i,
-        Math.min(i + windowSize, channelData.length),
-      );
-
-      if (rms <= SILENCE_THRESHOLD) {
-        consecutiveSilentSamplesStart += windowSize;
-      } else {
-        // Found non-silent audio
-        if (consecutiveSilentSamplesStart >= minSilenceSamples) {
-          // We have enough silence to trim
-          startIndex = i;
-        } else {
-          // Not enough silence, keep from beginning
-          startIndex = 0;
-        }
-        break;
-      }
-    }
-
-    // Find last non-silent sample
-    // Use the same minSilenceSamples from above
-    let endIndex = channelData.length;
-    let consecutiveSilentSamples = 0;
-
-    for (let i = channelData.length - windowSize; i >= 0; i -= windowSize) {
-      const rms = this.calculateRMS(channelData, i, i + windowSize);
-
-      if (rms <= SILENCE_THRESHOLD) {
-        consecutiveSilentSamples += windowSize;
-      } else {
-        // Found non-silent audio
-        if (consecutiveSilentSamples >= minSilenceSamples) {
-          // We have enough silence to trim, add safety margin
-          const marginSamples = Math.floor((SILENCE_MARGIN_MS / 1000) * sampleRate);
-          endIndex = Math.min(i + windowSize + marginSamples, channelData.length);
-        } else {
-          // Not enough silence, keep everything
-          endIndex = channelData.length;
-        }
-        break;
-      }
-    }
-
-    // If no silence detected, return original
-    if (startIndex === 0 && endIndex === channelData.length) {
-      console.log(
-        "[AudioConversionService] 🔇 No silence detected, skipping trim",
-      );
-      return audioBuffer;
-    }
-
-    // Calculate trimmed duration
-    const trimmedLength = endIndex - startIndex;
-    const trimmedDuration = trimmedLength / sampleRate;
-    const originalDuration = audioBuffer.duration;
-    const savings = originalDuration - trimmedDuration;
-
-    console.log("[AudioConversionService] ✂️  Trimmed silence:", {
-      originalDuration: `${originalDuration.toFixed(2)}s`,
-      trimmedDuration: `${trimmedDuration.toFixed(2)}s`,
-      savings: `${savings.toFixed(2)}s (${((savings / originalDuration) * 100).toFixed(1)}%)`,
-    });
-
-    // Create trimmed buffer (use OfflineAudioContext to create a new AudioBuffer)
-    const offlineCtx = new OfflineAudioContext({
-      numberOfChannels: 1,
-      length: trimmedLength,
-      sampleRate,
-    });
-
-    // Create new buffer with trimmed data
-    const trimmedBuffer = offlineCtx.createBuffer(1, trimmedLength, sampleRate);
-    const trimmedChannelData = trimmedBuffer.getChannelData(0);
-
-    // Copy trimmed samples
-    for (let i = 0; i < trimmedLength; i++) {
-      trimmedChannelData[i] = channelData[startIndex + i];
-    }
-
-    return trimmedBuffer;
-  }
-
-  /**
-   * Calculate RMS (root mean square) of audio samples
-   *
-   * @param samples - Audio sample array
-   * @param start - Start index
-   * @param end - End index (exclusive)
-   * @returns RMS value (0.0 to 1.0)
-   */
-  private calculateRMS(
-    samples: Float32Array,
-    start: number,
-    end: number,
-  ): number {
-    let sum = 0;
-    let count = 0;
-
-    for (let i = start; i < end; i++) {
-      sum += samples[i] * samples[i];
-      count++;
-    }
-
-    return count > 0 ? Math.sqrt(sum / count) : 0;
-  }
-
-  /**
    * Task 7.2: Check for long audio (>10min) and log warning
    *
    * Long audio may cause performance issues or exceed Whisper limits.
@@ -527,10 +389,6 @@ export class AudioConversionService {
           "This may cause slower transcription or memory issues.\n" +
           "Consider splitting long recordings into shorter segments.",
       );
-
-      // TODO: Future enhancement - automatically split into segments
-      // const segments = this.splitAudio(audioBuffer, MAX_AUDIO_DURATION_MS);
-      // return segments.map(segment => this.buildWavFile(segment));
     }
   }
 

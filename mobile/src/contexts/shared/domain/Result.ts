@@ -19,7 +19,13 @@ export type RepositoryResult<T> = {
   type: RepositoryResultType;
   data?: T;
   error?: string;
+  retryable?: boolean;
 };
+
+/** Alias canonique — utiliser Result<T> pour tout nouveau code (ADR-023) */
+export type Result<T> = RepositoryResult<T>;
+/** Alias canonique — utiliser ResultType pour tout nouveau code (ADR-023) */
+export type ResultType = RepositoryResultType;
 
 export function success<T>(data: T): RepositoryResult<T> {
   return {

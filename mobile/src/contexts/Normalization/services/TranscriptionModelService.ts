@@ -85,10 +85,6 @@ export class TranscriptionModelService {
     onProgress?: (progress: DownloadProgress) => void
   ): Promise<string> {
     const config = this.MODEL_CONFIGS[modelSize];
-    if (!config) {
-      throw new Error(`Unsupported model size: ${modelSize}`);
-    }
-
     const modelUrl = `${this.MODEL_BASE_URL}/${config.filename}`;
     const modelFile = this.getModelFile(modelSize);
 

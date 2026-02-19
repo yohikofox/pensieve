@@ -24,8 +24,15 @@ const mockTodoRepository: jest.Mocked<ITodoRepository> = {
   findByThoughtId: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  deleteCompleted: jest.fn(),
   toggleStatus: jest.fn(),
   getAll: jest.fn(),
+  findAll: jest.fn(),
+  countActive: jest.fn(),
+  countByStatus: jest.fn(),
+  countAllByStatus: jest.fn(),
+  findAllWithSource: jest.fn(),
+  findByAnalysisId: jest.fn(),
 };
 
 // Setup QueryClient for tests

@@ -129,4 +129,18 @@ describe("Result Pattern — shared/domain/Result", () => {
       expect(result.data).toHaveLength(3);
     });
   });
+
+  describe("Champ retryable", () => {
+    it("accepte retryable = true sur networkError", () => {
+      const result = networkError("Connexion perdue");
+      const withRetry = { ...result, retryable: true };
+      expect(withRetry.retryable).toBe(true);
+      expect(withRetry.type).toBe(RepositoryResultType.NETWORK_ERROR);
+    });
+
+    it("est undefined par défaut (non défini par les helpers)", () => {
+      const result = databaseError("Erreur DB");
+      expect(result.retryable).toBeUndefined();
+    });
+  });
 });
