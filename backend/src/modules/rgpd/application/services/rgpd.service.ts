@@ -193,7 +193,11 @@ Pour toute question, contactez: support@pensine.app
    *
    * Note: to be migrated to Better Auth provider sync when Epic 15 is implemented.
    */
-  async syncUsersFromSupabase(): Promise<{ created: number; updated: number; unchanged: number }> {
+  async syncUsersFromSupabase(): Promise<{
+    created: number;
+    updated: number;
+    unchanged: number;
+  }> {
     const supabaseUsers = await this.supabaseAdminService.listAllUsers();
 
     let created = 0;

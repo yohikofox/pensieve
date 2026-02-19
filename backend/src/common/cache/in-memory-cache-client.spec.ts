@@ -43,7 +43,7 @@ describe('InMemoryCacheClient', () => {
       expect(result).toEqual(obj);
     });
 
-    it('écrase la valeur existante lors d\'un second set', async () => {
+    it("écrase la valeur existante lors d'un second set", async () => {
       await cache.set('key-overwrite', 'v1');
       await cache.set('key-overwrite', 'v2');
       const result = await cache.get<string>('key-overwrite');
@@ -55,7 +55,7 @@ describe('InMemoryCacheClient', () => {
   // mget / mset
   // ---------------------------------------------------------------------------
   describe('mget / mset', () => {
-    it('retourne toutes les valeurs dans l\'ordre des clés', async () => {
+    it("retourne toutes les valeurs dans l'ordre des clés", async () => {
       await cache.mset([
         { key: 'a', value: 1 },
         { key: 'b', value: 2 },
@@ -93,7 +93,7 @@ describe('InMemoryCacheClient', () => {
       expect(result).toBeNull();
     });
 
-    it('ne lève pas d\'erreur si la clé n\'existe pas', async () => {
+    it("ne lève pas d'erreur si la clé n'existe pas", async () => {
       await expect(cache.del('inexistante')).resolves.toBeUndefined();
     });
   });

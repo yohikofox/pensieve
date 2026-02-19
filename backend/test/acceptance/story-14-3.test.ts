@@ -12,10 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { QueueMonitoringService } from 'src/modules/knowledge/application/services/queue-monitoring.service';
 
 const feature = loadFeature(
-  path.join(
-    __dirname,
-    'features/story-14-3-observability-logger.feature',
-  ),
+  path.join(__dirname, 'features/story-14-3-observability-logger.feature'),
 );
 
 // ---------------------------------------------------------------------------
@@ -182,20 +179,23 @@ defineFeature(feature, (test) => {
       state.allEntries.push(state.logger.error('Error message'));
     });
 
-    then('all three log levels produce entries with the correct level field', () => {
-      expect(state.allEntries).toHaveLength(3);
+    then(
+      'all three log levels produce entries with the correct level field',
+      () => {
+        expect(state.allEntries).toHaveLength(3);
 
-      const levels = state.allEntries.map((e) => e.level);
-      expect(levels).toContain('info');
-      expect(levels).toContain('warn');
-      expect(levels).toContain('error');
+        const levels = state.allEntries.map((e) => e.level);
+        expect(levels).toContain('info');
+        expect(levels).toContain('warn');
+        expect(levels).toContain('error');
 
-      state.allEntries.forEach((entry) => {
-        expect(entry).toHaveProperty('level');
-        expect(entry).toHaveProperty('msg');
-        expect(entry).toHaveProperty('time');
-      });
-    });
+        state.allEntries.forEach((entry) => {
+          expect(entry).toHaveProperty('level');
+          expect(entry).toHaveProperty('msg');
+          expect(entry).toHaveProperty('time');
+        });
+      },
+    );
   });
 
   // -------------------------------------------------------------------------
@@ -212,12 +212,9 @@ defineFeature(feature, (test) => {
 
     given('the observability infrastructure is initialized', () => {});
 
-    given(
-      'a service uses "new Logger(ClassName.name)" pattern',
-      () => {
-        // Simulate a service using the standard pattern
-      },
-    );
+    given('a service uses "new Logger(ClassName.name)" pattern', () => {
+      // Simulate a service using the standard pattern
+    });
 
     when('a log.warn call is made with a message', () => {
       state.lastEntry = state.logger.warn(
@@ -248,15 +245,12 @@ defineFeature(feature, (test) => {
   }) => {
     given('the observability infrastructure is initialized', () => {});
 
-    given(
-      'the queue monitoring service has tracked some metrics',
-      () => {
-        state.queueMonitoring.recordJobProcessed();
-        state.queueMonitoring.recordJobProcessed();
-        state.queueMonitoring.recordJobFailed();
-        state.queueMonitoring.recordJobLatency(1500);
-      },
-    );
+    given('the queue monitoring service has tracked some metrics', () => {
+      state.queueMonitoring.recordJobProcessed();
+      state.queueMonitoring.recordJobProcessed();
+      state.queueMonitoring.recordJobFailed();
+      state.queueMonitoring.recordJobLatency(1500);
+    });
 
     when('the Prometheus metrics are requested', async () => {
       state.prometheusOutput =
@@ -275,22 +269,14 @@ defineFeature(feature, (test) => {
       expect(state.prometheusOutput).toContain('digestion_queue_depth');
     });
 
-    and(
-      'the output contains metric "digestion_jobs_processed_total"',
-      () => {
-        expect(state.prometheusOutput).toContain(
-          'digestion_jobs_processed_total',
-        );
-      },
-    );
+    and('the output contains metric "digestion_jobs_processed_total"', () => {
+      expect(state.prometheusOutput).toContain(
+        'digestion_jobs_processed_total',
+      );
+    });
 
-    and(
-      'the output contains metric "digestion_jobs_failed_total"',
-      () => {
-        expect(state.prometheusOutput).toContain(
-          'digestion_jobs_failed_total',
-        );
-      },
-    );
+    and('the output contains metric "digestion_jobs_failed_total"', () => {
+      expect(state.prometheusOutput).toContain('digestion_jobs_failed_total');
+    });
   });
 });

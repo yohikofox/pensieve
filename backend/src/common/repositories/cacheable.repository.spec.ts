@@ -119,7 +119,7 @@ describe('CacheableRepository', () => {
   // findByIds — cache hit (second appel)
   // ---------------------------------------------------------------------------
   describe('findByIds — cache hit', () => {
-    it('ne query pas la DB lors d\'un second appel pour les mêmes IDs', async () => {
+    it("ne query pas la DB lors d'un second appel pour les mêmes IDs", async () => {
       // Premier appel : peuple le cache
       await repo.findByIds(['id-a']);
 
@@ -166,14 +166,14 @@ describe('CacheableRepository', () => {
   // findByNaturalKey
   // ---------------------------------------------------------------------------
   describe('findByNaturalKey', () => {
-    it('résout l\'ID via resolveIdByNaturalKey et retourne l\'entité', async () => {
+    it("résout l'ID via resolveIdByNaturalKey et retourne l'entité", async () => {
       const result = await repo.findByNaturalKey('alpha');
 
       expect(result).toEqual(entityA);
       expect(repo.resolveKeyCalls).toContain('alpha');
     });
 
-    it('retourne null si la clé naturelle n\'existe pas', async () => {
+    it("retourne null si la clé naturelle n'existe pas", async () => {
       const result = await repo.findByNaturalKey('inexistant');
       expect(result).toBeNull();
     });
@@ -193,7 +193,7 @@ describe('CacheableRepository', () => {
   // invalidateOne
   // ---------------------------------------------------------------------------
   describe('invalidateOne', () => {
-    it('force un rechargement DB après invalidation d\'une entrée', async () => {
+    it("force un rechargement DB après invalidation d'une entrée", async () => {
       // Peuple le cache
       await repo.findByIds(['id-a']);
       repo.queryByIdsCalls = [];
@@ -206,7 +206,7 @@ describe('CacheableRepository', () => {
       expect(repo.queryByIdsCalls).toHaveLength(1);
     });
 
-    it('n\'affecte pas les autres entrées du cache', async () => {
+    it("n'affecte pas les autres entrées du cache", async () => {
       await repo.findByIds(['id-a', 'id-b']);
       repo.queryByIdsCalls = [];
 

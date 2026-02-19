@@ -75,8 +75,11 @@ export class SupabaseAdminService {
   /**
    * List all users from Supabase Auth (paginated, returns all pages)
    */
-  async listAllUsers(): Promise<Array<{ id: string; email: string; created_at: string }>> {
-    const allUsers: Array<{ id: string; email: string; created_at: string }> = [];
+  async listAllUsers(): Promise<
+    Array<{ id: string; email: string; created_at: string }>
+  > {
+    const allUsers: Array<{ id: string; email: string; created_at: string }> =
+      [];
     let page = 1;
     const perPage = 1000;
 
@@ -111,10 +114,9 @@ export class SupabaseAdminService {
    * Note: to be migrated to Better Auth admin API when Epic 15 is implemented.
    */
   async resetUserPassword(userId: string, newPassword: string): Promise<void> {
-    const { error } = await this.adminClient.auth.admin.updateUserById(
-      userId,
-      { password: newPassword },
-    );
+    const { error } = await this.adminClient.auth.admin.updateUserById(userId, {
+      password: newPassword,
+    });
 
     if (error) {
       throw new Error(

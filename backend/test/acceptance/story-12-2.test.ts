@@ -288,14 +288,20 @@ defineFeature(feature, (test) => {
       },
     );
 
-    and('toutes ces entités héritent de BaseEntity ou BaseReferentialEntity', () => {
-      for (const [filePath, content] of Object.entries(entityContents)) {
-        const extendsBaseEntity = content.includes('extends BaseEntity');
-        const extendsBaseReferentialEntity = content.includes(
-          'extends BaseReferentialEntity',
-        );
-        expect(extendsBaseEntity || extendsBaseReferentialEntity).toBe(true);
-      }
-    });
+    and(
+      'toutes ces entités héritent de BaseEntity ou BaseReferentialEntity',
+      () => {
+        for (const [filePath, content] of Object.entries(entityContents)) {
+          // AppBaseEntity est le nom post-renommage (story 12.1 review fix)
+          const extendsBaseEntity =
+            content.includes('extends AppBaseEntity') ||
+            content.includes('extends BaseEntity');
+          const extendsBaseReferentialEntity = content.includes(
+            'extends BaseReferentialEntity',
+          );
+          expect(extendsBaseEntity || extendsBaseReferentialEntity).toBe(true);
+        }
+      },
+    );
   });
 });

@@ -29,9 +29,11 @@ const makeEntity = (id: string, name: string): CaptureType => {
 
 const makeOrmMock = (entities: CaptureType[]) => ({
   findBy: jest.fn().mockResolvedValue(entities),
-  findOne: jest.fn().mockImplementation(async (opts: { where: { name: string } }) => {
-    return entities.find((e) => e.name === opts.where.name) ?? null;
-  }),
+  findOne: jest
+    .fn()
+    .mockImplementation(async (opts: { where: { name: string } }) => {
+      return entities.find((e) => e.name === opts.where.name) ?? null;
+    }),
 });
 
 // =============================================================================
@@ -81,7 +83,7 @@ describe('CaptureTypeRepository', () => {
   // resolveIdByNaturalKey — filtrage sur `name`
   // ---------------------------------------------------------------------------
   describe('resolveIdByNaturalKey (via findByNaturalKey)', () => {
-    it('résout l\'entité par son nom', async () => {
+    it("résout l'entité par son nom", async () => {
       const orm = makeOrmMock([audioType, textType]);
       const repo = new CaptureTypeRepository(cache, orm as any);
 
@@ -106,7 +108,7 @@ describe('CaptureTypeRepository', () => {
   // Intégration cache — les appels DB sont évités au second accès
   // ---------------------------------------------------------------------------
   describe('cache-aside (intégration avec InMemoryCacheClient)', () => {
-    it('ne consulte pas la DB lors d\'un second findByIds pour les mêmes IDs', async () => {
+    it("ne consulte pas la DB lors d'un second findByIds pour les mêmes IDs", async () => {
       const orm = makeOrmMock([audioType]);
       const repo = new CaptureTypeRepository(cache, orm as any);
 

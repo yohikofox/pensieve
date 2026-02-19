@@ -30,9 +30,11 @@ const makeEntity = (id: string, code: string): ThoughtStatus => {
 
 const makeOrmMock = (entities: ThoughtStatus[]) => ({
   findBy: jest.fn().mockResolvedValue(entities),
-  findOne: jest.fn().mockImplementation(async (opts: { where: { code: string } }) => {
-    return entities.find((e) => e.code === opts.where.code) ?? null;
-  }),
+  findOne: jest
+    .fn()
+    .mockImplementation(async (opts: { where: { code: string } }) => {
+      return entities.find((e) => e.code === opts.where.code) ?? null;
+    }),
 });
 
 // =============================================================================
@@ -70,7 +72,7 @@ describe('ThoughtStatusRepository', () => {
   // resolveIdByNaturalKey — filtre sur `code` (pas `name`)
   // ---------------------------------------------------------------------------
   describe('resolveIdByNaturalKey — filtre sur code', () => {
-    it('résout l\'entité par son code', async () => {
+    it("résout l'entité par son code", async () => {
       const orm = makeOrmMock([activeStatus, archivedStatus]);
       const repo = new ThoughtStatusRepository(cache, orm as any);
 
@@ -88,7 +90,9 @@ describe('ThoughtStatusRepository', () => {
 
       await repo.findByNaturalKey('active');
 
-      const callArgs = orm.findOne.mock.calls[0][0] as { where: Record<string, unknown> };
+      const callArgs = orm.findOne.mock.calls[0][0] as {
+        where: Record<string, unknown>;
+      };
       expect(callArgs.where).toHaveProperty('code');
       expect(callArgs.where).not.toHaveProperty('name');
     });
