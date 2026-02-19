@@ -26,6 +26,10 @@ import { UserRole } from '../../../modules/authorization/implementations/postgre
 import { UserPermission } from '../../../modules/authorization/implementations/postgresql/entities/user-permission.entity';
 import { UserSubscription } from '../../../modules/authorization/implementations/postgresql/entities/user-subscription.entity';
 import { ResourceShare } from '../../../modules/authorization/implementations/postgresql/entities/resource-share.entity';
+import { RolePermission } from '../../../modules/authorization/implementations/postgresql/entities/role-permission.entity';
+import { TierPermission } from '../../../modules/authorization/implementations/postgresql/entities/tier-permission.entity';
+import { ShareRole } from '../../../modules/authorization/implementations/postgresql/entities/share-role.entity';
+import { ShareRolePermission } from '../../../modules/authorization/implementations/postgresql/entities/share-role-permission.entity';
 // Side-effect imports — force decorator registration without direct reference in tests
 import '../../../modules/capture/domain/entities/capture.entity';
 import '../../../modules/capture/domain/entities/capture-state.entity';
@@ -240,11 +244,10 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
   describe('SyncConflict entity — Colonne resolvedAt', () => {
     it('resolvedAt (SyncConflict) doit utiliser timestamptz', () => {
       const storage = getMetadataArgsStorage();
+      // resolvedAt est un @Column régulier (assigné explicitement dans SyncConflictResolver)
       const cols = storage.columns.filter(
         (col) =>
-          col.target === SyncConflict &&
-          col.propertyName === 'resolvedAt' &&
-          col.mode === 'createDate',
+          col.target === SyncConflict && col.propertyName === 'resolvedAt',
       );
       expect(cols).toHaveLength(1);
       expect(cols[0].options.type).toBe('timestamptz');
@@ -252,6 +255,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
   });
 
   describe('Authorization entities — Colonnes de date', () => {
+    // Toutes les entités principales (createDate/updateDate/deleteDate)
     const authEntities: Array<[string, new (...args: any[]) => any]> = [
       ['Role', Role],
       ['Permission', Permission],
@@ -277,8 +281,19 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           expect(type).toBe('timestamptz');
         });
       });
+    });
 
-      it(`${name}: colonnes expires_at/expiresAt utilisent 'timestamptz'`, () => {
+    // Entités ayant effectivement une colonne expires_at/expiresAt
+    const authEntitiesWithExpiry: Array<[string, new (...args: any[]) => any]> =
+      [
+        ['UserRole', UserRole],
+        ['UserPermission', UserPermission],
+        ['UserSubscription', UserSubscription],
+        ['ResourceShare', ResourceShare],
+      ];
+
+    authEntitiesWithExpiry.forEach(([name, EntityClass]) => {
+      it(`${name}: colonne expiresAt utilise 'timestamptz'`, () => {
         const storage = getMetadataArgsStorage();
         const expiresAtCols = storage.columns.filter(
           (col) =>
@@ -286,8 +301,51 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
             (col.propertyName === 'expiresAt' ||
               col.propertyName === 'expires_at'),
         );
-        expiresAtCols.forEach((col) => {
-          expect(col.options?.type).toBe('timestamptz');
+        expect(expiresAtCols).toHaveLength(1);
+        expect(expiresAtCols[0].options?.type).toBe('timestamptz');
+      });
+    });
+  });
+
+  describe('Entités de jonction — Colonnes de date en timestamptz', () => {
+    // RolePermission, TierPermission, ShareRolePermission : createdAt uniquement
+    // ShareRole : createdAt + updatedAt
+    const junctionEntities: Array<{
+      name: string;
+      EntityClass: new (...args: any[]) => any;
+      modes: Array<'createDate' | 'updateDate'>;
+    }> = [
+      {
+        name: 'RolePermission',
+        EntityClass: RolePermission,
+        modes: ['createDate'],
+      },
+      {
+        name: 'TierPermission',
+        EntityClass: TierPermission,
+        modes: ['createDate'],
+      },
+      {
+        name: 'ShareRole',
+        EntityClass: ShareRole,
+        modes: ['createDate', 'updateDate'],
+      },
+      {
+        name: 'ShareRolePermission',
+        EntityClass: ShareRolePermission,
+        modes: ['createDate'],
+      },
+    ];
+
+    junctionEntities.forEach(({ name, EntityClass, modes }) => {
+      modes.forEach((mode) => {
+        it(`${name}: colonne ${mode} utilise timestamptz`, () => {
+          const storage = getMetadataArgsStorage();
+          const cols = storage.columns.filter(
+            (col) => col.target === EntityClass && col.mode === mode,
+          );
+          expect(cols).toHaveLength(1);
+          expect(cols[0].options.type).toBe('timestamptz');
         });
       });
     });

@@ -2,7 +2,6 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
   Index,
 } from 'typeorm';
 
@@ -62,6 +61,6 @@ export class SyncConflict {
   })
   resolvedData!: Record<string, any>;
 
-  @CreateDateColumn({ type: 'timestamptz' })
+  @Column({ type: 'timestamptz' })
   resolvedAt!: Date;
 }
