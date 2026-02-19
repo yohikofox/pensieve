@@ -49,7 +49,7 @@ export class ExampleRepository {
     const id = uuidv7(); // ← ADR-026 R1 : UUID applicatif
 
     const entity = this.repo.create({
-      id,                        // ← fournir explicitement
+      id, // ← fournir explicitement
       name,
       ownerId,
       lastModifiedAt: Date.now(),
@@ -91,7 +91,9 @@ export class ExampleRepository {
         await manager.save(ExampleEntity, child);
       }
 
-      this.logger.log(`example.created.with-children: ${savedParent.id} (${childrenNames.length} children)`);
+      this.logger.log(
+        `example.created.with-children: ${savedParent.id} (${childrenNames.length} children)`,
+      );
       return savedParent;
     });
   }

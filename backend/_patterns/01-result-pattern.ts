@@ -35,8 +35,12 @@ class ExampleService {
   constructor(private readonly dataSource: DataSource) {}
 
   async deleteEntity(id: string): Promise<Result<void>> {
+    if (!id.trim()) {
+      return validationError('id is required');
+    }
+
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.dataSource.transaction(async () => {
         // ... opérations atomiques
       });
 
@@ -50,7 +54,9 @@ class ExampleService {
 
   async findEntity(id: string): Promise<Result<{ id: string; name: string }>> {
     try {
-      const entity = null as { id: string; name: string } | null; // simulation
+      const entity = await Promise.resolve(
+        null as { id: string; name: string } | null,
+      ); // simulation
 
       if (!entity) {
         return notFound(`Entity not found: ${id}`);
@@ -78,7 +84,7 @@ import {
 } from '@nestjs/common';
 
 @Controller('api/examples')
-class ExampleController {
+export class ExampleController {
   constructor(private readonly service: ExampleService) {}
 
   @Delete(':id')
@@ -86,7 +92,8 @@ class ExampleController {
     const result = await this.service.deleteEntity(id);
 
     // ✅ Seul le controller throw des HttpException
-    if (isError(result)) {
+    // isSuccess() → type guard positif (alternative à isError())
+    if (!isSuccess(result)) {
       throw new InternalServerErrorException(result.error);
     }
     // HTTP 200 implicite (ou ajouter @HttpCode(HttpStatus.NO_CONTENT))
@@ -124,11 +131,10 @@ class ExampleController {
 // ❌ INTERDIT : throw dans un service applicatif
 // ─────────────────────────────────────────────────────────────────────────────
 
-class WrongService {
+export class WrongService {
   async deleteEntity(id: string): Promise<void> {
+    await Promise.resolve(id); // simulation async
     // ❌ JAMAIS ça dans un service
     throw new Error('Not found');
-    // ❌ JAMAIS ça non plus
-    throw new NotFoundException('Entity not found');
   }
 }

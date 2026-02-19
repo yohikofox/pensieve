@@ -35,7 +35,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { Inject } from '@nestjs/common';
 
 import { CacheableRepository } from 'src/common/repositories/cacheable.repository';
@@ -87,7 +87,7 @@ export class RoleRepository extends CacheableRepository<RoleEntity> {
    */
   protected async resolveIdByNaturalKey(code: string): Promise<string | null> {
     const role = await this.roleRepo.findOne({
-      where: { code } as Partial<RoleEntity>,
+      where: { code },
       select: ['id'],
     });
     return role?.id ?? null;
@@ -100,7 +100,7 @@ export class RoleRepository extends CacheableRepository<RoleEntity> {
    * Elles accèdent directement à la DB. C'est normal pour les données mutables.
    */
   async findAll(): Promise<RoleEntity[]> {
-    return this.roleRepo.find({ where: { deletedAt: undefined } as Partial<RoleEntity> });
+    return this.roleRepo.find({ where: { deletedAt: IsNull() } });
   }
 }
 
@@ -171,4 +171,4 @@ class SomeService {
 const roles = await roleRepository.findByIds(['uuid-1', 'uuid-2']);
 */
 
-export { RoleRepository, AuthorizationService };
+export { AuthorizationService };

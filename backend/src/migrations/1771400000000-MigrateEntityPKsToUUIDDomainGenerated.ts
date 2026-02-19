@@ -158,9 +158,12 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
     `);
 
     // 2g. Remplacer PK integer de capture_types
-    await queryRunner.query(`
-      ALTER TABLE capture_types DROP CONSTRAINT capture_types_pkey
+    // Lookup dynamique du nom réel de la contrainte PK (TypeORM peut utiliser PK_capture_types)
+    const [{ conname: captureTypesPk }] = await queryRunner.query(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'capture_types'::regclass AND contype = 'p'
     `);
+    await queryRunner.query(`ALTER TABLE capture_types DROP CONSTRAINT "${captureTypesPk}"`);
     await queryRunner.query(`
       ALTER TABLE capture_types DROP COLUMN id
     `);
@@ -227,9 +230,11 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       ALTER TABLE captures RENAME COLUMN "stateId_new" TO "stateId"
     `);
 
-    await queryRunner.query(`
-      ALTER TABLE capture_states DROP CONSTRAINT capture_states_pkey
+    const [{ conname: captureStatesPk }] = await queryRunner.query(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'capture_states'::regclass AND contype = 'p'
     `);
+    await queryRunner.query(`ALTER TABLE capture_states DROP CONSTRAINT "${captureStatesPk}"`);
     await queryRunner.query(`
       ALTER TABLE capture_states DROP COLUMN id
     `);
@@ -296,9 +301,11 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       ALTER TABLE captures ALTER COLUMN "syncStatusId" SET NOT NULL
     `);
 
-    await queryRunner.query(`
-      ALTER TABLE capture_sync_statuses DROP CONSTRAINT capture_sync_statuses_pkey
+    const [{ conname: captureSyncStatusesPk }] = await queryRunner.query(`
+      SELECT conname FROM pg_constraint
+      WHERE conrelid = 'capture_sync_statuses'::regclass AND contype = 'p'
     `);
+    await queryRunner.query(`ALTER TABLE capture_sync_statuses DROP CONSTRAINT "${captureSyncStatusesPk}"`);
     await queryRunner.query(`
       ALTER TABLE capture_sync_statuses DROP COLUMN id
     `);

@@ -28,7 +28,7 @@ import {
   InternalServerErrorException,
   Logger,
 } from '@nestjs/common';
-import { isError } from '../src/common/types/result.type';
+import { isError, success } from '../src/common/types/result.type';
 import { SupabaseAuthGuard } from '../src/modules/shared/infrastructure/guards/supabase-auth.guard';
 import { ResourceOwnershipGuard } from '../src/modules/authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../src/modules/authorization/infrastructure/guards/permission.guard';
@@ -71,8 +71,8 @@ export class ExamplesController {
   @UseGuards(SupabaseAuthGuard, PermissionGuard)
   @RequirePermission('example.read')
   async listExamples(@CurrentUser() user: User) {
-    // Déléguer entièrement au repository — pas de logique ici
-    // return await this.exampleRepository.findByOwner(user.id);
+    this.logger.log('example.list', { userId: user.id });
+    return await Promise.resolve([]); // simulation — remplacer par this.exampleRepository.findByOwner(user.id)
   }
 
   /**
@@ -83,13 +83,14 @@ export class ExamplesController {
   @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   async getExample(@Param('id') id: string) {
-    // const example = await this.exampleRepository.findById(id);
-
+    const example = await Promise.resolve(
+      null as { id: string; name: string } | null,
+    ); // simulation — remplacer par this.exampleRepository.findById(id)
     // ✅ Controller throw des HttpException (pas le service)
-    // if (!example) {
-    //   throw new NotFoundException('Example not found');
-    // }
-    // return example;
+    if (!example) {
+      throw new NotFoundException(`Example not found: ${id}`);
+    }
+    return example;
   }
 
   /**
@@ -103,7 +104,7 @@ export class ExamplesController {
     @CurrentUser() user: User,
   ) {
     this.logger.log(`example.create requested by ${user.id}`);
-    // return await this.exampleRepository.create(dto.name, user.id);
+    return await Promise.resolve({ name: dto.name }); // simulation — remplacer par this.exampleRepository.create(dto.name, user.id)
   }
 
   /**
@@ -114,12 +115,12 @@ export class ExamplesController {
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteExample(@Param('id') id: string) {
-    // const result = await this.exampleDeleteService.softDeleteWithRelated(id);
-
+    const result = await Promise.resolve(success(undefined)); // simulation — remplacer par this.exampleDeleteService.softDeleteWithRelated(id)
     // ✅ Consommer Result<T> — throw uniquement ici
-    // if (isError(result)) {
-    //   throw new InternalServerErrorException(result.error);
-    // }
+    if (isError(result)) {
+      throw new InternalServerErrorException(result.error);
+    }
+    this.logger.log('example.deleted', { id });
   }
 }
 

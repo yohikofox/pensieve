@@ -12,7 +12,8 @@
  * - forwardRef() uniquement en cas de dépendance circulaire avérée
  */
 
-import { Module, forwardRef } from '@nestjs/common';
+import { Module } from '@nestjs/common';
+// import { forwardRef } from '@nestjs/common'; // ← uniquement si dépendance circulaire avérée
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigService } from '@nestjs/config';
 import { AuthorizationModule } from '../src/modules/authorization/authorization.module';
@@ -29,9 +30,19 @@ class ExampleEntity extends AppBaseEntity {
 class ExampleRepository {}
 class ExampleService {}
 class ExamplesController {}
-interface IExampleStore { get(key: string): string | null; }
-class InMemoryExampleStore implements IExampleStore { get() { return null; } }
-class RedisExampleStore implements IExampleStore { get() { return null; } }
+interface IExampleStore {
+  get(key: string): string | null;
+}
+class InMemoryExampleStore implements IExampleStore {
+  get() {
+    return null;
+  }
+}
+class RedisExampleStore implements IExampleStore {
+  get() {
+    return null;
+  }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ✅ CORRECT : module NestJS complet
@@ -49,9 +60,7 @@ class RedisExampleStore implements IExampleStore { get() { return null; } }
     // forwardRef(() => OtherModule),
   ],
 
-  controllers: [
-    ExamplesController,
-  ],
+  controllers: [ExamplesController],
 
   providers: [
     // Services sans configuration
@@ -63,7 +72,10 @@ class RedisExampleStore implements IExampleStore { get() { return null; } }
     {
       provide: 'EXAMPLE_STORE',
       useFactory: (configService: ConfigService): IExampleStore => {
-        const storeType = configService.get<string>('EXAMPLE_STORE_TYPE', 'memory');
+        const storeType = configService.get<string>(
+          'EXAMPLE_STORE_TYPE',
+          'memory',
+        );
         return storeType === 'redis'
           ? new RedisExampleStore()
           : new InMemoryExampleStore();

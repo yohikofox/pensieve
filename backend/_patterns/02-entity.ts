@@ -22,7 +22,14 @@
  *   - deletedAt : Date | null (TIMESTAMPTZ, soft delete)
  */
 
-import { Entity, Column, ManyToOne, JoinColumn, OneToMany, Index } from 'typeorm';
+import {
+  Entity,
+  Column,
+  ManyToOne,
+  JoinColumn,
+  OneToMany,
+  Index,
+} from 'typeorm';
 import { AppBaseEntity } from '../src/common/entities/base.entity';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,8 +37,9 @@ import { AppBaseEntity } from '../src/common/entities/base.entity';
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Entity('examples')
-@Index('IDX_EXAMPLES_OWNER_ID', ['ownerId'])           // ← Index sur les FKs fréquentes
-export class ExampleEntity extends AppBaseEntity {     // ← extends AppBaseEntity (R6)
+@Index('IDX_EXAMPLES_OWNER_ID', ['ownerId']) // ← Index sur les FKs fréquentes
+export class ExampleEntity extends AppBaseEntity {
+  // ← extends AppBaseEntity (R6)
   // ownerId : UUID du propriétaire (pattern commun à toutes les entités)
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;

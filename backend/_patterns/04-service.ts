@@ -42,7 +42,7 @@ export class ExampleDeleteService {
    */
   async softDeleteWithRelated(entityId: string): Promise<Result<void>> {
     try {
-      await this.dataSource.transaction(async (manager) => {
+      await this.dataSource.transaction(async () => {
         // 1. Trouver les sous-entités liées (avant suppression du parent)
         // const children = await childRepo.find({ where: { parentId: entityId } });
 
@@ -55,26 +55,37 @@ export class ExampleDeleteService {
         // 3. Soft-delete le parent
         // await manager.getRepository(ExampleEntity).softDelete(entityId);
 
+        await Promise.resolve(); // simulation — remplacer par les opérations réelles avec manager
         this.logger.log('entity.soft-deleted', { entityId });
       });
 
       return success(undefined);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error during deletion';
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Unknown error during deletion';
 
       this.logger.error('entity.delete.failed', { entityId, error: message });
 
-      return transactionError(`Failed to delete entity ${entityId}: ${message}`);
+      return transactionError(
+        `Failed to delete entity ${entityId}: ${message}`,
+      );
     }
   }
 
   /**
    * Opération avec vérification d'existence
    */
-  async updateEntity(entityId: string, name: string): Promise<Result<{ id: string; name: string }>> {
+  async updateEntity(
+    entityId: string,
+    name: string,
+  ): Promise<Result<{ id: string; name: string }>> {
     try {
       // Simulation d'une recherche
-      const entity = null as { id: string; name: string } | null;
+      const entity = await Promise.resolve(
+        null as { id: string; name: string } | null,
+      );
 
       if (!entity) {
         // Pas de throw — retourner notFound
