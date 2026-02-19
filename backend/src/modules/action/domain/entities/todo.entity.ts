@@ -68,6 +68,11 @@ export class Todo extends AppBaseEntity {
   // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Relationships
+  // ADR-026 R3 — Décision documentée : onDelete: 'CASCADE' est une contrainte FK SQL,
+  // différente du cascade ORM TypeORM. Elle garantit l'intégrité référentielle lors de
+  // suppressions DB directes (maintenance admin, cleanup tests).
+  // Avec softDelete() TypeORM, cette contrainte n'est jamais déclenchée (UPDATE, pas DELETE SQL).
+  // Audit Story 12.4 : documenté comme décision explicite conforme à ADR-026 R3.
   @ManyToOne(() => Thought, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'thoughtId' })
   thought!: Thought;

@@ -9,6 +9,7 @@
  * - Result Pattern : Pas de throw, retour Result<void>
  */
 
+import { Logger } from '@nestjs/common';
 import { ThoughtDeleteService } from './thought-delete.service';
 import { isSuccess, isError } from '../../../../common/types/result.type';
 
@@ -92,10 +93,14 @@ const createMockDataSource = (opts: Partial<TransactionCallbacks> = {}) => {
 
 describe('ThoughtDeleteService', () => {
   let service: ThoughtDeleteService;
-  let mockLogger: { log: jest.Mock; error: jest.Mock };
+  let logSpy: jest.SpyInstance;
+  let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    mockLogger = { log: jest.fn(), error: jest.fn() };
+    logSpy = jest.spyOn(Logger.prototype, 'log').mockImplementation(() => {});
+    errorSpy = jest
+      .spyOn(Logger.prototype, 'error')
+      .mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -134,6 +139,22 @@ describe('ThoughtDeleteService', () => {
       );
       expect(thoughtDeleteCall).toBeDefined();
       expect(thoughtDeleteCall!.ids).toBe('thought-001');
+
+      // AC2 : Vérifie log structuré avec reason (obligatoire par l'AC)
+      expect(logSpy).toHaveBeenCalledWith(
+        'thought.ideas.soft-deleted',
+        expect.objectContaining({
+          thoughtId: 'thought-001',
+          reason: 'thought.deletion.cascade',
+        }),
+      );
+      expect(logSpy).toHaveBeenCalledWith(
+        'thought.soft-deleted',
+        expect.objectContaining({
+          thoughtId: 'thought-001',
+          reason: 'explicit.application.delete',
+        }),
+      );
     });
 
     it('soft-delete le Thought même si aucune Idea liée', async () => {
@@ -177,11 +198,20 @@ describe('ThoughtDeleteService', () => {
       expect(result.type).toBe('transaction_error');
       expect(result.error).toBeDefined();
 
+      // M2 : Vérifie que la transaction a bien rollback (atomicité)
+      expect(dataSource._wasRolledBack()).toBe(true);
+
       // Vérifie que le Thought n'a pas été supprimé (rollback)
       const thoughtDeleteCall = dataSource._callbacks.softDeleteCalls.find(
         (c) => c.entity === 'Thought',
       );
       expect(thoughtDeleteCall).toBeUndefined();
+
+      // Vérifie log d'erreur structuré
+      expect(errorSpy).toHaveBeenCalledWith(
+        'thought.delete.failed',
+        expect.objectContaining({ thoughtId: 'thought-001' }),
+      );
     });
 
     it('retourne transactionError si le soft-delete du Thought échoue', async () => {

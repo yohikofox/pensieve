@@ -57,8 +57,9 @@ export class ThoughtDeleteService {
 
           this.logger.log('thought.ideas.soft-deleted', {
             thoughtId,
-            relatedIdeas: ideaIds,
+            ideaIds,
             count: ideaIds.length,
+            reason: 'thought.deletion.cascade',
           });
         }
 
@@ -68,6 +69,7 @@ export class ThoughtDeleteService {
         this.logger.log('thought.soft-deleted', {
           thoughtId,
           relatedIdeasCount: relatedIdeas.length,
+          reason: 'explicit.application.delete',
         });
       });
 

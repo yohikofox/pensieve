@@ -154,7 +154,8 @@ export class ThoughtsController {
   async deleteThought(@Param('id') id: string) {
     const result = await this.thoughtDeleteService.softDeleteWithRelated(id);
     if (isError(result)) {
-      throw new InternalServerErrorException(result.error);
+      this.logger.error('thought.delete.failed', { id, error: result.error });
+      throw new InternalServerErrorException('Failed to delete thought');
     }
   }
 

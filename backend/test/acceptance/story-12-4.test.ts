@@ -60,6 +60,8 @@ const createMockDataSource = (
     }),
   };
 
+  let transactionRolledBack = false;
+
   const dataSource = {
     transaction: jest.fn().mockImplementation(async (fn: any) => {
       const manager = {
@@ -69,8 +71,14 @@ const createMockDataSource = (
           throw new Error(`Unknown entity: ${EntityClass.name}`);
         }),
       };
-      return await fn(manager);
+      try {
+        return await fn(manager);
+      } catch (error) {
+        transactionRolledBack = true;
+        throw error;
+      }
     }),
+    _wasRolledBack: () => transactionRolledBack,
     _state: mockState,
     _ideaRepo: ideaRepo,
     _thoughtRepo: thoughtRepo,
@@ -183,6 +191,8 @@ defineFeature(feature, (test) => {
       expect(mockDataSource._state.thoughtSoftDeleteCalls).not.toContain(
         'thought-fail',
       );
+      // M3 : Vérifie atomicité — la transaction a bien déclenché un rollback
+      expect(mockDataSource._wasRolledBack()).toBe(true);
     });
 
     and("aucune exception n'est levée", () => {
