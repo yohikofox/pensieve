@@ -1,5 +1,9 @@
+// Charger .env avant la création du pool pg (module évalué avant NestJS ConfigModule — ADR-029)
+import 'dotenv/config';
+
 import { betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins';
+import { expo } from '@better-auth/expo';
 import { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
 import type { EmailService } from '../email/email.service';
@@ -44,6 +48,8 @@ export const auth = betterAuth({
 
   emailAndPassword: {
     enabled: true,
+    // Désactiver la vérification email obligatoire en développement (RESEND_API_KEY non configuré)
+    requireEmailVerification: process.env.NODE_ENV === 'production',
     sendResetPassword: async ({
       user,
       url,
@@ -72,10 +78,18 @@ export const auth = betterAuth({
     },
   },
 
-  plugins: [admin()],
+  plugins: [
+    admin(),
+    expo(),  // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
+  ],
 
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+
+  // Origines autorisées pour les clients mobiles Expo (story 15.2)
+  // pensine-dev:// → build de développement (IS_DEV = true)
+  // pensine://     → build de production
+  trustedOrigins: ['pensine-dev://', 'pensine://'],
 });
 
 /**

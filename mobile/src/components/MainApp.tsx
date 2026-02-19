@@ -12,7 +12,7 @@ import * as Linking from 'expo-linking';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
 import { useDeepLinkAuth } from '../contexts/identity/hooks/useDeepLinkAuth';
 import { useAuthRecoveryStore } from '../stores/authRecoveryStore';
-import { supabase } from '../lib/supabase';
+import { AuthTokenManager } from '../infrastructure/auth/AuthTokenManager';
 import { useLLMSettingsListener } from '../hooks/useLLMSettingsListener';
 import { useNavigationTheme } from '../hooks/useNavigationTheme';
 import { useThemeContext } from '../contexts/theme/ThemeProvider';
@@ -58,13 +58,9 @@ function useInitialUrlRecoveryCheck(): boolean {
             const type = params.get('type');
 
             if (access_token && refresh_token && type === 'recovery') {
-              const { error } = await supabase.auth.setSession({
-                access_token,
-                refresh_token,
-              });
-              if (!error) {
-                setPasswordRecovery(true);
-              }
+              const tokenManager = new AuthTokenManager();
+              await tokenManager.storeTokens(access_token, refresh_token, 3600);
+              setPasswordRecovery(true);
             }
           }
         }

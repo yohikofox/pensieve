@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { useToast } from '../../../design-system/components';
 import { Button } from '../../../design-system/components/Button';
 import { Input } from '../../../design-system/components/Input';
-import { supabase } from '../../../lib/supabase';
+import { authClient } from '../../../infrastructure/auth/auth-client';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StandardLayout } from '../../../components/layouts';
 
@@ -33,21 +33,19 @@ export const ForgotPasswordScreen = ({ navigation }: ForgotPasswordScreenProps) 
     }
 
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(
-        email.toLowerCase().trim(),
-        { redirectTo: 'pensine://reset-password' },
-      );
+    const response = await authClient.forgetPassword({
+      email: email.toLowerCase().trim(),
+      redirectTo: 'pensine://reset-password',
+    });
+    setLoading(false);
 
-      if (error) throw error;
-
-      toast.success('Password reset instructions sent to your email');
-      navigation.goBack();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to send reset email');
-    } finally {
-      setLoading(false);
+    if (response.error) {
+      toast.error(response.error.message ?? 'Failed to send reset email');
+      return;
     }
+
+    toast.success('Password reset instructions sent to your email');
+    navigation.goBack();
   };
 
   return (

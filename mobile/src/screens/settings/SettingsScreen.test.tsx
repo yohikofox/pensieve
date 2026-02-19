@@ -2,13 +2,30 @@ import React from 'react';
 import { render, fireEvent, waitFor } from '@testing-library/react-native';
 import { Alert } from 'react-native';
 import { SettingsScreen } from './SettingsScreen';
-import { supabase } from '../../lib/supabase';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 
+// Mock SecureStore (replaces Supabase auth)
+const mockSecureStore: Record<string, string> = {
+  ba_access_token: 'mock-token-123',
+  ba_refresh_token: 'mock-refresh-token',
+  ba_token_expires_at: String(Date.now() + 3600 * 1000),
+};
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(async (key: string) => mockSecureStore[key] ?? null),
+  setItemAsync: jest.fn(async (key: string, value: string) => { mockSecureStore[key] = value; }),
+  deleteItemAsync: jest.fn(async (key: string) => { delete mockSecureStore[key]; }),
+}));
+
+// Mock authClient
+jest.mock('../../infrastructure/auth/auth-client', () => ({
+  authClient: {
+    signOut: jest.fn().mockResolvedValue({ error: null }),
+  },
+}));
+
 // Mock dependencies
-jest.mock('../../lib/supabase');
 jest.mock('expo-file-system/legacy');
 jest.mock('expo-sharing');
 jest.mock('../../config/api', () => ({
@@ -37,13 +54,10 @@ jest.spyOn(Alert, 'alert');
 describe('SettingsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-      data: {
-        session: {
-          access_token: 'mock-token-123',
-        },
-      },
-    });
+    // Restore valid token in SecureStore before each test
+    mockSecureStore['ba_access_token'] = 'mock-token-123';
+    mockSecureStore['ba_refresh_token'] = 'mock-refresh-token';
+    mockSecureStore['ba_token_expires_at'] = String(Date.now() + 3600 * 1000);
   });
 
   describe('Export Data', () => {
@@ -159,10 +173,9 @@ describe('SettingsScreen', () => {
     });
 
     it('should show error if not authenticated', async () => {
-      // Arrange
-      (supabase.auth.getSession as jest.Mock).mockResolvedValue({
-        data: { session: null },
-      });
+      // Arrange — supprimer les tokens du store
+      delete mockSecureStore['ba_access_token'];
+      delete mockSecureStore['ba_refresh_token'];
 
       const { getByText } = render(<SettingsScreen />);
 
@@ -224,7 +237,6 @@ describe('SettingsScreen', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         status: 204,
       });
-      (supabase.auth.signOut as jest.Mock).mockResolvedValue({});
 
       const { getByText, getByPlaceholderText } = render(<SettingsScreen />);
 
@@ -265,7 +277,6 @@ describe('SettingsScreen', () => {
       (global.fetch as jest.Mock).mockResolvedValue({
         status: 204,
       });
-      (supabase.auth.signOut as jest.Mock).mockResolvedValue({});
 
       const { getByText, getByPlaceholderText } = render(<SettingsScreen />);
 
@@ -297,8 +308,9 @@ describe('SettingsScreen', () => {
       const okButton = successAlertCall[2][0];
       await okButton.onPress();
 
-      // Assert
-      expect(supabase.auth.signOut).toHaveBeenCalled();
+      // Assert — signOut is called via authClient
+      const { authClient } = require('../../infrastructure/auth/auth-client');
+      expect(authClient.signOut).toHaveBeenCalled();
     });
 
     it('should show error for invalid password (401)', async () => {

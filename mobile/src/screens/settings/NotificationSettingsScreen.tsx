@@ -25,7 +25,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../lib/supabase';
+import { AuthTokenManager } from '../../infrastructure/auth/AuthTokenManager';
 import { apiConfig } from '../../config/api';
 import { colors } from '../../design-system/tokens';
 import { Card, useToast } from '../../design-system/components';
@@ -86,11 +86,10 @@ export const NotificationSettingsScreen = () => {
    */
   const syncWithAPI = async () => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const tokenManager = new AuthTokenManager();
+      const tokenResult = await tokenManager.getValidToken();
 
-      if (!session) {
+      if (tokenResult.type !== 'success' || !tokenResult.data) {
         console.warn('[NotificationSettings] No session, skipping API sync');
         return;
       }
@@ -99,7 +98,7 @@ export const NotificationSettingsScreen = () => {
       const response = await fetch(apiConfig.endpoints.users.notificationSettings, {
         method: 'GET',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${tokenResult.data}`,
         },
       });
 
@@ -172,11 +171,10 @@ export const NotificationSettingsScreen = () => {
    */
   const syncToAPI = async (push: boolean, local: boolean, haptic: boolean) => {
     try {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const tokenManager = new AuthTokenManager();
+      const tokenResult = await tokenManager.getValidToken();
 
-      if (!session) {
+      if (tokenResult.type !== 'success' || !tokenResult.data) {
         throw new Error(t('auth.notAuthenticated'));
       }
 
@@ -184,7 +182,7 @@ export const NotificationSettingsScreen = () => {
       const response = await fetch(apiConfig.endpoints.users.notificationSettings, {
         method: 'PATCH',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${tokenResult.data}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -13,11 +13,13 @@ import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
-import { supabase } from '../../lib/supabase';
+import { AuthTokenManager } from '../../infrastructure/auth/AuthTokenManager';
+import { authClient } from '../../infrastructure/auth/auth-client';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 import { container } from 'tsyringe';
+import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
 import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
@@ -94,6 +96,7 @@ export const SettingsScreen = () => {
   const [googleConnecting, setGoogleConnecting] = useState(false);
 
   // Dialog states
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
   const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -239,12 +242,10 @@ export const SettingsScreen = () => {
     setExportLoading(true);
 
     try {
-      // Get auth token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const tokenManager = new AuthTokenManager();
+      const tokenResult = await tokenManager.getValidToken();
 
-      if (!session) {
+      if (tokenResult.type !== 'success' || !tokenResult.data) {
         throw new Error(t('auth.notAuthenticated'));
       }
 
@@ -252,7 +253,7 @@ export const SettingsScreen = () => {
       const response = await fetch(apiConfig.endpoints.rgpd.export, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${tokenResult.data}`,
         },
       });
 
@@ -353,12 +354,10 @@ export const SettingsScreen = () => {
     setDeleteLoading(true);
 
     try {
-      // Get auth token
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      const tokenManager = new AuthTokenManager();
+      const tokenResult = await tokenManager.getValidToken();
 
-      if (!session) {
+      if (tokenResult.type !== 'success' || !tokenResult.data) {
         throw new Error(t('auth.notAuthenticated'));
       }
 
@@ -366,7 +365,7 @@ export const SettingsScreen = () => {
       const response = await fetch(apiConfig.endpoints.rgpd.deleteAccount, {
         method: 'DELETE',
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${tokenResult.data}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ password }),
@@ -389,9 +388,22 @@ export const SettingsScreen = () => {
     }
   };
 
+  const handleLogout = () => {
+    setShowLogoutDialog(true);
+  };
+
+  const confirmLogout = async () => {
+    setShowLogoutDialog(false);
+    const authService = container.resolve<IAuthService>('IAuthService');
+    await authService.signOut();
+    // Navigation handled by useAuthListener
+  };
+
   const handleDeleteSuccessConfirm = async () => {
     setShowDeleteSuccessDialog(false);
-    await supabase.auth.signOut();
+    await authClient.signOut();
+    const tokenManager = new AuthTokenManager();
+    await tokenManager.clearTokens();
     // Navigation handled by auth state listener
   };
 
@@ -615,6 +627,21 @@ export const SettingsScreen = () => {
               </Text>
             </View>
             <Text className="text-xl text-text-tertiary font-semibold">›</Text>
+          </TouchableOpacity>
+        </Card>
+
+        {/* Account Section */}
+        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+            Compte
+          </Text>
+
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-4"
+            onPress={handleLogout}
+          >
+            <Feather name="log-out" size={18} color={colors.error[500]} style={{ marginRight: 10 }} />
+            <Text className="text-lg text-status-error">Se déconnecter</Text>
           </TouchableOpacity>
         </Card>
 
@@ -851,6 +878,19 @@ export const SettingsScreen = () => {
       </Modal>
 
       {/* AlertDialogs */}
+      <AlertDialog
+        visible={showLogoutDialog}
+        onClose={() => setShowLogoutDialog(false)}
+        variant="warning"
+        title="Se déconnecter"
+        message="Êtes-vous sûr de vouloir vous déconnecter ?"
+        confirmAction={{
+          label: 'Se déconnecter',
+          variant: 'danger',
+          onPress: confirmLogout,
+        }}
+      />
+
       <AlertDialog
         visible={showDisconnectDialog}
         onClose={() => setShowDisconnectDialog(false)}

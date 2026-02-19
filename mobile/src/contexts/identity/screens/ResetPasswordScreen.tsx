@@ -3,7 +3,9 @@ import { View, Text } from 'react-native';
 import { useToast } from '../../../design-system/components';
 import { Button } from '../../../design-system/components/Button';
 import { Input } from '../../../design-system/components/Input';
-import { supabase } from '../../../lib/supabase';
+import { authClient } from '../../../infrastructure/auth/auth-client';
+import { container } from '../../../infrastructure/di/container';
+import type { IAuthService } from '../domain/IAuthService';
 import { useAuthRecoveryStore } from '../../../stores/authRecoveryStore';
 import { StandardLayout } from '../../../components/layouts';
 
@@ -39,21 +41,21 @@ export const ResetPasswordScreen = () => {
     }
 
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
-      if (error) throw error;
+    const response = await authClient.resetPassword({ newPassword });
+    setLoading(false);
 
-      // Sign out the recovery session — user must re-authenticate with new password
-      await supabase.auth.signOut();
-      setPasswordRecovery(false);
-
-      toast.success('Password reset successfully. Please sign in with your new password.');
-      // Navigation is handled by auth state: signOut → user=null → AuthNavigator(Login)
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to reset password');
-    } finally {
-      setLoading(false);
+    if (response.error) {
+      toast.error(response.error.message ?? 'Failed to reset password');
+      return;
     }
+
+    // Résolution lazy via DI — conforme ADR-021
+    const authService = container.resolve<IAuthService>('IAuthService');
+    await authService.signOut();
+    setPasswordRecovery(false);
+
+    toast.success('Password reset successfully. Please sign in with your new password.');
+    // Navigation is handled by auth state: signOut → user=null → AuthNavigator(Login)
   };
 
   return (

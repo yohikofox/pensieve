@@ -1,13 +1,9 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-} from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
 import { useToast } from '../../../design-system/components';
-import { supabase } from '../../../lib/supabase';
+import { Button } from '../../../design-system/components/Button';
+import { Input } from '../../../design-system/components/Input';
+import { authClient } from '../../../infrastructure/auth/auth-client';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { StandardLayout } from '../../../components/layouts';
 
@@ -46,7 +42,6 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
   };
 
   const handleRegister = async () => {
-    // Validation
     if (!email || !password || !confirmPassword) {
       toast.error('Please fill in all fields');
       return;
@@ -70,141 +65,102 @@ export const RegisterScreen = ({ navigation }: RegisterScreenProps) => {
     }
 
     setLoading(true);
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email: email.toLowerCase().trim(),
-        password,
-      });
+    const response = await authClient.signUp.email({
+      email: email.toLowerCase().trim(),
+      password,
+      name: email.split('@')[0],
+    });
+    setLoading(false);
 
-      if (error) throw error;
-
-      toast.success('Account created! Please check your email to confirm.');
-      navigation.navigate('Login');
-    } catch (error: any) {
-      toast.error(error.message || 'Registration failed');
-    } finally {
-      setLoading(false);
+    if (response.error) {
+      toast.error(response.error.message ?? 'Registration failed');
+      return;
     }
+
+    toast.success('Account created! Please check your email to confirm.');
+    navigation.navigate('Login');
   };
 
   return (
     <StandardLayout>
-      <View style={styles.container}>
-        <Text style={styles.title}>Create Account</Text>
+      <View className="flex-1 px-6 justify-center">
 
-        <TextInput
-        style={styles.input}
-        placeholder="Email"
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-        autoComplete="username"
-        editable={!loading}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        editable={!loading}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Confirm Password"
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        secureTextEntry={true}
-        autoCapitalize="none"
-        editable={!loading}
-      />
-
-      <Text style={styles.requirements}>
-        Password must contain:
-        {'\n'}• At least 8 characters
-        {'\n'}• At least 1 uppercase letter
-        {'\n'}• At least 1 number
-      </Text>
-
-      <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
-        onPress={handleRegister}
-        disabled={loading}
-      >
-        <Text style={styles.buttonText}>
-          {loading ? 'Creating Account...' : 'Sign Up'}
+        {/* Header */}
+        <Text className="text-3xl font-bold text-center text-text-primary mb-2">
+          Create Account
         </Text>
-      </TouchableOpacity>
+        <Text className="text-base text-center text-text-secondary mb-8">
+          Start capturing your thoughts today
+        </Text>
 
-      <View style={styles.loginContainer}>
-        <Text style={styles.loginText}>Already have an account? </Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-          <Text style={styles.loginLink}>Sign In</Text>
-        </TouchableOpacity>
-      </View>
+        {/* Email Input */}
+        <View className="mb-4">
+          <Input
+            label="Email"
+            placeholder="you@example.com"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            autoComplete="username"
+            editable={!loading}
+          />
+        </View>
+
+        {/* Password Input */}
+        <View className="mb-4">
+          <Input
+            label="Password"
+            placeholder="••••••••"
+            value={password}
+            onChangeText={setPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
+
+        {/* Confirm Password Input */}
+        <View className="mb-4">
+          <Input
+            label="Confirm Password"
+            placeholder="••••••••"
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+            secureTextEntry
+            autoCapitalize="none"
+            editable={!loading}
+          />
+        </View>
+
+        {/* Password requirements */}
+        <Text className="text-sm text-text-tertiary mb-6 leading-5">
+          Password must contain:{'\n'}
+          {'  '}• At least 8 characters{'\n'}
+          {'  '}• At least 1 uppercase letter{'\n'}
+          {'  '}• At least 1 number
+        </Text>
+
+        {/* Sign Up Button */}
+        <Button
+          variant="primary"
+          size="lg"
+          loading={loading}
+          onPress={handleRegister}
+          className="mb-3"
+        >
+          Sign Up
+        </Button>
+
+        {/* Login Link */}
+        <View className="flex-row justify-center">
+          <Text className="text-sm text-text-secondary">Already have an account? </Text>
+          <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+            <Text className="text-sm font-semibold text-text-link">Sign In</Text>
+          </TouchableOpacity>
+        </View>
+
       </View>
     </StandardLayout>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 32,
-    textAlign: 'center',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 16,
-    fontSize: 16,
-    marginBottom: 16,
-    color: '#000',
-    backgroundColor: '#fff',
-  },
-  requirements: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 24,
-    lineHeight: 20,
-  },
-  button: {
-    backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  loginContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 24,
-  },
-  loginText: {
-    color: '#666',
-    fontSize: 14,
-  },
-  loginLink: {
-    color: '#007AFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-});

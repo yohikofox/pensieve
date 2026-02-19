@@ -85,7 +85,8 @@ import { TranscriptionEngineService } from '../../contexts/Normalization/service
 
 // Identity Services (Story 7.1)
 import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
-import { SupabaseAuthService } from '../../contexts/identity/services/SupabaseAuthService';
+import { BetterAuthService } from '../auth/BetterAuthService';
+import { AuthTokenManager } from '../auth/AuthTokenManager';
 import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
 
 // Sync Infrastructure (Story 6.1 & 6.2)
@@ -185,8 +186,11 @@ export function registerServices() {
   // SINGLETON: TranscriptionEngineService — orchestre les engines, maintient l'état de sélection (ADR-021)
   container.registerSingleton(TranscriptionEngineService);
 
-  // SINGLETON: SupabaseAuthService — session d'authentification partagée sur toute la session (ADR-021)
-  container.registerSingleton<IAuthService>('IAuthService', SupabaseAuthService);
+  // SINGLETON: BetterAuthService — session d'authentification partagée sur toute la session (ADR-021)
+  container.registerSingleton<IAuthService>('IAuthService', BetterAuthService);
+
+  // TRANSIENT: AuthTokenManager — gestion tokens sans état partagé (ADR-021 Transient First)
+  container.register(TOKENS.IAuthTokenManager, { useClass: AuthTokenManager });
 
   // Sync Infrastructure (Story 6.1 & 6.2)
   // SINGLETON: SyncService — auth token est défini sur cette instance et doit être partagé (ADR-021)

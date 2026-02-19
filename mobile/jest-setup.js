@@ -469,23 +469,6 @@ jest.mock('expo-audio', () => ({
   },
 }));
 
-// ==========================================
-// Supabase Mock
-// ==========================================
-// Mock Supabase client to avoid network calls in unit tests
-jest.mock('./src/lib/supabase', () => ({
-  supabase: {
-    auth: {
-      getSession: jest.fn(() =>
-        Promise.resolve({
-          data: { session: { access_token: 'mock-token' } },
-          error: null,
-        })
-      ),
-      signOut: jest.fn(() => Promise.resolve({ error: null })),
-    },
-  },
-}));
 
 // ==========================================
 // OP-SQLite Mock (per-test basis)

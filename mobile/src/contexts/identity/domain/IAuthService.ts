@@ -33,4 +33,16 @@ export interface IAuthService {
   onAuthStateChange(
     callback: (session: AuthSession | null) => void
   ): () => void;
+
+  /**
+   * Sign in with email and password
+   * Story 15.2 — Better Auth client
+   */
+  signIn(email: string, password: string): Promise<import('../../shared/domain/Result').Result<void>>;
+
+  /**
+   * Sign out current user and clear tokens
+   * Story 15.2 — Better Auth client
+   */
+  signOut(): Promise<import('../../shared/domain/Result').Result<void>>;
 }

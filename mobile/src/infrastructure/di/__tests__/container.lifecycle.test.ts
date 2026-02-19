@@ -278,8 +278,22 @@ jest.mock('@/contexts/identity/services/user-features.service', () => ({
   },
 }));
 
-jest.mock('@/contexts/identity/services/SupabaseAuthService', () => ({
-  SupabaseAuthService: class MockSupabaseAuthService {},
+jest.mock('@/infrastructure/auth/BetterAuthService', () => ({
+  BetterAuthService: class MockBetterAuthService {},
+}));
+
+jest.mock('@/infrastructure/auth/AuthTokenManager', () => ({
+  AuthTokenManager: class MockAuthTokenManager {},
+}));
+
+jest.mock('@/infrastructure/auth/auth-client', () => ({
+  authClient: {},
+}));
+
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn(),
 }));
 
 jest.mock('@/infrastructure/sync/SyncService', () => ({

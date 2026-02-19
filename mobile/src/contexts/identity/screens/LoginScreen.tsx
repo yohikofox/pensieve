@@ -3,13 +3,10 @@ import { View, Text, TouchableOpacity } from "react-native";
 import { useToast } from "../../../design-system/components";
 import { Button } from "../../../design-system/components/Button";
 import { Input } from "../../../design-system/components/Input";
-import { supabase } from "../../../lib/supabase";
-import * as WebBrowser from "expo-web-browser";
-import { makeRedirectUri } from "expo-auth-session";
+import { container } from "../../../infrastructure/di/container";
+import type { IAuthService } from "../domain/IAuthService";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { StandardLayout } from '../../../components/layouts';
-
-WebBrowser.maybeCompleteAuthSession();
 
 type AuthStackParamList = {
   Login: undefined;
@@ -39,67 +36,13 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
     }
 
     setLoading(true);
-    try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.toLowerCase().trim(),
-        password,
-      });
+    // Résolution lazy via DI container — conforme ADR-021 (jamais au niveau module)
+    const authService = container.resolve<IAuthService>('IAuthService');
+    const result = await authService.signIn(email.toLowerCase().trim(), password);
+    setLoading(false);
 
-      if (error) throw error;
-    } catch (error: any) {
-      toast.error(error.message || "Login failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoogleSignIn = async () => {
-    setLoading(true);
-    try {
-      const redirectUrl = makeRedirectUri({ path: "auth/callback" });
-
-      const { data, error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
-        },
-      });
-
-      if (error) throw error;
-
-      const result = await WebBrowser.openAuthSessionAsync(
-        data.url,
-        redirectUrl,
-      );
-
-      if (result.type === "success") {
-        const { url } = result;
-        try {
-          const fragment = url.split("#")[1];
-          if (!fragment) throw new Error("No tokens in callback URL");
-
-          const params = new URLSearchParams(fragment);
-          const accessToken = params.get("access_token");
-          const refreshToken = params.get("refresh_token");
-
-          if (accessToken && refreshToken) {
-            await supabase.auth.setSession({
-              access_token: accessToken,
-              refresh_token: refreshToken,
-            });
-          } else {
-            throw new Error("Missing tokens in callback");
-          }
-        } catch (parseError: any) {
-          console.error("Failed to parse OAuth callback:", parseError);
-          toast.error("Failed to process Google sign-in response");
-        }
-      }
-    } catch (error: any) {
-      toast.error(error.message || "Google Sign-In Failed");
-    } finally {
-      setLoading(false);
+    if (result.type !== 'success') {
+      toast.error(result.error ?? "Login failed");
     }
   };
 
@@ -160,24 +103,6 @@ export const LoginScreen = ({ navigation }: LoginScreenProps) => {
         >
           <Text className="text-sm text-text-link">Forgot Password?</Text>
         </TouchableOpacity>
-
-        {/* Divider */}
-        <View className="flex-row items-center mb-6">
-          <View className="flex-1 h-px bg-border-default" />
-          <Text className="mx-4 text-sm text-text-tertiary">OR</Text>
-          <View className="flex-1 h-px bg-border-default" />
-        </View>
-
-        {/* Google Sign-In */}
-        <Button
-          variant="secondary"
-          size="lg"
-          onPress={handleGoogleSignIn}
-          disabled={loading}
-          className="mb-6"
-        >
-          Continue with Google
-        </Button>
 
         {/* Register Link */}
         <View className="flex-row justify-center">

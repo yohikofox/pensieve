@@ -39,4 +39,7 @@ export const TOKENS = {
   // LLM Services (Post-Processing)
   IHuggingFaceAuthService: Symbol.for('IHuggingFaceAuthService'),
   ILLMModelService: Symbol.for('ILLMModelService'),
+
+  // Auth Services (Story 15.2 — Better Auth)
+  IAuthTokenManager: Symbol.for('IAuthTokenManager'),
 };
