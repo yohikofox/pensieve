@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, MoreThan, DataSource } from 'typeorm';
+import { Repository, MoreThan, DataSource, Not, IsNull } from 'typeorm';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
@@ -238,23 +238,23 @@ export class SyncService {
       return { updated: [], deleted: [] };
     }
 
-    // Get updated records (active)
-    // Note: todo entity uses 'syncStatus' instead of 'status' (conflict with business status enum)
-    const statusField = entity === 'todo' ? 'syncStatus' : 'status';
+    // Get updated records (active = deletedAt IS NULL — filtré automatiquement par TypeORM)
+    // Stories 12.3 + 13.2 : les champs _status/'syncStatus' texte ont été supprimés.
+    // Le soft-delete via deletedAt (AppBaseEntity) est désormais le seul mécanisme de statut sync.
     const updated = await repository.find({
       where: {
         ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
-        [statusField]: 'active',
       } as any,
     });
 
-    // Get deleted records (soft deletes)
+    // Get deleted records (soft-deletes = deletedAt IS NOT NULL)
     const deleted = await repository.find({
+      withDeleted: true,
       where: {
         ownerId: userId,
         lastModifiedAt: MoreThan(lastPulledAt),
-        [statusField]: 'deleted',
+        deletedAt: Not(IsNull()),
       } as any,
       select: ['id'] as any,
     });
@@ -551,7 +551,8 @@ export class SyncService {
         return;
       }
       // recordId = clientId côté mobile
-      const deletedStatus = await this.captureSyncStatusRepository.findByNaturalKey('deleted');
+      const deletedStatus =
+        await this.captureSyncStatusRepository.findByNaturalKey('deleted');
       if (!deletedStatus) {
         this.logger.warn('capture_sync_statuses: status "deleted" not found');
         return;
