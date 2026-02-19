@@ -35,6 +35,6 @@ export class AdminUserRepository {
   }
 
   async remove(admin: AdminUser): Promise<AdminUser> {
-    return this.repository.remove(admin);
+    return this.repository.remove(admin); // ADR-026 exception: AdminUser non migré vers AppBaseEntity (story epic-13). Suppression physique acceptable pour comptes admin (audit via AuditLog séparé).
   }
 }

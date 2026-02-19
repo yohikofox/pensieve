@@ -233,17 +233,18 @@ describe('Architecture constraints — Backend', () => {
         const trimmed = line.trim();
         if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
         // Détecter : any en fin de type ou as any, sans attraper les commentaires
-        if (
-          /:\s*any(\s*[;,)\]|]|$)/.test(line) ||
-          /\bas\s+any\b/.test(line)
-        ) {
-          violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`);
+        if (/:\s*any(\s*[;,)\]|]|$)/.test(line) || /\bas\s+any\b/.test(line)) {
+          violations.push(
+            `${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`,
+          );
         }
       });
     });
 
     if (violations.length > 0) {
-      console.error('Violations ADR-028 (any explicite — utiliser types précis):');
+      console.error(
+        'Violations ADR-028 (any explicite — utiliser types précis):',
+      );
       violations.forEach((v) => console.error(' -', v));
     }
     expect(violations).toHaveLength(0);

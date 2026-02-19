@@ -28,6 +28,12 @@ Feature: Soft Delete sur les entités backend (ADR-026 R4)
     Then softDelete() est invoqué sur le repository TypeORM pour les todos
     And delete() standard n'est pas invoqué pour les todos
 
+  Scenario: IdeaRepository utilise softDelete() à la place de delete()
+    Given un IdeaRepository configuré avec un DataSource en mémoire
+    When la méthode delete() est appelée pour une Idea existante
+    Then softDelete() est invoqué sur le repository TypeORM pour les ideas
+    And delete() standard n'est pas invoqué pour les ideas
+
   Scenario: Aucune entité backend ne possède de champ _status textuel
     Given le code source des entités backend knowledge et action
     When on inspecte les fichiers d'entités

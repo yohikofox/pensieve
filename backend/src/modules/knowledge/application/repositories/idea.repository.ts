@@ -9,6 +9,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { Idea } from '../../domain/entities/idea.entity';
 
 @Injectable()
@@ -76,10 +77,12 @@ export class IdeaRepository {
     orderIndex?: number,
   ): Promise<Idea> {
     const idea = this.ideaRepo.create({
+      id: uuidv7(), // ADR-026 R1: UUID généré dans la couche applicative
       thoughtId,
       ownerId: userId,
       text,
       orderIndex,
+      lastModifiedAt: Date.now(),
     });
 
     return await this.ideaRepo.save(idea);
@@ -128,13 +131,25 @@ export class IdeaRepository {
   }
 
   /**
-   * Find all Ideas (for testing/admin)
+   * Find all Ideas (for testing/admin) — exclut les soft-deleted
    *
-   * @returns All Ideas
+   * @returns All non-deleted Ideas
    */
   async findAll(): Promise<Idea[]> {
     return await this.ideaRepo.find({
       relations: ['thought'],
+    });
+  }
+
+  /**
+   * Find all Ideas incluant les soft-deleted — réservé admin/audit
+   *
+   * @returns All Ideas (actives + supprimées)
+   */
+  async findAllWithDeleted(): Promise<Idea[]> {
+    return await this.ideaRepo.find({
+      relations: ['thought'],
+      withDeleted: true,
     });
   }
 }

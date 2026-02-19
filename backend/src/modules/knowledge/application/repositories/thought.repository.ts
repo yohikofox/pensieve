@@ -166,13 +166,25 @@ export class ThoughtRepository {
   }
 
   /**
-   * Find all Thoughts (for testing/admin)
+   * Find all Thoughts (for testing/admin) — exclut les soft-deleted
    *
-   * @returns All Thoughts with Ideas
+   * @returns All non-deleted Thoughts with Ideas
    */
   async findAll(): Promise<Thought[]> {
     return await this.thoughtRepo.find({
       relations: ['ideas'],
+    });
+  }
+
+  /**
+   * Find all Thoughts incluant les soft-deleted — réservé admin/audit
+   *
+   * @returns All Thoughts (actifs + supprimés) with Ideas
+   */
+  async findAllWithDeleted(): Promise<Thought[]> {
+    return await this.thoughtRepo.find({
+      relations: ['ideas'],
+      withDeleted: true,
     });
   }
 }

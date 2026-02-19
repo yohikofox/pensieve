@@ -10,13 +10,8 @@
 import { getMetadataArgsStorage } from 'typeorm';
 
 // Import all entities to trigger decorator registration
+// Named imports for entities referenced directly in tests
 import { AppBaseEntity } from '../base.entity';
-import { Capture } from '../../../modules/capture/domain/entities/capture.entity';
-import { CaptureState } from '../../../modules/capture/domain/entities/capture-state.entity';
-import { CaptureType } from '../../../modules/capture/domain/entities/capture-type.entity';
-import { CaptureSyncStatus } from '../../../modules/capture/domain/entities/capture-sync-status.entity';
-import { Thought } from '../../../modules/knowledge/domain/entities/thought.entity';
-import { Idea } from '../../../modules/knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../modules/action/domain/entities/todo.entity';
 import { Notification } from '../../../modules/notification/domain/entities/Notification.entity';
 import { User } from '../../../modules/shared/infrastructure/persistence/typeorm/entities/user.entity';
@@ -31,34 +26,13 @@ import { UserRole } from '../../../modules/authorization/implementations/postgre
 import { UserPermission } from '../../../modules/authorization/implementations/postgresql/entities/user-permission.entity';
 import { UserSubscription } from '../../../modules/authorization/implementations/postgresql/entities/user-subscription.entity';
 import { ResourceShare } from '../../../modules/authorization/implementations/postgresql/entities/resource-share.entity';
-
-// Force import to register decorators
-void AppBaseEntity;
-
-/**
- * Récupère les colonnes de type date/timestamp d'une entité via TypeORM metadata.
- */
-const getDateColumnsForEntity = (
-  entityClass: new (...args: any[]) => any,
-): Array<{ propertyName: string; options: any }> => {
-  const storage = getMetadataArgsStorage();
-  return storage.columns
-    .filter((col) => col.target === entityClass)
-    .filter((col) => {
-      const type = (col.options as any)?.type;
-      return (
-        type === 'timestamp' ||
-        type === 'timestamptz' ||
-        col.mode === 'createDate' ||
-        col.mode === 'updateDate' ||
-        col.mode === 'deleteDate'
-      );
-    })
-    .map((col) => ({
-      propertyName: col.propertyName,
-      options: col.options,
-    }));
-};
+// Side-effect imports — force decorator registration without direct reference in tests
+import '../../../modules/capture/domain/entities/capture.entity';
+import '../../../modules/capture/domain/entities/capture-state.entity';
+import '../../../modules/capture/domain/entities/capture-type.entity';
+import '../../../modules/capture/domain/entities/capture-sync-status.entity';
+import '../../../modules/knowledge/domain/entities/thought.entity';
+import '../../../modules/knowledge/domain/entities/idea.entity';
 
 describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
   describe('AppBaseEntity — Colonnes de date héritées', () => {
@@ -71,7 +45,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(createDateCols).toHaveLength(1);
-      expect((createDateCols[0].options as any).type).toBe('timestamptz');
+      expect(createDateCols[0].options.type).toBe('timestamptz');
     });
 
     it('updatedAt doit utiliser timestamptz', () => {
@@ -83,7 +57,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'updateDate',
       );
       expect(updateDateCols).toHaveLength(1);
-      expect((updateDateCols[0].options as any).type).toBe('timestamptz');
+      expect(updateDateCols[0].options.type).toBe('timestamptz');
     });
 
     it('deletedAt doit utiliser timestamptz', () => {
@@ -95,7 +69,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'deleteDate',
       );
       expect(deleteDateCols).toHaveLength(1);
-      expect((deleteDateCols[0].options as any).type).toBe('timestamptz');
+      expect(deleteDateCols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -106,7 +80,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
         (col) => col.target === Todo && col.propertyName === 'deadline',
       );
       expect(deadlineCols).toHaveLength(1);
-      expect((deadlineCols[0].options as any).type).toBe('timestamptz');
+      expect(deadlineCols[0].options.type).toBe('timestamptz');
     });
 
     it('completedAt doit utiliser timestamptz', () => {
@@ -115,7 +89,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
         (col) => col.target === Todo && col.propertyName === 'completedAt',
       );
       expect(completedAtCols).toHaveLength(1);
-      expect((completedAtCols[0].options as any).type).toBe('timestamptz');
+      expect(completedAtCols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -126,7 +100,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
         (col) => col.target === Notification && col.propertyName === 'sentAt',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('deliveredAt doit utiliser timestamptz', () => {
@@ -136,7 +110,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.target === Notification && col.propertyName === 'deliveredAt',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('createdAt (Notification) doit utiliser timestamptz', () => {
@@ -148,7 +122,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('updatedAt (Notification) doit utiliser timestamptz', () => {
@@ -160,7 +134,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'updateDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -174,7 +148,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('updated_at doit utiliser timestamptz', () => {
@@ -186,7 +160,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'updateDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('deletion_requested_at doit utiliser timestamptz', () => {
@@ -196,7 +170,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.target === User && col.propertyName === 'deletion_requested_at',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -210,7 +184,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('updatedAt (AdminUser) doit utiliser timestamptz', () => {
@@ -222,7 +196,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'updateDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -236,7 +210,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -250,7 +224,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
 
     it('completedAt (SyncLog) doit utiliser timestamptz', () => {
@@ -259,7 +233,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
         (col) => col.target === SyncLog && col.propertyName === 'completedAt',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -273,7 +247,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
           col.mode === 'createDate',
       );
       expect(cols).toHaveLength(1);
-      expect((cols[0].options as any).type).toBe('timestamptz');
+      expect(cols[0].options.type).toBe('timestamptz');
     });
   });
 
@@ -299,7 +273,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
               col.mode === 'deleteDate'),
         );
         dateColumns.forEach((col) => {
-          const type = (col.options as any)?.type;
+          const type = col.options?.type;
           expect(type).toBe('timestamptz');
         });
       });
@@ -313,7 +287,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
               col.propertyName === 'expires_at'),
         );
         expiresAtCols.forEach((col) => {
-          expect((col.options as any)?.type).toBe('timestamptz');
+          expect(col.options?.type).toBe('timestamptz');
         });
       });
     });

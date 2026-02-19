@@ -94,14 +94,28 @@ BDD test infrastructure:
 
 ## Key Files
 
-| Purpose | File |
-|---|---|
-| DI container | `src/infrastructure/di/container.ts` |
-| DI tokens | `src/infrastructure/di/tokens.ts` |
-| App bootstrap | `src/config/bootstrap.ts` |
-| Screen registry | `src/screens/registry.ts` |
-| Database setup | `src/database/index.ts` |
-| Babel config | `babel.config.js` (decorator + metadata plugins required for tsyringe) |
-| Expo config | `app.config.js` (dev/release variants, New Architecture enabled) |
-| Patches | `patches/` (patch-package, applied via postinstall) |
-| Custom native module | `modules/expo-waveform-extractor/` |
+| Purpose              | File                                                                   |
+|----------------------|------------------------------------------------------------------------|
+| DI container         | `src/infrastructure/di/container.ts`                                   |
+| DI tokens            | `src/infrastructure/di/tokens.ts`                                      |
+| App bootstrap        | `src/config/bootstrap.ts`                                              |
+| Screen registry      | `src/screens/registry.ts`                                              |
+| Database setup       | `src/database/index.ts`                                                |
+| Babel config         | `babel.config.js` (decorator + metadata plugins required for tsyringe) |
+| Expo config          | `app.config.js` (dev/release variants, New Architecture enabled)       |
+| Patches              | `patches/` (patch-package, applied via postinstall)                    |
+| Custom native module | `modules/expo-waveform-extractor/`                                     |
+
+## Snippets and patterns
+
+You can find in _patterns folder several files that explains how to implement many components in the project.
+
+## Architecture Tests
+
+Please keep architecture tests valid during development phase
+
+You can execute them with following command: 
+
+```shell
+npm run test:architecture
+```

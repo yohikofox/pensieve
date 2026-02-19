@@ -1,5 +1,5 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { AppBaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities';
 import { CaptureType } from './capture-type.entity';
 import { CaptureState } from './capture-state.entity';
 import { CaptureSyncStatus } from './capture-sync-status.entity';

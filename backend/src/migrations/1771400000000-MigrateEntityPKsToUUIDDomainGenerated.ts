@@ -163,7 +163,9 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       SELECT conname FROM pg_constraint
       WHERE conrelid = 'capture_types'::regclass AND contype = 'p'
     `);
-    await queryRunner.query(`ALTER TABLE capture_types DROP CONSTRAINT "${captureTypesPk}"`);
+    await queryRunner.query(
+      `ALTER TABLE capture_types DROP CONSTRAINT "${captureTypesPk}"`,
+    );
     await queryRunner.query(`
       ALTER TABLE capture_types DROP COLUMN id
     `);
@@ -234,7 +236,9 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       SELECT conname FROM pg_constraint
       WHERE conrelid = 'capture_states'::regclass AND contype = 'p'
     `);
-    await queryRunner.query(`ALTER TABLE capture_states DROP CONSTRAINT "${captureStatesPk}"`);
+    await queryRunner.query(
+      `ALTER TABLE capture_states DROP CONSTRAINT "${captureStatesPk}"`,
+    );
     await queryRunner.query(`
       ALTER TABLE capture_states DROP COLUMN id
     `);
@@ -305,7 +309,9 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
       SELECT conname FROM pg_constraint
       WHERE conrelid = 'capture_sync_statuses'::regclass AND contype = 'p'
     `);
-    await queryRunner.query(`ALTER TABLE capture_sync_statuses DROP CONSTRAINT "${captureSyncStatusesPk}"`);
+    await queryRunner.query(
+      `ALTER TABLE capture_sync_statuses DROP CONSTRAINT "${captureSyncStatusesPk}"`,
+    );
     await queryRunner.query(`
       ALTER TABLE capture_sync_statuses DROP COLUMN id
     `);
@@ -347,6 +353,10 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
     await queryRunner.query(`
       ALTER TABLE thoughts ADD COLUMN IF NOT EXISTS "deletedAt" timestamptz NULL
     `);
+    // Index sur deletedAt — TypeORM filtre WHERE deleted_at IS NULL sur chaque find()
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_thoughts_deleted_at ON thoughts("deletedAt")
+    `);
 
     // Pour ideas:
     await queryRunner.query(`
@@ -362,6 +372,10 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
     await queryRunner.query(`
       ALTER TABLE ideas ADD COLUMN IF NOT EXISTS "deletedAt" timestamptz NULL
     `);
+    // Index sur deletedAt — TypeORM filtre WHERE deleted_at IS NULL sur chaque find()
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_ideas_deleted_at ON ideas("deletedAt")
+    `);
 
     // Pour todos:
     await queryRunner.query(`
@@ -376,6 +390,10 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
     `);
     await queryRunner.query(`
       ALTER TABLE todos ADD COLUMN IF NOT EXISTS "deletedAt" timestamptz NULL
+    `);
+    // Index sur deletedAt — TypeORM filtre WHERE deleted_at IS NULL sur chaque find()
+    await queryRunner.query(`
+      CREATE INDEX IF NOT EXISTS idx_todos_deleted_at ON todos("deletedAt")
     `);
 
     // Pour capture_types:
@@ -420,6 +438,9 @@ export class MigrateEntityPKsToUUIDDomainGenerated1771400000000 implements Migra
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_typeId"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_stateId"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_captures_syncStatusId"`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_thoughts_deleted_at`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_ideas_deleted_at`);
+    await queryRunner.query(`DROP INDEX IF EXISTS idx_todos_deleted_at`);
 
     // ============================================================
     // 1. Remettre le DEFAULT PostgreSQL sur thoughts, ideas, todos

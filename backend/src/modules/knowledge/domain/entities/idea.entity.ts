@@ -11,7 +11,7 @@
  */
 
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { AppBaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities';
 import { Thought } from './thought.entity';
 
 @Entity('ideas')

@@ -41,9 +41,20 @@ export class AddBaseEntityColumnsToCapturesTable1771300000000 implements Migrati
     await queryRunner.query(`
       ALTER TABLE captures ADD COLUMN "deletedAt" timestamptz NULL
     `);
+
+    // 5. Créer l'index sur deletedAt — TypeORM filtre WHERE deleted_at IS NULL
+    //    sur chaque find(), cet index est crucial pour la performance en production.
+    await queryRunner.query(`
+      CREATE INDEX idx_captures_deleted_at ON captures("deletedAt")
+    `);
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // Supprimer l'index avant de supprimer la colonne
+    await queryRunner.query(`
+      DROP INDEX IF EXISTS idx_captures_deleted_at
+    `);
+
     // Retirer deletedAt
     await queryRunner.query(`
       ALTER TABLE captures DROP COLUMN "deletedAt"

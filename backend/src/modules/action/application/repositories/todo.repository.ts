@@ -12,7 +12,7 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, Repository, EntityManager } from 'typeorm';
+import { DataSource, Repository, EntityManager, FindOptionsWhere } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { Todo } from '../../domain/entities/todo.entity';
 
@@ -158,7 +158,7 @@ export class TodoRepository {
     userId: string,
     status?: 'todo' | 'launched' | 'in_progress' | 'completed' | 'abandoned',
   ): Promise<Todo[]> {
-    const where: any = { ownerId: userId };
+    const where: FindOptionsWhere<Todo> = { ownerId: userId };
     if (status) {
       where.status = status;
     }
@@ -295,13 +295,25 @@ export class TodoRepository {
   }
 
   /**
-   * Find all Todos (for testing/admin)
+   * Find all Todos (for testing/admin) — exclut les soft-deleted
    *
-   * @returns All Todos
+   * @returns All non-deleted Todos
    */
   async findAll(): Promise<Todo[]> {
     return await this.todoRepo.find({
       relations: ['thought'],
+    });
+  }
+
+  /**
+   * Find all Todos incluant les soft-deleted — réservé admin/audit
+   *
+   * @returns All Todos (actifs + supprimés)
+   */
+  async findAllWithDeleted(): Promise<Todo[]> {
+    return await this.todoRepo.find({
+      relations: ['thought'],
+      withDeleted: true,
     });
   }
 

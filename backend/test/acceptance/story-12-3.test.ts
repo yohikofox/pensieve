@@ -13,6 +13,7 @@ import { defineFeature, loadFeature } from 'jest-cucumber';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ThoughtRepository } from '../../src/modules/knowledge/application/repositories/thought.repository';
+import { IdeaRepository } from '../../src/modules/knowledge/application/repositories/idea.repository';
 import { TodoRepository } from '../../src/modules/action/application/repositories/todo.repository';
 
 const feature = loadFeature(
@@ -92,6 +93,7 @@ const createSoftDeleteMockDataSource = (
 defineFeature(feature, (test) => {
   let mockResult: SoftDeleteMockResult;
   let thoughtRepository: ThoughtRepository;
+  let ideaRepository: IdeaRepository;
   let todoRepository: TodoRepository;
 
   beforeEach(() => {
@@ -182,7 +184,40 @@ defineFeature(feature, (test) => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scénario 3: TodoRepository.delete() utilise softDelete()
+  // Scénario 3: IdeaRepository.delete() utilise softDelete()
+  // ---------------------------------------------------------------------------
+  test('IdeaRepository utilise softDelete() à la place de delete()', ({
+    given,
+    when,
+    then,
+    and,
+  }) => {
+    given('un IdeaRepository configuré avec un DataSource en mémoire', () => {
+      mockResult = createSoftDeleteMockDataSource();
+      ideaRepository = new IdeaRepository(mockResult.dataSource);
+    });
+
+    when(
+      'la méthode delete() est appelée pour une Idea existante',
+      async () => {
+        await ideaRepository.delete('idea-001');
+      },
+    );
+
+    then(
+      'softDelete() est invoqué sur le repository TypeORM pour les ideas',
+      () => {
+        expect(mockResult.softDeleteCalls).toContain('idea-001');
+      },
+    );
+
+    and("delete() standard n'est pas invoqué pour les ideas", () => {
+      expect(mockResult.deleteCalls).toHaveLength(0);
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // Scénario 5: TodoRepository.delete() utilise softDelete()
   // ---------------------------------------------------------------------------
   test('TodoRepository utilise softDelete() à la place de delete()', ({
     given,
@@ -212,7 +247,7 @@ defineFeature(feature, (test) => {
   });
 
   // ---------------------------------------------------------------------------
-  // Scénario 4: Vérification structurelle — absence de _status dans les entités
+  // Scénario 6: Vérification structurelle — absence de _status dans les entités
   // ---------------------------------------------------------------------------
   test('Aucune entité backend ne possède de champ _status textuel', ({
     given,
@@ -255,7 +290,7 @@ defineFeature(feature, (test) => {
 
     and('ces entités héritent toutes de BaseEntity avec deletedAt', () => {
       for (const [, content] of Object.entries(entityContents)) {
-        expect(content).toContain('extends BaseEntity');
+        expect(content).toContain('extends AppBaseEntity');
       }
     });
   });

@@ -14,7 +14,7 @@
  */
 
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { AppBaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 

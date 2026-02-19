@@ -36,15 +36,15 @@ NestJS 11 hybrid app: HTTP server + RabbitMQ microservice consumer, bootstrapped
 
 Each module follows the same layered structure: `domain/entities/`, `domain/events/`, `application/services/`, `application/repositories/`, `application/controllers/`, `infrastructure/`.
 
-| Module | Purpose |
-|--------|---------|
-| **shared** | `@Global()` module. MinioService (S3 storage), SupabaseAuthGuard (JWT validation), User entity |
-| **identity** | Supabase OAuth callbacks (Google, HuggingFace), mobile deep linking |
-| **authorization** | Multi-level permission system (RBAC + PBAC + ACL) with swappable implementations |
-| **knowledge** | AI digestion pipeline: RabbitMQ job queue, OpenAI GPT-4o-mini, WebSocket progress, Thought/Idea entities |
-| **action** | Todo extraction from thoughts: deadline parsing (chrono-node), priority inference |
-| **notification** | Push notifications, digestion progress tracking, event-driven listeners |
-| **rgpd** | GDPR compliance: data export, account deletion |
+| Module            | Purpose                                                                                                  |
+|-------------------|----------------------------------------------------------------------------------------------------------|
+| **shared**        | `@Global()` module. MinioService (S3 storage), SupabaseAuthGuard (JWT validation), User entity           |
+| **identity**      | Supabase OAuth callbacks (Google, HuggingFace), mobile deep linking                                      |
+| **authorization** | Multi-level permission system (RBAC + PBAC + ACL) with swappable implementations                         |
+| **knowledge**     | AI digestion pipeline: RabbitMQ job queue, OpenAI GPT-4o-mini, WebSocket progress, Thought/Idea entities |
+| **action**        | Todo extraction from thoughts: deadline parsing (chrono-node), priority inference                        |
+| **notification**  | Push notifications, digestion progress tracking, event-driven listeners                                  |
+| **rgpd**          | GDPR compliance: data export, account deletion                                                           |
 
 ### Authorization System
 
@@ -88,3 +88,19 @@ BDD uses `jest-cucumber`. Features in `.feature` files, step definitions in `.te
 ## External Services
 
 Supabase (auth/JWT), PostgreSQL, RabbitMQ, MinIO (S3-compatible storage), OpenAI (GPT-4o-mini), Redis (optional, for progress store).
+
+
+## Snippets and patterns
+
+You can find in _patterns folder several files that explains how to implement many components in the project.
+
+## Architecture Tests
+
+Please keep architecture tests valid during development phase
+
+You can execute them with following command: 
+
+```shell
+npm run test:architecture
+```
+
