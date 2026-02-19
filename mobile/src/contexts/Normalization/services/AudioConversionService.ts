@@ -51,7 +51,7 @@ export class AudioConversionService {
   // Debug: Track last converted WAV file for playback testing
   private lastConvertedWavPath: string | null = null;
 
-  constructor(@inject("IFileSystem") private fileSystem: IFileSystem) {}
+  constructor(@inject('INormalizationFileSystem') private fileSystem: IFileSystem) {}
 
   /**
    * Get the path of the last converted WAV file (for debug purposes)

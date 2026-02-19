@@ -114,8 +114,11 @@ describe('ADR-021 Transient First — comportement TSyringe', () => {
 // Mocks pour les modules natifs (nécessaires en environnement Node.js)
 jest.mock('@/infrastructure/logging/LoggerService', () => ({
   LoggerService: class MockLoggerService {
-    log = jest.fn();
+    debug = jest.fn();
+    info = jest.fn();
+    warn = jest.fn();
     error = jest.fn();
+    createScope = jest.fn().mockReturnThis();
   },
 }));
 
@@ -338,10 +341,28 @@ describe('Container DI — conformité ADR-021 Transient First', () => {
     registerServices();
   });
 
+  afterAll(() => {
+    diContainer.clearInstances();
+  });
+
   describe('AC5: Repositories → Transient', () => {
     it('CaptureRepository doit retourner une nouvelle instance à chaque résolution', () => {
       const instanceA = diContainer.resolve(TOKENS.ICaptureRepository);
       const instanceB = diContainer.resolve(TOKENS.ICaptureRepository);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('CaptureMetadataRepository doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.ICaptureMetadataRepository);
+      const instanceB = diContainer.resolve(TOKENS.ICaptureMetadataRepository);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('CaptureAnalysisRepository doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.ICaptureAnalysisRepository);
+      const instanceB = diContainer.resolve(TOKENS.ICaptureAnalysisRepository);
 
       expect(instanceA).not.toBe(instanceB);
     });
@@ -353,9 +374,30 @@ describe('Container DI — conformité ADR-021 Transient First', () => {
       expect(instanceA).not.toBe(instanceB);
     });
 
+    it('IdeaRepository doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IIdeaRepository);
+      const instanceB = diContainer.resolve(TOKENS.IIdeaRepository);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
     it('TodoRepository doit retourner une nouvelle instance à chaque résolution', () => {
       const instanceA = diContainer.resolve(TOKENS.ITodoRepository);
       const instanceB = diContainer.resolve(TOKENS.ITodoRepository);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('AnalysisTodoRepository doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IAnalysisTodoRepository);
+      const instanceB = diContainer.resolve(TOKENS.IAnalysisTodoRepository);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('UserFeaturesRepository doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IUserFeaturesRepository);
+      const instanceB = diContainer.resolve(TOKENS.IUserFeaturesRepository);
 
       expect(instanceA).not.toBe(instanceB);
     });
@@ -372,6 +414,73 @@ describe('Container DI — conformité ADR-021 Transient First', () => {
     it('FileStorageService doit retourner une nouvelle instance à chaque résolution', () => {
       const instanceA = diContainer.resolve(TOKENS.IFileStorageService);
       const instanceB = diContainer.resolve(TOKENS.IFileStorageService);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('WaveformExtractionService doit retourner une nouvelle instance à chaque résolution', () => {
+      const { WaveformExtractionService: MockWES } = jest.requireMock('@/contexts/capture/services/WaveformExtractionService') as { WaveformExtractionService: new () => object };
+      const instanceA = diContainer.resolve<object>(MockWES as any);
+      const instanceB = diContainer.resolve<object>(MockWES as any);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('OfflineSyncService doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IOfflineSyncService);
+      const instanceB = diContainer.resolve(TOKENS.IOfflineSyncService);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('CrashRecoveryService doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.ICrashRecoveryService);
+      const instanceB = diContainer.resolve(TOKENS.ICrashRecoveryService);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('RetentionPolicyService doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IRetentionPolicyService);
+      const instanceB = diContainer.resolve(TOKENS.IRetentionPolicyService);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('EncryptionService doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve(TOKENS.IEncryptionService);
+      const instanceB = diContainer.resolve(TOKENS.IEncryptionService);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('ExpoFileSystem (Normalization) doit retourner une nouvelle instance à chaque résolution', () => {
+      const instanceA = diContainer.resolve<object>('INormalizationFileSystem');
+      const instanceB = diContainer.resolve<object>('INormalizationFileSystem');
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('AudioConversionService doit retourner une nouvelle instance à chaque résolution', () => {
+      const { AudioConversionService: MockACS } = jest.requireMock('@/contexts/Normalization/services/AudioConversionService') as { AudioConversionService: new () => object };
+      const instanceA = diContainer.resolve<object>(MockACS as any);
+      const instanceB = diContainer.resolve<object>(MockACS as any);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('CaptureAnalysisService doit retourner une nouvelle instance à chaque résolution', () => {
+      const { CaptureAnalysisService: MockCAS } = jest.requireMock('@/contexts/Normalization/services/CaptureAnalysisService') as { CaptureAnalysisService: new () => object };
+      const instanceA = diContainer.resolve<object>(MockCAS as any);
+      const instanceB = diContainer.resolve<object>(MockCAS as any);
+
+      expect(instanceA).not.toBe(instanceB);
+    });
+
+    it('UserFeaturesService doit retourner une nouvelle instance à chaque résolution', () => {
+      const { UserFeaturesService: MockUFS } = jest.requireMock('@/contexts/identity/services/user-features.service') as { UserFeaturesService: new () => object };
+      const instanceA = diContainer.resolve<object>(MockUFS as any);
+      const instanceB = diContainer.resolve<object>(MockUFS as any);
 
       expect(instanceA).not.toBe(instanceB);
     });

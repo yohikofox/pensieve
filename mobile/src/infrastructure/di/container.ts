@@ -4,7 +4,7 @@
  * Registers all production services and repositories.
  * Import this file in App.tsx to initialize the container.
  *
- * Story: 2.1 - Capture Audio 1-Tap
+ * Stories: 2.1 - Capture Audio 1-Tap | 13.1 - Migrer le Container DI vers Transient First
  * Architecture Decision: ADR-017 - IoC/DI with TSyringe
  *
  * Lifecycle Strategy: ADR-021 — Transient First
@@ -121,7 +121,6 @@ let servicesRegistered = false;
  */
 export function registerServices() {
   if (servicesRegistered) {
-    console.log('[DI Container] Services already registered, skipping');
     return;
   }
 
@@ -222,6 +221,8 @@ export function registerServices() {
 
   // Application Services — stateless, sans dépendances sur état partagé (ADR-021 Transient First)
   container.register(TOKENS.IPermissionService, { useClass: PermissionService });
+  // Note: FileStorageService enregistré sous deux tokens — par classe (résolution directe dans les hooks
+  // existants via container.resolve(FileStorageService)) ET par token (pattern préféré ADR-017)
   container.register(FileStorageService, { useClass: FileStorageService });
   container.register(TOKENS.IFileStorageService, { useClass: FileStorageService });
   container.register(WaveformExtractionService, { useClass: WaveformExtractionService });
@@ -231,7 +232,9 @@ export function registerServices() {
   container.register(TOKENS.IEncryptionService, { useClass: EncryptionService });
 
   // Normalization Services — stateless (ADR-021 Transient First)
-  container.register('IFileSystem', { useClass: ExpoFileSystem });
+  // Note: token 'INormalizationFileSystem' (string) distinct de TOKENS.IFileSystem (Symbol) — deux
+  // contextes différents : Normalization (ExpoFileSystem) vs Capture (ExpoFileSystemAdapter hardware)
+  container.register('INormalizationFileSystem', { useClass: ExpoFileSystem });
   container.register(AudioConversionService, { useClass: AudioConversionService });
   container.register(CaptureAnalysisService, { useClass: CaptureAnalysisService });
 
@@ -255,5 +258,5 @@ export function registerServices() {
   });
 
   servicesRegistered = true;
-  console.log('[DI Container] ✅ Services registered (ADR-021 Transient First applied)');
+  container.resolve<ILogger>(TOKENS.ILogger).debug('[DI Container] ✅ Services registered (ADR-021 Transient First applied)');
 }
