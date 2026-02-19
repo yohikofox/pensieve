@@ -11,6 +11,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { DataSource, Repository, LessThan } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import {
   Notification,
   DeliveryStatus,
@@ -26,6 +27,10 @@ export class NotificationRepository implements INotificationRepository {
   }
 
   async create(notification: Notification): Promise<Notification> {
+    // ADR-026 R1: UUID généré dans la couche domaine (pas par PostgreSQL DEFAULT)
+    if (!notification.id) {
+      notification.id = uuidv7();
+    }
     const savedNotification = await this.repository.save(notification);
     return savedNotification;
   }

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan, DataSource, Not, IsNull } from 'typeorm';
+import { v7 as uuidv7 } from 'uuid';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
@@ -493,6 +494,7 @@ export class SyncService {
       const { id: _mobileId, ...rest } = clientRecord;
       await repository.save({
         ...rest,
+        id: uuidv7(),
         clientId,
         ownerId: userId,
         last_modified_at: Date.now(),

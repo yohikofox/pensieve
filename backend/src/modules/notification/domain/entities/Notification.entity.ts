@@ -17,16 +17,8 @@
  * NFR12: No sensitive content in push notification bodies
  */
 
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-  UpdateDateColumn,
-  ManyToOne,
-  JoinColumn,
-  Index,
-} from 'typeorm';
+import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
+import { AppBaseEntity } from '../../../../common/entities';
 import { User } from '../../../shared/infrastructure/persistence/typeorm/entities/user.entity';
 
 export enum NotificationType {
@@ -58,10 +50,7 @@ export enum DeliveryMethod {
 @Index(['deliveryStatus'])
 @Index(['relatedEntityId'])
 @Index(['createdAt'])
-export class Notification {
-  @PrimaryGeneratedColumn('uuid')
-  id!: string;
-
+export class Notification extends AppBaseEntity {
   @Column({ type: 'uuid', name: 'owner_id' })
   ownerId!: string;
 
@@ -106,11 +95,7 @@ export class Notification {
   @Column({ type: 'timestamptz', nullable: true })
   deliveredAt?: Date;
 
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt!: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt!: Date;
+  // id, createdAt, updatedAt, deletedAt hérités de AppBaseEntity (ADR-026 R1, R4, R6)
 
   // Relationships
   @ManyToOne(() => User, { onDelete: 'CASCADE' })

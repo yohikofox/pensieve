@@ -233,9 +233,10 @@ describe('SyncService', () => {
           stateId: 2,
         }),
       );
-      // Vérifie que l'id mobile n'est PAS utilisé comme id backend
+      // Vérifie que l'id mobile n'est PAS utilisé comme id backend — un nouvel UUID est généré
       const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
-      expect(savedRecord.id).toBeUndefined(); // Laissé à TypeORM (uuid_generate_v4)
+      expect(savedRecord.id).toBeDefined(); // UUID généré par l'application (uuidv7), pas l'id mobile
+      expect(savedRecord.id).not.toBe('mobile-id'); // L'id mobile est exclu
     });
 
     it('should UPDATE an existing capture without creating a duplicate', async () => {

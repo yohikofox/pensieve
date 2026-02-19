@@ -57,7 +57,8 @@ describe('NotificationRepository', () => {
         deliveryMethod: DeliveryMethod.LOCAL,
         createdAt: new Date(),
         updatedAt: new Date(),
-      } as Notification;
+        deletedAt: null,
+      } as unknown as Notification;
 
       mockRepository.save.mockResolvedValue(notification);
 

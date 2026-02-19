@@ -24,6 +24,7 @@ describe('ThoughtRepository', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       delete: jest.fn(),
+      softDelete: jest.fn(),
     } as any;
 
     mockIdeaRepo = {
@@ -214,14 +215,14 @@ describe('ThoughtRepository', () => {
   });
 
   describe('delete', () => {
-    it('should delete Thought by ID', async () => {
+    it('should soft-delete Thought by ID', async () => {
       const thoughtId = 'thought-123';
 
-      mockThoughtRepo.delete.mockResolvedValue({ affected: 1, raw: {} });
+      mockThoughtRepo.softDelete.mockResolvedValue({ affected: 1, raw: {} });
 
       await repository.delete(thoughtId);
 
-      expect(mockThoughtRepo.delete).toHaveBeenCalledWith(thoughtId);
+      expect(mockThoughtRepo.softDelete).toHaveBeenCalledWith(thoughtId);
     });
   });
 });

@@ -24,6 +24,7 @@ describe('TodoRepository', () => {
       findOne: jest.fn(),
       find: jest.fn(),
       delete: jest.fn(),
+      softDelete: jest.fn(),
       createQueryBuilder: jest.fn(),
     } as any;
 
@@ -338,13 +339,13 @@ describe('TodoRepository', () => {
   });
 
   describe('delete', () => {
-    it('should delete Todo', async () => {
+    it('should soft-delete Todo', async () => {
       const todoId = 'todo-123';
-      mockTodoRepo.delete.mockResolvedValue(undefined as any);
+      mockTodoRepo.softDelete.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] } as any);
 
       await repository.delete(todoId);
 
-      expect(mockTodoRepo.delete).toHaveBeenCalledWith(todoId);
+      expect(mockTodoRepo.softDelete).toHaveBeenCalledWith(todoId);
     });
   });
 
