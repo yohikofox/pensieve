@@ -6,7 +6,7 @@
  * Architecture: Inject auth token into SyncService via IAuthService abstraction
  *
  * Benefits:
- * - No direct Supabase dependency (easy to swap providers)
+ * - No direct auth provider dependency (easy to swap)
  * - Single point of change when upgrading auth provider
  * - Easy to test (mock IAuthService)
  */

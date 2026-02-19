@@ -5,7 +5,6 @@ import { hashPassword, verifyPassword } from 'better-auth/crypto';
 /**
  * BetterAuthAdminService — ADR-029
  *
- * Replaces SupabaseAdminService for auth user management.
  * Uses direct PostgreSQL queries on Better Auth tables + better-auth/crypto utilities.
  *
  * Better Auth tables: "user", "session", "account", "verification"

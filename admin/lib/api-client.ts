@@ -80,9 +80,9 @@ export class ApiClient {
     );
   }
 
-  async syncUsersFromSupabase() {
+  async syncUsers() {
     return this.fetch<{ message: string; created: number; updated: number; unchanged: number }>(
-      `/api/admin/users/sync-from-supabase`,
+      `/api/admin/users/sync`,
       { method: 'POST' }
     );
   }

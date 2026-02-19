@@ -5,7 +5,6 @@ import { PageHeader } from '@/components/admin/page-header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { apiClient, ContentStats } from '@/lib/api-client';
-import { getAccessToken } from '@/lib/auth';
 import { FileText, Lightbulb, CheckSquare } from 'lucide-react';
 
 export default function ContentPage() {
@@ -20,10 +19,6 @@ export default function ContentPage() {
   async function loadStats() {
     try {
       setIsLoading(true);
-      const token = await getAccessToken();
-      if (token) {
-        apiClient.setAccessToken(token);
-      }
 
       const data = await apiClient.getContentStats();
       setStats(data);

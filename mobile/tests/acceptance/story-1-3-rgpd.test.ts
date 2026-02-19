@@ -226,8 +226,8 @@ defineFeature(feature, (test) => {
       expect(deletionResult!.success).toBe(true);
     });
 
-    then('mon compte Supabase est supprimé', () => {
-      expect(deletionResult!.sources_deleted.supabase_auth).toBe(true);
+    then("mon compte d'authentification est supprimé", () => {
+      expect(deletionResult!.sources_deleted.auth_provider).toBe(true);
     });
 
     and('toutes mes données PostgreSQL sont supprimées', () => {
@@ -294,13 +294,13 @@ defineFeature(feature, (test) => {
     then('aucune trace de mes données n\'existe dans:', (table) => {
       // Verify all sources cleaned
       const sources = table.map((row: any) => row.source);
-      expect(sources).toContain('Supabase Auth');
+      expect(sources).toContain('Better Auth');
       expect(sources).toContain('PostgreSQL Homelab');
       expect(sources).toContain('MinIO Homelab (audios)');
       expect(sources).toContain('WatermelonDB (local)');
 
       // All marked as deleted
-      expect(deletionResult!.sources_deleted.supabase_auth).toBe(true);
+      expect(deletionResult!.sources_deleted.auth_provider).toBe(true);
       expect(deletionResult!.sources_deleted.postgresql).toBe(true);
       expect(deletionResult!.sources_deleted.minio).toBe(true);
       expect(deletionResult!.sources_deleted.watermelondb).toBe(true);

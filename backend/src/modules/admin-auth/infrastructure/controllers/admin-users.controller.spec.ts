@@ -30,7 +30,7 @@ describe('AdminUsersController', () => {
   };
 
   const mockRgpdService = {
-    syncUsersFromSupabase: jest.fn(),
+    syncUsers: jest.fn(),
   };
 
   beforeEach(async () => {

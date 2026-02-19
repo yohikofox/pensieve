@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { apiClient, UserStats, SubscriptionStats, ContentStats, SystemStats } from '@/lib/api-client';
-import { getAccessToken } from '@/lib/auth';
 import { Users, CreditCard, FileText, Activity } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -22,10 +21,6 @@ export default function DashboardPage() {
   async function loadStats() {
     try {
       setIsLoading(true);
-      const token = await getAccessToken();
-      if (token) {
-        apiClient.setAccessToken(token);
-      }
 
       const [users, subscriptions, content, system] = await Promise.all([
         apiClient.getUserStats(),

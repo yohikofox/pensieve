@@ -43,7 +43,7 @@ export class AppController {
 
   @Get()
   async handleAuthCallback(@Res() res: Response) {
-    // Handle Supabase auth callback (fragment-based)
+    // Handle OAuth auth callback (fragment-based)
     // Serve an HTML page that reads the fragment (#access_token=...)
     // and redirects to the mobile app via deep link
     res.send(`

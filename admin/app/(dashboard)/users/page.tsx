@@ -58,11 +58,11 @@ export default function UsersPage() {
     }
   }
 
-  async function handleSyncFromSupabase() {
+  async function handleSync() {
     setIsSyncing(true);
     setSyncResult(null);
     try {
-      const result = await apiClient.syncUsersFromSupabase();
+      const result = await apiClient.syncUsers();
       setSyncResult({ created: result.created, updated: result.updated, unchanged: result.unchanged });
       await loadUsers();
     } catch (err) {
@@ -186,8 +186,8 @@ export default function UsersPage() {
               Sync : +{syncResult.created} créés, {syncResult.updated} mis à jour, {syncResult.unchanged} inchangés
             </p>
           )}
-          <Button variant="outline" onClick={handleSyncFromSupabase} disabled={isSyncing}>
-            {isSyncing ? 'Sync en cours...' : 'Sync depuis Supabase'}
+          <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
+            {isSyncing ? 'Sync en cours...' : 'Synchroniser les utilisateurs'}
           </Button>
         </div>
       </div>

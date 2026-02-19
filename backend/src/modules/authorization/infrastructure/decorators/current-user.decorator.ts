@@ -1,7 +1,7 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 
 /**
- * User interface (matches Supabase user structure)
+ * User interface (matches Better Auth user structure)
  */
 export interface User {
   id: string;

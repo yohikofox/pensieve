@@ -6,7 +6,7 @@
  * ADR-023: Result Pattern (jamais throw)
  * ADR-029: Better Auth comme provider d'authentification
  *
- * Remplace SupabaseAuthService — même interface IAuthService
+ * Implémente IAuthService via Better Auth (ADR-029)
  */
 
 import { injectable, inject } from 'tsyringe';

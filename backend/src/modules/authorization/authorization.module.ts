@@ -59,8 +59,8 @@ import { AdminController } from './infrastructure/controllers/admin.controller';
  * - Implementation layer: PostgreSQL + TypeORM (swappable)
  * - Infrastructure layer: Guards and decorators
  *
- * To swap implementation (e.g., to Supabase RLS):
- * 1. Create new implementation in implementations/supabase-rls/
+ * To swap implementation (e.g., to a different RBAC provider):
+ * 1. Create new implementation in implementations/
  * 2. Change DI bindings below (useClass)
  * 3. No changes needed in controllers or guards!
  */
@@ -107,7 +107,7 @@ import { AdminController } from './infrastructure/controllers/admin.controller';
     {
       provide: 'IAuthorizationService',
       useClass: PostgreSQLAuthorizationService,
-      // Future: useClass: SupabaseRLSAuthorizationService,
+      // Future: useClass: AlternativeAuthorizationService,
     },
     {
       provide: 'IPermissionChecker',

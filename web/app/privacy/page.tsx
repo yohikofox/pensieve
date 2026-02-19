@@ -71,7 +71,7 @@ export default function PrivacyPolicy() {
             Les seules données transmises à nos serveurs sont :
           </p>
           <ul className="list-disc pl-6 text-gray-700 mb-4">
-            <li>Informations d'authentification (via Supabase)</li>
+            <li>Informations d'authentification (via Better Auth)</li>
             <li>Données de synchronisation (si activée)</li>
           </ul>
 
@@ -92,7 +92,7 @@ export default function PrivacyPolicy() {
             <li>Les données locales sont stockées de manière sécurisée sur votre appareil</li>
             <li>Les tokens d'authentification sont stockés dans le Secure Store de l'appareil</li>
             <li>Les communications sont chiffrées via HTTPS</li>
-            <li>Les données synchronisées sont hébergées sur des serveurs sécurisés (Supabase)</li>
+            <li>Les données synchronisées sont hébergées sur des serveurs sécurisés (homelab auto-hébergé)</li>
           </ul>
 
           <h2 className="text-xl font-semibold text-gray-900 mt-8 mb-4">6. Vos droits (RGPD)</h2>
@@ -114,7 +114,7 @@ export default function PrivacyPolicy() {
           <h2 className="text-xl font-semibold text-gray-900 mt-8 mb-4">7. Services tiers</h2>
           <p className="text-gray-700 mb-4">Pensine utilise les services suivants :</p>
           <ul className="list-disc pl-6 text-gray-700 mb-4">
-            <li><strong>Supabase :</strong> Authentification et stockage cloud</li>
+            <li><strong>Better Auth :</strong> Authentification auto-hébergée</li>
             <li><strong>Google Calendar API :</strong> Création d'événements (optionnel)</li>
             <li><strong>HuggingFace :</strong> Téléchargement de modèles IA (optionnel)</li>
           </ul>

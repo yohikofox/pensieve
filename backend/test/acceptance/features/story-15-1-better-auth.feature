@@ -4,7 +4,7 @@ Fonctionnalité: Story 15.1 - Better Auth Server NestJS + Resend Integration
 
   En tant que développeur
   Je veux configurer Better Auth sur le serveur NestJS avec Resend pour les emails transactionnels
-  Afin d'avoir une authentification self-hosted sans dépendance à Supabase
+  Afin d'avoir une authentification self-hosted conforme à l'ADR-029
 
   # ============================================================================
   # AC3 + AC9: EmailService avec Resend mocké

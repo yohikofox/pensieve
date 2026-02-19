@@ -13,7 +13,7 @@ defineFeature(feature, (test) => {
   let dataSource: DataSource;
   let testUser: User;
   let otherUser: User;
-  let authToken: string; // Mock Supabase JWT
+  let authToken: string; // Mock JWT token
   let response: request.Response;
 
   beforeAll(async () => {
@@ -55,7 +55,7 @@ defineFeature(feature, (test) => {
         });
         await dataSource.getRepository(User).save(testUser);
 
-        // Mock Supabase JWT token (simplified for testing)
+        // Mock auth token (simplified for testing)
         authToken = `Bearer mock-jwt-${userId}`;
       },
     );

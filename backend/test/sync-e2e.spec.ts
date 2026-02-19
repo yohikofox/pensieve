@@ -22,7 +22,7 @@ import { Idea } from '../src/modules/knowledge/domain/entities/idea.entity';
 import { Todo } from '../src/modules/action/domain/entities/todo.entity';
 import { SyncLog } from '../src/modules/sync/domain/entities/sync-log.entity';
 import { SyncConflict } from '../src/modules/sync/domain/entities/sync-conflict.entity';
-import { SupabaseAuthGuard } from '../src/modules/shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../src/auth/guards/better-auth.guard';
 
 describe('Sync Infrastructure E2E', () => {
   let app: INestApplication;
@@ -34,7 +34,7 @@ describe('Sync Infrastructure E2E', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
     })
-      .overrideGuard(SupabaseAuthGuard)
+      .overrideGuard(BetterAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
           const request = context.switchToHttp().getRequest();

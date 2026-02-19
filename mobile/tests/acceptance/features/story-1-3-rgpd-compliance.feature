@@ -18,7 +18,7 @@ Fonctionnalité: Conformité RGPD (Export de données & Suppression de compte)
     Alors un fichier ZIP est généré contenant toutes mes données
     Et le ZIP contient les fichiers:
       | fichier              | description                    |
-      | user-profile.json    | Profil utilisateur Supabase    |
+      | user-profile.json    | Profil utilisateur Better Auth |
       | captures.json        | Métadonnées des captures       |
       | transcriptions.json  | Toutes les transcriptions      |
       | ai-digests.json      | Résultats du traitement IA     |
@@ -78,7 +78,7 @@ Fonctionnalité: Conformité RGPD (Export de données & Suppression de compte)
     Et je dois saisir mon password pour confirmer
     Quand je saisis mon password correct
     Et je confirme la suppression
-    Alors mon compte Supabase est supprimé
+    Alors mon compte d'authentification est supprimé
     Et toutes mes données PostgreSQL sont supprimées
     Et tous mes fichiers audio MinIO sont supprimés
     Et mes données locales WatermelonDB sont supprimées
@@ -99,7 +99,7 @@ Fonctionnalité: Conformité RGPD (Export de données & Suppression de compte)
     Quand je vérifie les sources de données
     Alors aucune trace de mes données n'existe dans:
       | source                  | statut     |
-      | Supabase Auth           | supprimé   |
+      | Better Auth             | supprimé   |
       | PostgreSQL Homelab      | supprimé   |
       | MinIO Homelab (audios)  | supprimé   |
       | WatermelonDB (local)    | supprimé   |

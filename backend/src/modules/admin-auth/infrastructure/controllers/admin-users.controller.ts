@@ -21,7 +21,7 @@ import { UserFeaturesDto } from '../../../identity/application/dtos/user-feature
 /**
  * Admin controller for managing user features/permissions
  * Story 7.1: Support Mode avec Permissions Backend - Task 2
- * Story 8.18: Admin Reset Password via Supabase Admin API
+ * Story 8.18: Admin Reset Password
  *
  * Protected by AdminJwtGuard - requires admin authentication
  */
@@ -83,28 +83,23 @@ export class AdminUsersController {
   }
 
   /**
-   * @deprecated Legacy endpoint — sync utilisateurs Better Auth → backend PostgreSQL
-   * POST /api/admin/users/sync-from-supabase
-   * Story 8.19: Sync utilisateurs Legacy → Backend
-   *
-   * ⚠️ LEGACY: Ce endpoint existait pour migrer les users Supabase Auth.
-   * Avec Epic 15 (ADR-029), Better Auth est maintenant le seul provider.
-   * Cet endpoint peut être retiré une fois que tous les users ont été migrés.
-   * TODO: Supprimer lors d'Epic 16 ou sprint cleanup post-migration.
+   * Sync Better Auth users → backend PostgreSQL
+   * POST /api/admin/users/sync
+   * Story 8.19: Sync utilisateurs Better Auth → Backend
    *
    * Match by email: if email found in DB → overwrite values (including provider id).
    * If not found → create new record.
    */
-  @Post('sync-from-supabase')
+  @Post('sync')
   @HttpCode(HttpStatus.OK)
-  async syncUsersFromSupabase(): Promise<{
+  async syncUsers(): Promise<{
     message: string;
     created: number;
     updated: number;
     unchanged: number;
   }> {
-    this.logger.log('Admin triggering Supabase → backend user sync');
-    const result = await this.rgpdService.syncUsersFromSupabase();
+    this.logger.log('Admin triggering Better Auth → backend user sync');
+    const result = await this.rgpdService.syncUsers();
     this.logger.log(
       `Sync complete: ${result.created} created, ${result.updated} updated, ${result.unchanged} unchanged`,
     );
@@ -112,12 +107,9 @@ export class AdminUsersController {
   }
 
   /**
-   * Force reset a user's password via Supabase Admin API
+   * Force reset a user's password via Better Auth admin API
    * POST /api/admin/users/:userId/reset-password
    * Story 8.18: Admin Reset Password
-   *
-   * Supabase is the source of truth — password never modified directly in PostgreSQL.
-   * Note: to be migrated to Better Auth admin API when Epic 15 is implemented.
    */
   @Post(':userId/reset-password')
   @HttpCode(HttpStatus.OK)

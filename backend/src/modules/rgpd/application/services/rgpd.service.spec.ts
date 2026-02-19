@@ -174,11 +174,11 @@ describe('RgpdService', () => {
       // Arrange
       jest
         .spyOn(betterAuthAdminService, 'getUserProfile')
-        .mockRejectedValue(new Error('Supabase error'));
+        .mockRejectedValue(new Error('getUserProfile error'));
 
       // Act & Assert
       await expect(service.generateExport(userId, mockRequest)).rejects.toThrow(
-        'Supabase error',
+        'getUserProfile error',
       );
       expect(fs.remove).toHaveBeenCalled();
     });
@@ -269,10 +269,10 @@ describe('RgpdService', () => {
       expect(queryRunner.release).toHaveBeenCalled();
     });
 
-    it('should still call Supabase delete even if PostgreSQL succeeds', async () => {
+    it('should call Better Auth delete after PostgreSQL deletion succeeds', async () => {
       // Arrange
       jest.spyOn(auditLogRepository, 'save').mockResolvedValue({} as AuditLog);
-      const supabaseDeleteSpy = jest
+      const deleteUserSpy = jest
         .spyOn(betterAuthAdminService, 'deleteUser')
         .mockResolvedValue(undefined);
 
@@ -280,7 +280,7 @@ describe('RgpdService', () => {
       await service.deleteUserAccount(userId, mockRequest);
 
       // Assert
-      expect(supabaseDeleteSpy).toHaveBeenCalledWith(userId);
+      expect(deleteUserSpy).toHaveBeenCalledWith(userId);
     });
 
     it('should log audit entry before deletion', async () => {

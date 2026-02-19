@@ -6,7 +6,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 
-// Mock SecureStore (replaces Supabase auth)
+// Mock SecureStore (Better Auth tokens)
 const mockSecureStore: Record<string, string> = {
   ba_access_token: 'mock-token-123',
   ba_refresh_token: 'mock-refresh-token',

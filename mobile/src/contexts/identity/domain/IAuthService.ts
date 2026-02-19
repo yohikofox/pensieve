@@ -3,8 +3,8 @@
  *
  * Story 6.2 - Architecture Decision: Abstract auth provider
  *
- * Isolates authentication provider (Supabase) from business logic.
- * Allows easy provider swap (Supabase → Firebase → Custom) without breaking changes.
+ * Isolates authentication provider from business logic.
+ * Allows easy provider swap (Better Auth → Firebase → Custom) without breaking changes.
  *
  * Benefits:
  * - Single point of change when upgrading auth provider

@@ -33,7 +33,7 @@ defineFeature(feature, (test) => {
       authResponse = await context.auth.signUp(email, password);
     });
 
-    then('un compte est créé dans Supabase', () => {
+    then("un compte est créé dans le système d'authentification", () => {
       expect(authResponse).not.toBeNull();
       expect(authResponse!.data.user).not.toBeNull();
       expect(authResponse!.error).toBeNull();
@@ -83,9 +83,9 @@ defineFeature(feature, (test) => {
 
     and('la session est persistée dans AsyncStorage', async () => {
       const session = authResponse!.data.session!;
-      await context.storage.setItem('supabase.session', JSON.stringify(session));
+      await context.storage.setItem('auth.session', JSON.stringify(session));
 
-      const stored = await context.storage.getItem('supabase.session');
+      const stored = await context.storage.getItem('auth.session');
       expect(stored).not.toBeNull();
       const parsedSession = JSON.parse(stored!);
       expect(parsedSession.accessToken).toBe(session.accessToken);
@@ -318,7 +318,7 @@ defineFeature(feature, (test) => {
       userId = authResponse.data.user!.id;
 
       // Stocker la session
-      await context.storage.setItem('supabase.session', JSON.stringify(authResponse.data.session));
+      await context.storage.setItem('auth.session', JSON.stringify(authResponse.data.session));
     });
 
     and('je n\'ai pas de données non synchronisées', async () => {
@@ -334,8 +334,8 @@ defineFeature(feature, (test) => {
     });
 
     then('le JWT token est supprimé du stockage', async () => {
-      await context.storage.removeItem('supabase.session');
-      const stored = await context.storage.getItem('supabase.session');
+      await context.storage.removeItem('auth.session');
+      const stored = await context.storage.getItem('auth.session');
       expect(stored).toBeNull();
     });
 
@@ -351,7 +351,7 @@ defineFeature(feature, (test) => {
       expect(sessionResult).resolves.toHaveProperty('data.session', null);
     });
 
-    and('ma session Supabase est terminée', async () => {
+    and('ma session est terminée', async () => {
       const sessionResult = await context.auth.getSession(userId);
       expect(sessionResult.data.session).toBeNull();
     });
@@ -409,7 +409,7 @@ defineFeature(feature, (test) => {
       expect(result.error).toBeNull();
     });
 
-    then('un email de réinitialisation est envoyé (géré par Supabase)', () => {
+    then('un email de réinitialisation est envoyé', () => {
       expect(context.auth.wasResetEmailSent(userEmail)).toBe(true);
     });
 
@@ -494,17 +494,17 @@ defineFeature(feature, (test) => {
       userId = authResponse.data.user!.id;
 
       // Stocker la session
-      await context.storage.setItem('supabase.session', JSON.stringify(authResponse.data.session));
+      await context.storage.setItem('auth.session', JSON.stringify(authResponse.data.session));
     });
 
     and('je ferme complètement l\'app', async () => {
       // Simuler la fermeture de l'app en gardant le storage
-      storedSession = await context.storage.getItem('supabase.session');
+      storedSession = await context.storage.getItem('auth.session');
     });
 
     when('je rouvre l\'app', async () => {
       // Simuler la réouverture en chargeant la session du storage
-      storedSession = await context.storage.getItem('supabase.session');
+      storedSession = await context.storage.getItem('auth.session');
     });
 
     and('ma session est toujours valide', () => {
@@ -518,7 +518,7 @@ defineFeature(feature, (test) => {
       expect(sessionResult.data.session).not.toBeNull();
     });
 
-    and('mes informations utilisateur sont chargées depuis Supabase', async () => {
+    and('mes informations utilisateur sont chargées depuis le serveur', async () => {
       const sessionResult = await context.auth.getSession(userId);
       expect(sessionResult.data.session!.user).not.toBeNull();
       expect(sessionResult.data.session!.user.email).toBe('user@example.com');

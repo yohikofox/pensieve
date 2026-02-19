@@ -1,38 +1,31 @@
-import { createBrowserClient } from '@supabase/ssr';
+import { createAuthClient } from 'better-auth/react';
+import { adminClient } from 'better-auth/client/plugins';
 
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+/**
+ * Better Auth client — ADR-029
+ *
+ * Used for managing regular users via the Better Auth admin plugin.
+ * Admin backoffice login uses a separate JWT flow (/api/auth/admin/login).
+ */
+export const authClient = createAuthClient({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  plugins: [adminClient()],
+});
 
-export async function getSession() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return session;
+/**
+ * Returns the admin JWT token stored in localStorage after admin login.
+ */
+export function getAccessToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('admin_token');
 }
 
-export async function getAccessToken() {
-  const session = await getSession();
-  return session?.access_token || null;
-}
-
-export async function signOut() {
-  const { error } = await supabase.auth.signOut();
-  if (error) {
-    console.error('Sign out error:', error);
-    throw error;
-  }
-}
-
-export async function signInWithGoogle() {
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/`,
-    },
-  });
-
-  if (error) {
-    console.error('Sign in error:', error);
-    throw error;
-  }
+/**
+ * Signs out the admin user by clearing localStorage and redirecting to login.
+ */
+export function signOut(): void {
+  if (typeof window === 'undefined') return;
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('admin_user');
+  window.location.href = '/login';
 }

@@ -1,6 +1,6 @@
 # language: fr
 @story-1.2 @epic-1
-Fonctionnalité: Authentification Supabase (Email, Google, Apple)
+Fonctionnalité: Authentification Better Auth (Email, Google, Apple)
   En tant qu'utilisateur
   Je veux m'authentifier avec email/password, Google, ou Apple
   Afin d'accéder de manière sécurisée à mon compte Pensieve
@@ -13,7 +13,7 @@ Fonctionnalité: Authentification Supabase (Email, Google, Apple)
   Scénario: Inscription avec email et password
     Étant donné que je suis un nouvel utilisateur
     Quand je m'inscris avec l'email "user@example.com" et le password "Password123!"
-    Alors un compte est créé dans Supabase
+    Alors un compte est créé dans le système d'authentification
     Et un email de confirmation est envoyé
     Et un JWT token est reçu et stocké localement
     Et je suis redirigé vers l'écran principal de l'app
@@ -98,7 +98,7 @@ Fonctionnalité: Authentification Supabase (Email, Google, Apple)
     Alors le JWT token est supprimé du stockage
     Et l'enregistrement User WatermelonDB est supprimé (local uniquement)
     Et je suis redirigé vers l'écran de connexion
-    Et ma session Supabase est terminée
+    Et ma session est terminée
 
   @AC4 @logout @unsynced-data
   Scénario: Déconnexion avec données non synchronisées
@@ -116,7 +116,7 @@ Fonctionnalité: Authentification Supabase (Email, Google, Apple)
   Scénario: Réinitialisation de mot de passe
     Étant donné que j'ai oublié mon mot de passe
     Quand je demande une réinitialisation pour "user@example.com"
-    Alors un email de réinitialisation est envoyé (géré par Supabase)
+    Alors un email de réinitialisation est envoyé
     Et l'email contient un lien magique
     Et le lien magique ouvre l'app via deep link
     Et l'écran de mise à jour du password est affiché
@@ -152,7 +152,7 @@ Fonctionnalité: Authentification Supabase (Email, Google, Apple)
     Quand je rouvre l'app
     Et que ma session est toujours valide
     Alors je suis automatiquement connecté (sans ré-authentification)
-    Et mes informations utilisateur sont chargées depuis Supabase
+    Et mes informations utilisateur sont chargées depuis le serveur
 
   @AC6 @session @token-refresh
   Scénario: Rafraîchissement automatique du token expiré

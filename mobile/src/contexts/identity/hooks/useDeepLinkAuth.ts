@@ -5,7 +5,6 @@
  * ADR-029: Better Auth comme provider d'authentification
  *
  * Gère les deep-links pour OAuth callbacks et password reset.
- * Remplace l'ancien hook Supabase.
  */
 
 import { useEffect, useCallback } from 'react';

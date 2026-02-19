@@ -1,7 +1,7 @@
 import { IsString, MinLength, Matches } from 'class-validator';
 
 /**
- * DTO for admin force-reset of a user's password via Supabase Admin API
+ * DTO for admin force-reset of a user's password via Better Auth admin API
  * Story 8.18: Admin Reset Password
  */
 export class ResetUserPasswordDto {

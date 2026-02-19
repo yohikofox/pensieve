@@ -9,7 +9,7 @@ import {
 import { auth, type AuthApiType } from '../auth.config';
 
 /**
- * BetterAuthGuard — ADR-029: Replaces SupabaseAuthGuard
+ * BetterAuthGuard — ADR-029
  *
  * Validates Better Auth session tokens on incoming HTTP requests.
  * Populates request.user with { id, email, role } on success.

@@ -2,8 +2,7 @@ version: '3.8'
 
 services:
   # ==========================================
-  # DATABASE: PostgreSQL (App DB only)
-  # Auth DB is on Supabase Cloud
+  # DATABASE: PostgreSQL (App DB + Better Auth tables)
   # ==========================================
   postgres:
     image: postgres:15-alpine
@@ -94,11 +93,9 @@ services:
       # Message Queue
       RABBITMQ_URL: amqp://pensine:${RABBITMQ_PASSWORD}@rabbitmq:5672
 
-      # Supabase Auth
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_ANON_KEY: ${SUPABASE_ANON_KEY}
-      SUPABASE_SERVICE_KEY: ${SUPABASE_SERVICE_KEY}
-      JWT_SECRET: ${JWT_SECRET}
+      # Better Auth
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL}
 
       # MinIO Storage
       MINIO_ENDPOINT: minio

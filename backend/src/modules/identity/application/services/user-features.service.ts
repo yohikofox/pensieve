@@ -17,7 +17,7 @@ export class UserFeaturesService {
 
   /**
    * Get user feature flags/permissions
-   * @param userId - Supabase user ID
+   * @param userId - Better Auth user ID
    * @returns UserFeaturesDto with current feature flags
    * @throws NotFoundException if user not found
    */
@@ -40,7 +40,7 @@ export class UserFeaturesService {
   /**
    * Update user's debug_mode_access permission
    * Used by admin interface (Task 2)
-   * @param userId - Supabase user ID
+   * @param userId - Better Auth user ID
    * @param debugModeAccess - New value for debug_mode_access
    * @returns Updated UserFeaturesDto
    * @throws NotFoundException if user not found

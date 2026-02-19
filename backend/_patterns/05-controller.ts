@@ -128,7 +128,7 @@ export class ExamplesController {
 // Guards disponibles et leur rôle
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// BetterAuthGuard        → valide JWT Supabase, popule @CurrentUser()
+// BetterAuthGuard        → valide la session Better Auth, popule @CurrentUser()
 // PermissionGuard          → vérifie permission RBAC via @RequirePermission()
 // ResourceOwnershipGuard   → vérifie ownership via @RequireOwnership()
 // ResourceShareGuard       → vérifie accès partagé via @AllowSharedAccess()

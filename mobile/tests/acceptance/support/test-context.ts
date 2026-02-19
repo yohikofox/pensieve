@@ -386,7 +386,7 @@ export class InMemoryDatabase {
 }
 
 // ============================================================================
-// Auth Types (Supabase-compatible)
+// Auth Types (Better Auth)
 // ============================================================================
 
 export interface User {
@@ -473,10 +473,10 @@ export class MockAsyncStorage {
 }
 
 // ============================================================================
-// Mock Supabase Auth (replaces @supabase/supabase-js auth)
+// Mock Better Auth
 // ============================================================================
 
-export class MockSupabaseAuth {
+export class MockBetterAuth {
   private _users: Map<string, User> = new Map();
   private _sessions: Map<string, Session> = new Map();
   private _passwords: Map<string, string> = new Map(); // email -> password
@@ -908,7 +908,7 @@ export interface AuditLog {
 export interface DeletionResult {
   success: boolean;
   sources_deleted: {
-    supabase_auth: boolean;
+    auth_provider: boolean;
     postgresql: boolean;
     minio: boolean;
     watermelondb: boolean;
@@ -1014,7 +1014,7 @@ export class MockRGPDService {
       return {
         success: false,
         sources_deleted: {
-          supabase_auth: false,
+          auth_provider: false,
           postgresql: false,
           minio: false,
           watermelondb: false,
@@ -1038,7 +1038,7 @@ export class MockRGPDService {
     return {
       success: true,
       sources_deleted: {
-        supabase_auth: true,
+        auth_provider: true,
         postgresql: true,
         minio: true,
         watermelondb: true,
@@ -1857,7 +1857,7 @@ export class TestContext {
   public audioRecorder: MockAudioRecorder;
   public fileSystem: MockFileSystem;
   public permissions: MockPermissionManager;
-  public auth: MockSupabaseAuth;
+  public auth: MockBetterAuth;
   public storage: MockAsyncStorage;
   public rgpd: MockRGPDService;
 
@@ -1891,7 +1891,7 @@ export class TestContext {
     this.audioRecorder = new MockAudioRecorder();
     this.fileSystem = new MockFileSystem();
     this.permissions = new MockPermissionManager();
-    this.auth = new MockSupabaseAuth();
+    this.auth = new MockBetterAuth();
     this.storage = new MockAsyncStorage();
     this.rgpd = new MockRGPDService();
 

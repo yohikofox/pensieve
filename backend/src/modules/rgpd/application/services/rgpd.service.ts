@@ -36,7 +36,7 @@ export class RgpdService {
         await this.betterAuthAdminService.getUserProfile(userId);
       await this.upsertUser(userId, userProfile.email);
 
-      // 1. Fetch user profile from Supabase
+      // 1. Fetch user profile from Better Auth
       await fs.writeJson(
         path.join(exportDir, 'user-profile.json'),
         {
@@ -71,7 +71,7 @@ User ID: ${userId}
 Ce fichier ZIP contient toutes vos données personnelles conformément à l'Article 15 du RGPD.
 
 Contenu:
-- user-profile.json: Profil utilisateur (Supabase)
+- user-profile.json: Profil utilisateur (Better Auth)
 - user-data.json: Données applicatives (PostgreSQL)
 
 Pour toute question, contactez: support@pensine.app
@@ -112,7 +112,7 @@ Pour toute question, contactez: support@pensine.app
    * Order is critical:
    * 1. Audit log (before deletion)
    * 2. PostgreSQL data deletion (CASCADE)
-   * 3. Supabase auth user deletion
+   * 3. Better Auth user deletion
    */
   async deleteUserAccount(userId: string, req: Request): Promise<void> {
     const queryRunner = this.dataSource.createQueryRunner();
@@ -145,7 +145,7 @@ Pour toute question, contactez: support@pensine.app
 
       await queryRunner.commitTransaction();
 
-      // 4. Delete Supabase auth user (Admin API)
+      // 4. Delete Better Auth user
       await this.betterAuthAdminService.deleteUser(userId);
 
       console.log(`✅ Account deleted successfully: ${userId}`);
@@ -184,16 +184,14 @@ Pour toute question, contactez: support@pensine.app
   }
 
   /**
-   * Sync all Supabase Auth users → backend PostgreSQL (descending sync)
+   * Sync all Better Auth users → backend PostgreSQL (descending sync)
    *
    * Match strategy: email is the stable identifier.
    * - If match by id → update email if changed.
    * - If match by email (different id) → overwrite id via raw SQL + update email.
    * - If no match → create new record.
-   *
-   * Note: to be migrated to Better Auth provider sync when Epic 15 is implemented.
    */
-  async syncUsersFromSupabase(): Promise<{
+  async syncUsers(): Promise<{
     created: number;
     updated: number;
     unchanged: number;
@@ -207,7 +205,7 @@ Pour toute question, contactez: support@pensine.app
     for (const betterAuthUser of betterAuthUsers) {
       const { id, email } = betterAuthUser;
 
-      // 1. Try match by provider id (Supabase UUID)
+      // 1. Try match by provider id
       const byId = await this.userRepo.findOne({ where: { id } });
       if (byId) {
         if (byId.email !== email) {

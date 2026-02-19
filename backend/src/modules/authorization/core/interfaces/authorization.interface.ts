@@ -7,7 +7,7 @@ import { ResourceType } from '../enums/resource-type.enum';
  *
  * Cette interface définit le contrat que toute implémentation d'autorisation
  * doit respecter. Elle permet de découpler le code métier de l'implémentation
- * concrète (PostgreSQL, Supabase RLS, Auth0, etc.)
+ * concrète (PostgreSQL, Better Auth, Auth0, etc.)
  *
  * @example
  * // Dans un contrôleur

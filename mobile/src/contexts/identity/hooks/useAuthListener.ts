@@ -5,7 +5,6 @@
  * ADR-029: Better Auth comme provider d'authentification
  * ADR-022: Tokens dans expo-secure-store
  *
- * Remplace l'ancien hook Supabase.
  */
 
 import { useEffect, useState } from 'react';

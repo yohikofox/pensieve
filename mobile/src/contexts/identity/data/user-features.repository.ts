@@ -30,7 +30,7 @@ export class UserFeaturesRepository implements IUserFeaturesRepository {
    */
   async fetchUserFeatures(userId: string): Promise<RepositoryResult<UserFeatures>> {
     try {
-      // TODO: Get auth token from AuthContext/Supabase
+      // TODO: Get auth token from AuthContext
       const token = await this.getAuthToken();
 
       const response = await fetch(apiConfig.endpoints.users.features(userId), {
@@ -145,13 +145,12 @@ export class UserFeaturesRepository implements IUserFeaturesRepository {
   }
 
   /**
-   * Get auth token from Supabase
+   * Get auth token from AuthContext
    * TODO: Integrate with AuthContext when available
    */
   private async getAuthToken(): Promise<string> {
     // Placeholder - should be integrated with existing auth system
-    // For now, return empty string or throw error
-    // In real implementation, get from Supabase session
+    // In real implementation, get from Better Auth session via IAuthService
     throw new Error('Auth token retrieval not yet implemented');
   }
 }
