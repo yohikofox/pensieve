@@ -9,39 +9,35 @@
  */
 
 import { readFileSync } from 'fs';
-import { globSync } from 'glob';
 import path from 'path';
+
+// glob v7 — API sync : glob.sync(pattern, [options])
+// @types/glob absent du projet mobile, cast manuel
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const glob = require('glob') as {
+  sync: (pattern: string, opts?: { ignore?: string | string[] }) => string[];
+};
 
 const SRC = path.resolve(__dirname, '../../src');
 
 describe('Architecture constraints', () => {
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // ADR-023 — Result Pattern : pas de throw dans domain/data/application
-  // ───────────────────────────────────────────────────────────────────────────
-
   it('ADR-023 : aucun "throw new" dans les repositories (data/)', () => {
-    const files = globSync(`${SRC}/contexts/**/data/**/*.ts`);
-    const violations = files.filter(file => {
+    const files = glob.sync(`${SRC}/contexts/**/data/**/*.ts`);
+    const violations = files.filter((file: string) => {
       const content = readFileSync(file, 'utf-8');
-      // Autoriser "throw new" uniquement dans les commentaires
-      const lines = content.split('\n').filter(line =>
+      const lines = content.split('\n').filter((line: string) =>
         !line.trim().startsWith('//') && !line.trim().startsWith('*')
       );
-      return lines.some(line => /throw new/.test(line));
+      return lines.some((line: string) => /throw new/.test(line));
     });
 
     if (violations.length > 0) {
       console.error('Violations ADR-023 (throw dans repository):');
-      violations.forEach(f => console.error(' -', path.relative(SRC, f)));
+      violations.forEach((f: string) => console.error(' -', path.relative(SRC, f)));
     }
     expect(violations).toHaveLength(0);
   });
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // ADR-021 — Transient First : pas de registerSingleton sans justification
-  // Le container.ts DOIT avoir un commentaire "ADR-021" pour chaque singleton
-  // ───────────────────────────────────────────────────────────────────────────
 
   it('ADR-021 : chaque registerSingleton dans container.ts doit avoir un commentaire justificatif', () => {
     const containerPath = `${SRC}/infrastructure/di/container.ts`;
@@ -49,9 +45,8 @@ describe('Architecture constraints', () => {
     const lines = content.split('\n');
 
     const violations: number[] = [];
-    lines.forEach((line, idx) => {
+    lines.forEach((line: string, idx: number) => {
       if (line.includes('registerSingleton') && !line.trim().startsWith('//')) {
-        // La ligne précédente doit contenir un commentaire avec "SINGLETON" ou "ADR-021"
         const prevLine = lines[idx - 1] ?? '';
         if (!prevLine.includes('SINGLETON') && !prevLine.includes('ADR-021')) {
           violations.push(idx + 1);
@@ -65,22 +60,21 @@ describe('Architecture constraints', () => {
     expect(violations).toHaveLength(0);
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // ADR-019 — Domain Events : les events doivent être readonly
-  // ───────────────────────────────────────────────────────────────────────────
-
-  it('ADR-019 : les interfaces d\'events doivent avoir toutes les propriétés readonly', () => {
-    const eventFiles = globSync(`${SRC}/contexts/**/events/**/*.ts`);
+  it("ADR-019 : les interfaces d'events doivent avoir toutes les propriétés readonly", () => {
+    const eventFiles = glob.sync(`${SRC}/contexts/**/events/**/*.ts`);
     const violations: string[] = [];
 
-    eventFiles.forEach(file => {
+    eventFiles.forEach((file: string) => {
       const content = readFileSync(file, 'utf-8');
-      // Détecter une interface qui hérite de DomainEvent et a des propriétés non-readonly
       if (content.includes('extends DomainEvent')) {
         const lines = content.split('\n');
-        lines.forEach((line, idx) => {
-          // Propriété de type déclarée sans readonly dans une interface
-          if (/^\s+\w+\s*[?:]/.test(line) && !line.trim().startsWith('readonly') && !line.trim().startsWith('//') && !line.trim().startsWith('*')) {
+        lines.forEach((line: string, idx: number) => {
+          if (
+            /^\s+\w+\s*[?:]/.test(line) &&
+            !line.trim().startsWith('readonly') &&
+            !line.trim().startsWith('//') &&
+            !line.trim().startsWith('*')
+          ) {
             violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${line.trim()}"`);
           }
         });
@@ -89,17 +83,13 @@ describe('Architecture constraints', () => {
 
     if (violations.length > 0) {
       console.error('Propriétés non-readonly dans les events:');
-      violations.forEach(v => console.error(' -', v));
+      violations.forEach((v: string) => console.error(' -', v));
     }
     expect(violations).toHaveLength(0);
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // ADR-017 — DI : pas de résolution container au niveau module
-  // ───────────────────────────────────────────────────────────────────────────
-
   it('ADR-017 : pas de container.resolve() au niveau module (hors container.ts et hooks)', () => {
-    const files = globSync(`${SRC}/**/*.ts`, {
+    const files = glob.sync(`${SRC}/**/*.ts`, {
       ignore: [
         `${SRC}/infrastructure/di/container.ts`,
         `${SRC}/**/hooks/**/*.ts`,
@@ -108,33 +98,85 @@ describe('Architecture constraints', () => {
       ],
     });
 
-    const violations = files.filter(file => {
+    const violations = files.filter((file: string) => {
       const content = readFileSync(file, 'utf-8');
-      // container.resolve() en dehors d'une fonction (au top-level du module)
-      // Heuristique : ligne sans indentation qui contient container.resolve
-      return content.split('\n').some(line =>
+      return content.split('\n').some((line: string) =>
         /^(?![\s\/]).*container\.resolve/.test(line)
       );
     });
 
     if (violations.length > 0) {
       console.error('container.resolve() au niveau module:');
-      violations.forEach(f => console.error(' -', path.relative(SRC, f)));
+      violations.forEach((f: string) => console.error(' -', path.relative(SRC, f)));
     }
     expect(violations).toHaveLength(0);
   });
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // Tokens : tous les tokens dans TOKENS doivent utiliser Symbol.for()
-  // ───────────────────────────────────────────────────────────────────────────
-
   it('Tokens DI : tous les Symbol doivent utiliser Symbol.for() (pas Symbol())', () => {
     const tokensFile = `${SRC}/infrastructure/di/tokens.ts`;
     const content = readFileSync(tokensFile, 'utf-8');
-    const violations = content.split('\n').filter(line =>
+    const violations = content.split('\n').filter((line: string) =>
       line.includes('Symbol(') && !line.includes('Symbol.for(') && !line.trim().startsWith('//')
     );
 
+    expect(violations).toHaveLength(0);
+  });
+
+  it('ADR-022 : pas de @react-native-async-storage/async-storage dans le code source (OP-SQLite requis)', () => {
+    const files = glob.sync(`${SRC}/**/*.ts`, {
+      ignore: [
+        `${SRC}/**/*.test.ts`,
+        `${SRC}/**/*.spec.ts`,
+        `${SRC}/**/__mocks__/**`,
+        `${SRC}/**/mocks/**`,
+      ],
+    });
+
+    const violations = files.filter((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      return content.includes('@react-native-async-storage/async-storage');
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-022 (AsyncStorage interdit — utiliser OP-SQLite):');
+      violations.forEach((f: string) => console.error(' -', path.relative(SRC, f)));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
+  it('ADR-028 : pas de "any" explicite dans le code source TypeScript', () => {
+    const files = glob.sync(`${SRC}/**/*.ts`, {
+      ignore: [
+        `${SRC}/**/*.test.ts`,
+        `${SRC}/**/*.spec.ts`,
+        `${SRC}/**/__mocks__/**`,
+        `${SRC}/**/mocks/**`,
+        `${SRC}/**/*.d.ts`,
+      ],
+    });
+
+    const violations: string[] = [];
+
+    files.forEach((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+      lines.forEach((line: string, idx: number) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        // Détecter : any, as any, <any> mais pas dans les génériques utilitaires (Record, etc.)
+        if (
+          /:\s*any(\s*[;,)\]|]|$)/.test(line) ||
+          /\bas\s+any\b/.test(line)
+        ) {
+          violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`);
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-028 (any explicite — utiliser types précis):');
+      violations.forEach((v: string) => console.error(' -', v));
+    }
     expect(violations).toHaveLength(0);
   });
 

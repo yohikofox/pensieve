@@ -21,6 +21,7 @@
     "test:acceptance": "jest --config ./test/jest-acceptance.json",
     "test:acceptance:watch": "jest --config ./test/jest-acceptance.json --watch",
     "test:acceptance:story-4-1": "jest --config ./test/jest-acceptance.json story-4-1",
+    "test:architecture": "jest --config ./test/jest-architecture.json --no-coverage",
     "reset-rabbitmq": "bash scripts/reset-rabbitmq-queues.sh",
     "migration:run": "ts-node -r tsconfig-paths/register src/scripts/run-migration.ts",
     "seed:authorization": "ts-node -r tsconfig-paths/register src/scripts/run-seed.ts",

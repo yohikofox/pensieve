@@ -15,6 +15,7 @@ le snippet correspondant explicitement dans le prompt.
 | `04-di-registration.ts` | Enregistrement DI (ADR-021) | Ajout d'un nouveau service |
 | `05-di-hook.ts` | Résolution DI dans React | Hook qui accède à un service |
 | `06-di-token.ts` | Définition de token DI | Nouveau service avec interface |
+| `07-http-client.ts` | HTTP Client (ADR-025) | Tout appel HTTP sortant vers l'API |
 
 ## Règles d'utilisation
 
