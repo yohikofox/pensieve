@@ -25,6 +25,13 @@ export function setEmailService(service: EmailService): void {
   emailServiceRef = service;
 }
 
+type UserProvisioningCallback = (userId: string, email: string) => Promise<void>;
+let userProvisioningCallbackRef: UserProvisioningCallback | null = null;
+
+export function setUserProvisioningCallback(callback: UserProvisioningCallback): void {
+  userProvisioningCallbackRef = callback;
+}
+
 /**
  * Secondary pg.Pool for Better Auth (Kysely adapter).
  * TypeORM maintains its own primary pool — this pool is dedicated to Better Auth
@@ -75,6 +82,23 @@ export const auth = betterAuth({
       if (emailServiceRef) {
         await emailServiceRef.sendEmailVerification(user.email, url);
       }
+    },
+  },
+
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          if (userProvisioningCallbackRef) {
+            try {
+              await userProvisioningCallbackRef(user.id, user.email);
+            } catch (error) {
+              // Ne pas bloquer l'inscription si le provisioning échoue
+              console.error('[AuthConfig] User provisioning hook failed:', error);
+            }
+          }
+        },
+      },
     },
   },
 

@@ -1,9 +1,13 @@
 import { Module, OnModuleInit, Logger } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { EmailModule } from '../email/email.module';
 import { EmailService } from '../email/email.service';
 import { AuthController } from './auth.controller';
 import { BetterAuthGuard } from './guards/better-auth.guard';
-import { setEmailService } from './auth.config';
+import { setEmailService, setUserProvisioningCallback } from './auth.config';
+import { User } from '../modules/shared/infrastructure/persistence/typeorm/entities/user.entity';
 
 /**
  * AuthModule — ADR-029: Better Auth Self-Hosted
@@ -15,7 +19,7 @@ import { setEmailService } from './auth.config';
  * Auth (Better Auth) ≠ AuthZ (authorization/ module) — no conflict.
  */
 @Module({
-  imports: [EmailModule],
+  imports: [EmailModule, TypeOrmModule.forFeature([User])],
   controllers: [AuthController],
   providers: [BetterAuthGuard],
   exports: [BetterAuthGuard],
@@ -23,7 +27,10 @@ import { setEmailService } from './auth.config';
 export class AuthModule implements OnModuleInit {
   private readonly logger = new Logger(AuthModule.name);
 
-  constructor(private readonly emailService: EmailService) {}
+  constructor(
+    private readonly emailService: EmailService,
+    @InjectRepository(User) private readonly userRepo: Repository<User>,
+  ) {}
 
   onModuleInit(): void {
     // Validate required env vars at startup — fail fast rather than silently at runtime
@@ -38,5 +45,15 @@ export class AuthModule implements OnModuleInit {
     }
 
     setEmailService(this.emailService);
+
+    setUserProvisioningCallback(async (userId: string, email: string) => {
+      const existing = await this.userRepo.findOne({ where: { id: userId } });
+      if (!existing) {
+        await this.userRepo.save(
+          this.userRepo.create({ id: userId, email, status: 'active' }),
+        );
+        this.logger.log(`User provisioned: ${userId}`);
+      }
+    });
   }
 }

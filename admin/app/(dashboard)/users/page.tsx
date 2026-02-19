@@ -187,7 +187,7 @@ export default function UsersPage() {
             </p>
           )}
           <Button variant="outline" onClick={handleSync} disabled={isSyncing}>
-            {isSyncing ? 'Sync en cours...' : 'Synchroniser les utilisateurs'}
+            {isSyncing ? 'Sync en cours...' : 'Sync rétroactif (migration)'}
           </Button>
         </div>
       </div>
