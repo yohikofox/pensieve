@@ -30,6 +30,7 @@ import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: 
         buildLoggerConfig(
           config.get<string>('LOG_LEVEL'),
           config.get<string>('NODE_ENV') !== 'production',
+          config.get<string>('LOG_FILE_PATH'),
         ),
     }),
     // PostgreSQL database connection

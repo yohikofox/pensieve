@@ -89,17 +89,22 @@ defineFeature(feature, (test) => {
   };
 
   beforeEach(() => {
+    const queueMonitoring = createQueueMonitoringService();
+    // Mock RabbitMQ Management API — tests must not contact external services (M4 fix)
+    jest.spyOn(queueMonitoring, 'getQueueDepth').mockResolvedValue(5);
+
     state = {
       logger: new MockStructuredLogger(),
       lastEntry: null,
       allEntries: [],
-      queueMonitoring: createQueueMonitoringService(),
+      queueMonitoring,
       prometheusOutput: '',
     };
   });
 
   afterEach(() => {
     state.logger.reset();
+    jest.restoreAllMocks();
   });
 
   // -------------------------------------------------------------------------

@@ -3,7 +3,7 @@
  * Story 14.3 — AC1: Logger structuré NestJS (pino)
  *
  * Vérifie que la configuration pino produit les champs JSON requis :
- * timestamp, level, message, context, requestId
+ * time, level, msg, context, reqId (pino naming — ADR-015 §15.1 amendé 2026-02-18)
  */
 
 import type { IncomingMessage, ServerResponse } from 'http';
@@ -82,6 +82,34 @@ describe('Logger Configuration (AC1 — Story 14.3)', () => {
         const id = genReqId(makeReq({ 'x-request-id': existingId }), makeRes());
         expect(id).toBe(existingId);
       }
+    });
+
+    it('should include redact config for sensitive fields (ADR-015 §15.1)', () => {
+      const config = buildLoggerConfig('info', false);
+      const { redact } = config.pinoHttp;
+      expect(redact).toBeDefined();
+
+      const redactConfig = redact as { paths: string[]; censor: string };
+      expect(redactConfig.censor).toBe('[REDACTED]');
+      expect(redactConfig.paths).toContain('req.headers.authorization');
+      expect(redactConfig.paths).toContain('req.headers.cookie');
+      expect(redactConfig.paths).toContain('email');
+      expect(redactConfig.paths).toContain('password');
+      expect(redactConfig.paths).toContain('token');
+      expect(redactConfig.paths).toContain('transcription');
+    });
+
+    it('should configure dual transport (stdout + file) when logFilePath is provided', () => {
+      const config = buildLoggerConfig('info', false, '/var/log/pensine/app.log');
+      const transport = config.pinoHttp.transport as { targets: unknown[] };
+      expect(transport).toBeDefined();
+      expect(Array.isArray(transport.targets)).toBe(true);
+      expect(transport.targets).toHaveLength(2);
+    });
+
+    it('should configure stdout-only transport (undefined) when no logFilePath in production', () => {
+      const config = buildLoggerConfig('info', false);
+      expect(config.pinoHttp.transport).toBeUndefined();
     });
   });
 });
