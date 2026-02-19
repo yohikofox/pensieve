@@ -63,9 +63,10 @@ export class AddBaseEntityColumnsToCapturesTable1771300000000 implements Migrati
         USING "createdAt" AT TIME ZONE 'UTC'
     `);
 
-    // Remettre le DEFAULT uuid_generate_v4() sur id
+    // Remettre le DEFAULT gen_random_uuid() sur id
+    // Note: gen_random_uuid() est natif PostgreSQL 13+ (pas de dépendance uuid-ossp)
     await queryRunner.query(`
-      ALTER TABLE captures ALTER COLUMN id SET DEFAULT uuid_generate_v4()
+      ALTER TABLE captures ALTER COLUMN id SET DEFAULT gen_random_uuid()
     `);
   }
 }

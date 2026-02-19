@@ -1,5 +1,5 @@
 import { Entity, Column, ManyToOne, JoinColumn, Index } from 'typeorm';
-import { BaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities/base.entity';
 import { CaptureType } from './capture-type.entity';
 import { CaptureState } from './capture-state.entity';
 import { CaptureSyncStatus } from './capture-sync-status.entity';
@@ -23,7 +23,7 @@ import { CaptureSyncStatus } from './capture-sync-status.entity';
 @Index('IDX_CAPTURES_CLIENT_OWNER', ['clientId', 'ownerId'], { unique: true })
 @Index('IDX_CAPTURES_LAST_MODIFIED', ['lastModifiedAt'])
 @Index('IDX_CAPTURES_OWNER_ID', ['ownerId'])
-export class Capture extends BaseEntity {
+export class Capture extends AppBaseEntity {
   /** ID assigné par le client mobile — référence locale */
   @Column('uuid')
   clientId!: string;

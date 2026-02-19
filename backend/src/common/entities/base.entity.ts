@@ -12,7 +12,7 @@
  * Usage:
  * ```typescript
  * @Entity('my_table')
- * export class MyEntity extends BaseEntity {
+ * export class MyEntity extends AppBaseEntity {
  *   // id, createdAt, updatedAt, deletedAt sont hérités — ne pas les redéclarer
  *   @Column('text')
  *   name!: string;
@@ -27,9 +27,10 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
+  Index,
 } from 'typeorm';
 
-export abstract class BaseEntity {
+export abstract class AppBaseEntity {
   /**
    * Clé primaire UUID fournie par la couche domaine.
    *
@@ -59,6 +60,7 @@ export abstract class BaseEntity {
    * - repository.find() — filtre les enregistrements supprimés par défaut
    * - repository.find({ withDeleted: true }) — inclut les supprimés
    */
+  @Index()
   @DeleteDateColumn({ type: 'timestamptz', nullable: true })
-  deletedAt!: Date | null;
+  deletedAt: Date | null = null;
 }

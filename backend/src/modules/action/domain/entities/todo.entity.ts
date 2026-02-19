@@ -14,12 +14,12 @@
  */
 
 import { Entity, Column, ManyToOne, JoinColumn } from 'typeorm';
-import { BaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities/base.entity';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 
 @Entity('todos')
-export class Todo extends BaseEntity {
+export class Todo extends AppBaseEntity {
   @Column('uuid')
   thoughtId!: string;
 

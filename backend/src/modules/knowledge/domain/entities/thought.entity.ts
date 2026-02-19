@@ -11,12 +11,12 @@
  */
 
 import { Entity, Column, OneToMany, ManyToOne, JoinColumn } from 'typeorm';
-import { BaseEntity } from '../../../../common/entities/base.entity';
+import { AppBaseEntity } from '../../../../common/entities/base.entity';
 import { Idea } from './idea.entity';
 import { ThoughtStatus } from './thought-status.entity';
 
 @Entity('thoughts')
-export class Thought extends BaseEntity {
+export class Thought extends AppBaseEntity {
   @Column('uuid')
   captureId!: string;
 

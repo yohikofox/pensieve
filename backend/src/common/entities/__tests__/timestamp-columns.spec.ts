@@ -10,7 +10,7 @@
 import { getMetadataArgsStorage } from 'typeorm';
 
 // Import all entities to trigger decorator registration
-import { BaseEntity } from '../base.entity';
+import { AppBaseEntity } from '../base.entity';
 import { Capture } from '../../../modules/capture/domain/entities/capture.entity';
 import { CaptureState } from '../../../modules/capture/domain/entities/capture-state.entity';
 import { CaptureType } from '../../../modules/capture/domain/entities/capture-type.entity';
@@ -33,7 +33,7 @@ import { UserSubscription } from '../../../modules/authorization/implementations
 import { ResourceShare } from '../../../modules/authorization/implementations/postgresql/entities/resource-share.entity';
 
 // Force import to register decorators
-void BaseEntity;
+void AppBaseEntity;
 
 /**
  * Récupère les colonnes de type date/timestamp d'une entité via TypeORM metadata.
@@ -61,12 +61,12 @@ const getDateColumnsForEntity = (
 };
 
 describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
-  describe('BaseEntity — Colonnes de date héritées', () => {
+  describe('AppBaseEntity — Colonnes de date héritées', () => {
     it('createdAt doit utiliser timestamptz', () => {
       const storage = getMetadataArgsStorage();
       const createDateCols = storage.columns.filter(
         (col) =>
-          col.target === BaseEntity &&
+          col.target === AppBaseEntity &&
           col.propertyName === 'createdAt' &&
           col.mode === 'createDate',
       );
@@ -78,7 +78,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
       const storage = getMetadataArgsStorage();
       const updateDateCols = storage.columns.filter(
         (col) =>
-          col.target === BaseEntity &&
+          col.target === AppBaseEntity &&
           col.propertyName === 'updatedAt' &&
           col.mode === 'updateDate',
       );
@@ -90,7 +90,7 @@ describe('Story 13.3: ADR-026 R5 — TIMESTAMPTZ columns compliance', () => {
       const storage = getMetadataArgsStorage();
       const deleteDateCols = storage.columns.filter(
         (col) =>
-          col.target === BaseEntity &&
+          col.target === AppBaseEntity &&
           col.propertyName === 'deletedAt' &&
           col.mode === 'deleteDate',
       );

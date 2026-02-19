@@ -11,37 +11,45 @@
 
 import 'reflect-metadata';
 import { getMetadataArgsStorage } from 'typeorm';
-import { BaseEntity } from './base.entity';
+import { AppBaseEntity } from './base.entity';
 
-describe('BaseEntity', () => {
+describe('AppBaseEntity', () => {
   it('should define id as @PrimaryColumn without auto-generation', () => {
     const storage = getMetadataArgsStorage();
 
     // L'id doit être dans les colonnes (via @PrimaryColumn)
-    const columns = storage.columns.filter((col) => col.target === BaseEntity);
+    const columns = storage.columns.filter(
+      (col) => col.target === AppBaseEntity,
+    );
     const idColumn = columns.find((col) => col.propertyName === 'id');
     expect(idColumn).toBeDefined();
 
     // L'id ne doit PAS être dans generations (aucune auto-génération DB)
     const generations = storage.generations.filter(
-      (col) => col.target === BaseEntity,
+      (col) => col.target === AppBaseEntity,
     );
     const generatedId = generations.find((col) => col.propertyName === 'id');
     expect(generatedId).toBeUndefined();
   });
 
-  it('should have deletedAt column that is nullable', () => {
+  it('should have deletedAt column that is nullable with timestamptz type', () => {
     const storage = getMetadataArgsStorage();
-    const columns = storage.columns.filter((col) => col.target === BaseEntity);
+    const columns = storage.columns.filter(
+      (col) => col.target === AppBaseEntity,
+    );
     const deletedAtColumn = columns.find(
       (col) => col.propertyName === 'deletedAt',
     );
     expect(deletedAtColumn).toBeDefined();
+    expect(deletedAtColumn?.options?.nullable).toBe(true);
+    expect(deletedAtColumn?.options?.type).toBe('timestamptz');
   });
 
   it('should have createdAt and updatedAt with timestamptz type', () => {
     const storage = getMetadataArgsStorage();
-    const columns = storage.columns.filter((col) => col.target === BaseEntity);
+    const columns = storage.columns.filter(
+      (col) => col.target === AppBaseEntity,
+    );
 
     const createdAtColumn = columns.find(
       (col) => col.propertyName === 'createdAt',
