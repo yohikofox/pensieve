@@ -32,6 +32,14 @@ const CAPTURE_STATE_ENTITY_PATH =
   'src/modules/capture/domain/entities/capture-state.entity.ts';
 const REFERENCE_DATA_CONSTANTS_PATH =
   'src/common/constants/reference-data.constants.ts';
+const THOUGHT_REPOSITORY_PATH =
+  'src/modules/knowledge/application/repositories/thought.repository.ts';
+const MIGRATION_FK_PATH =
+  'src/migrations/1771700000000-AddThoughtStatusIdFkToThoughts.ts';
+const MIGRATION_SEED_PATH =
+  'src/migrations/1771600000000-CreateThoughtStatusesAndUpdateCaptureStates.ts';
+const BASE_REFERENTIAL_ENTITY_PATH =
+  'src/common/entities/base-referential.entity.ts';
 
 // =============================================================================
 // Tests BDD
@@ -75,15 +83,23 @@ defineFeature(feature, (test) => {
     });
 
     and('elle possède le champ "isActive" de type boolean', () => {
-      expect(thoughtStatusContent).toContain("'boolean'");
-      expect(thoughtStatusContent).toContain('isActive!');
+      // isActive est hérité de BaseReferentialEntity (ADR-026 R6) — pas redéclaré dans l'entité enfant
+      const baseRefContent = fs.readFileSync(
+        path.join(BACKEND_ROOT, BASE_REFERENTIAL_ENTITY_PATH),
+        'utf-8',
+      );
+      expect(baseRefContent).toContain("'boolean'");
+      expect(baseRefContent).toContain('isActive!');
+      // L'entité étend bien BaseReferentialEntity (ce qui implique isActive)
+      expect(thoughtStatusContent).toContain('BaseReferentialEntity');
     });
 
     and(
-      'elle hérite de BaseEntity avec id, createdAt, updatedAt, deletedAt',
+      'elle hérite de BaseReferentialEntity avec id, createdAt, updatedAt (sans deletedAt)',
       () => {
-        expect(thoughtStatusContent).toContain('extends BaseEntity');
-        // Les champs id, createdAt, updatedAt, deletedAt sont hérités — ne pas les redéclarer
+        // ThoughtStatus extends BaseReferentialEntity (pas BaseEntity — pas de deletedAt, ADR-026 R6)
+        expect(thoughtStatusContent).toContain('extends BaseReferentialEntity');
+        // Les champs id, createdAt, updatedAt sont hérités — ne pas les redéclarer
         expect(thoughtStatusContent).not.toContain('@PrimaryGeneratedColumn');
       },
     );
@@ -208,8 +224,120 @@ defineFeature(feature, (test) => {
     });
 
     and('elle possède le champ "isActive" de type boolean', () => {
-      expect(captureStateContent).toContain('isActive!');
-      expect(captureStateContent).toContain("'boolean'");
+      // isActive est hérité de BaseReferentialEntity (ADR-026 R6) — pas redéclaré dans l'entité enfant
+      const baseRefContent = fs.readFileSync(
+        path.join(BACKEND_ROOT, BASE_REFERENTIAL_ENTITY_PATH),
+        'utf-8',
+      );
+      expect(baseRefContent).toContain("'boolean'");
+      expect(baseRefContent).toContain('isActive!');
+      // L'entité étend bien BaseReferentialEntity (ce qui implique isActive)
+      expect(captureStateContent).toContain('BaseReferentialEntity');
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Scénario 5: ThoughtRepository assigne statusId (AC6 — comportement runtime)
+  // ---------------------------------------------------------------------------
+  test(
+    "ThoughtRepository assigne un statusId valide lors de la création d'un Thought",
+    ({ given, when, then, and }) => {
+      let repoContent = '';
+
+      given('le code source de ThoughtRepository', () => {
+        repoContent = fs.readFileSync(
+          path.join(BACKEND_ROOT, THOUGHT_REPOSITORY_PATH),
+          'utf-8',
+        );
+      });
+
+      when('on inspecte la méthode createWithIdeas', () => {
+        // Lecture déjà faite
+      });
+
+      then(
+        'elle assigne un statusId correspondant à THOUGHT_STATUS_IDS.ACTIVE',
+        () => {
+          expect(repoContent).toContain('THOUGHT_STATUS_IDS');
+          expect(repoContent).toContain('ACTIVE');
+        },
+      );
+
+      and('le statusId est passé lors de manager.create de Thought', () => {
+        expect(repoContent).toContain('statusId');
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Scénario 6: Migration FK RESTRICT (AC6 — contrainte DB)
+  // ---------------------------------------------------------------------------
+  test(
+    'La migration garantit la contrainte FK avec ON DELETE RESTRICT',
+    ({ given, when, then, and }) => {
+      let migrationFkContent = '';
+
+      given('le fichier de migration AddThoughtStatusIdFkToThoughts', () => {
+        migrationFkContent = fs.readFileSync(
+          path.join(BACKEND_ROOT, MIGRATION_FK_PATH),
+          'utf-8',
+        );
+      });
+
+      when('on inspecte le SQL de la migration up', () => {
+        // Lecture déjà faite
+      });
+
+      then('elle contient une contrainte FK_thoughts_status_id', () => {
+        expect(migrationFkContent).toContain('FK_thoughts_status_id');
+        expect(migrationFkContent).toContain('FOREIGN KEY');
+        expect(migrationFkContent).toContain('thought_statuses');
+      });
+
+      and('la contrainte utilise ON DELETE RESTRICT', () => {
+        expect(migrationFkContent).toContain('ON DELETE RESTRICT');
+      });
+    },
+  );
+
+  // ---------------------------------------------------------------------------
+  // Scénario 7: Seed idempotent (AC6 — idempotence seed)
+  // ---------------------------------------------------------------------------
+  test(
+    'La migration de seed est idempotente sur les codes thought_statuses',
+    ({ given, when, then, and }) => {
+      let migrationSeedContent = '';
+
+      given(
+        'le fichier de migration CreateThoughtStatusesAndUpdateCaptureStates',
+        () => {
+          migrationSeedContent = fs.readFileSync(
+            path.join(BACKEND_ROOT, MIGRATION_SEED_PATH),
+            'utf-8',
+          );
+        },
+      );
+
+      when('on inspecte le SQL du seed', () => {
+        // Lecture déjà faite
+      });
+
+      then(
+        'le seed utilise ON CONFLICT sur l\'identifiant primaire pour éviter les doublons',
+        () => {
+          expect(migrationSeedContent).toContain('ON CONFLICT');
+          expect(migrationSeedContent).toContain('DO NOTHING');
+        },
+      );
+
+      and(
+        'les codes "active" et "archived" sont insérés avec des UUIDs déterministes au format "d0000000-"',
+        () => {
+          expect(migrationSeedContent).toContain("'active'");
+          expect(migrationSeedContent).toContain("'archived'");
+          expect(migrationSeedContent).toContain('d0000000-');
+        },
+      );
+    },
+  );
 });

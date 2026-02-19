@@ -28,7 +28,6 @@ export class CreateThoughtStatusesAndUpdateCaptureStates1771600000000 implements
         "is_active"     boolean         NOT NULL DEFAULT true,
         "createdAt"     timestamptz     NOT NULL DEFAULT now(),
         "updatedAt"     timestamptz     NOT NULL DEFAULT now(),
-        "deletedAt"     timestamptz,
         CONSTRAINT "UQ_thought_statuses_code" UNIQUE ("code"),
         CONSTRAINT "PK_thought_statuses" PRIMARY KEY ("id")
       )

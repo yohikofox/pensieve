@@ -39,14 +39,13 @@ export class Thought extends AppBaseEntity {
   // Story 12.3: Soft delete via deletedAt hérité de BaseEntity (ADR-026 R4)
 
   // Story 13.2: FK vers thought_statuses — statut fonctionnel (ADR-026 R2)
-  // Note: nullable: true temporairement jusqu'à ce que story 13.2 crée la table et la migration
   /** UUID du statut du Thought — FK vers thought_statuses.id (ADR-026 R2) */
-  @Column({ type: 'uuid', name: 'status_id', nullable: true })
-  statusId?: string;
+  @Column({ type: 'uuid', name: 'status_id' })
+  statusId!: string;
 
-  @ManyToOne(() => ThoughtStatus, { nullable: true, eager: false })
+  @ManyToOne(() => ThoughtStatus, { nullable: false, eager: false })
   @JoinColumn({ name: 'status_id' })
-  status?: ThoughtStatus;
+  status!: ThoughtStatus;
 
   // Relationships
   // ADR-026 R3: cascade supprimé — la suppression des Ideas liées est gérée explicitement

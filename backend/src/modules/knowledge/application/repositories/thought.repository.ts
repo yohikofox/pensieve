@@ -15,6 +15,7 @@ import { DataSource, Repository } from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { Thought } from '../../domain/entities/thought.entity';
 import { Idea } from '../../domain/entities/idea.entity';
+import { THOUGHT_STATUS_IDS } from '../../../../common/constants/reference-data.constants';
 
 @Injectable()
 export class ThoughtRepository {
@@ -57,6 +58,7 @@ export class ThoughtRepository {
       const thoughtId = uuidv7();
 
       // Create Thought entity
+      // Story 13.2: statusId requis — FK vers thought_statuses (ADR-026 R2)
       const thought = manager.create(Thought, {
         id: thoughtId,
         captureId,
@@ -65,6 +67,7 @@ export class ThoughtRepository {
         confidenceScore,
         processingTimeMs, // Subtask 4.7: Processing time logging
         lastModifiedAt: Date.now(),
+        statusId: THOUGHT_STATUS_IDS.ACTIVE,
       });
 
       // Save Thought first to get ID

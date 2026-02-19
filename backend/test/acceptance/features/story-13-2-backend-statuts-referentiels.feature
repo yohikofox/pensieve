@@ -11,7 +11,7 @@ Feature: Tables référentielles pour les statuts backend (ADR-026 R2)
     And elle possède le champ "label" de type varchar
     And elle possède le champ "displayOrder" de type int
     And elle possède le champ "isActive" de type boolean
-    And elle hérite de BaseEntity avec id, createdAt, updatedAt, deletedAt
+    And elle hérite de BaseReferentialEntity avec id, createdAt, updatedAt (sans deletedAt)
 
   Scenario: L'entité Thought utilise une FK vers thought_statuses
     Given le code source de l'entité Thought
@@ -33,3 +33,21 @@ Feature: Tables référentielles pour les statuts backend (ADR-026 R2)
     Then elle possède le champ "label" de type varchar
     And elle possède le champ "displayOrder" de type int
     And elle possède le champ "isActive" de type boolean
+
+  Scenario: ThoughtRepository assigne un statusId valide lors de la création d'un Thought
+    Given le code source de ThoughtRepository
+    When on inspecte la méthode createWithIdeas
+    Then elle assigne un statusId correspondant à THOUGHT_STATUS_IDS.ACTIVE
+    And le statusId est passé lors de manager.create de Thought
+
+  Scenario: La migration garantit la contrainte FK avec ON DELETE RESTRICT
+    Given le fichier de migration AddThoughtStatusIdFkToThoughts
+    When on inspecte le SQL de la migration up
+    Then elle contient une contrainte FK_thoughts_status_id
+    And la contrainte utilise ON DELETE RESTRICT
+
+  Scenario: La migration de seed est idempotente sur les codes thought_statuses
+    Given le fichier de migration CreateThoughtStatusesAndUpdateCaptureStates
+    When on inspecte le SQL du seed
+    Then le seed utilise ON CONFLICT sur l'identifiant primaire pour éviter les doublons
+    And les codes "active" et "archived" sont insérés avec des UUIDs déterministes au format "d0000000-"
