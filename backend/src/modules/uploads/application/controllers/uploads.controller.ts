@@ -9,7 +9,7 @@
  * - Returns audioUrl for storage
  *
  * Security:
- * - Protected by SupabaseAuthGuard (JWT validation)
+ * - Protected by BetterAuthGuard (JWT validation)
  * - User isolation enforced (userId from JWT)
  * - File type validation (audio/* only)
  * - File size limit (500MB max)
@@ -30,7 +30,7 @@ import {
   InternalServerErrorException,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { MinioService } from '../../../shared/infrastructure/storage/minio.service';
 
 /**
@@ -53,7 +53,7 @@ interface UploadAudioResponse {
  * Handles audio file uploads to MinIO S3 storage
  */
 @Controller('api/uploads')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class UploadsController {
   // File size limit: 500MB
   private readonly MAX_FILE_SIZE = 500 * 1024 * 1024;
@@ -111,7 +111,7 @@ export class UploadsController {
       );
     }
 
-    // Get userId from JWT (enforced by SupabaseAuthGuard)
+    // Get userId from JWT (enforced by BetterAuthGuard)
     const userId = req.user.id;
 
     // Upload to MinIO with user isolation

@@ -7,7 +7,7 @@
  */
 
 import { Controller, Post, Body, Patch, UseGuards } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { UserRepository } from '../repositories/UserRepository';
@@ -24,7 +24,7 @@ interface UpdateNotificationPreferencesDto {
 }
 
 @Controller('users')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class NotificationsController {
   constructor(
     private readonly userRepository: UserRepository,

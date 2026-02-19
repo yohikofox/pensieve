@@ -1,6 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminUsersController } from './admin-users.controller';
 import { UserFeaturesService } from '../../../identity/application/services/user-features.service';
+import { BetterAuthAdminService } from '../../../rgpd/application/services/better-auth-admin.service';
+import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
 import { UserFeaturesDto } from '../../../identity/application/dtos/user-features.dto';
 import { UpdateUserFeaturesDto } from '../../application/dtos/update-user-features.dto';
 import { NotFoundException } from '@nestjs/common';
@@ -19,6 +21,18 @@ describe('AdminUsersController', () => {
     canActivate: jest.fn(() => true),
   };
 
+  const mockBetterAuthAdminService = {
+    resetUserPassword: jest.fn(),
+    getUserProfile: jest.fn(),
+    deleteUser: jest.fn(),
+    verifyPassword: jest.fn(),
+    listAllUsers: jest.fn(),
+  };
+
+  const mockRgpdService = {
+    syncUsersFromSupabase: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminUsersController],
@@ -26,6 +40,14 @@ describe('AdminUsersController', () => {
         {
           provide: UserFeaturesService,
           useValue: mockUserFeaturesService,
+        },
+        {
+          provide: BetterAuthAdminService,
+          useValue: mockBetterAuthAdminService,
+        },
+        {
+          provide: RgpdService,
+          useValue: mockRgpdService,
         },
         {
           provide: AdminJwtGuard,

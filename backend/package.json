@@ -44,13 +44,13 @@
     "@nestjs/platform-socket.io": "^11.1.13",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.13",
-    "@supabase/supabase-js": "^2.90.1",
     "@types/adm-zip": "^0.5.7",
     "@types/bcrypt": "^6.0.0",
     "adm-zip": "^0.5.16",
     "amqp-connection-manager": "^5.0.0",
     "amqplib": "^0.10.9",
     "bcrypt": "^6.0.0",
+    "better-auth": "^1.4.18",
     "chrono-node": "^2.9.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -66,6 +66,7 @@
     "pino-http": "^11.0.0",
     "redis": "^5.10.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.9.2",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.3",
     "tiktoken": "^1.0.22",
@@ -86,6 +87,7 @@
     "@types/multer": "^2.0.0",
     "@types/node": "^22.10.7",
     "@types/passport-jwt": "^4.0.1",
+    "@types/pg": "^8.16.0",
     "@types/supertest": "^6.0.2",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
@@ -119,6 +121,12 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^better-auth/plugins$": "<rootDir>/../test/__mocks__/better-auth-plugins.js",
+      "^better-auth/node$": "<rootDir>/../test/__mocks__/better-auth-node.js",
+      "^better-auth/crypto$": "<rootDir>/../test/__mocks__/better-auth-crypto.js",
+      "^better-auth$": "<rootDir>/../test/__mocks__/better-auth.js"
+    }
   }
 }

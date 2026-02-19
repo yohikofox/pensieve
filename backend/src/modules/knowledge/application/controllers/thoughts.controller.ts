@@ -26,7 +26,7 @@ import {
 import { ThoughtRepository } from '../repositories/thought.repository';
 import { ThoughtDeleteService } from '../services/thought-delete.service';
 import { isError } from '../../../../common/types/result.type';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { ResourceOwnershipGuard } from '../../../authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../../../authorization/infrastructure/guards/permission.guard';
 import { RequireOwnership } from '../../../authorization/infrastructure/decorators/require-ownership.decorator';
@@ -69,7 +69,7 @@ export class ThoughtsController {
    * Authorization: PermissionGuard ensures user has thought.read permission
    */
   @Get()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('thought.read')
   async listThoughts(@CurrentUser() user: User) {
     return await this.thoughtRepository.findByUserId(user.id);
@@ -80,7 +80,7 @@ export class ThoughtsController {
    * Authorization: ResourceOwnershipGuard ensures user owns the thought
    */
   @Get(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   async getThoughtById(@Param('id') id: string) {
     const thought = await this.thoughtRepository.findById(id);
@@ -97,7 +97,7 @@ export class ThoughtsController {
    * Additional filtering by userId at service level
    */
   @Get('by-capture/:captureId')
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('thought.read')
   async getThoughtByCaptureId(
     @Param('captureId') captureId: string,
@@ -122,7 +122,7 @@ export class ThoughtsController {
    * Authorization: PermissionGuard ensures user has thought.create permission
    */
   @Post()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('thought.create')
   async createThought(
     @Body() dto: CreateThoughtDto,
@@ -148,7 +148,7 @@ export class ThoughtsController {
    * explicitement par ThoughtDeleteService via une transaction atomique.
    */
   @Delete(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteThought(@Param('id') id: string) {
@@ -169,7 +169,7 @@ export class ThoughtsController {
    *                ResourceOwnershipGuard ensures user owns the thought
    */
   @Post(':id/share')
-  @UseGuards(SupabaseAuthGuard, PermissionGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard, ResourceOwnershipGuard)
   @RequirePermission('thought.share')
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   async shareThought(
@@ -194,7 +194,7 @@ export class ThoughtsController {
    * Authorization: ResourceOwnershipGuard ensures user owns the thought
    */
   @Get(':id/shares')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   async listShares(@Param('id') id: string) {
     const shares = await this.resourceShareRepo.findByResourceId(
@@ -216,7 +216,7 @@ export class ThoughtsController {
    * Authorization: ResourceOwnershipGuard ensures user owns the thought
    */
   @Delete(':id/shares/:shareId')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async revokeShare(@Param('shareId') shareId: string) {

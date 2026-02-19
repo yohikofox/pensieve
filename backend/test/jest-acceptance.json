@@ -12,7 +12,11 @@
   "coverageDirectory": "../coverage-acceptance",
   "testEnvironment": "node",
   "moduleNameMapper": {
-    "^src/(.*)$": "<rootDir>/../src/$1"
+    "^src/(.*)$": "<rootDir>/../src/$1",
+    "^better-auth/plugins$": "<rootDir>/__mocks__/better-auth-plugins.js",
+    "^better-auth/node$": "<rootDir>/__mocks__/better-auth-node.js",
+    "^better-auth/crypto$": "<rootDir>/__mocks__/better-auth-crypto.js",
+    "^better-auth$": "<rootDir>/__mocks__/better-auth.js"
   },
   "testTimeout": 10000
 }

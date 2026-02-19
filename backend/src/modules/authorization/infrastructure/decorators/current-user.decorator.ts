@@ -12,11 +12,11 @@ export interface User {
 /**
  * Decorator to extract the current authenticated user from the request
  *
- * Requires SupabaseAuthGuard or similar authentication guard
+ * Requires BetterAuthGuard or similar authentication guard
  *
  * @example
  * @Get()
- * @UseGuards(SupabaseAuthGuard)
+ * @UseGuards(BetterAuthGuard)
  * async myEndpoint(@CurrentUser() user: User) {
  *   console.log(user.id, user.email);
  * }

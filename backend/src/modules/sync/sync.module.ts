@@ -41,7 +41,7 @@ import { CaptureModule } from '../capture/capture.module';
       CaptureState,
     ]),
     CaptureModule,
-    // Note: SupabaseAuthGuard is provided by @Global() SharedModule
+    // Note: BetterAuthGuard is provided by AuthModule (ADR-029)
   ],
   controllers: [SyncController],
   providers: [SyncService, SyncConflictResolver],

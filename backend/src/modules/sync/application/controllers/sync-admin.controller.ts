@@ -11,12 +11,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
 import { SyncConflict } from '../../domain/entities/sync-conflict.entity';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { RequirePermission } from '../../../authorization/infrastructure/decorators/require-permission.decorator';
 
 // NOTE: Requires 'admin.sync.view' permission in database seeds
 @Controller('api/admin/sync')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 @RequirePermission('admin.sync.view')
 export class SyncAdminController {
   private readonly logger = new Logger(SyncAdminController.name);

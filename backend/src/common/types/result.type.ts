@@ -22,6 +22,7 @@ export type ResultType =
   | 'not_found'
   | 'transaction_error'
   | 'validation_error'
+  | 'network_error'
   | 'unknown_error';
 
 export interface Result<T> {
@@ -47,6 +48,11 @@ export const transactionError = (error: string): Result<never> => ({
 
 export const validationError = (error: string): Result<never> => ({
   type: 'validation_error',
+  error,
+});
+
+export const networkError = (error: string): Result<never> => ({
+  type: 'network_error',
   error,
 });
 

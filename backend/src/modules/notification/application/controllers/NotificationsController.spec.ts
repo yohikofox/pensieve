@@ -9,7 +9,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotificationsController } from './NotificationsController';
 import { UserRepository } from '../repositories/UserRepository';
 import { PushNotificationService } from '../services/PushNotificationService';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { ExecutionContext } from '@nestjs/common';
 
 describe('NotificationsController', () => {
@@ -27,7 +27,7 @@ describe('NotificationsController', () => {
       isValidPushToken: jest.fn().mockReturnValue(true),
     } as any;
 
-    // Mock SupabaseAuthGuard to always allow requests in tests
+    // Mock BetterAuthGuard to always allow requests in tests
     const mockAuthGuard = {
       canActivate: (context: ExecutionContext) => true,
     };
@@ -45,7 +45,7 @@ describe('NotificationsController', () => {
         },
       ],
     })
-      .overrideGuard(SupabaseAuthGuard)
+      .overrideGuard(BetterAuthGuard)
       .useValue(mockAuthGuard)
       .compile();
 

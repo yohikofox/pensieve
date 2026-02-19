@@ -9,11 +9,11 @@
  */
 
 import { Controller, Get, Header, UseGuards } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { QueueMonitoringService } from '../services/queue-monitoring.service';
 
 @Controller('metrics')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class MetricsController {
   constructor(private readonly queueMonitoring: QueueMonitoringService) {}
 

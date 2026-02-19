@@ -13,7 +13,7 @@ import { UploadsController } from './application/controllers/uploads.controller'
  *
  * Dependencies:
  * - MinioService (provided by @Global() SharedModule)
- * - SupabaseAuthGuard (provided by @Global() SharedModule)
+ * - BetterAuthGuard (provided by AuthModule — ADR-029)
  */
 @Module({
   controllers: [UploadsController],

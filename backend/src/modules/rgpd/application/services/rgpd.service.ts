@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { User } from '../../../shared/infrastructure/persistence/typeorm/entities/user.entity';
 import { AuditLog } from '../../../shared/infrastructure/persistence/typeorm/entities/audit-log.entity';
-import { SupabaseAdminService } from './supabase-admin.service';
+import { BetterAuthAdminService } from './better-auth-admin.service';
 import AdmZip from 'adm-zip';
 import * as fs from 'fs-extra';
 import * as path from 'path';
@@ -16,7 +16,7 @@ export class RgpdService {
     private userRepo: Repository<User>,
     @InjectRepository(AuditLog)
     private auditLogRepo: Repository<AuditLog>,
-    private supabaseAdminService: SupabaseAdminService,
+    private betterAuthAdminService: BetterAuthAdminService,
     private dataSource: DataSource,
   ) {}
 
@@ -33,7 +33,7 @@ export class RgpdService {
 
       // 0. Ensure user exists in PostgreSQL (for audit log foreign key)
       const userProfile =
-        await this.supabaseAdminService.getUserProfile(userId);
+        await this.betterAuthAdminService.getUserProfile(userId);
       await this.upsertUser(userId, userProfile.email);
 
       // 1. Fetch user profile from Supabase
@@ -146,7 +146,7 @@ Pour toute question, contactez: support@pensine.app
       await queryRunner.commitTransaction();
 
       // 4. Delete Supabase auth user (Admin API)
-      await this.supabaseAdminService.deleteUser(userId);
+      await this.betterAuthAdminService.deleteUser(userId);
 
       console.log(`✅ Account deleted successfully: ${userId}`);
     } catch (error) {
@@ -162,7 +162,7 @@ Pour toute question, contactez: support@pensine.app
    * Verify user password (for account deletion confirmation)
    */
   async verifyPassword(email: string, password: string): Promise<boolean> {
-    return await this.supabaseAdminService.verifyPassword(email, password);
+    return await this.betterAuthAdminService.verifyPassword(email, password);
   }
 
   /**
@@ -198,14 +198,14 @@ Pour toute question, contactez: support@pensine.app
     updated: number;
     unchanged: number;
   }> {
-    const supabaseUsers = await this.supabaseAdminService.listAllUsers();
+    const betterAuthUsers = await this.betterAuthAdminService.listAllUsers();
 
     let created = 0;
     let updated = 0;
     let unchanged = 0;
 
-    for (const supabaseUser of supabaseUsers) {
-      const { id, email } = supabaseUser;
+    for (const betterAuthUser of betterAuthUsers) {
+      const { id, email } = betterAuthUser;
 
       // 1. Try match by provider id (Supabase UUID)
       const byId = await this.userRepo.findOne({ where: { id } });

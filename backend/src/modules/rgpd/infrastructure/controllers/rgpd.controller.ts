@@ -10,14 +10,14 @@ import {
   UnauthorizedException,
   HttpStatus,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { RgpdService } from '../../application/services/rgpd.service';
 import type { Response } from 'express';
 
 @Controller('api/rgpd')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class RgpdController {
   constructor(private readonly rgpdService: RgpdService) {}
 

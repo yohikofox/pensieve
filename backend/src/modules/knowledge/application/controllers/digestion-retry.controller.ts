@@ -20,7 +20,7 @@ import {
   NotFoundException,
   ForbiddenException,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { DigestionJobPublisher } from '../publishers/digestion-job-publisher.service';
@@ -28,7 +28,7 @@ import type { ICaptureRepository } from '../../domain/interfaces/capture-reposit
 import type { CreateDigestionJobInput } from '../../domain/interfaces/digestion-job-payload.interface';
 
 @Controller('digestion')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class DigestionRetryController {
   private readonly logger = new Logger(DigestionRetryController.name);
 

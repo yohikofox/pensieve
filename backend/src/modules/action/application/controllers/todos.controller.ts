@@ -21,7 +21,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { TodoRepository } from '../repositories/todo.repository';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { ResourceOwnershipGuard } from '../../../authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../../../authorization/infrastructure/guards/permission.guard';
 import { RequireOwnership } from '../../../authorization/infrastructure/decorators/require-ownership.decorator';
@@ -43,7 +43,7 @@ export class TodosController {
    * Authorization: ResourceOwnershipGuard ensures user owns the todo
    */
   @Get(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.TODO, paramKey: 'id' })
   async getTodoById(@Param('id') id: string) {
     const todo = await this.todoRepository.findById(id);
@@ -62,7 +62,7 @@ export class TodosController {
    * Authorization: ResourceOwnershipGuard ensures user owns the todo
    */
   @Delete(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.TODO, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteTodo(
@@ -89,7 +89,7 @@ export class TodosController {
    * Filtering by userId is still needed at service level
    */
   @Get('by-thought/:thoughtId')
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('todo.read')
   async getTodosByThought(
     @Param('thoughtId') thoughtId: string,

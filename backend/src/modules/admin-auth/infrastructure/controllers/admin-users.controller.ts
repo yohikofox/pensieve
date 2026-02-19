@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { AdminJwtGuard } from '../guards/admin-jwt.guard';
 import { UserFeaturesService } from '../../../identity/application/services/user-features.service';
-import { SupabaseAdminService } from '../../../rgpd/application/services/supabase-admin.service';
+import { BetterAuthAdminService } from '../../../rgpd/application/services/better-auth-admin.service';
 import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
 import { UpdateUserFeaturesDto } from '../../application/dtos/update-user-features.dto';
 import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password.dto';
@@ -32,7 +32,7 @@ export class AdminUsersController {
 
   constructor(
     private readonly userFeaturesService: UserFeaturesService,
-    private readonly supabaseAdminService: SupabaseAdminService,
+    private readonly betterAuthAdminService: BetterAuthAdminService,
     private readonly rgpdService: RgpdService,
   ) {}
 
@@ -83,13 +83,17 @@ export class AdminUsersController {
   }
 
   /**
-   * Sync all Supabase Auth users → backend PostgreSQL
+   * @deprecated Legacy endpoint — sync utilisateurs Better Auth → backend PostgreSQL
    * POST /api/admin/users/sync-from-supabase
-   * Story 8.19: Sync utilisateurs Supabase → Backend
+   * Story 8.19: Sync utilisateurs Legacy → Backend
+   *
+   * ⚠️ LEGACY: Ce endpoint existait pour migrer les users Supabase Auth.
+   * Avec Epic 15 (ADR-029), Better Auth est maintenant le seul provider.
+   * Cet endpoint peut être retiré une fois que tous les users ont été migrés.
+   * TODO: Supprimer lors d'Epic 16 ou sprint cleanup post-migration.
    *
    * Match by email: if email found in DB → overwrite values (including provider id).
    * If not found → create new record.
-   * Note: to be migrated to Better Auth provider sync when Epic 15 is implemented.
    */
   @Post('sync-from-supabase')
   @HttpCode(HttpStatus.OK)
@@ -122,7 +126,7 @@ export class AdminUsersController {
     @Body() dto: ResetUserPasswordDto,
   ): Promise<{ message: string }> {
     this.logger.log(`Admin resetting password for user ${userId}`);
-    await this.supabaseAdminService.resetUserPassword(userId, dto.newPassword);
+    await this.betterAuthAdminService.resetUserPassword(userId, dto.newPassword);
     this.logger.log(`Password reset successfully for user ${userId}`);
     return { message: 'Password reset successfully' };
   }

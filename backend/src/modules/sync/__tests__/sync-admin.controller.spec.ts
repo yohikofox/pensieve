@@ -10,7 +10,7 @@ import { ExecutionContext } from '@nestjs/common';
 import { SyncAdminController } from '../application/controllers/sync-admin.controller';
 import { SyncLog } from '../domain/entities/sync-log.entity';
 import { SyncConflict } from '../domain/entities/sync-conflict.entity';
-import { SupabaseAuthGuard } from '../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../auth/guards/better-auth.guard';
 
 describe('SyncAdminController', () => {
   let controller: SyncAdminController;
@@ -25,7 +25,7 @@ describe('SyncAdminController', () => {
     find: jest.fn(),
   };
 
-  // Mock SupabaseAuthGuard to always allow access in tests
+  // Mock BetterAuthGuard to always allow access in tests
   const mockAuthGuard = {
     canActivate: jest.fn((context: ExecutionContext) => true),
   };
@@ -44,7 +44,7 @@ describe('SyncAdminController', () => {
         },
       ],
     })
-      .overrideGuard(SupabaseAuthGuard)
+      .overrideGuard(BetterAuthGuard)
       .useValue(mockAuthGuard)
       .compile();
 

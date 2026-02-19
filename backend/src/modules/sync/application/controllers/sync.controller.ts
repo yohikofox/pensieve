@@ -10,7 +10,7 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { SyncService } from '../services/sync.service';
 import { PullRequestDto } from '../dto/pull-request.dto';
 import { PushRequestDto } from '../dto/push-request.dto';
@@ -23,11 +23,11 @@ import { SyncResponseDto } from '../dto/sync-response.dto';
  * - GET  /api/sync/pull  - Fetch server changes
  * - POST /api/sync/push  - Send client changes
  *
- * Authentication: JWT via SupabaseAuthGuard (Task 1.2)
+ * Authentication: JWT via BetterAuthGuard (Task 1.2)
  * User Isolation: userId extracted from JWT (NFR13)
  */
 @Controller('api/sync')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class SyncController {
   private readonly logger = new Logger(SyncController.name);
 

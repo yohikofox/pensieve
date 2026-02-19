@@ -9,7 +9,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../decorators/current-user.decorator';
 import type { User } from '../decorators/current-user.decorator';
 import { SubscriptionRepository } from '../../implementations/postgresql/repositories/subscription.repository';
@@ -19,7 +19,7 @@ class UpgradeSubscriptionDto {
 }
 
 @Controller('api/subscription')
-@UseGuards(SupabaseAuthGuard)
+@UseGuards(BetterAuthGuard)
 export class SubscriptionController {
   private readonly logger = new Logger(SubscriptionController.name);
 

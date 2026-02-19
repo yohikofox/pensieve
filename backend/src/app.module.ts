@@ -15,6 +15,7 @@ import { AdminAuthModule } from './modules/admin-auth/admin-auth.module'; // Mul
 import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile ↔ Backend sync infrastructure
 import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: Audio file uploads
 import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: Persistance captures backend
+import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self-hosted (ADR-029)
 
 @Module({
   imports: [
@@ -66,6 +67,8 @@ import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: 
     SyncModule,
     // Uploads module (Audio file uploads to MinIO - Story 6.2)
     UploadsModule,
+    // Auth module (Better Auth self-hosted - Story 15.1, ADR-029)
+    AuthModule,
   ],
   controllers: [AppController],
   providers: [],

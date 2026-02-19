@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UnauthorizedException, ExecutionContext } from '@nestjs/common';
 import { RgpdController } from './rgpd.controller';
 import { RgpdService } from '../../application/services/rgpd.service';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import type { Response } from 'express';
 
 describe('RgpdController', () => {
@@ -23,7 +23,7 @@ describe('RgpdController', () => {
         },
       ],
     })
-      .overrideGuard(SupabaseAuthGuard)
+      .overrideGuard(BetterAuthGuard)
       .useValue({
         canActivate: (context: ExecutionContext) => {
           const request = context.switchToHttp().getRequest();

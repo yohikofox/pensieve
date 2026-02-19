@@ -1,10 +1,26 @@
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { getRabbitMQOptions } from './modules/knowledge/infrastructure/rabbitmq/rabbitmq.config';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  // bodyParser: false — Better Auth (ADR-029) needs raw Node.js request for /api/auth routes
+  // We manually re-enable body parsing for all non-auth routes below
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+    bodyParser: false,
+  });
+
+  // Re-enable body parsing for all routes except /api/auth (handled by Better Auth)
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.startsWith('/api/auth')) return next();
+    express.json()(req, res, next);
+  });
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.path.startsWith('/api/auth')) return next();
+    express.urlencoded({ extended: true })(req, res, next);
+  });
   app.useLogger(app.get(Logger));
 
   // Enable CORS for admin frontend and mobile app

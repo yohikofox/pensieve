@@ -1,12 +1,12 @@
 import { Controller, Get, UseGuards } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 
 @Controller('api/auth')
 export class AuthController {
   @Get('me')
-  @UseGuards(SupabaseAuthGuard)
+  @UseGuards(BetterAuthGuard)
   async getCurrentUser(@CurrentUser() user: User) {
     return {
       userId: user.id,
@@ -17,6 +17,6 @@ export class AuthController {
 
   @Get('health')
   async health() {
-    return { status: 'ok', auth: 'supabase' };
+    return { status: 'ok', auth: 'better-auth' };
   }
 }

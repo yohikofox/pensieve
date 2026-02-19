@@ -1,0 +1,85 @@
+import { betterAuth } from 'better-auth';
+import { admin } from 'better-auth/plugins';
+import { Pool } from 'pg';
+import { v7 as uuidv7 } from 'uuid';
+import type { EmailService } from '../email/email.service';
+
+/**
+ * Better Auth configuration — ADR-029
+ *
+ * Uses a pg.Pool for direct PostgreSQL connection (Kysely adapter built-in).
+ * Note: better-auth-typeorm does not exist; pg.Pool is the correct approach.
+ * UUID v7 generated in application domain per ADR-026 R1.
+ *
+ * EmailService is injected post-initialization via setEmailService()
+ * to break the circular dependency (module-level auth object vs NestJS DI).
+ */
+
+let emailServiceRef: EmailService | null = null;
+
+export function setEmailService(service: EmailService): void {
+  emailServiceRef = service;
+}
+
+/**
+ * Secondary pg.Pool for Better Auth (Kysely adapter).
+ * TypeORM maintains its own primary pool — this pool is dedicated to Better Auth
+ * (auth tables: user, session, account, verification) and is intentionally separate
+ * to avoid coupling Better Auth's query lifecycle to TypeORM transactions.
+ * Pool size capped at 5 to limit total connections (TypeORM default: 10).
+ */
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  max: 5,
+});
+
+export const auth = betterAuth({
+  database: pool,
+
+  advanced: {
+    database: {
+      generateId: () => uuidv7(),
+    },
+  },
+
+  emailAndPassword: {
+    enabled: true,
+    sendResetPassword: async ({
+      user,
+      url,
+    }: {
+      user: { email: string };
+      url: string;
+    }) => {
+      if (emailServiceRef) {
+        await emailServiceRef.sendResetPassword(user.email, url);
+      }
+    },
+  },
+
+  emailVerification: {
+    sendVerificationEmail: async ({
+      user,
+      url,
+    }: {
+      user: { email: string };
+      url: string;
+      token: string;
+    }) => {
+      if (emailServiceRef) {
+        await emailServiceRef.sendEmailVerification(user.email, url);
+      }
+    },
+  },
+
+  plugins: [admin()],
+
+  secret: process.env.BETTER_AUTH_SECRET,
+  baseURL: process.env.BETTER_AUTH_URL,
+});
+
+/**
+ * Type export for BetterAuthGuard dependency injection.
+ * Allows injecting a mock auth API in tests.
+ */
+export type AuthApiType = typeof auth.api;

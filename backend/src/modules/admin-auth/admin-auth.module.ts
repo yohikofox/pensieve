@@ -25,7 +25,7 @@ import { RgpdModule } from '../rgpd/rgpd.module';
       inject: [ConfigService],
     }),
     IdentityModule, // Import IdentityModule to access UserFeaturesService
-    RgpdModule, // Import RgpdModule to access SupabaseAdminService (reset password)
+    RgpdModule, // Import RgpdModule to access BetterAuthAdminService (reset password)
   ],
   controllers: [AdminAuthController, AdminUsersController],
   providers: [AdminUserRepository, AdminAuthService, AdminJwtGuard],

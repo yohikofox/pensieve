@@ -26,7 +26,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { IdeaRepository } from '../repositories/idea.repository';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { ResourceOwnershipGuard } from '../../../authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../../../authorization/infrastructure/guards/permission.guard';
 import { RequireOwnership } from '../../../authorization/infrastructure/decorators/require-ownership.decorator';
@@ -62,7 +62,7 @@ export class IdeasController {
    * Authorization: PermissionGuard ensures user has idea.read permission
    */
   @Get()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('idea.read')
   async listIdeas(@CurrentUser() user: User) {
     return await this.ideaRepository.findByUserId(user.id);
@@ -73,7 +73,7 @@ export class IdeasController {
    * Authorization: ResourceOwnershipGuard ensures user owns the idea
    */
   @Get(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.IDEA, paramKey: 'id' })
   async getIdeaById(@Param('id') id: string) {
     const idea = await this.ideaRepository.findById(id);
@@ -90,7 +90,7 @@ export class IdeasController {
    * Additional filtering by userId at service level
    */
   @Get('by-thought/:thoughtId')
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('idea.read')
   async getIdeasByThought(
     @Param('thoughtId') thoughtId: string,
@@ -107,7 +107,7 @@ export class IdeasController {
    * Authorization: PermissionGuard ensures user has idea.create permission
    */
   @Post()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('idea.create')
   async createIdea(@Body() dto: CreateIdeaDto, @CurrentUser() user: User) {
     this.logger.log(`📝 Manual idea creation for thought ${dto.thoughtId}`);
@@ -125,7 +125,7 @@ export class IdeasController {
    * Authorization: ResourceOwnershipGuard ensures user owns the idea
    */
   @Put(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.IDEA, paramKey: 'id' })
   async updateIdea(@Param('id') id: string, @Body() dto: UpdateIdeaDto) {
     const idea = await this.ideaRepository.update(id, dto.text);
@@ -142,7 +142,7 @@ export class IdeasController {
    * Authorization: ResourceOwnershipGuard ensures user owns the idea
    */
   @Delete(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.IDEA, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteIdea(@Param('id') id: string) {

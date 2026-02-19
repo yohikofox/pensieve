@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, DataSource, QueryRunner } from 'typeorm';
 import { RgpdService } from './rgpd.service';
-import { SupabaseAdminService } from './supabase-admin.service';
+import { BetterAuthAdminService } from './better-auth-admin.service';
 import { User } from '../../../shared/infrastructure/persistence/typeorm/entities/user.entity';
 import { AuditLog } from '../../../shared/infrastructure/persistence/typeorm/entities/audit-log.entity';
 
@@ -28,7 +28,7 @@ describe('RgpdService', () => {
   let service: RgpdService;
   let userRepository: Repository<User>;
   let auditLogRepository: Repository<AuditLog>;
-  let supabaseAdminService: SupabaseAdminService;
+  let betterAuthAdminService: BetterAuthAdminService;
   let dataSource: DataSource;
   let queryRunner: QueryRunner;
 
@@ -69,7 +69,7 @@ describe('RgpdService', () => {
           },
         },
         {
-          provide: SupabaseAdminService,
+          provide: BetterAuthAdminService,
           useValue: {
             getUserProfile: jest.fn(),
             deleteUser: jest.fn(),
@@ -88,8 +88,8 @@ describe('RgpdService', () => {
     auditLogRepository = module.get<Repository<AuditLog>>(
       getRepositoryToken(AuditLog),
     );
-    supabaseAdminService =
-      module.get<SupabaseAdminService>(SupabaseAdminService);
+    betterAuthAdminService =
+      module.get<BetterAuthAdminService>(BetterAuthAdminService);
     dataSource = module.get<DataSource>(DataSource);
   });
 
@@ -113,7 +113,7 @@ describe('RgpdService', () => {
       };
 
       jest
-        .spyOn(supabaseAdminService, 'getUserProfile')
+        .spyOn(betterAuthAdminService, 'getUserProfile')
         .mockResolvedValue(mockUserProfile);
       jest.spyOn(userRepository, 'findOne').mockResolvedValue({
         id: userId,
@@ -127,7 +127,7 @@ describe('RgpdService', () => {
 
       // Assert
       expect(result).toBeInstanceOf(Buffer);
-      expect(supabaseAdminService.getUserProfile).toHaveBeenCalledWith(userId);
+      expect(betterAuthAdminService.getUserProfile).toHaveBeenCalledWith(userId);
       expect(auditLogRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: userId,
@@ -147,7 +147,7 @@ describe('RgpdService', () => {
       };
 
       jest
-        .spyOn(supabaseAdminService, 'getUserProfile')
+        .spyOn(betterAuthAdminService, 'getUserProfile')
         .mockResolvedValue(mockUserProfile);
       jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
       jest.spyOn(userRepository, 'create').mockReturnValue({
@@ -173,7 +173,7 @@ describe('RgpdService', () => {
     it('should cleanup temp files on error', async () => {
       // Arrange
       jest
-        .spyOn(supabaseAdminService, 'getUserProfile')
+        .spyOn(betterAuthAdminService, 'getUserProfile')
         .mockRejectedValue(new Error('Supabase error'));
 
       // Act & Assert
@@ -192,7 +192,7 @@ describe('RgpdService', () => {
       };
 
       jest
-        .spyOn(supabaseAdminService, 'getUserProfile')
+        .spyOn(betterAuthAdminService, 'getUserProfile')
         .mockResolvedValue(mockUserProfile);
       jest.spyOn(userRepository, 'findOne').mockResolvedValue({} as User);
       const auditSaveSpy = jest
@@ -224,7 +224,7 @@ describe('RgpdService', () => {
       // Arrange
       jest.spyOn(auditLogRepository, 'save').mockResolvedValue({} as AuditLog);
       jest
-        .spyOn(supabaseAdminService, 'deleteUser')
+        .spyOn(betterAuthAdminService, 'deleteUser')
         .mockResolvedValue(undefined);
 
       // Act
@@ -250,7 +250,7 @@ describe('RgpdService', () => {
         id: userId,
       });
       expect(queryRunner.commitTransaction).toHaveBeenCalled();
-      expect(supabaseAdminService.deleteUser).toHaveBeenCalledWith(userId);
+      expect(betterAuthAdminService.deleteUser).toHaveBeenCalledWith(userId);
       expect(queryRunner.release).toHaveBeenCalled();
     });
 
@@ -273,7 +273,7 @@ describe('RgpdService', () => {
       // Arrange
       jest.spyOn(auditLogRepository, 'save').mockResolvedValue({} as AuditLog);
       const supabaseDeleteSpy = jest
-        .spyOn(supabaseAdminService, 'deleteUser')
+        .spyOn(betterAuthAdminService, 'deleteUser')
         .mockResolvedValue(undefined);
 
       // Act
@@ -289,7 +289,7 @@ describe('RgpdService', () => {
         .spyOn(auditLogRepository, 'save')
         .mockResolvedValue({} as AuditLog);
       jest
-        .spyOn(supabaseAdminService, 'deleteUser')
+        .spyOn(betterAuthAdminService, 'deleteUser')
         .mockResolvedValue(undefined);
 
       // Act
@@ -311,12 +311,12 @@ describe('RgpdService', () => {
   });
 
   describe('verifyPassword', () => {
-    it('should call SupabaseAdminService to verify password', async () => {
+    it('should call BetterAuthAdminService to verify password', async () => {
       // Arrange
       const email = 'test@example.com';
       const password = 'SecurePassword123';
       jest
-        .spyOn(supabaseAdminService, 'verifyPassword')
+        .spyOn(betterAuthAdminService, 'verifyPassword')
         .mockResolvedValue(true);
 
       // Act
@@ -324,7 +324,7 @@ describe('RgpdService', () => {
 
       // Assert
       expect(result).toBe(true);
-      expect(supabaseAdminService.verifyPassword).toHaveBeenCalledWith(
+      expect(betterAuthAdminService.verifyPassword).toHaveBeenCalledWith(
         email,
         password,
       );
@@ -335,7 +335,7 @@ describe('RgpdService', () => {
       const email = 'test@example.com';
       const password = 'WrongPassword';
       jest
-        .spyOn(supabaseAdminService, 'verifyPassword')
+        .spyOn(betterAuthAdminService, 'verifyPassword')
         .mockResolvedValue(false);
 
       // Act

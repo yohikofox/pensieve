@@ -5,7 +5,7 @@ import {
   UseGuards,
   ForbiddenException,
 } from '@nestjs/common';
-import { SupabaseAuthGuard } from '../../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { CurrentUser } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import type { User } from '../../../authorization/infrastructure/decorators/current-user.decorator';
 import { UserFeaturesService } from '../../application/services/user-features.service';
@@ -29,7 +29,7 @@ export class UsersController {
    * @throws ForbiddenException if user tries to access another user's features
    */
   @Get(':userId/features')
-  @UseGuards(SupabaseAuthGuard)
+  @UseGuards(BetterAuthGuard)
   async getUserFeatures(
     @Param('userId') userId: string,
     @CurrentUser() currentUser: User,

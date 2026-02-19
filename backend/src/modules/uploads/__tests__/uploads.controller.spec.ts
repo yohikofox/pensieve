@@ -7,7 +7,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { UploadsController } from '../application/controllers/uploads.controller';
 import { MinioService } from '../../shared/infrastructure/storage/minio.service';
-import { SupabaseAuthGuard } from '../../shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../../../auth/guards/better-auth.guard';
 
 describe('UploadsController', () => {
   let controller: UploadsController;
@@ -28,7 +28,7 @@ describe('UploadsController', () => {
         },
       ],
     })
-      .overrideGuard(SupabaseAuthGuard)
+      .overrideGuard(BetterAuthGuard)
       .useValue({ canActivate: () => true }) // Bypass auth in tests
       .compile();
 

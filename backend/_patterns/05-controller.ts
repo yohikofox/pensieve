@@ -4,7 +4,7 @@
  * Source: src/modules/knowledge/application/controllers/thoughts.controller.ts
  *
  * RÈGLES:
- * - Toujours @UseGuards(SupabaseAuthGuard, ...) en premier
+ * - Toujours @UseGuards(BetterAuthGuard, ...) en premier
  * - Permission-based (RBAC) : PermissionGuard + @RequirePermission('resource.action')
  * - Ownership-based : ResourceOwnershipGuard + @RequireOwnership({ resourceType, paramKey })
  * - Jamais de logique métier dans le controller — déléguer au service/repository
@@ -29,7 +29,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { isError, success } from '../src/common/types/result.type';
-import { SupabaseAuthGuard } from '../src/modules/shared/infrastructure/guards/supabase-auth.guard';
+import { BetterAuthGuard } from '../src/auth/guards/better-auth.guard';
 import { ResourceOwnershipGuard } from '../src/modules/authorization/infrastructure/guards/resource-ownership.guard';
 import { PermissionGuard } from '../src/modules/authorization/infrastructure/guards/permission.guard';
 import { RequireOwnership } from '../src/modules/authorization/infrastructure/decorators/require-ownership.decorator';
@@ -65,10 +65,10 @@ export class ExamplesController {
 
   /**
    * Liste — permission-based (RBAC)
-   * Pattern : SupabaseAuthGuard + PermissionGuard + @RequirePermission
+   * Pattern : BetterAuthGuard + PermissionGuard + @RequirePermission
    */
   @Get()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('example.read')
   async listExamples(@CurrentUser() user: User) {
     this.logger.log('example.list', { userId: user.id });
@@ -77,10 +77,10 @@ export class ExamplesController {
 
   /**
    * Lecture par ID — ownership-based
-   * Pattern : SupabaseAuthGuard + ResourceOwnershipGuard + @RequireOwnership
+   * Pattern : BetterAuthGuard + ResourceOwnershipGuard + @RequireOwnership
    */
   @Get(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   async getExample(@Param('id') id: string) {
     const example = await Promise.resolve(
@@ -97,7 +97,7 @@ export class ExamplesController {
    * Création — permission-based
    */
   @Post()
-  @UseGuards(SupabaseAuthGuard, PermissionGuard)
+  @UseGuards(BetterAuthGuard, PermissionGuard)
   @RequirePermission('example.create')
   async createExample(
     @Body() dto: CreateExampleDto,
@@ -111,7 +111,7 @@ export class ExamplesController {
    * Suppression — ownership + Result Pattern
    */
   @Delete(':id')
-  @UseGuards(SupabaseAuthGuard, ResourceOwnershipGuard)
+  @UseGuards(BetterAuthGuard, ResourceOwnershipGuard)
   @RequireOwnership({ resourceType: ResourceType.THOUGHT, paramKey: 'id' })
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteExample(@Param('id') id: string) {
@@ -128,12 +128,12 @@ export class ExamplesController {
 // Guards disponibles et leur rôle
 // ─────────────────────────────────────────────────────────────────────────────
 //
-// SupabaseAuthGuard        → valide JWT Supabase, popule @CurrentUser()
+// BetterAuthGuard        → valide JWT Supabase, popule @CurrentUser()
 // PermissionGuard          → vérifie permission RBAC via @RequirePermission()
 // ResourceOwnershipGuard   → vérifie ownership via @RequireOwnership()
 // ResourceShareGuard       → vérifie accès partagé via @AllowSharedAccess()
 //
-// Ordre recommandé : [SupabaseAuthGuard, PermissionGuard, ResourceOwnershipGuard]
+// Ordre recommandé : [BetterAuthGuard, PermissionGuard, ResourceOwnershipGuard]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ❌ INTERDITS dans un controller
