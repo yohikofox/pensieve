@@ -155,10 +155,7 @@ export async function updateSyncStatus(
 export async function clearAllSyncMetadata(): Promise<void> {
   try {
     const db = database.getDatabase();
-    const entities = ['captures', 'thoughts', 'ideas', 'todos'];
-    entities.forEach((entity) => {
-      db.executeSync('DELETE FROM sync_metadata WHERE entity = ?', [entity]);
-    });
+    db.executeSync('DELETE FROM sync_metadata');
     console.log('[SyncStorage] Cleared all sync metadata');
   } catch (error) {
     console.error('[SyncStorage] Failed to clear metadata:', error);

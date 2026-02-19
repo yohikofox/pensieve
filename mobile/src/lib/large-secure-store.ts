@@ -30,14 +30,26 @@ function chunkKey(key: string, index: number): string {
 
 export const LargeSecureStore = {
   /**
-   * Store a potentially large value by chunking it across multiple Keychain entries
+   * Store a potentially large value by chunking it across multiple Keychain entries.
+   * Reads previous chunk count first to delete stale chunks when the new value is smaller.
    */
   async setItem(key: string, value: string): Promise<void> {
-    const chunks = Math.ceil(value.length / CHUNK_SIZE);
-    await SecureStore.setItemAsync(chunkCountKey(key), String(chunks));
-    for (let i = 0; i < chunks; i++) {
+    const newChunks = Math.ceil(value.length / CHUNK_SIZE);
+
+    // Read old chunk count to clean up orphaned chunks (security: no stale token fragments)
+    const oldCountStr = await SecureStore.getItemAsync(chunkCountKey(key));
+    const oldChunks = oldCountStr !== null ? parseInt(oldCountStr, 10) : 0;
+
+    // Write new chunks
+    await SecureStore.setItemAsync(chunkCountKey(key), String(newChunks));
+    for (let i = 0; i < newChunks; i++) {
       const chunk = value.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
       await SecureStore.setItemAsync(chunkKey(key, i + 1), chunk);
+    }
+
+    // Delete any excess old chunks that are no longer needed
+    for (let i = newChunks + 1; i <= oldChunks; i++) {
+      await SecureStore.deleteItemAsync(chunkKey(key, i));
     }
   },
 

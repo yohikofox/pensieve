@@ -103,7 +103,7 @@ export interface SyncOptions {
 }
 
 /**
- * Sync metadata stored in AsyncStorage
+ * Sync metadata stored in OP-SQLite (table: sync_metadata — migrated from AsyncStorage by Story 14.2)
  */
 export interface SyncMetadata {
   entity: string;
