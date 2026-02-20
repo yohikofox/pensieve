@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 25;
+export const SCHEMA_VERSION = 26;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -86,6 +86,11 @@ export const CREATE_INDEX_CAPTURES_CREATED_AT = `
 
 export const CREATE_INDEX_CAPTURES_STATE = `
   CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)
+`;
+
+export const CREATE_INDEX_CAPTURES_STATUS_CREATED_AT = `
+  CREATE INDEX IF NOT EXISTS idx_captures_status_created_at
+  ON captures(_status, created_at DESC)
 `;
 
 export const CREATE_INDEX_SYNC_QUEUE_ENTITY = `
@@ -350,6 +355,7 @@ export const SCHEMA_DDL = [
   CREATE_SYNC_QUEUE_TABLE,
   CREATE_INDEX_CAPTURES_CREATED_AT,
   CREATE_INDEX_CAPTURES_STATE,
+  CREATE_INDEX_CAPTURES_STATUS_CREATED_AT,
   CREATE_INDEX_SYNC_QUEUE_ENTITY,
   CREATE_INDEX_SYNC_QUEUE_CREATED_AT,
   CREATE_SYNC_METADATA_TABLE,

@@ -2035,6 +2035,31 @@ export const migrations: Migration[] = [
       // If rollback is needed, would require table recreation
     },
   },
+  {
+    version: 26,
+    name: 'Add composite index (_status, created_at) + fix NULL _status for query optimization',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v26: Adding composite index for captures query optimization');
+
+      // Fix data: ensure no NULL _status (safety for OR IS NULL pattern removal)
+      db.executeSync(`UPDATE captures SET _status = 'active' WHERE _status IS NULL`);
+
+      // Add composite index for efficient WHERE _status = 'active' ORDER BY created_at DESC LIMIT N
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_captures_status_created_at
+        ON captures(_status, created_at DESC)
+      `);
+
+      console.log('[DB] ✅ Migration v26: Composite index added, NULL _status rows fixed');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v26');
+      db.executeSync('DROP INDEX IF EXISTS idx_captures_status_created_at');
+      console.log('[DB] ✅ Rollback v26 completed');
+    },
+  },
 ];
 
 /**

@@ -376,8 +376,9 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async findAll(): Promise<Capture[]> {
     // Story 6.3 - Task 5.4: Filter deleted items from UI
+    // Perf: uses composite index idx_captures_status_created_at (_status, created_at DESC)
     const result = database.execute(
-      "SELECT * FROM captures WHERE (_status IS NULL OR _status != 'deleted') ORDER BY created_at DESC",
+      "SELECT * FROM captures WHERE _status = 'active' ORDER BY created_at DESC",
     );
 
     const rows = (result.rows ?? []) as CaptureRow[];
@@ -391,8 +392,9 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async findAllPaginated(limit: number, offset: number): Promise<Capture[]> {
     // Story 6.3 - Task 5.4: Filter deleted items from UI
+    // Perf: uses composite index idx_captures_status_created_at (_status, created_at DESC)
     const result = database.execute(
-      "SELECT * FROM captures WHERE (_status IS NULL OR _status != 'deleted') ORDER BY created_at DESC LIMIT ? OFFSET ?",
+      "SELECT * FROM captures WHERE _status = 'active' ORDER BY created_at DESC LIMIT ? OFFSET ?",
       [limit, offset],
     );
 
@@ -405,7 +407,8 @@ export class CaptureRepository implements ICaptureRepository {
    */
   async count(): Promise<number> {
     // Story 6.3 - Task 5.4: Filter deleted items from count
-    const result = database.execute("SELECT COUNT(*) as count FROM captures WHERE (_status IS NULL OR _status != 'deleted')");
+    // Perf: uses composite index idx_captures_status_created_at (_status, created_at DESC)
+    const result = database.execute("SELECT COUNT(*) as count FROM captures WHERE _status = 'active'");
     const row = result.rows?.[0] as { count: number } | undefined;
     return row?.count ?? 0;
   }
