@@ -16,6 +16,7 @@ le snippet correspondant explicitement dans le prompt.
 | `05-di-hook.ts` | Résolution DI dans React | Hook qui accède à un service |
 | `06-di-token.ts` | Définition de token DI | Nouveau service avec interface |
 | `07-http-client.ts` | HTTP Client (ADR-025) | Tout appel HTTP sortant vers l'API |
+| `08-domain-entity.ts` | Rich Domain Entity (ADR-031) | Toute entité de domaine (classe, pas interface) |
 
 ## Règles d'utilisation
 

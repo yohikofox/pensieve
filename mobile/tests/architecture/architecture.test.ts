@@ -180,4 +180,47 @@ describe('Architecture constraints', () => {
     expect(violations).toHaveLength(0);
   });
 
+  it('ADR-031 : les fichiers *.model.ts dans domain/ doivent exporter des classes, pas des interfaces comme entité principale', () => {
+    const modelFiles = glob.sync(`${SRC}/contexts/**/domain/*.model.ts`, {
+      ignore: [
+        `${SRC}/**/*.test.ts`,
+        `${SRC}/**/*.spec.ts`,
+      ],
+    });
+
+    const violations: string[] = [];
+
+    modelFiles.forEach((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+
+      // Chercher les exports d'interface qui ressemblent à des entités
+      // (exclure les Snapshot, Props, et types utilitaires)
+      lines.forEach((line: string, idx: number) => {
+        const trimmed = line.trim();
+        if (
+          /^export\s+interface\s+\w+/.test(trimmed) &&
+          !trimmed.includes('Snapshot') &&
+          !trimmed.includes('Props') &&
+          !trimmed.includes('Options') &&
+          !trimmed.includes('Config') &&
+          !trimmed.includes('Params') &&
+          !trimmed.includes('Input') &&
+          !trimmed.includes('Cache') &&
+          !trimmed.includes('Filter')
+        ) {
+          violations.push(
+            `${path.relative(SRC, file)}:${idx + 1} — "${trimmed}" (doit être une class, pas une interface — ADR-031)`
+          );
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-031 (entités doivent être des classes):');
+      violations.forEach((v: string) => console.error(' -', v));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
 });
