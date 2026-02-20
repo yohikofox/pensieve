@@ -10,6 +10,7 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import { useAuthListener } from '../contexts/identity/hooks/useAuthListener';
+import { useSyncUserFeatures } from '../contexts/identity/hooks/useSyncUserFeatures';
 import { useDeepLinkAuth } from '../contexts/identity/hooks/useDeepLinkAuth';
 import { useAuthRecoveryStore } from '../stores/authRecoveryStore';
 import { AuthTokenManager } from '../infrastructure/auth/AuthTokenManager';
@@ -85,6 +86,7 @@ function AppContent() {
   // Application hooks
   useDeepLinkAuth();
   useLLMSettingsListener();
+  useSyncUserFeatures({ userId: user?.id ?? null });
 
   // Initialization hooks
   useDeepLinkInitialization(navigationRef);

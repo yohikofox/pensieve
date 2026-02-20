@@ -114,13 +114,12 @@ export const useSettingsStore = create<SettingsState>()(
         // Initial state - waveform player by default (Story 3.2b)
         audioPlayerType: 'waveform' as AudioPlayerType,
 
-        // Story 7.1: Backend permission for debug mode - default false (security)
-        // TEMPORARY: Force true for debugging
-        debugModeAccess: true,
+        // Story 7.1: Backend permission for debug mode - sourced from backend at startup
+        // Not persisted — always re-fetched via useSyncUserFeatures on app launch
+        debugModeAccess: false,
 
         // Initial state - debug mode local toggle off by default
-        // TEMPORARY: Force true for debugging
-        debugMode: true,
+        debugMode: false,
 
         // Initial state - show calibration grid enabled by default (when debugMode is on)
         showCalibrationGrid: true,
@@ -256,6 +255,12 @@ export const useSettingsStore = create<SettingsState>()(
       {
         name: 'pensieve-settings',
         storage: createJSONStorage(() => AsyncStorage),
+        // debugModeAccess is always sourced from the backend — never persist it
+        partialize: (state) => {
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          const { debugModeAccess, ...rest } = state;
+          return rest;
+        },
       }
     ),
     {
