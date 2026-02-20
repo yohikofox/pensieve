@@ -7,9 +7,19 @@ import { Idea } from '../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../action/domain/entities/todo.entity';
 import { Capture } from '../../capture/domain/entities/capture.entity';
 import { CaptureSyncStatusRepository } from '../../capture/infrastructure/repositories/capture-sync-status.repository';
+import { CaptureTypeRepository } from '../../capture/infrastructure/repositories/capture-type.repository';
+import { CaptureStateRepository } from '../../capture/infrastructure/repositories/capture-state.repository';
 import { SyncLog } from '../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../infrastructure/sync-conflict-resolver';
 import { PushRequestDto } from '../application/dto/push-request.dto';
+
+// UUIDs déterministes (reference-data.constants.ts)
+const CAPTURE_STATE_UUID_CAPTURED = 'b0000000-0000-7000-8000-000000000002';
+const CAPTURE_STATE_UUID_READY = 'b0000000-0000-7000-8000-000000000005';
+const CAPTURE_STATE_UUID_PROCESSING = 'b0000000-0000-7000-8000-000000000004';
+const CAPTURE_TYPE_UUID_AUDIO = 'a0000000-0000-7000-8000-000000000001';
+const CAPTURE_SYNC_STATUS_UUID_ACTIVE = 'c0000000-0000-7000-8000-000000000001';
+const CAPTURE_SYNC_STATUS_UUID_DELETED = 'c0000000-0000-7000-8000-000000000002';
 
 describe('SyncService', () => {
   let service: SyncService;
@@ -44,7 +54,24 @@ describe('SyncService', () => {
   };
 
   const mockCaptureSyncStatusRepository = {
-    findByNaturalKey: jest.fn().mockResolvedValue({ id: 2, name: 'deleted' }),
+    findByNaturalKey: jest.fn().mockResolvedValue({
+      id: CAPTURE_SYNC_STATUS_UUID_ACTIVE,
+      name: 'active',
+    }),
+  };
+
+  const mockCaptureTypeRepository = {
+    findByNaturalKey: jest.fn().mockResolvedValue({
+      id: CAPTURE_TYPE_UUID_AUDIO,
+      name: 'audio',
+    }),
+  };
+
+  const mockCaptureStateRepository = {
+    findByNaturalKey: jest.fn().mockResolvedValue({
+      id: CAPTURE_STATE_UUID_CAPTURED,
+      name: 'captured',
+    }),
   };
 
   const mockSyncLogRepository = {
@@ -63,6 +90,20 @@ describe('SyncService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+
+    // Reset des mocks avec valeurs par défaut
+    mockCaptureSyncStatusRepository.findByNaturalKey.mockResolvedValue({
+      id: CAPTURE_SYNC_STATUS_UUID_ACTIVE,
+      name: 'active',
+    });
+    mockCaptureTypeRepository.findByNaturalKey.mockResolvedValue({
+      id: CAPTURE_TYPE_UUID_AUDIO,
+      name: 'audio',
+    });
+    mockCaptureStateRepository.findByNaturalKey.mockResolvedValue({
+      id: CAPTURE_STATE_UUID_CAPTURED,
+      name: 'captured',
+    });
 
     mockDataSource = {
       transaction: jest.fn().mockImplementation(async (cb) => {
@@ -95,6 +136,14 @@ describe('SyncService', () => {
         {
           provide: CaptureSyncStatusRepository,
           useValue: mockCaptureSyncStatusRepository,
+        },
+        {
+          provide: CaptureTypeRepository,
+          useValue: mockCaptureTypeRepository,
+        },
+        {
+          provide: CaptureStateRepository,
+          useValue: mockCaptureStateRepository,
         },
         {
           provide: getRepositoryToken(SyncLog),
@@ -191,7 +240,6 @@ describe('SyncService', () => {
     const userId = 'user-123';
 
     it('should CREATE a new capture when clientId does not exist', async () => {
-      // Pas de capture existante avec ce clientId
       mockCaptureRepository.findOne.mockResolvedValueOnce(null);
       mockCaptureRepository.save.mockResolvedValueOnce({
         id: 'backend-uuid',
@@ -206,10 +254,9 @@ describe('SyncService', () => {
             updated: [
               {
                 id: 'mobile-uuid', // ID mobile devient clientId
-                typeId: 1,
-                stateId: 2,
-                syncStatusId: 1,
-                rawContent: '/minio/audio.m4a',
+                type: 'audio',
+                state: 'captured',
+                raw_content: '/minio/audio.m4a',
                 duration: 5000,
               },
             ],
@@ -224,19 +271,21 @@ describe('SyncService', () => {
         where: { clientId: 'mobile-uuid', ownerId: userId },
       });
 
-      // La sauvegarde stocke clientId (pas id mobile comme id backend)
+      // La sauvegarde utilise les UUIDs résolus via les repositories
       expect(mockCaptureRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           clientId: 'mobile-uuid',
           ownerId: userId,
-          typeId: 1,
-          stateId: 2,
+          typeId: CAPTURE_TYPE_UUID_AUDIO,
+          stateId: CAPTURE_STATE_UUID_CAPTURED,
+          rawContent: '/minio/audio.m4a',
+          duration: 5000,
         }),
       );
       // Vérifie que l'id mobile n'est PAS utilisé comme id backend — un nouvel UUID est généré
       const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
-      expect(savedRecord.id).toBeDefined(); // UUID généré par l'application (uuidv7), pas l'id mobile
-      expect(savedRecord.id).not.toBe('mobile-id'); // L'id mobile est exclu
+      expect(savedRecord.id).toBeDefined();
+      expect(savedRecord.id).not.toBe('mobile-uuid');
     });
 
     it('should UPDATE an existing capture without creating a duplicate', async () => {
@@ -245,11 +294,16 @@ describe('SyncService', () => {
         clientId: 'mobile-uuid',
         ownerId: userId,
         lastModifiedAt: 999000, // Antérieur à lastPulledAt → pas de conflit
-        syncStatusId: 1,
+        syncStatusId: CAPTURE_SYNC_STATUS_UUID_ACTIVE,
       };
 
       mockCaptureRepository.findOne.mockResolvedValueOnce(existingCapture);
       mockCaptureRepository.save.mockResolvedValueOnce(existingCapture);
+
+      mockCaptureStateRepository.findByNaturalKey.mockResolvedValueOnce({
+        id: CAPTURE_STATE_UUID_READY,
+        name: 'ready',
+      });
 
       const dto: PushRequestDto = {
         lastPulledAt: 1000000,
@@ -258,10 +312,9 @@ describe('SyncService', () => {
             updated: [
               {
                 id: 'mobile-uuid',
-                typeId: 1,
-                stateId: 2,
-                syncStatusId: 1,
-                normalizedText: 'Transcription mise à jour',
+                type: 'audio',
+                state: 'ready',
+                normalized_text: 'Transcription mise à jour',
               },
             ],
           },
@@ -282,9 +335,8 @@ describe('SyncService', () => {
     });
 
     it('should soft-delete a capture by setting syncStatusId=deleted', async () => {
-      // Le status 'deleted' a l'id=2 dans les fixtures
       mockCaptureSyncStatusRepository.findByNaturalKey.mockResolvedValueOnce({
-        id: 2,
+        id: CAPTURE_SYNC_STATUS_UUID_DELETED,
         name: 'deleted',
       });
       mockCaptureRepository.update.mockResolvedValueOnce({ affected: 1 });
@@ -304,7 +356,7 @@ describe('SyncService', () => {
       expect(mockCaptureRepository.update).toHaveBeenCalledWith(
         { clientId: 'mobile-uuid-to-delete', ownerId: userId },
         expect.objectContaining({
-          syncStatusId: 2, // id du statut 'deleted'
+          syncStatusId: CAPTURE_SYNC_STATUS_UUID_DELETED,
         }),
       );
     });
@@ -318,7 +370,7 @@ describe('SyncService', () => {
         lastPulledAt: 1000000,
         changes: {
           captures: {
-            updated: [{ id: 'cap-1', typeId: 1, stateId: 2 }],
+            updated: [{ id: 'cap-1', type: 'audio', state: 'captured' }],
           },
           todo: {
             deleted: ['todo-1'],
@@ -337,17 +389,206 @@ describe('SyncService', () => {
       ];
       mockCaptureRepository.find.mockResolvedValue(deletedCaptures);
 
-      // Le service mappe les captures supprimées sur clientId
-      // Testé indirectement via processPull
       const pullDto = { lastPulledAt: 0 };
       const result = await service.processPull(userId, pullDto);
 
-      // Le résultat doit inclure captures dans changes
-      // (vide si aucune capture active, mais pas d'erreur)
       expect(result).toMatchObject({
         timestamp: expect.any(Number),
         changes: expect.any(Object),
       });
+    });
+  });
+
+  describe('processPush - mapCaptureFromMobile (Bug Fix: PUSH ne mappait pas vers le format entity)', () => {
+    const userId = 'user-123';
+
+    it('should map state="ready" to stateId UUID via captureStateRepository', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+      mockCaptureStateRepository.findByNaturalKey.mockResolvedValueOnce({
+        id: CAPTURE_STATE_UUID_READY,
+        name: 'ready',
+      });
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                state: 'ready',
+                normalized_text: 'Ma transcription',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith('ready');
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      expect(savedRecord.stateId).toBe(CAPTURE_STATE_UUID_READY);
+    });
+
+    it('should map state="processing" to stateId UUID via captureStateRepository', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+      mockCaptureStateRepository.findByNaturalKey.mockResolvedValueOnce({
+        id: CAPTURE_STATE_UUID_PROCESSING,
+        name: 'processing',
+      });
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [{ id: 'mobile-uuid', state: 'processing' }],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith('processing');
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      expect(savedRecord.stateId).toBe(CAPTURE_STATE_UUID_PROCESSING);
+    });
+
+    it('should map normalized_text (snake_case) to normalizedText (camelCase)', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                normalized_text: 'Transcription complète',
+                file_size: 102400,
+                raw_content: '/local/audio.m4a',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      expect(savedRecord.normalizedText).toBe('Transcription complète');
+      expect(savedRecord.fileSize).toBe(102400);
+      expect(savedRecord.rawContent).toBe('/local/audio.m4a');
+    });
+
+    it('should exclude mobile-only fields (_changed, _status, sync_version, etc.)', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                state: 'captured',
+                _changed: 1,
+                _status: 'active',
+                sync_version: 3,
+                last_sync_at: 1700000000000,
+                server_id: 'some-server-id',
+                conflict_data: null,
+                wav_path: '/tmp/audio.wav',
+                retry_count: 2,
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      // Champs mobile-only doivent être absents du record sauvegardé
+      expect(savedRecord._changed).toBeUndefined();
+      expect(savedRecord._status).toBeUndefined();
+      expect(savedRecord.sync_version).toBeUndefined();
+      expect(savedRecord.last_sync_at).toBeUndefined();
+      expect(savedRecord.wav_path).toBeUndefined();
+      expect(savedRecord.retry_count).toBeUndefined();
+    });
+
+    it('should UPDATE capture with state="ready" and persist normalizedText correctly', async () => {
+      // Scénario du bug : transcription locale → PUSH → vérifier persistance
+      const existingCapture = {
+        id: 'backend-uuid',
+        clientId: 'mobile-uuid',
+        ownerId: userId,
+        lastModifiedAt: 999000,
+        stateId: CAPTURE_STATE_UUID_CAPTURED,
+        normalizedText: null,
+      };
+
+      mockCaptureRepository.findOne.mockResolvedValueOnce(existingCapture);
+      mockCaptureRepository.save.mockResolvedValueOnce({
+        ...existingCapture,
+        stateId: CAPTURE_STATE_UUID_READY,
+        normalizedText: 'Texte transcrit',
+      });
+      mockCaptureStateRepository.findByNaturalKey.mockResolvedValueOnce({
+        id: CAPTURE_STATE_UUID_READY,
+        name: 'ready',
+      });
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                state: 'ready',
+                normalized_text: 'Texte transcrit',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      expect(savedRecord.stateId).toBe(CAPTURE_STATE_UUID_READY);
+      expect(savedRecord.normalizedText).toBe('Texte transcrit');
+      // ID backend préservé
+      expect(savedRecord.id).toBe('backend-uuid');
+    });
+
+    it('should warn but not throw when state is unknown (no DB match)', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+      // Repository retourne null pour un état inconnu
+      mockCaptureStateRepository.findByNaturalKey.mockResolvedValueOnce(null);
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [{ id: 'mobile-uuid', state: 'unknown_state' }],
+          },
+        },
+      };
+
+      // Ne doit pas throw même si l'état est inconnu
+      await expect(service.processPush(userId, dto)).resolves.not.toThrow();
+
+      // stateId absent du record sauvegardé (pas de crash)
+      const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
+      expect(savedRecord.stateId).toBeUndefined();
     });
   });
 });

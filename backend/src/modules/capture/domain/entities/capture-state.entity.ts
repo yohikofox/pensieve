@@ -3,7 +3,7 @@ import { BaseReferentialEntity } from '../../../../common/entities/base-referent
 
 /**
  * CaptureState — Table référentielle
- * Valeurs: 'recording', 'captured', 'failed'
+ * Valeurs: 'recording', 'captured', 'failed', 'processing', 'ready'
  *
  * ADR-026 R6: Extends BaseReferentialEntity (isActive hérité, sans deletedAt)
  * ADR-027: Cache via CaptureStateRepository

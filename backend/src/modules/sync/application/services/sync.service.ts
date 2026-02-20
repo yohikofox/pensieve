@@ -510,6 +510,9 @@ export class SyncService {
    * Le mobile envoie son id local comme clientId.
    * La recherche se fait par (clientId, userId) et non (id, userId).
    * Si la capture n'existe pas → CREATE avec un nouvel UUID backend.
+   *
+   * Le mobile envoie des colonnes SQLite brutes (snake_case, noms d'état/type en texte).
+   * mapCaptureFromMobile() convertit vers le format entity backend (camelCase, UUID FK).
    */
   private async applyCapturePushInTransaction(
     userId: string,
@@ -525,6 +528,9 @@ export class SyncService {
     // clientRecord.id est l'ID mobile → devient clientId côté backend
     const clientId = clientRecord.id;
 
+    // Mapper les données mobile vers le format entity backend
+    const mappedData = await this.mapCaptureFromMobile(clientRecord);
+
     const serverRecord = await repository.findOne({
       where: { clientId, ownerId: userId },
     });
@@ -536,9 +542,8 @@ export class SyncService {
       if (!activeSyncStatus) {
         throw new Error('capture_sync_statuses: statut "active" introuvable en base');
       }
-      const { id: _mobileId, syncStatusId: _ignored, ...rest } = clientRecord;
       await repository.save({
-        ...rest,
+        ...mappedData,
         id: uuidv7(),
         clientId,
         ownerId: userId,
@@ -568,9 +573,8 @@ export class SyncService {
       });
       return { conflict: true, strategy: resolution.strategy };
     } else {
-      const { id: _mobileId, ...rest } = clientRecord;
       await repository.save({
-        ...rest,
+        ...mappedData,
         id: serverRecord.id,
         clientId: serverRecord.clientId,
         ownerId: userId,
@@ -578,6 +582,79 @@ export class SyncService {
       });
       return { conflict: false };
     }
+  }
+
+  /**
+   * Mappe les données PUSH du mobile vers le format entity backend.
+   *
+   * Le mobile envoie les colonnes SQLite brutes :
+   *   state: 'ready'        → stateId: UUID (via captureStateRepository)
+   *   type: 'audio'         → typeId: UUID (via captureTypeRepository)
+   *   raw_content           → rawContent
+   *   normalized_text       → normalizedText
+   *   file_size             → fileSize
+   *
+   * Exclut les champs mobile-only (_changed, _status, sync_version, etc.)
+   */
+  private async mapCaptureFromMobile(
+    clientRecord: any,
+  ): Promise<Record<string, any>> {
+    const mapped: Record<string, any> = {};
+
+    // Résolution state → stateId (UUID)
+    if (clientRecord.state) {
+      const captureState = await this.captureStateRepository.findByNaturalKey(
+        clientRecord.state,
+      );
+      if (captureState) {
+        mapped.stateId = captureState.id;
+      } else {
+        this.logger.warn(
+          `capture_states: état "${clientRecord.state}" introuvable — stateId non mappé`,
+        );
+      }
+    }
+
+    // Résolution type → typeId (UUID)
+    if (clientRecord.type) {
+      const captureType = await this.captureTypeRepository.findByNaturalKey(
+        clientRecord.type,
+      );
+      if (captureType) {
+        mapped.typeId = captureType.id;
+      } else {
+        this.logger.warn(
+          `capture_types: type "${clientRecord.type}" introuvable — typeId non mappé`,
+        );
+      }
+    }
+
+    // snake_case → camelCase
+    if (clientRecord.raw_content !== undefined) {
+      mapped.rawContent = clientRecord.raw_content;
+    }
+    if (clientRecord.normalized_text !== undefined) {
+      mapped.normalizedText = clientRecord.normalized_text;
+    }
+    if (clientRecord.file_size !== undefined) {
+      mapped.fileSize = clientRecord.file_size;
+    }
+
+    // Champs déjà en camelCase (passthrough)
+    if (clientRecord.rawContent !== undefined) {
+      mapped.rawContent = clientRecord.rawContent;
+    }
+    if (clientRecord.normalizedText !== undefined) {
+      mapped.normalizedText = clientRecord.normalizedText;
+    }
+    if (clientRecord.fileSize !== undefined) {
+      mapped.fileSize = clientRecord.fileSize;
+    }
+    if (clientRecord.duration !== undefined) {
+      mapped.duration = clientRecord.duration;
+    }
+
+    return mapped;
   }
 
   /**

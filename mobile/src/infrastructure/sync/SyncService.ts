@@ -494,6 +494,19 @@ export class SyncService {
           const localRecord = entity === 'captures'
             ? this.mapCaptureFromBackend(record)
             : record;
+
+          // Protection : ne pas écraser les changements locaux en attente de PUSH
+          if (this.hasLocalPendingChanges(entity, localRecord.id)) {
+            // Exception : réconcilier le server_id si absent localement (captures)
+            if (entity === 'captures' && localRecord.server_id) {
+              this.reconcileServerIdIfAbsent(localRecord.id, localRecord.server_id);
+            }
+            console.log(
+              `[Sync] ⏭️ Skipping PULL upsert for ${entity}/${localRecord.id} — local changes pending`,
+            );
+            continue;
+          }
+
           await this.upsertRecord(entity, localRecord);
           changesCount++;
         }
@@ -554,6 +567,70 @@ export class SyncService {
     }
 
     return mapped;
+  }
+
+  /**
+   * Vérifie si un enregistrement local a des changements en attente de PUSH.
+   *
+   * Si _changed = 1, le record a été modifié localement depuis le dernier sync.
+   * Le PULL ne doit pas écraser ces changements — ils seront envoyés au prochain PUSH.
+   */
+  private hasLocalPendingChanges(entity: string, id: string): boolean {
+    if (!validateEntity(entity)) return false;
+
+    try {
+      const result = this.db.executeSync(
+        `SELECT _changed FROM ${entity} WHERE id = ?`,
+        [id],
+      );
+
+      if (result.rows && result.rows.length > 0) {
+        const rows = (result.rows as any)._array || result.rows;
+        return rows[0]?._changed === 1;
+      }
+    } catch (error) {
+      console.error(
+        `[Sync] Failed to check pending changes for ${entity}/${id}:`,
+        error,
+      );
+    }
+
+    return false;
+  }
+
+  /**
+   * Met à jour le server_id d'une capture si absent localement.
+   *
+   * Nécessaire pour la réconciliation : même si on skip l'upsert PULL
+   * (changements locaux en attente), on doit stocker le server_id backend
+   * pour que le PUSH suivant puisse identifier la capture côté serveur.
+   */
+  private reconcileServerIdIfAbsent(
+    localId: string,
+    serverId: string,
+  ): void {
+    try {
+      const existing = this.db.executeSync(
+        `SELECT server_id FROM captures WHERE id = ?`,
+        [localId],
+      );
+
+      const rows = (existing.rows as any)?._array || existing.rows;
+      if (rows && rows.length > 0 && !rows[0]?.server_id) {
+        this.db.executeSync(
+          `UPDATE captures SET server_id = ? WHERE id = ?`,
+          [serverId, localId],
+        );
+        console.log(
+          `[Sync] 🔗 Reconciled server_id for capture ${localId} → ${serverId}`,
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Sync] Failed to reconcile server_id for capture ${localId}:`,
+        error,
+      );
+    }
   }
 
   /**
