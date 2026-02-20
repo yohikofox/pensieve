@@ -70,6 +70,12 @@ export function useReprocessing(): UseReprocessingReturn {
       await metadataRepository.delete(capture.id, METADATA_KEYS.LLM_MODEL);
 
       // Enqueue for transcription
+      if (!capture.rawContent) {
+        toast.error("Impossible de relancer la transcription : fichier audio introuvable");
+        setReprocessing((prev) => ({ ...prev, transcribe: false }));
+        return;
+      }
+
       await queueService.enqueue({
         captureId: capture.id,
         audioPath: capture.rawContent,

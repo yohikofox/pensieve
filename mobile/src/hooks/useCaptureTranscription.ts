@@ -72,9 +72,15 @@ export function useCaptureTranscription() {
           return;
         }
 
+        if (!capture.rawContent) {
+          console.error('[Transcription] Cannot enqueue: capture has no audio path', capture.id);
+          toast.error(t('capture.alerts.error'));
+          return;
+        }
+
         await queueService.enqueue({
           captureId: capture.id,
-          audioPath: capture.rawContent || '',
+          audioPath: capture.rawContent,
           audioDuration: capture.duration ?? undefined,
         });
 

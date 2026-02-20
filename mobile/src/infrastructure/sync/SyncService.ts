@@ -559,10 +559,10 @@ export class SyncService {
       _status: 'active',
     };
 
-    // raw_content is only included when the server provides a non-null value.
+    // raw_content is only included when the server provides a non-null, non-empty value.
     // For audio captures, raw_content is the local file path (device-only).
-    // Overwriting with null would erase the audio path and break transcription.
-    if (record.rawContent != null) {
+    // Overwriting with null or "" would erase the audio path and break transcription.
+    if (record.rawContent != null && record.rawContent !== '') {
       mapped.raw_content = record.rawContent;
     }
 
