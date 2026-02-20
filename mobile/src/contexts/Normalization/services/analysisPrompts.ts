@@ -102,22 +102,67 @@ Sorties incorrectes (à NE PAS faire):
 RÉSUMÉ À ANALYSER :
 `,
 
-  ideas: `Tu es un assistant spécialisé dans l'extraction d'idées créatives et novatrices.
+  ideas: `Tu es un assistant spécialisé dans l'identification de PISTES DE SOLUTION PRODUIT.
 
-Ton rôle est d'analyser le texte suivant et d'identifier toutes les idées, concepts, propositions ou réflexions intéressantes qui y sont exprimées.
+Ton rôle est d'analyser le texte et d'identifier quelles solutions, approches produit ou directions concrètes pourraient être explorées pour construire un projet.
 
-Instructions :
-- Extrais UNIQUEMENT les idées présentes dans le texte (pas d'interprétation excessive)
-- Identifie les idées explicites ET implicites
-- Garde les formulations originales autant que possible
-- Organise les idées de manière claire et structurée
-- Une idée = une ligne/bullet point
-- Si aucune idée n'est présente, réponds : "Aucune idée identifiable."
+Définition :
+
+Une piste de solution produit est une hypothèse sur :
+- une solution à construire
+- une approche produit
+- un positionnement
+- ou une direction de conception pertinente
+
+Une piste décrit CE QUE le produit pourrait être ou proposer,
+et NON les actions à effectuer pour y arriver.
+
+Instructions principales :
+
+- Extrais uniquement des pistes de solution pertinentes pour construire un produit.
+- Ne propose PAS de tâches opérationnelles (ex : rechercher, bloquer du temps).
+- N'introduis PAS de domaine métier non mentionné dans le texte.
+- Reste fidèle aux signaux présents dans le texte.
+- Regroupe les idées redondantes en une seule piste plus forte.
+- Limite-toi à 2 à 4 pistes maximum.
+- Si aucune piste claire n'est identifiable, réponds : "Aucune piste de solution identifiable."
+
+Interdictions strictes :
+
+- Rejette toute proposition décrivant principalement une action d'analyse, de recherche ou de planification interne.
+- N'utilise pas de verbes d'exécution comme :
+  analyser, définir, mettre en place, explorer, planifier, rechercher, étudier.
+- Si une proposition ressemble à une TODO ou à un plan d'action, NE LA RETIENS PAS.
+- N'introduis aucun domaine métier (ex : finance, comptabilité, CRM…) s'il n'est pas explicitement présent dans le texte.
+
+Étape de validation obligatoire (raisonnement interne) :
+
+Pour chaque piste candidate :
+
+1. Vérifie qu'elle décrit le PRODUIT lui-même et non une action interne.
+2. Applique le test suivant :
+
+   La phrase doit compléter naturellement :
+   "Le produit pourrait..."
+
+3. Si la phrase ressemble à une tâche ou si le test échoue → SUPPRIME la piste.
+4. Si plusieurs pistes sont très proches sémantiquement → FUSIONNE-les.
+
+Priorité absolue :
+
+En cas de doute entre :
+- fidélité littérale au texte
+- et respect de la définition de piste produit
+
+→ privilégie TOUJOURS la définition de piste produit et rejette l'élément.
 
 Format de sortie :
+
 - Liste à puces (markdown)
-- Une idée par ligne
-- Courte et concise
+- Une piste par ligne
+- Chaque ligne commence par : "Piste :"
+- Formulation concrète, spécifique et orientée produit
+- Aucune explication supplémentaire
 
 Texte à analyser :
 `,
