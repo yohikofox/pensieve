@@ -158,7 +158,8 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
                   }
                 });
 
-                finalText = event.results[selectedIndex]?.transcript || "";
+                const newSegment = event.results[selectedIndex]?.transcript || "";
+                finalText = finalText ? finalText + " " + newSegment : newSegment;
 
                 const rawNativeResults = {
                   selectedIndex,
@@ -301,7 +302,9 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
 
         if (event.isFinal) {
           console.log("[NativeTranscription] Final result:", text);
-          this.accumulatedText = text;
+          this.accumulatedText = this.accumulatedText
+            ? this.accumulatedText + " " + text
+            : text;
 
           if (this.finalCallback) {
             this.finalCallback({
@@ -312,7 +315,8 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
           }
         } else {
           console.log("[NativeTranscription] Partial result:", text);
-          this.accumulatedText = text;
+          // Ne pas modifier accumulatedText pour les résultats partiels —
+          // accumulatedText ne conserve que les segments isFinal confirmés.
 
           if (this.partialCallback) {
             this.partialCallback({
