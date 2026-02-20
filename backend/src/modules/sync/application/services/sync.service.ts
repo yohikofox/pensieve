@@ -7,6 +7,8 @@ import { Idea } from '../../../knowledge/domain/entities/idea.entity';
 import { Todo } from '../../../action/domain/entities/todo.entity';
 import { Capture } from '../../../capture/domain/entities/capture.entity';
 import { CaptureSyncStatusRepository } from '../../../capture/infrastructure/repositories/capture-sync-status.repository';
+import { CaptureTypeRepository } from '../../../capture/infrastructure/repositories/capture-type.repository';
+import { CaptureStateRepository } from '../../../capture/infrastructure/repositories/capture-state.repository';
 import { SyncLog } from '../../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../../infrastructure/sync-conflict-resolver';
 import { PullRequestDto } from '../dto/pull-request.dto';
@@ -36,6 +38,8 @@ export class SyncService {
     @InjectRepository(Capture)
     private readonly captureRepository: Repository<Capture>,
     private readonly captureSyncStatusRepository: CaptureSyncStatusRepository,
+    private readonly captureTypeRepository: CaptureTypeRepository,
+    private readonly captureStateRepository: CaptureStateRepository,
     @InjectRepository(SyncLog)
     private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
@@ -267,31 +271,67 @@ export class SyncService {
   }
 
   /**
-   * Get capture changes for PULL — filtre via la relation syncStatus
-   * Retourne clientId + id pour que le mobile puisse réconcilier
+   * Get capture changes for PULL.
+   *
+   * Retourne des objets plats (primitifs uniquement) pour compatibilité OP-SQLite mobile.
+   * Les UUIDs de type/état sont résolus en noms via les repos cacheables (ADR-027).
+   * Le mobile applique sa propre couche de conversion sur ces données (typeName → type, etc.).
    */
   private async getCaptureChanges(
     userId: string,
     lastPulledAt: number,
   ): Promise<{ updated: any[]; deleted: string[] }> {
-    const updated = await this.captureRepository.find({
-      where: {
-        ownerId: userId,
-        lastModifiedAt: MoreThan(lastPulledAt),
-        syncStatus: { name: 'active' },
-      } as any,
-      relations: ['syncStatus', 'type', 'state'],
-    });
+    const [activeSyncStatus, deletedSyncStatus] = await Promise.all([
+      this.captureSyncStatusRepository.findByNaturalKey('active'),
+      this.captureSyncStatusRepository.findByNaturalKey('deleted'),
+    ]);
 
-    const deleted = await this.captureRepository.find({
-      where: {
-        ownerId: userId,
-        lastModifiedAt: MoreThan(lastPulledAt),
-        syncStatus: { name: 'deleted' },
-      } as any,
-      relations: ['syncStatus'],
-      select: ['id', 'clientId'] as any,
-    });
+    const rawUpdated = activeSyncStatus
+      ? await this.captureRepository.find({
+          where: {
+            ownerId: userId,
+            lastModifiedAt: MoreThan(lastPulledAt),
+            syncStatusId: activeSyncStatus.id,
+          } as any,
+        })
+      : [];
+
+    // Résolution batch des UUIDs type/état via cache (ADR-027) — 0 requête si déjà en cache
+    const typeIds = [...new Set(rawUpdated.map((c) => c.typeId).filter(Boolean))] as string[];
+    const stateIds = [...new Set(rawUpdated.map((c) => c.stateId).filter(Boolean))] as string[];
+
+    const [types, states] = await Promise.all([
+      typeIds.length > 0 ? this.captureTypeRepository.findByIds(typeIds) : Promise.resolve([]),
+      stateIds.length > 0 ? this.captureStateRepository.findByIds(stateIds) : Promise.resolve([]),
+    ]);
+
+    const typeMap = new Map(types.map((t) => [t.id, t.name]));
+    const stateMap = new Map(states.map((s) => [s.id, s.name]));
+
+    // Objets plats — primitifs uniquement, noms résolus pour la couche de conversion mobile
+    const updated = rawUpdated.map((c) => ({
+      id: c.id,
+      clientId: c.clientId,
+      typeName: typeMap.get(c.typeId!) ?? null,
+      stateName: stateMap.get(c.stateId!) ?? null,
+      rawContent: c.rawContent ?? null,
+      normalizedText: c.normalizedText ?? null,
+      duration: c.duration ?? null,
+      fileSize: c.fileSize ?? null,
+      lastModifiedAt: Number(c.lastModifiedAt),
+      createdAt: c.createdAt instanceof Date ? c.createdAt.getTime() : Number(c.createdAt),
+    }));
+
+    const deleted = deletedSyncStatus
+      ? await this.captureRepository.find({
+          where: {
+            ownerId: userId,
+            lastModifiedAt: MoreThan(lastPulledAt),
+            syncStatusId: deletedSyncStatus.id,
+          } as any,
+          select: ['id', 'clientId'] as any,
+        })
+      : [];
 
     return {
       updated,
@@ -491,12 +531,18 @@ export class SyncService {
 
     if (!serverRecord) {
       // Nouvelle capture : génère un nouvel UUID backend, stocke clientId
-      const { id: _mobileId, ...rest } = clientRecord;
+      // syncStatusId n'est pas fourni par le mobile — résolution via cache referentiel
+      const activeSyncStatus = await this.captureSyncStatusRepository.findByNaturalKey('active');
+      if (!activeSyncStatus) {
+        throw new Error('capture_sync_statuses: statut "active" introuvable en base');
+      }
+      const { id: _mobileId, syncStatusId: _ignored, ...rest } = clientRecord;
       await repository.save({
         ...rest,
         id: uuidv7(),
         clientId,
         ownerId: userId,
+        syncStatusId: activeSyncStatus.id,
         last_modified_at: Date.now(),
       });
       return { conflict: false };

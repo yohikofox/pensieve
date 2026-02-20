@@ -94,18 +94,71 @@ export function formatDeadlineDate(dateStr: string): string {
 }
 
 /**
+ * Strip markdown code fences from LLM output (e.g. ```json ... ```)
+ */
+function stripMarkdownCodeFence(text: string): string {
+  return text
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
+}
+
+/**
+ * Attempt to repair a truncated JSON string by closing unclosed brackets/braces.
+ * Only handles the common case of a missing `]}` at the end.
+ */
+function repairTruncatedJson(jsonStr: string): string {
+  let braces = 0;
+  let brackets = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (const ch of jsonStr) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') braces++;
+    else if (ch === '}') braces--;
+    else if (ch === '[') brackets++;
+    else if (ch === ']') brackets--;
+  }
+
+  let repaired = jsonStr.trimEnd();
+  // Close unclosed brackets then braces
+  for (let i = 0; i < brackets; i++) repaired += ']';
+  for (let i = 0; i < braces; i++) repaired += '}';
+  return repaired;
+}
+
+/**
  * Parse action items from LLM JSON output
  * @param content - Raw content string from LLM containing JSON
  * @returns Array of action items or null if parsing failed
  */
 export function parseActionItems(content: string): ActionItem[] | null {
   try {
+    // Strip markdown code fences that LLM sometimes adds despite instructions
+    const cleaned = stripMarkdownCodeFence(content);
+
     // Try to extract JSON from the content (might have extra text around it)
-    const jsonMatch = content.match(/\{[\s\S]*"items"[\s\S]*\}/);
+    const jsonMatch = cleaned.match(/\{[\s\S]*"items"[\s\S]*\}/);
     if (!jsonMatch) {
       return null;
     }
-    const parsed = JSON.parse(jsonMatch[0]);
+
+    let jsonStr = jsonMatch[0];
+
+    // Try direct parse first
+    let parsed: any;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch {
+      // JSON may be truncated — attempt repair
+      const repaired = repairTruncatedJson(jsonStr);
+      parsed = JSON.parse(repaired);
+    }
+
     if (parsed.items && Array.isArray(parsed.items)) {
       return parsed.items;
     }

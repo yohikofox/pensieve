@@ -490,7 +490,11 @@ export class SyncService {
       // Apply updated records
       if (entityChanges.updated) {
         for (const record of entityChanges.updated) {
-          await this.upsertRecord(entity, record);
+          // Couche de conversion : le backend est la référence, le mobile adapte son schéma local
+          const localRecord = entity === 'captures'
+            ? this.mapCaptureFromBackend(record)
+            : record;
+          await this.upsertRecord(entity, localRecord);
           changesCount++;
         }
       }
@@ -506,6 +510,42 @@ export class SyncService {
 
     console.log(`[Sync] ✅ Server changes applied (${changesCount} changes)`);
     return changesCount;
+  }
+
+  /**
+   * Convertit un enregistrement capture du format backend (référence) vers le schéma SQLite mobile.
+   *
+   * Le backend retourne son format naturel (camelCase, UUIDs résolus en noms).
+   * Cette couche adapte les données au schéma local de la table `captures`.
+   *
+   * Mapping :
+   *   backend.clientId   → id          (clé primaire mobile)
+   *   backend.id         → server_id   (UUID backend stocké localement)
+   *   backend.typeName   → type        ('audio' | 'text')
+   *   backend.stateName  → state       ('recording' | 'captured' | 'failed' | ...)
+   *   backend.rawContent → raw_content
+   *   backend.normalizedText → normalized_text
+   *   backend.fileSize   → file_size
+   *   backend.createdAt  → created_at  (Unix ms)
+   *   backend.lastModifiedAt → updated_at (Unix ms)
+   */
+  private mapCaptureFromBackend(record: any): Record<string, string | number | null> {
+    return {
+      id: record.clientId,
+      server_id: record.id,
+      type: record.typeName ?? 'audio',
+      state: record.stateName ?? 'captured',
+      raw_content: record.rawContent ?? null,
+      normalized_text: record.normalizedText ?? null,
+      duration: record.duration ?? null,
+      file_size: record.fileSize ?? null,
+      created_at: record.createdAt ? Number(record.createdAt) : Date.now(),
+      updated_at: record.lastModifiedAt ? Number(record.lastModifiedAt) : Date.now(),
+      sync_version: 1,
+      last_sync_at: Date.now(),
+      conflict_data: null,
+      _status: 'active',
+    };
   }
 
   /**

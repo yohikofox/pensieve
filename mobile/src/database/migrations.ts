@@ -1999,6 +1999,42 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v24 completed');
     },
   },
+  {
+    version: 25,
+    name: 'Add _changed column to thoughts and todos for sync tracking (Story 6.2 fix)',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v25: Adding _changed column to thoughts and todos');
+
+      db.executeSync(`
+        ALTER TABLE thoughts
+        ADD COLUMN _changed INTEGER NOT NULL DEFAULT 0
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_thoughts_changed
+        ON thoughts(_changed)
+      `);
+
+      db.executeSync(`
+        ALTER TABLE todos
+        ADD COLUMN _changed INTEGER NOT NULL DEFAULT 0
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_todos_changed
+        ON todos(_changed)
+      `);
+
+      console.log('[DB] ✅ Migration v25: _changed column added to thoughts and todos');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v25 (_changed columns cannot be dropped in SQLite)');
+      // SQLite doesn't support DROP COLUMN
+      // If rollback is needed, would require table recreation
+    },
+  },
 ];
 
 /**

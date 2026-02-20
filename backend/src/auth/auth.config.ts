@@ -2,7 +2,7 @@
 import 'dotenv/config';
 
 import { betterAuth } from 'better-auth';
-import { admin } from 'better-auth/plugins';
+import { admin, bearer } from 'better-auth/plugins';
 import { expo } from '@better-auth/expo';
 import { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
@@ -104,7 +104,8 @@ export const auth = betterAuth({
 
   plugins: [
     admin(),
-    expo(),  // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
+    bearer(),  // Convertit Authorization: Bearer {token} en cookie de session (ADR-029 — clients mobiles)
+    expo(),    // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
   ],
 
   secret: process.env.BETTER_AUTH_SECRET,

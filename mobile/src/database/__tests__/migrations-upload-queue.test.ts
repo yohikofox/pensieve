@@ -262,7 +262,7 @@ describe('Migration v19: upload_queue table', () => {
       const versionCheck = db.executeSync('PRAGMA user_version');
       const version = versionCheck.rows?.[0].user_version;
 
-      expect(version).toBe(20); // v20 added last_chunk_uploaded column
+      expect(version).toBe(25); // v25 added _changed column to thoughts and todos
     });
   });
 });
