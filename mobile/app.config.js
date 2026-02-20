@@ -53,6 +53,16 @@ module.exports = {
           ],
           category: ['BROWSABLE', 'DEFAULT'],
         },
+        // Debug SQL deeplink — dev build only
+        ...(IS_DEV ? [{
+          action: 'VIEW',
+          data: [{
+            scheme: 'pensine-dev',
+            host: 'debug',
+            pathPrefix: '/sql',
+          }],
+          category: ['BROWSABLE', 'DEFAULT'],
+        }] : []),
       ],
     },
     web: {

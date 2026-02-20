@@ -8,10 +8,13 @@
  */
 
 import { useEffect, useCallback } from 'react';
+import { Alert } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useToast } from '../../../design-system/components';
 import { useAuthRecoveryStore } from '../../../stores/authRecoveryStore';
 import { AuthTokenManager } from '../../../infrastructure/auth/AuthTokenManager';
+import { isDebugModeEnabled } from '../../../stores/settingsStore';
+import { database } from '../../../database';
 
 export const useDeepLinkAuth = () => {
   const toast = useToast();
@@ -39,6 +42,28 @@ export const useDeepLinkAuth = () => {
         } else {
           toast.success('You are now logged in.');
         }
+      }
+      return;
+    }
+
+    // Debug SQL deeplink — pensine-dev://debug/sql?q=<base64>
+    // Guard strict : ignoré silencieusement si debug OFF ou release build
+    if (parsed.hostname === 'debug' && parsed.path === '/sql') {
+      if (!isDebugModeEnabled()) return;
+      const b64 = parsed.queryParams?.q as string | undefined;
+      if (!b64) return;
+      try {
+        const sql = Buffer.from(b64, 'base64').toString('utf8');
+        console.log('[DeepLink SQL] Executing:', sql);
+        const result = database.execute(sql) as { rows?: unknown[]; rowsAffected?: number };
+        const output = result.rows?.length
+          ? JSON.stringify(result.rows, null, 2)
+          : `rowsAffected: ${result.rowsAffected ?? 0}`;
+        console.log('[DeepLink SQL] Result:', output);
+        Alert.alert('SQL Result', output.substring(0, 500));
+      } catch (e: unknown) {
+        console.error('[DeepLink SQL] Error:', e);
+        Alert.alert('SQL Error', e instanceof Error ? e.message : String(e));
       }
       return;
     }

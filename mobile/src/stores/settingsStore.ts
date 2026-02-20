@@ -95,6 +95,11 @@ interface SettingsState {
   syncOnWifiOnly: boolean;
   setSyncOnWifiOnly: (enabled: boolean) => void;
 
+  // Datamining feature flag — volatile (non-persisté), reset à chaque redémarrage
+  // Visible uniquement si debugModeAccess est actif
+  dataMiningEnabled: boolean;
+  setDataMiningEnabled: (enabled: boolean) => void;
+
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
   setLLMAutoPostProcess: (enabled: boolean) => void;
@@ -138,6 +143,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Story 6.4: Sync only on Wi-Fi - disabled by default (sync on all connections)
         syncOnWifiOnly: false,
+
+        // Datamining feature flag — volatile, non-persisté
+        dataMiningEnabled: false,
 
         // Initial LLM state - disabled by default
         llm: {
@@ -227,6 +235,12 @@ export const useSettingsStore = create<SettingsState>()(
           console.log('[SettingsStore] Sync on Wi-Fi only:', enabled ? 'ON' : 'OFF');
         },
 
+        // Datamining feature flag
+        setDataMiningEnabled: (enabled: boolean) => {
+          set({ dataMiningEnabled: enabled });
+          console.log('[SettingsStore] Datamining:', enabled ? 'ON' : 'OFF');
+        },
+
         // LLM Actions
         setLLMEnabled: (enabled: boolean) => {
           set((state) => ({
@@ -255,10 +269,10 @@ export const useSettingsStore = create<SettingsState>()(
       {
         name: 'pensieve-settings',
         storage: createJSONStorage(() => AsyncStorage),
-        // debugModeAccess is always sourced from the backend — never persist it
+        // debugModeAccess and dataMiningEnabled are volatile — never persist them
         partialize: (state) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { debugModeAccess, ...rest } = state;
+          const { debugModeAccess, dataMiningEnabled, ...rest } = state;
           return rest;
         },
       }

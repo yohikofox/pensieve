@@ -2060,6 +2060,38 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v26 completed');
     },
   },
+  {
+    version: 27,
+    name: 'Add debug_saved_queries table for datamining query persistence',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v27: Creating debug_saved_queries table');
+
+      db.executeSync(`
+        CREATE TABLE IF NOT EXISTS debug_saved_queries (
+          id TEXT PRIMARY KEY NOT NULL,
+          name TEXT NOT NULL,
+          sql TEXT NOT NULL,
+          query_ast TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_debug_saved_queries_updated_at
+        ON debug_saved_queries(updated_at DESC)
+      `);
+
+      console.log('[DB] ✅ Migration v27: debug_saved_queries table created');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v27');
+      db.executeSync('DROP TABLE IF EXISTS debug_saved_queries');
+      console.log('[DB] ✅ Rollback v27 completed');
+    },
+  },
 ];
 
 /**

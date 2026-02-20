@@ -69,6 +69,10 @@ export const SettingsScreen = () => {
   const syncOnWifiOnly = useSettingsStore((state) => state.syncOnWifiOnly);
   const setSyncOnWifiOnly = useSettingsStore((state) => state.setSyncOnWifiOnly);
 
+  // Datamining feature flag
+  const dataMiningEnabled = useSettingsStore((state) => state.dataMiningEnabled);
+  const setDataMiningEnabled = useSettingsStore((state) => state.setDataMiningEnabled);
+
   // Get theme label for display
   const getThemeLabel = (preference: ThemePreference): string => {
     const labels: Record<ThemePreference, string> = {
@@ -767,6 +771,62 @@ export const SettingsScreen = () => {
                 </Text>
                 <Text className="text-xs text-text-tertiary mt-0.5">
                   Tester le composant TodoDetailPopover
+                </Text>
+              </View>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Console SQL - only visible when debug mode is enabled */}
+          {debugMode && (
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-t border-border-subtle"
+              onPress={() => navigation.navigate('SqlConsole')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  🗄 Console SQL
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Exécuter des requêtes SQL sur la DB locale
+                </Text>
+              </View>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* Datamining toggle - only visible when debugModeAccess is granted */}
+          {debugModeAccess && (
+            <View className="flex-row items-center py-3 px-4 border-t border-border-subtle">
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  📊 Datamining (query builder)
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Constructeur graphique de requêtes SQL
+                </Text>
+              </View>
+              <Switch
+                value={dataMiningEnabled}
+                onValueChange={setDataMiningEnabled}
+                trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
+                thumbColor={colors.neutral[0]}
+              />
+            </View>
+          )}
+
+          {/* Datamining screen - only visible when dataMiningEnabled */}
+          {dataMiningEnabled && (
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-t border-border-subtle"
+              onPress={() => navigation.navigate('DataMining')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  📊 Datamining
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Gérer les queries sauvegardées
                 </Text>
               </View>
               <Text className="text-xl text-text-tertiary font-semibold">›</Text>

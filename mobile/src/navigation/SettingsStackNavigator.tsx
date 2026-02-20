@@ -19,6 +19,9 @@ import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { NotificationSettingsScreen } from '../screens/settings/NotificationSettingsScreen';
 import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
 import { TodoDetailPopoverTestScreen } from '../screens/__dev__/TodoDetailPopoverTestScreen';
+import { SqlConsoleScreen } from '../screens/__dev__/SqlConsoleScreen';
+import { DataMiningScreen } from '../screens/__dev__/DataMiningScreen';
+import { QueryBuilderScreen } from '../screens/__dev__/QueryBuilderScreen';
 import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 import { CustomStackHeader } from './components';
 
@@ -31,6 +34,9 @@ export type SettingsStackParamList = {
   NotificationSettings: undefined;
   LottieGallery: undefined;
   TodoDetailPopoverTest: undefined;
+  SqlConsole: undefined;
+  DataMining: undefined;
+  QueryBuilder: { queryId?: string };
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -113,6 +119,33 @@ export function SettingsStackNavigator() {
         component={TodoDetailPopoverTestScreen}
         options={{
           title: 'TodoDetailPopover Test',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="SqlConsole"
+        component={SqlConsoleScreen}
+        options={{
+          title: 'Console SQL',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="DataMining"
+        component={DataMiningScreen}
+        options={{
+          title: 'Datamining',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="QueryBuilder"
+        component={QueryBuilderScreen}
+        options={{
+          title: 'Query Builder',
           headerShown: true,
           header: (props) => <CustomStackHeader {...props} />,
         }}
