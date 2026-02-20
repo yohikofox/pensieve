@@ -168,6 +168,44 @@ Texte à analyser :
 `,
 };
 
+// ---------------------------------------------------------------------------
+// Filtre post-LLM pour le type "ideas"
+// ---------------------------------------------------------------------------
+
+const FORBIDDEN_PISTE_VERBS = [
+  /^analyser/i,
+  /^définir/i,
+  /^mettre en place/i,
+  /^explorer/i,
+  /^planifier/i,
+  /^rechercher/i,
+  /^étudier/i,
+];
+
+/**
+ * Filtre les pistes opérationnelles du texte brut retourné par le LLM.
+ *
+ * Le LLM peut produire, malgré les instructions, des pistes qui sont en réalité
+ * des tâches (ex: "Piste : analyser les besoins utilisateurs"). Ce filtre
+ * supprime toutes les lignes dont le contenu après "Piste :" commence par un
+ * verbe d'exécution interdit.
+ *
+ * Gère les deux formats possibles : "Piste : ..." et "- Piste : ..."
+ */
+export function filterIdeasContent(rawText: string): string {
+  const lines = rawText.split("\n");
+
+  const filtered = lines.filter((line) => {
+    const match = line.trim().match(/^-?\s*piste\s*:\s*(.+)/i);
+    if (!match) return true; // lignes hors-format conservées (ex: ligne vide)
+
+    const content = match[1].trim();
+    return !FORBIDDEN_PISTE_VERBS.some((rx) => rx.test(content));
+  });
+
+  return filtered.join("\n").trim();
+}
+
 /**
  * Format a date in French format for prompts
  * Example: "dimanche 26 janvier 2025, 14:30"

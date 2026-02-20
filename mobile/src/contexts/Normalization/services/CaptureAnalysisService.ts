@@ -20,7 +20,7 @@ import {
   type AnalysisType,
   ANALYSIS_TYPES,
 } from '../../capture/domain/CaptureAnalysis.model';
-import { getPreparedSystemPrompt } from './analysisPrompts';
+import { getPreparedSystemPrompt, filterIdeasContent } from './analysisPrompts';
 import { LlamaRnBackend } from './postprocessing/LlamaRnBackend';
 
 export interface AnalysisResult {
@@ -267,11 +267,17 @@ export class CaptureAnalysisService {
       const result = await this.llamaBackend!.processWithCustomPrompt(systemPrompt, textToAnalyze);
       console.log('[CaptureAnalysisService] LLM result:', result.text.substring(0, 100) + '...');
 
+      // Filtrer les pistes opérationnelles pour le type "ideas"
+      const contentToSave =
+        analysisType === "ideas"
+          ? filterIdeasContent(result.text)
+          : result.text;
+
       // Save the analysis
       const analysis = await this.analysisRepository.save({
         captureId,
         analysisType,
-        content: result.text,
+        content: contentToSave,
         modelId: result.model,
         processingDurationMs: result.processingDuration,
       });
