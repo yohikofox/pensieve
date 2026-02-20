@@ -152,6 +152,9 @@ export function SwipeableCard({
       overshootLeft={false}
       friction={2}
       enableTrackpadTwoFingerGesture
+      dragOffsetFromLeftEdge={20}
+      dragOffsetFromRightEdge={20}
+      failOffsetY={[-15, 15]}
     >
       {children}
     </Swipeable>
