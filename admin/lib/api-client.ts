@@ -88,11 +88,11 @@ export class ApiClient {
   }
 
   async getUserFeatures(userId: string) {
-    return this.fetch<{ debug_mode_access: boolean }>(`/api/admin/users/${userId}/features`);
+    return this.fetch<UserFeatureFlags>(`/api/admin/users/${userId}/features`);
   }
 
-  async updateUserFeatures(userId: string, data: { debug_mode_access: boolean }) {
-    return this.fetch<{ debug_mode_access: boolean }>(`/api/admin/users/${userId}/features`, {
+  async updateUserFeatures(userId: string, data: Partial<UserFeatureFlags>) {
+    return this.fetch<UserFeatureFlags>(`/api/admin/users/${userId}/features`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     });
@@ -293,6 +293,11 @@ export interface Tier {
   priceMonthly: number;
   isActive: boolean;
   permissionsCount?: number;
+}
+
+export interface UserFeatureFlags {
+  debug_mode_access: boolean;
+  data_mining_access: boolean;
 }
 
 export interface AssignRoleDto {

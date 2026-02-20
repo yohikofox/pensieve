@@ -24,7 +24,7 @@ export class UserFeaturesService {
   async getUserFeatures(userId: string): Promise<UserFeaturesDto> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
-      select: ['id', 'debug_mode_access'],
+      select: ['id', 'debug_mode_access', 'data_mining_access'],
     });
 
     if (!user) {
@@ -33,21 +33,22 @@ export class UserFeaturesService {
 
     const dto = new UserFeaturesDto();
     dto.debug_mode_access = user.debug_mode_access;
+    dto.data_mining_access = user.data_mining_access;
 
     return dto;
   }
 
   /**
-   * Update user's debug_mode_access permission
-   * Used by admin interface (Task 2)
+   * Update user feature flags (admin action — partial PATCH)
+   * Used by admin interface
    * @param userId - Better Auth user ID
-   * @param debugModeAccess - New value for debug_mode_access
+   * @param patch - Partial feature flags to update
    * @returns Updated UserFeaturesDto
    * @throws NotFoundException if user not found
    */
-  async updateDebugModeAccess(
+  async updateFeatures(
     userId: string,
-    debugModeAccess: boolean,
+    patch: { debug_mode_access?: boolean; data_mining_access?: boolean },
   ): Promise<UserFeaturesDto> {
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -57,12 +58,25 @@ export class UserFeaturesService {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    user.debug_mode_access = debugModeAccess;
+    if (patch.debug_mode_access !== undefined) {
+      user.debug_mode_access = patch.debug_mode_access;
+    }
+    if (patch.data_mining_access !== undefined) {
+      user.data_mining_access = patch.data_mining_access;
+    }
+
     await this.userRepository.save(user);
 
-    const dto = new UserFeaturesDto();
-    dto.debug_mode_access = user.debug_mode_access;
+    return this.getUserFeatures(userId);
+  }
 
-    return dto;
+  /**
+   * @deprecated Use updateFeatures() instead
+   */
+  async updateDebugModeAccess(
+    userId: string,
+    debugModeAccess: boolean,
+  ): Promise<UserFeaturesDto> {
+    return this.updateFeatures(userId, { debug_mode_access: debugModeAccess });
   }
 }

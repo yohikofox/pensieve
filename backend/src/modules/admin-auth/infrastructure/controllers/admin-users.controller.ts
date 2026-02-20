@@ -66,17 +66,19 @@ export class AdminUsersController {
     @Body() dto: UpdateUserFeaturesDto,
   ): Promise<UserFeaturesDto> {
     this.logger.log(
-      `Admin updating features for user ${userId}: debug_mode_access=${dto.debug_mode_access}`,
+      `Admin updating features for user ${userId}: ${JSON.stringify(dto)}`,
     );
 
-    const updatedFeatures =
-      await this.userFeaturesService.updateDebugModeAccess(
-        userId,
-        dto.debug_mode_access,
-      );
+    const updatedFeatures = await this.userFeaturesService.updateFeatures(
+      userId,
+      {
+        debug_mode_access: dto.debug_mode_access,
+        data_mining_access: dto.data_mining_access,
+      },
+    );
 
     this.logger.log(
-      `Successfully updated features for user ${userId}: debug_mode_access=${updatedFeatures.debug_mode_access}`,
+      `Successfully updated features for user ${userId}: ${JSON.stringify(updatedFeatures)}`,
     );
 
     return updatedFeatures;

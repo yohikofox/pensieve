@@ -44,13 +44,17 @@ export function useSyncUserFeatures(options: UseSyncUserFeaturesOptions) {
   const setDebugModeAccess = useSettingsStore(
     (state) => state.setDebugModeAccess,
   );
+  const setDataMiningEnabled = useSettingsStore(
+    (state) => state.setDataMiningEnabled,
+  );
 
   // Sync features to SettingsStore when they change
   useEffect(() => {
     if (isSuccess && features) {
       setDebugModeAccess(features.debug_mode_access);
+      setDataMiningEnabled(features.data_mining_access);
     }
-  }, [isSuccess, features, setDebugModeAccess]);
+  }, [isSuccess, features, setDebugModeAccess, setDataMiningEnabled]);
 
   // Force-refresh when app comes back to foreground
   useEffect(() => {

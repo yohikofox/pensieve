@@ -68,9 +68,10 @@ export default function UsersPage() {
   const [grantLoading, setGrantLoading] = useState(false);
   const [revokePermLoadingId, setRevokePermLoadingId] = useState<string | null>(null);
 
-  // Debug mode state
+  // Feature flags state
   const [debugModeAccess, setDebugModeAccess] = useState(false);
-  const [debugToggleLoading, setDebugToggleLoading] = useState(false);
+  const [dataMiningAccess, setDataMiningAccess] = useState(false);
+  const [featureToggleLoading, setFeatureToggleLoading] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -162,6 +163,7 @@ export default function UsersPage() {
       setAllRoles(roles);
       setAllPermissions(perms);
       setDebugModeAccess(features.debug_mode_access);
+      setDataMiningAccess(features.data_mining_access);
     } catch (err) {
       setAccessError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
     } finally {
@@ -178,21 +180,22 @@ export default function UsersPage() {
     setSelectedRoleId('');
     setSelectedPermissionId('');
     setDebugModeAccess(false);
+    setDataMiningAccess(false);
+    setFeatureToggleLoading(null);
   }
 
-  async function handleToggleDebugMode(enabled: boolean) {
+  async function handleToggleFeature(flag: 'debug_mode_access' | 'data_mining_access', enabled: boolean) {
     if (!accessTarget) return;
-    setDebugToggleLoading(true);
+    setFeatureToggleLoading(flag);
     setAccessError(null);
     try {
-      const result = await apiClient.updateUserFeatures(accessTarget.id, {
-        debug_mode_access: enabled,
-      });
+      const result = await apiClient.updateUserFeatures(accessTarget.id, { [flag]: enabled });
       setDebugModeAccess(result.debug_mode_access);
+      setDataMiningAccess(result.data_mining_access);
     } catch (err) {
       setAccessError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.');
     } finally {
-      setDebugToggleLoading(false);
+      setFeatureToggleLoading(null);
     }
   }
 
@@ -503,8 +506,21 @@ export default function UsersPage() {
                   </div>
                   <Switch
                     checked={debugModeAccess}
-                    onCheckedChange={handleToggleDebugMode}
-                    disabled={debugToggleLoading}
+                    onCheckedChange={(v) => handleToggleFeature('debug_mode_access', v)}
+                    disabled={featureToggleLoading !== null}
+                  />
+                </div>
+                <div className="flex items-center justify-between rounded-md border px-3 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Datamining</p>
+                    <p className="text-xs text-muted-foreground">
+                      Accès au Query Builder SQL dans les settings
+                    </p>
+                  </div>
+                  <Switch
+                    checked={dataMiningAccess}
+                    onCheckedChange={(v) => handleToggleFeature('data_mining_access', v)}
+                    disabled={featureToggleLoading !== null}
                   />
                 </div>
               </div>

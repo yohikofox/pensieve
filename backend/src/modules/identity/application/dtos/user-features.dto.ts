@@ -15,6 +15,12 @@ export class UserFeaturesDto {
    */
   debug_mode_access!: boolean;
 
+  /**
+   * Backend permission to access datamining (query builder) features
+   * Controls whether the datamining section appears in mobile settings
+   */
+  data_mining_access!: boolean;
+
   // Future feature flags can be added here without breaking changes
   // error_reporting_enabled?: boolean;
   // transcription_retry_enabled?: boolean;

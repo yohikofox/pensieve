@@ -45,6 +45,10 @@ export class User {
   @Column({ type: 'boolean', default: false })
   debug_mode_access!: boolean;
 
+  // Datamining (query builder) access — assigned from admin
+  @Column({ type: 'boolean', default: false })
+  data_mining_access!: boolean;
+
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
   audit_logs!: AuditLog[];
 }

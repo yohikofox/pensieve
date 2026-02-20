@@ -69,9 +69,8 @@ export const SettingsScreen = () => {
   const syncOnWifiOnly = useSettingsStore((state) => state.syncOnWifiOnly);
   const setSyncOnWifiOnly = useSettingsStore((state) => state.setSyncOnWifiOnly);
 
-  // Datamining feature flag
+  // Datamining feature flag — contrôlé depuis le backend (comme debugModeAccess)
   const dataMiningEnabled = useSettingsStore((state) => state.dataMiningEnabled);
-  const setDataMiningEnabled = useSettingsStore((state) => state.setDataMiningEnabled);
 
   // Get theme label for display
   const getThemeLabel = (preference: ThemePreference): string => {
@@ -433,8 +432,9 @@ export const SettingsScreen = () => {
     <>
       <StandardLayout useSafeArea={false}>
         <ScrollView className="flex-1">
-        {/* Appearance Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          <View className="py-5 gap-5">
+          {/* Appearance Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.appearance')}
           </Text>
@@ -480,8 +480,8 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* Transcription Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* Transcription Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.transcription')}
           </Text>
@@ -556,8 +556,8 @@ export const SettingsScreen = () => {
           </View>
         </Card>
 
-        {/* Sync Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* Sync Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             Synchronisation
           </Text>
@@ -580,8 +580,8 @@ export const SettingsScreen = () => {
           </View>
         </Card>
 
-        {/* Integrations Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* Integrations Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.integrations')}
           </Text>
@@ -622,8 +622,8 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* Notifications Section - Story 4.4 */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* Notifications Section - Story 4.4 */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.notifications')}
           </Text>
@@ -644,8 +644,8 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* Account Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* Account Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             Compte
           </Text>
@@ -659,8 +659,8 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* RGPD Section */}
-        <Card variant="elevated" className="mt-5 mx-4 py-2">
+          {/* RGPD Section */}
+          <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
             {t('settings.sections.privacy')}
           </Text>
@@ -696,10 +696,10 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
-        {/* Development Section */}
-        {/* Story 7.1 AC6, AC7: Debug section only visible when backend grants permission */}
-        {debugModeAccess && (
-          <Card variant="elevated" className="mt-5 mb-8 mx-4 py-2">
+          {/* Development Section */}
+          {/* Story 7.1 AC6, AC7: Debug section only visible when backend grants permission */}
+          {debugModeAccess && (
+            <Card variant="elevated" className="mx-4 py-2">
             <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
               {t('settings.sections.development')}
             </Text>
@@ -795,27 +795,7 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
           )}
 
-          {/* Datamining toggle - only visible when debugModeAccess is granted */}
-          {debugModeAccess && (
-            <View className="flex-row items-center py-3 px-4 border-t border-border-subtle">
-              <View className="flex-1">
-                <Text className="text-lg text-text-primary">
-                  📊 Datamining (query builder)
-                </Text>
-                <Text className="text-xs text-text-tertiary mt-0.5">
-                  Constructeur graphique de requêtes SQL
-                </Text>
-              </View>
-              <Switch
-                value={dataMiningEnabled}
-                onValueChange={setDataMiningEnabled}
-                trackColor={{ false: colors.neutral[200], true: colors.success[500] }}
-                thumbColor={colors.neutral[0]}
-              />
-            </View>
-          )}
-
-          {/* Datamining screen - only visible when dataMiningEnabled */}
+          {/* Datamining screen - only visible when dataMiningEnabled (set from backend admin) */}
           {dataMiningEnabled && (
             <TouchableOpacity
               className="flex-row items-center py-3 px-4 border-t border-border-subtle"
@@ -832,8 +812,9 @@ export const SettingsScreen = () => {
               <Text className="text-xl text-text-tertiary font-semibold">›</Text>
             </TouchableOpacity>
           )}
-        </Card>
-        )}
+            </Card>
+          )}
+          </View>
         </ScrollView>
       </StandardLayout>
 

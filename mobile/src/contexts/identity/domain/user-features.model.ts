@@ -12,6 +12,12 @@ export interface UserFeatures {
    */
   debug_mode_access: boolean;
 
+  /**
+   * Backend permission to access datamining (query builder) features
+   * When false, the datamining section is hidden in settings
+   */
+  data_mining_access: boolean;
+
   // Future feature flags
   // error_reporting_enabled?: boolean;
   // transcription_retry_enabled?: boolean;

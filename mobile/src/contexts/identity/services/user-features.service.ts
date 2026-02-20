@@ -118,6 +118,7 @@ export class UserFeaturesService {
   private getDefaultFeatures(): UserFeatures {
     return {
       debug_mode_access: false,
+      data_mining_access: false,
     };
   }
 }
