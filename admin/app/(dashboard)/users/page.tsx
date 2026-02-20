@@ -13,9 +13,17 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import { DataTable } from '@/components/admin/data-table';
 import { PageHeader } from '@/components/admin/page-header';
-import { apiClient } from '@/lib/api-client';
+import { apiClient, type UserDetails, type Role } from '@/lib/api-client';
 
 interface User {
   id: string;
@@ -40,6 +48,16 @@ export default function UsersPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
+
+  // Manage roles dialog state
+  const [rolesTarget, setRolesTarget] = useState<User | null>(null);
+  const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
+  const [rolesLoading, setRolesLoading] = useState(false);
+  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('');
+  const [assignLoading, setAssignLoading] = useState(false);
+  const [revokeLoadingId, setRevokeLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -121,6 +139,73 @@ export default function UsersPage() {
     }
   }
 
+  async function openRolesDialog(user: User) {
+    setRolesTarget(user);
+    setUserDetails(null);
+    setAllRoles([]);
+    setRolesError(null);
+    setSelectedRoleId('');
+    setRolesLoading(true);
+    try {
+      const [details, roles] = await Promise.all([
+        apiClient.getUserDetails(user.id),
+        apiClient.getRoles(),
+      ]);
+      setUserDetails(details);
+      setAllRoles(roles);
+    } catch (err) {
+      setRolesError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
+    } finally {
+      setRolesLoading(false);
+    }
+  }
+
+  function closeRolesDialog() {
+    setRolesTarget(null);
+    setUserDetails(null);
+    setAllRoles([]);
+    setRolesError(null);
+    setSelectedRoleId('');
+  }
+
+  async function handleAssignRole() {
+    if (!rolesTarget || !selectedRoleId) return;
+    setAssignLoading(true);
+    setRolesError(null);
+    try {
+      await apiClient.assignRole(rolesTarget.id, { roleId: selectedRoleId });
+      // Reload user details to reflect new role
+      const details = await apiClient.getUserDetails(rolesTarget.id);
+      setUserDetails(details);
+      setSelectedRoleId('');
+    } catch (err) {
+      setRolesError(err instanceof Error ? err.message : "Erreur lors de l'assignation.");
+    } finally {
+      setAssignLoading(false);
+    }
+  }
+
+  async function handleRevokeRole(roleId: string) {
+    if (!rolesTarget) return;
+    setRevokeLoadingId(roleId);
+    setRolesError(null);
+    try {
+      await apiClient.revokeRole(rolesTarget.id, roleId);
+      const details = await apiClient.getUserDetails(rolesTarget.id);
+      setUserDetails(details);
+    } catch (err) {
+      setRolesError(err instanceof Error ? err.message : 'Erreur lors de la révocation.');
+    } finally {
+      setRevokeLoadingId(null);
+    }
+  }
+
+  // Roles already assigned to the user (by id)
+  const assignedRoleIds = new Set(userDetails?.roles.map((r) => r.id) ?? []);
+
+  // Only show roles not yet assigned
+  const availableRoles = allRoles.filter((r) => !assignedRoleIds.has(r.id));
+
   const columns: ColumnDef<User>[] = [
     {
       accessorKey: 'email',
@@ -143,13 +228,22 @@ export default function UsersPage() {
     {
       id: 'actions',
       cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => openResetDialog(row.original)}
-        >
-          Réinitialiser MDP
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openRolesDialog(row.original)}
+          >
+            Gérer les rôles
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openResetDialog(row.original)}
+          >
+            Réinitialiser MDP
+          </Button>
+        </div>
       ),
     },
   ];
@@ -193,6 +287,100 @@ export default function UsersPage() {
       </div>
       <DataTable columns={columns} data={users} />
 
+      {/* ── Manage Roles Dialog ── */}
+      <Dialog open={!!rolesTarget} onOpenChange={(open) => { if (!open) closeRolesDialog(); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Gérer les rôles</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Utilisateur : <span className="font-medium">{rolesTarget?.email}</span>
+          </p>
+
+          {rolesLoading ? (
+            <p className="text-sm text-muted-foreground py-4 text-center">Chargement...</p>
+          ) : (
+            <div className="space-y-4 py-2">
+              {/* Current roles */}
+              <div className="space-y-2">
+                <Label>Rôles actuels</Label>
+                {userDetails?.roles.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Aucun rôle assigné.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {userDetails?.roles.map((role) => (
+                      <li key={role.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <div>
+                          <span className="text-sm font-medium">{role.displayName}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{role.name}</span>
+                          {role.expiresAt && (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              (exp. {new Date(role.expiresAt).toLocaleDateString('fr-FR')})
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRevokeRole(role.id)}
+                          disabled={revokeLoadingId === role.id}
+                        >
+                          {revokeLoadingId === role.id ? '...' : 'Révoquer'}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+
+              <Separator />
+
+              {/* Assign new role */}
+              <div className="space-y-2">
+                <Label>Assigner un rôle</Label>
+                {availableRoles.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Tous les rôles sont déjà assignés.</p>
+                ) : (
+                  <div className="flex gap-2">
+                    <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Choisir un rôle…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availableRoles.map((role) => (
+                          <SelectItem key={role.id} value={role.id}>
+                            {role.displayName}
+                            {role.isSystem && (
+                              <span className="ml-1 text-xs text-muted-foreground">(système)</span>
+                            )}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={handleAssignRole}
+                      disabled={!selectedRoleId || assignLoading}
+                    >
+                      {assignLoading ? '...' : 'Assigner'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {rolesError && (
+                <p className="text-sm text-destructive">{rolesError}</p>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closeRolesDialog}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Reset Password Dialog ── */}
       <Dialog open={!!resetTarget} onOpenChange={(open) => { if (!open) closeResetDialog(); }}>
         <DialogContent>
           <DialogHeader>
