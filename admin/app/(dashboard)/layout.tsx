@@ -3,16 +3,23 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { SidebarNav } from '@/components/admin/sidebar-nav';
+import { apiClient } from '@/lib/api-client';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    // Check if user is authenticated
     const token = localStorage.getItem('admin_token');
     if (!token) {
       router.push('/login');
+      return;
     }
+    // Valider le token côté serveur — si 401, api-client redirige automatiquement
+    apiClient.getMe().catch(() => {
+      localStorage.removeItem('admin_token');
+      localStorage.removeItem('admin_user');
+      router.push('/login');
+    });
   }, [router]);
 
   return (

@@ -20,11 +20,27 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('admin_token');
+          localStorage.removeItem('admin_user');
+          window.location.href = '/login';
+        }
+        throw new Error('Session expirée, veuillez vous reconnecter');
+      }
       const error = await response.json().catch(() => ({}));
       throw new Error(error.message || `API Error: ${response.status}`);
     }
 
     return response.json();
+  }
+
+  // ========================================
+  // Auth
+  // ========================================
+
+  async getMe() {
+    return this.fetch<{ id: string; email: string }>(`/api/auth/admin/me`);
   }
 
   // ========================================
