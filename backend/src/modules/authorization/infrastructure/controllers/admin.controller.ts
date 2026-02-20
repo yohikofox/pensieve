@@ -27,7 +27,7 @@ import { UserRole } from '../../implementations/postgresql/entities/user-role.en
 import { Permission } from '../../implementations/postgresql/entities/permission.entity';
 import { UserPermission } from '../../implementations/postgresql/entities/user-permission.entity';
 import { SubscriptionTier } from '../../implementations/postgresql/entities/subscription-tier.entity';
-import { PaginationQueryDto, AssignRoleDto } from '../../core/dtos/admin.dto';
+import { PaginationQueryDto, AssignRoleDto, GrantPermissionDto } from '../../core/dtos/admin.dto';
 
 @Controller('api/admin')
 @UseGuards(AdminJwtGuard)
@@ -188,6 +188,48 @@ export class AdminController {
     }
     await this.userRoleRepo.remove(userRole);
     return { message: 'Role revoked successfully' };
+  }
+
+  @Post('users/:id/permissions')
+  async grantPermission(
+    @Param('id', ParseUUIDPipe) userId: string,
+    @Body() dto: GrantPermissionDto,
+  ) {
+    const existing = await this.userPermissionRepo.findOverride(
+      userId,
+      dto.permissionId,
+    );
+    if (existing) {
+      existing.granted = dto.granted;
+      existing.expiresAt = dto.expiresAt ?? null;
+      await this.userPermissionRepo.save(existing);
+      return { message: 'Permission override updated successfully' };
+    }
+
+    const userPermission: UserPermission = this.userPermissionRepo.create({
+      userId,
+      permissionId: dto.permissionId,
+      granted: dto.granted,
+      expiresAt: dto.expiresAt ?? null,
+    });
+    await this.userPermissionRepo.save(userPermission);
+    return { message: 'Permission granted successfully' };
+  }
+
+  @Delete('users/:id/permissions/:permissionId')
+  async revokePermission(
+    @Param('id', ParseUUIDPipe) userId: string,
+    @Param('permissionId', ParseUUIDPipe) permissionId: string,
+  ) {
+    const userPermission = await this.userPermissionRepo.findOverride(
+      userId,
+      permissionId,
+    );
+    if (!userPermission) {
+      throw new NotFoundException('User permission override not found');
+    }
+    await this.userPermissionRepo.remove(userPermission);
+    return { message: 'Permission revoked successfully' };
   }
 
   @Get('roles')
