@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import { DataTable } from '@/components/admin/data-table';
 import { PageHeader } from '@/components/admin/page-header';
 import { apiClient, type UserDetails, type Role, type Permission } from '@/lib/api-client';
@@ -66,6 +67,10 @@ export default function UsersPage() {
   const [selectedPermissionId, setSelectedPermissionId] = useState<string>('');
   const [grantLoading, setGrantLoading] = useState(false);
   const [revokePermLoadingId, setRevokePermLoadingId] = useState<string | null>(null);
+
+  // Debug mode state
+  const [debugModeAccess, setDebugModeAccess] = useState(false);
+  const [debugToggleLoading, setDebugToggleLoading] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -147,14 +152,16 @@ export default function UsersPage() {
     setSelectedPermissionId('');
     setAccessLoading(true);
     try {
-      const [details, roles, perms] = await Promise.all([
+      const [details, roles, perms, features] = await Promise.all([
         apiClient.getUserDetails(user.id),
         apiClient.getRoles(),
         apiClient.getPermissions(),
+        apiClient.getUserFeatures(user.id),
       ]);
       setUserDetails(details);
       setAllRoles(roles);
       setAllPermissions(perms);
+      setDebugModeAccess(features.debug_mode_access);
     } catch (err) {
       setAccessError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
     } finally {
@@ -170,6 +177,23 @@ export default function UsersPage() {
     setAccessError(null);
     setSelectedRoleId('');
     setSelectedPermissionId('');
+    setDebugModeAccess(false);
+  }
+
+  async function handleToggleDebugMode(enabled: boolean) {
+    if (!accessTarget) return;
+    setDebugToggleLoading(true);
+    setAccessError(null);
+    try {
+      const result = await apiClient.updateUserFeatures(accessTarget.id, {
+        debug_mode_access: enabled,
+      });
+      setDebugModeAccess(result.debug_mode_access);
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.');
+    } finally {
+      setDebugToggleLoading(false);
+    }
   }
 
   async function refreshUserDetails() {
@@ -463,6 +487,26 @@ export default function UsersPage() {
                     </Button>
                   </div>
                 )}
+              </div>
+
+              <Separator />
+
+              {/* ── Fonctionnalités ── */}
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Fonctionnalités</Label>
+                <div className="flex items-center justify-between rounded-md border px-3 py-3">
+                  <div>
+                    <p className="text-sm font-medium">Mode debug</p>
+                    <p className="text-xs text-muted-foreground">
+                      Accès au Dev Panel et aux outils de diagnostic
+                    </p>
+                  </div>
+                  <Switch
+                    checked={debugModeAccess}
+                    onCheckedChange={handleToggleDebugMode}
+                    disabled={debugToggleLoading}
+                  />
+                </div>
               </div>
 
               {accessError && (

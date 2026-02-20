@@ -87,6 +87,17 @@ export class ApiClient {
     );
   }
 
+  async getUserFeatures(userId: string) {
+    return this.fetch<{ debug_mode_access: boolean }>(`/api/admin/users/${userId}/features`);
+  }
+
+  async updateUserFeatures(userId: string, data: { debug_mode_access: boolean }) {
+    return this.fetch<{ debug_mode_access: boolean }>(`/api/admin/users/${userId}/features`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  }
+
   // ========================================
   // Roles Management
   // ========================================
