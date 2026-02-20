@@ -43,6 +43,10 @@ const EMPTY_STATE_CONTENT: Record<FilterType, EmptyStateContent> = {
     actionLabel: 'Voir les actions à faire',
     actionFilter: 'active',
   },
+  trash: {
+    title: 'Corbeille vide',
+    message: 'Aucune action supprimée.\nLes actions retirées par la synchronisation apparaîtront ici.',
+  },
 };
 
 export const FilteredEmptyState: React.FC<FilteredEmptyStateProps> = ({

@@ -13,6 +13,7 @@ export interface UseFilteredTodoCountsReturn {
   all: number;
   active: number;
   completed: number;
+  deleted: number;
   isLoading: boolean;
 }
 
@@ -32,6 +33,7 @@ export const useFilteredTodoCounts = (): UseFilteredTodoCountsReturn => {
     all: counts.data?.all ?? 0,
     active: counts.data?.active ?? 0,
     completed: counts.data?.completed ?? 0,
+    deleted: counts.data?.deleted ?? 0,
     isLoading: counts.isLoading,
   };
 };

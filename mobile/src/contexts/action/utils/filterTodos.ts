@@ -1,6 +1,6 @@
 import { Todo } from "../domain/Todo.model";
 
-export type FilterType = "all" | "active" | "completed";
+export type FilterType = "all" | "active" | "completed" | "trash";
 
 /**
  * Filter todos by status
@@ -31,6 +31,10 @@ export const filterTodos = (todos: Todo[], filter: FilterType): Todo[] => {
           const bTime = b.completedAt ?? 0;
           return bTime - aTime; // DESC: most recent first
         });
+
+    case "trash":
+      // Pre-filtered from DB (_status = 'deleted'), passthrough
+      return todos;
 
     default:
       return todos;

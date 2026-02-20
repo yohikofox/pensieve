@@ -110,13 +110,28 @@ export interface ITodoRepository {
   /**
    * Count all todos grouped by status (optimized single query)
    * Story 5.3 - Code Review Fix #5: Performance optimization
-   * @returns Object with counts: { all, active, completed }
+   * @returns Object with counts: { all, active, completed, deleted }
    */
   countAllByStatus(): Promise<{
     all: number;
     active: number;
     completed: number;
+    deleted: number;
   }>;
+
+  /**
+   * Find all soft-deleted todos (_status = 'deleted') with source context
+   * Corbeille: Todos supprimés par le sync PULL
+   * @returns Array of deleted todos with thought and idea data
+   */
+  findAllDeletedWithSource(): Promise<TodoWithSource[]>;
+
+  /**
+   * Permanently delete all soft-deleted todos (_status = 'deleted')
+   * Vider la corbeille
+   * @returns Number of todos permanently deleted
+   */
+  deleteAllDeleted(): Promise<number>;
 
   /**
    * Find all todos with source context (Thought + Idea)

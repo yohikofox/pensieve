@@ -27,6 +27,7 @@ export interface FilterTabsProps {
     all: number;
     active: number;
     completed: number;
+    deleted: number;
   };
 }
 
@@ -147,6 +148,42 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
           </Text>
         </View>
       </TouchableOpacity>
+
+      {/* Tab: Corbeille (visible uniquement si des todos sont soft-deletés) */}
+      {counts.deleted > 0 && (
+        <TouchableOpacity
+          testID="filter-tab-trash"
+          style={[styles.tab, activeFilter === 'trash' && styles.tabActive]}
+          onPress={() => handleTabPress('trash')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeFilter === 'trash' }}
+          accessibilityLabel={`Corbeille (${counts.deleted})`}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeFilter === 'trash' && styles.tabTextActive,
+            ]}
+          >
+            🗑
+          </Text>
+          <View
+            style={[
+              styles.badge,
+              activeFilter === 'trash' && styles.badgeActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.badgeText,
+                activeFilter === 'trash' && styles.badgeTextActive,
+              ]}
+            >
+              {counts.deleted}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

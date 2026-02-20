@@ -65,6 +65,7 @@ describe('TodoRepository', () => {
         completed_at INTEGER,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
+        _status TEXT NOT NULL DEFAULT 'active' CHECK(_status IN ('active', 'deleted')),
         FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE,
         FOREIGN KEY (idea_id) REFERENCES ideas(id) ON DELETE SET NULL,
         FOREIGN KEY (capture_id) REFERENCES captures(id) ON DELETE CASCADE

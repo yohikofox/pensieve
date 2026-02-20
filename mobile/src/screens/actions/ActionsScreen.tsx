@@ -38,6 +38,8 @@ import { useAllTodosWithSource } from '../../contexts/action/hooks/useAllTodosWi
 import { useFilterState } from '../../contexts/action/hooks/useFilterState';
 import { useFilteredTodoCounts } from '../../contexts/action/hooks/useFilteredTodoCounts';
 import { useBulkDeleteCompleted } from '../../contexts/action/hooks/useBulkDeleteCompleted';
+import { useDeletedTodosWithSource } from '../../contexts/action/hooks/useDeletedTodosWithSource';
+import { useEmptyTrash } from '../../contexts/action/hooks/useEmptyTrash';
 import { filterTodos } from '../../contexts/action/utils/filterTodos';
 import { sortTodos, isSectionData } from '../../contexts/action/utils/sortTodos';
 import { FilterTabs } from '../../contexts/action/ui/FilterTabs';
@@ -90,6 +92,17 @@ export const ActionsScreen = () => {
   // Story 5.4: Bulk delete completed todos (AC10, Task 11)
   const bulkDeleteCompleted = useBulkDeleteCompleted();
 
+  // Corbeille: todos soft-deletés par le sync PULL
+  const { data: deletedTodos } = useDeletedTodosWithSource();
+  const emptyTrash = useEmptyTrash();
+
+  // Auto-retour sur 'active' si le filtre 'trash' est restauré mais la corbeille est vide
+  React.useEffect(() => {
+    if (filter === 'trash' && counts.deleted === 0 && !counts.isLoading) {
+      setFilter('active');
+    }
+  }, [filter, counts.deleted, counts.isLoading]);
+
   // Sort menu visibility
   const [isSortMenuVisible, setSortMenuVisible] = useState(false);
 
@@ -117,11 +130,14 @@ export const ActionsScreen = () => {
     }, [scrollOffset])
   );
 
+  // Source de données conditionnelle: corbeille ou todos actifs
+  const sourceData = filter === 'trash' ? (deletedTodos ?? []) : (todos ?? []);
+
   // Pre-compute todos with preview and timestamp (Story 5.2 - Performance)
   const enrichedTodos = useMemo(() => {
-    if (!todos) return [];
+    if (!sourceData) return [];
 
-    return todos.map((todo): EnrichedTodo => {
+    return sourceData.map((todo): EnrichedTodo => {
       const sourceText = todo.idea?.text || todo.thought?.summary;
       const sourcePreview = sourceText
         ? sourceText.length > MAX_PREVIEW_LENGTH
@@ -142,19 +158,21 @@ export const ActionsScreen = () => {
         sourceTimestamp,
       };
     });
-  }, [todos]);
+  }, [sourceData]);
 
-  // Story 5.3: Apply filtering (AC2-AC4)
+  // Story 5.3: Apply filtering (AC2-AC4) — passthrough pour trash (pré-filtré depuis la DB)
   const filteredTodos = useMemo(() => {
     if (!enrichedTodos || enrichedTodos.length === 0) return [];
+    if (filter === 'trash') return enrichedTodos;
     return filterTodos(enrichedTodos, filter);
   }, [enrichedTodos, filter]);
 
-  // Story 5.3: Apply sorting (AC5-AC7)
+  // Story 5.3: Apply sorting (AC5-AC7) — pas de tri pour trash
   const sortedData = useMemo(() => {
     if (!filteredTodos || filteredTodos.length === 0) return [];
+    if (filter === 'trash') return filteredTodos;
     return sortTodos(filteredTodos, sort);
-  }, [filteredTodos, sort]);
+  }, [filteredTodos, sort, filter]);
 
   // Check if sorted data is sections or flat list
   const isSections = isSectionData(sortedData);
@@ -218,6 +236,51 @@ export const ActionsScreen = () => {
   const handleScroll = (event: any) => {
     const offset = event.nativeEvent.contentOffset.y;
     setScrollOffset(offset);
+  };
+
+  // Corbeille: vider définitivement les todos soft-deletés
+  const handleEmptyTrash = () => {
+    if (!counts.deleted || counts.deleted === 0) {
+      return;
+    }
+
+    const deletedCount = counts.deleted;
+
+    Alert.alert(
+      'Vider la corbeille',
+      `Êtes-vous sûr de vouloir supprimer définitivement ${deletedCount} action${deletedCount > 1 ? 's' : ''} ?`,
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+        },
+        {
+          text: 'Vider',
+          style: 'destructive',
+          onPress: () => {
+            emptyTrash.mutate(undefined, {
+              onSuccess: (actualDeletedCount) => {
+                setFilter('active');
+                setTimeout(() => {
+                  Alert.alert(
+                    'Corbeille vidée',
+                    `${actualDeletedCount} action${actualDeletedCount > 1 ? 's' : ''} supprimée${actualDeletedCount > 1 ? 's' : ''} définitivement`
+                  );
+                }, 300);
+              },
+              onError: (error) => {
+                console.error('[ActionsScreen] Empty trash failed:', error);
+                Alert.alert(
+                  'Erreur',
+                  'Impossible de vider la corbeille. Veuillez réessayer.',
+                  [{ text: 'OK', style: 'default' }]
+                );
+              },
+            });
+          },
+        },
+      ]
+    );
   };
 
   // Story 5.4 - Task 11: Bulk delete handler (AC10)
@@ -314,6 +377,18 @@ export const ActionsScreen = () => {
               <Text style={styles.deleteAllButtonText}>🗑️ Tout supprimer</Text>
             </TouchableOpacity>
           )}
+
+          {/* Corbeille: bouton vider (uniquement sur le filtre trash) */}
+          {filter === 'trash' && counts.deleted > 0 && (
+            <TouchableOpacity
+              style={styles.deleteAllButton}
+              onPress={handleEmptyTrash}
+              accessibilityRole="button"
+              accessibilityLabel="Vider la corbeille"
+            >
+              <Text style={styles.deleteAllButtonText}>🗑 Vider la corbeille</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </ErrorBoundary>
@@ -330,6 +405,7 @@ export const ActionsScreen = () => {
         todo={todo}
         sourcePreview={todo.sourcePreview}
         sourceTimestamp={todo.sourceTimestamp}
+        readonly={filter === 'trash'}
       />
     </Animated.View>
   );

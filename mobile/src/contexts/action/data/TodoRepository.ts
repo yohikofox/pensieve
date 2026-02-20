@@ -304,6 +304,7 @@ export class TodoRepository implements ITodoRepository {
   async findAll(): Promise<Todo[]> {
     const result = database.execute(
       `SELECT * FROM todos
+       WHERE _status = 'active'
        ORDER BY
          CASE WHEN status = 'todo' THEN 0 ELSE 1 END ASC,
          CASE WHEN deadline IS NULL THEN 1 ELSE 0 END ASC,
@@ -327,7 +328,7 @@ export class TodoRepository implements ITodoRepository {
    */
   async countActive(): Promise<number> {
     const result = database.execute(
-      `SELECT COUNT(*) as count FROM todos WHERE status = 'todo'`,
+      `SELECT COUNT(*) as count FROM todos WHERE status = 'todo' AND _status = 'active'`,
     );
 
     const rows = result.rows || [];
@@ -346,7 +347,7 @@ export class TodoRepository implements ITodoRepository {
    */
   async countByStatus(status: "todo" | "completed"): Promise<number> {
     const result = database.execute(
-      `SELECT COUNT(*) as count FROM todos WHERE status = ?`,
+      `SELECT COUNT(*) as count FROM todos WHERE status = ? AND _status = 'active'`,
       [status],
     );
 
@@ -361,24 +362,26 @@ export class TodoRepository implements ITodoRepository {
   /**
    * Count all todos grouped by status (optimized single query)
    * Story 5.3 - Code Review Fix #5: Performance optimization
-   * @returns Object with counts: { all, active, completed }
+   * @returns Object with counts: { all, active, completed, deleted }
    */
   async countAllByStatus(): Promise<{
     all: number;
     active: number;
     completed: number;
+    deleted: number;
   }> {
     const result = database.execute(
       `SELECT
-        COUNT(*) as all_count,
-        SUM(CASE WHEN status = 'todo' THEN 1 ELSE 0 END) as active_count,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed_count
+        SUM(CASE WHEN _status = 'active' THEN 1 ELSE 0 END) as all_count,
+        SUM(CASE WHEN status = 'todo' AND _status = 'active' THEN 1 ELSE 0 END) as active_count,
+        SUM(CASE WHEN status = 'completed' AND _status = 'active' THEN 1 ELSE 0 END) as completed_count,
+        SUM(CASE WHEN _status = 'deleted' THEN 1 ELSE 0 END) as deleted_count
        FROM todos`,
     );
 
     const rows = result.rows || [];
     if (rows.length === 0) {
-      return { all: 0, active: 0, completed: 0 };
+      return { all: 0, active: 0, completed: 0, deleted: 0 };
     }
 
     const row = rows[0];
@@ -386,7 +389,56 @@ export class TodoRepository implements ITodoRepository {
       all: (row.all_count as number) || 0,
       active: (row.active_count as number) || 0,
       completed: (row.completed_count as number) || 0,
+      deleted: (row.deleted_count as number) || 0,
     };
+  }
+
+  /**
+   * Find all soft-deleted todos (_status = 'deleted') with source context
+   * Corbeille: Todos supprimés par le sync PULL
+   * @returns Array of deleted todos with thought and idea data
+   */
+  async findAllDeletedWithSource(): Promise<TodoWithSource[]> {
+    const result = database.execute(
+      `SELECT
+        t.*,
+        th.id as thought_id_data,
+        th.capture_id as thought_capture_id,
+        th.user_id as thought_user_id,
+        th.summary as thought_summary,
+        th.confidence_score as thought_confidence_score,
+        th.processing_time_ms as thought_processing_time_ms,
+        th.created_at as thought_created_at,
+        th.updated_at as thought_updated_at,
+        i.id as idea_id_data,
+        i.thought_id as idea_thought_id,
+        i.user_id as idea_user_id,
+        i.text as idea_text,
+        i.order_index as idea_order_index,
+        i.created_at as idea_created_at,
+        i.updated_at as idea_updated_at
+       FROM todos t
+       LEFT JOIN thoughts th ON t.thought_id = th.id
+       LEFT JOIN ideas i ON t.idea_id = i.id
+       WHERE t._status = 'deleted'
+       ORDER BY t.updated_at DESC`,
+    );
+
+    const rows = result.rows || [];
+    return rows.map((row: any) => this.mapRowToTodoWithSource(row));
+  }
+
+  /**
+   * Permanently delete all soft-deleted todos (_status = 'deleted')
+   * Vider la corbeille
+   * @returns Number of todos permanently deleted
+   */
+  async deleteAllDeleted(): Promise<number> {
+    const result = database.execute(
+      `DELETE FROM todos WHERE _status = 'deleted'`,
+    );
+
+    return result.rowsAffected || 0;
   }
 
   /**
@@ -421,6 +473,7 @@ export class TodoRepository implements ITodoRepository {
        FROM todos t
        LEFT JOIN thoughts th ON t.thought_id = th.id
        LEFT JOIN ideas i ON t.idea_id = i.id
+       WHERE t._status = 'active'
        ORDER BY
          CASE WHEN t.status = 'todo' THEN 0 ELSE 1 END ASC,
          CASE WHEN t.deadline IS NULL THEN 1 ELSE 0 END ASC,

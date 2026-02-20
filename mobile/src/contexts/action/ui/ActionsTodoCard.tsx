@@ -29,12 +29,14 @@ interface ActionsTodoCardProps {
   todo: Todo;
   sourcePreview?: string;
   sourceTimestamp?: string;
+  readonly?: boolean;
 }
 
 export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   todo,
   sourcePreview,
   sourceTimestamp,
+  readonly = false,
 }) => {
   const [isDetailVisible, setIsDetailVisible] = useState(false);
   const [showGardenCelebration, setShowGardenCelebration] = useState(false);
@@ -124,26 +126,32 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
         className="bg-bg-card p-4 mb-2 rounded-lg active:opacity-80"
       >
         <View className="flex-row items-start">
-          {/* Checkbox with completion animation */}
-          <Pressable
-            onPress={handleToggle}
-            className="mr-3 mt-0.5"
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <CompletionAnimation isCompleted={todo.status === 'completed'}>
-              <View
-                className={`w-6 h-6 rounded border-2 items-center justify-center ${
-                  todo.status === 'completed'
-                    ? 'bg-primary-action border-primary-action'
-                    : 'border-border-default'
-                }`}
-              >
-                {todo.status === 'completed' && (
-                  <Feather name="check" size={16} color="white" />
-                )}
-              </View>
-            </CompletionAnimation>
-          </Pressable>
+          {/* Checkbox ou icône corbeille (readonly = supprimé par sync) */}
+          {readonly ? (
+            <View className="mr-3 mt-0.5 w-6 h-6 items-center justify-center">
+              <Feather name="trash-2" size={18} color="#9ca3af" />
+            </View>
+          ) : (
+            <Pressable
+              onPress={handleToggle}
+              className="mr-3 mt-0.5"
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <CompletionAnimation isCompleted={todo.status === 'completed'}>
+                <View
+                  className={`w-6 h-6 rounded border-2 items-center justify-center ${
+                    todo.status === 'completed'
+                      ? 'bg-primary-action border-primary-action'
+                      : 'border-border-default'
+                  }`}
+                >
+                  {todo.status === 'completed' && (
+                    <Feather name="check" size={16} color="white" />
+                  )}
+                </View>
+              </CompletionAnimation>
+            </Pressable>
+          )}
 
           {/* Content */}
           <View className="flex-1">
