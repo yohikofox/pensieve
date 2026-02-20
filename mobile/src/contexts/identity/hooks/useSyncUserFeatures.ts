@@ -7,9 +7,10 @@
  * AC5: Manual refresh
  */
 
-import { useEffect } from 'react';
-import { useUserFeatures } from './useUserFeatures';
-import { useSettingsStore } from '@/stores/settingsStore';
+import { useEffect } from "react";
+import { AppState } from "react-native";
+import { useUserFeatures } from "./useUserFeatures";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 interface UseSyncUserFeaturesOptions {
   /**
@@ -39,14 +40,25 @@ interface UseSyncUserFeaturesOptions {
  */
 export function useSyncUserFeatures(options: UseSyncUserFeaturesOptions) {
   const { userId, enabled = true } = options;
-  const { data: features, isSuccess } = useUserFeatures({ userId, enabled });
-  const setDebugModeAccess = useSettingsStore((state) => state.setDebugModeAccess);
+  const { data: features, isSuccess, refetch } = useUserFeatures({ userId, enabled });
+  const setDebugModeAccess = useSettingsStore(
+    (state) => state.setDebugModeAccess,
+  );
 
-  // AC3: Sync features to SettingsStore when they change
+  // Sync features to SettingsStore when they change
   useEffect(() => {
     if (isSuccess && features) {
-      // AC6, AC7: Update debugModeAccess in SettingsStore
       setDebugModeAccess(features.debug_mode_access);
     }
   }, [isSuccess, features, setDebugModeAccess]);
+
+  // Force-refresh when app comes back to foreground
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active' && userId) {
+        refetch();
+      }
+    });
+    return () => subscription.remove();
+  }, [refetch, userId]);
 }

@@ -523,19 +523,18 @@ export class SyncService {
    *   backend.id         → server_id   (UUID backend stocké localement)
    *   backend.typeName   → type        ('audio' | 'text')
    *   backend.stateName  → state       ('recording' | 'captured' | 'failed' | ...)
-   *   backend.rawContent → raw_content
+   *   backend.rawContent → raw_content  (only when non-null — preserves local audio path)
    *   backend.normalizedText → normalized_text
    *   backend.fileSize   → file_size
    *   backend.createdAt  → created_at  (Unix ms)
    *   backend.lastModifiedAt → updated_at (Unix ms)
    */
   private mapCaptureFromBackend(record: any): Record<string, string | number | null> {
-    return {
+    const mapped: Record<string, string | number | null> = {
       id: record.clientId,
       server_id: record.id,
       type: record.typeName ?? 'audio',
       state: record.stateName ?? 'captured',
-      raw_content: record.rawContent ?? null,
       normalized_text: record.normalizedText ?? null,
       duration: record.duration ?? null,
       file_size: record.fileSize ?? null,
@@ -546,6 +545,15 @@ export class SyncService {
       conflict_data: null,
       _status: 'active',
     };
+
+    // raw_content is only included when the server provides a non-null value.
+    // For audio captures, raw_content is the local file path (device-only).
+    // Overwriting with null would erase the audio path and break transcription.
+    if (record.rawContent != null) {
+      mapped.raw_content = record.rawContent;
+    }
+
+    return mapped;
   }
 
   /**

@@ -34,20 +34,17 @@ describe('UserFeaturesService', () => {
   });
 
   describe('getUserFeatures', () => {
-    it('should return cached features if valid', async () => {
-      const cachedFeatures: UserFeaturesCache = {
-        features: mockFeatures,
-        cachedAt: Date.now(),
-      };
-
-      mockRepository.getCachedFeatures.mockResolvedValue(cachedFeatures);
-      mockRepository.isCacheValid.mockReturnValue(true);
+    it('should always fetch from server and update cache', async () => {
+      // Server-first: cache is never consulted on the happy path
+      mockRepository.fetchUserFeatures.mockResolvedValue(success(mockFeatures));
+      mockRepository.saveCachedFeatures.mockResolvedValue(success(undefined));
 
       const result = await service.getUserFeatures('user-id');
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(result.data).toEqual(mockFeatures);
-      expect(mockRepository.fetchUserFeatures).not.toHaveBeenCalled();
+      expect(mockRepository.fetchUserFeatures).toHaveBeenCalledWith('user-id');
+      expect(mockRepository.saveCachedFeatures).toHaveBeenCalledWith(mockFeatures);
     });
 
     it('should fetch from server if no cache', async () => {
@@ -63,22 +60,24 @@ describe('UserFeaturesService', () => {
       expect(mockRepository.saveCachedFeatures).toHaveBeenCalledWith(mockFeatures);
     });
 
-    it('should fetch from server if cache expired', async () => {
+    it('should use expired cache as last resort when server fails', async () => {
       const expiredCache: UserFeaturesCache = {
         features: mockFeatures,
         cachedAt: Date.now() - 86400000, // 24 hours ago
       };
 
-      mockRepository.getCachedFeatures.mockResolvedValue(expiredCache);
+      mockRepository.fetchUserFeatures.mockResolvedValue(databaseError('Network error'));
+      // getCachedFeaturesIfValid: returns expired → null; last-resort: returns expiredCache
+      mockRepository.getCachedFeatures
+        .mockResolvedValueOnce(expiredCache) // inside getCachedFeaturesIfValid
+        .mockResolvedValueOnce(expiredCache); // last-resort call
       mockRepository.isCacheValid.mockReturnValue(false);
       mockRepository.clearExpiredCache.mockResolvedValue(success(undefined));
-      mockRepository.fetchUserFeatures.mockResolvedValue(success(mockFeatures));
-      mockRepository.saveCachedFeatures.mockResolvedValue(success(undefined));
 
       const result = await service.getUserFeatures('user-id');
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
-      expect(mockRepository.clearExpiredCache).toHaveBeenCalled();
+      expect(result.data).toEqual(mockFeatures);
       expect(mockRepository.fetchUserFeatures).toHaveBeenCalled();
     });
 

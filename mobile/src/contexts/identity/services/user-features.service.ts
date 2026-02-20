@@ -38,31 +38,29 @@ export class UserFeaturesService {
     forceRefresh: boolean = false,
   ): Promise<RepositoryResult<UserFeatures>> {
     try {
-      // Try to get cached features first
-      if (!forceRefresh) {
-        const cachedResult = await this.getCachedFeaturesIfValid();
-        if (cachedResult.type === RepositoryResultType.SUCCESS && cachedResult.data) {
-          return success(cachedResult.data);
-        }
-      }
-
-      // Fetch from server
+      // Always try server first — cache is offline fallback only
       const fetchResult = await this.repository.fetchUserFeatures(userId);
 
       if (fetchResult.type === RepositoryResultType.SUCCESS && fetchResult.data) {
-        // Save to cache on successful fetch
+        // Update cache with fresh server data
         await this.repository.saveCachedFeatures(fetchResult.data);
         return success(fetchResult.data);
       }
 
-      // If fetch failed, try to use cached features (even if expired)
-      const cache = await this.repository.getCachedFeatures();
-      if (cache) {
-        console.warn(
-          'Using expired cache due to fetch failure:',
-          fetchResult.error,
-        );
-        return success(cache.features);
+      // Server unreachable — fall back to cache (offline scenario)
+      if (!forceRefresh) {
+        const cachedResult = await this.getCachedFeaturesIfValid();
+        if (cachedResult.type === RepositoryResultType.SUCCESS && cachedResult.data) {
+          console.warn('Using cache due to server fetch failure:', fetchResult.error);
+          return success(cachedResult.data);
+        }
+
+        // Try expired cache as last resort
+        const cache = await this.repository.getCachedFeatures();
+        if (cache) {
+          console.warn('Using expired cache due to fetch failure:', fetchResult.error);
+          return success(cache.features);
+        }
       }
 
       // AC4: If offline and no cache, return safe defaults

@@ -9,6 +9,7 @@ import {
   TextInput,
   Switch,
 } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import { Feather } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -104,9 +105,18 @@ export const SettingsScreen = () => {
   const [showAudioPlayerDialog, setShowAudioPlayerDialog] = useState(false);
   const toast = useToast();
 
+  const queryClient = useQueryClient();
   const modelService = new TranscriptionModelService();
   const llmModelService = new LLMModelService();
   const engineService = container.resolve(TranscriptionEngineService);
+
+  // Refresh user features (debug mode access) when screen comes into focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      queryClient.invalidateQueries({ queryKey: ['userFeatures'] });
+    });
+    return unsubscribe;
+  }, [navigation, queryClient]);
 
   // Load transcription engine on mount and when returning to screen
   useEffect(() => {

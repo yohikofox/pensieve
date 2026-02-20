@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { container } from 'tsyringe';
 import { UserFeaturesService } from '../services/user-features.service';
 import type { UserFeatures } from '../domain/user-features.model';
+import { RepositoryResultType } from '@/contexts/shared/domain/Result';
 
 const QUERY_KEY = ['userFeatures'] as const;
 
@@ -64,8 +65,8 @@ export function useUserFeatures(options: UseUserFeaturesOptions) {
       const service = getUserFeaturesService();
       const result = await service.getUserFeatures(userId);
 
-      if (!result.success) {
-        throw result.error;
+      if (result.type !== RepositoryResultType.SUCCESS || !result.data) {
+        throw new Error(result.error ?? 'Failed to fetch user features');
       }
 
       return result.data;
@@ -100,12 +101,12 @@ export function useRefreshUserFeatures() {
     const service = getUserFeaturesService();
     const result = await service.refreshUserFeatures(userId);
 
-    if (result.success) {
+    if (result.type === RepositoryResultType.SUCCESS && result.data) {
       // Update React Query cache
       queryClient.setQueryData([...QUERY_KEY, userId], result.data);
       return result.data;
     }
 
-    throw result.error;
+    throw new Error(result.error ?? 'Failed to refresh user features');
   };
 }

@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { UserFeaturesRepository } from '../user-features.repository';
 import type { UserFeatures, UserFeaturesCache } from '../../domain/user-features.model';
 import { RepositoryResultType } from '@/contexts/shared/domain/Result';
+import type { AuthTokenManager } from '@/infrastructure/auth/AuthTokenManager';
 
 // Mock AsyncStorage
 jest.mock('@react-native-async-storage/async-storage');
@@ -28,23 +29,66 @@ jest.mock('@/config/api', () => ({
 
 describe('UserFeaturesRepository', () => {
   let repository: UserFeaturesRepository;
+  let mockTokenManager: jest.Mocked<Pick<AuthTokenManager, 'getValidToken'>>;
 
   const mockFeatures: UserFeatures = {
     debug_mode_access: true,
   };
 
   beforeEach(() => {
-    repository = new UserFeaturesRepository();
+    mockTokenManager = {
+      getValidToken: jest.fn(),
+    };
+    repository = new UserFeaturesRepository(mockTokenManager as unknown as AuthTokenManager);
     jest.clearAllMocks();
   });
 
   describe('fetchUserFeatures', () => {
-    it('should return database error due to auth not implemented', async () => {
-      // getAuthToken() throws error since auth integration is not yet implemented
+    it('should return database error when auth token is unavailable', async () => {
+      mockTokenManager.getValidToken.mockResolvedValue({
+        type: RepositoryResultType.AUTH_ERROR,
+        error: 'Aucun token stocké',
+      });
+
       const result = await repository.fetchUserFeatures('user-id');
 
       expect(result.type).toBe(RepositoryResultType.DATABASE_ERROR);
-      expect(result.error).toContain('Auth token retrieval not yet implemented');
+      expect(result.error).toContain('Aucun token stocké');
+    });
+
+    it('should return success when token valid and API responds OK', async () => {
+      mockTokenManager.getValidToken.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: 'valid-token',
+      });
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => mockFeatures,
+      });
+
+      const result = await repository.fetchUserFeatures('user-id');
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data).toEqual(mockFeatures);
+    });
+
+    it('should return database error when API responds with error', async () => {
+      mockTokenManager.getValidToken.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: 'valid-token',
+      });
+
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: false,
+        status: 403,
+        text: async () => 'Forbidden',
+      });
+
+      const result = await repository.fetchUserFeatures('user-id');
+
+      expect(result.type).toBe(RepositoryResultType.DATABASE_ERROR);
+      expect(result.error).toContain('403');
     });
   });
 

@@ -6,7 +6,7 @@
  */
 
 import 'reflect-metadata';
-import { injectable } from 'tsyringe';
+import { injectable, inject } from 'tsyringe';
 // ASYNC_STORAGE_OK: UI preference cache only (user feature flags, TTL-based, non-authoritative) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { IUserFeaturesRepository } from '../domain/user-features-repository.interface';
@@ -18,11 +18,17 @@ import {
   RepositoryResultType,
 } from '@/contexts/shared/domain/Result';
 import { apiConfig } from '@/config/api';
+import { AuthTokenManager } from '@/infrastructure/auth/AuthTokenManager';
+import { TOKENS } from '@/infrastructure/di/tokens';
 
 const CACHE_KEY = '@pensieve:userFeatures';
 
 @injectable()
 export class UserFeaturesRepository implements IUserFeaturesRepository {
+
+  constructor(
+    @inject(TOKENS.IAuthTokenManager) private readonly tokenManager: AuthTokenManager,
+  ) {}
 
   /**
    * Fetch user features from backend API
@@ -30,7 +36,6 @@ export class UserFeaturesRepository implements IUserFeaturesRepository {
    */
   async fetchUserFeatures(userId: string): Promise<RepositoryResult<UserFeatures>> {
     try {
-      // TODO: Get auth token from AuthContext
       const token = await this.getAuthToken();
 
       const response = await fetch(apiConfig.endpoints.users.features(userId), {
@@ -145,12 +150,13 @@ export class UserFeaturesRepository implements IUserFeaturesRepository {
   }
 
   /**
-   * Get auth token from AuthContext
-   * TODO: Integrate with AuthContext when available
+   * Get valid auth token via AuthTokenManager (Better Auth / SecureStore)
    */
   private async getAuthToken(): Promise<string> {
-    // Placeholder - should be integrated with existing auth system
-    // In real implementation, get from Better Auth session via IAuthService
-    throw new Error('Auth token retrieval not yet implemented');
+    const result = await this.tokenManager.getValidToken();
+    if (result.type !== RepositoryResultType.SUCCESS) {
+      throw new Error(result.error ?? 'Failed to retrieve auth token');
+    }
+    return result.data as string;
   }
 }
