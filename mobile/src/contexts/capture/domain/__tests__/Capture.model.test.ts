@@ -8,7 +8,7 @@
  * Migration: WatermelonDB Model → TypeScript Interface
  */
 
-import { type Capture } from '../Capture.model';
+import { type Capture, CAPTURE_STATES, CAPTURE_TYPES } from '../Capture.model';
 
 describe('Capture Model', () => {
   describe('Type System', () => {
@@ -80,4 +80,5 @@ describe('Capture Model', () => {
       expect(capture.projectId).toBeUndefined();
     });
   });
+
 });

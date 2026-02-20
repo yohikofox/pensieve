@@ -50,6 +50,7 @@ const initialState = {
 
   // Listener coordination
   reloadCapture: null as (() => Promise<void>) | null,
+  isInQueue: false,
 
   // Model availability (Story 2.7)
   hasModelAvailable: null as boolean | null,
@@ -120,6 +121,7 @@ type CaptureDetailState = typeof initialState & {
   setMetadata: (metadata: Record<string, CaptureMetadata>) => void;
   setLoading: (loading: boolean) => void;
   setReloadCapture: (fn: (() => Promise<void>) | null) => void;
+  setIsInQueue: (inQueue: boolean) => void;
   setHasModelAvailable: (available: boolean | null) => void;
   setIsNativeEngine: (isNative: boolean) => void;
 
@@ -195,6 +197,7 @@ export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
   setMetadata: (metadata) => set({ metadata }),
   setLoading: (loading) => set({ loading }),
   setReloadCapture: (fn) => set({ reloadCapture: fn }),
+  setIsInQueue: (inQueue) => set({ isInQueue: inQueue }),
   setHasModelAvailable: (available) => set({ hasModelAvailable: available }),
   setIsNativeEngine: (isNative) => set({ isNativeEngine: isNative }),
 

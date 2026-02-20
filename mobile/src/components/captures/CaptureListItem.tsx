@@ -51,6 +51,7 @@ export function CaptureListItem({
   handlers,
 }: CaptureListItemProps) {
   const { onLongPress, onDelete, onShare, ...cardHandlers } = handlers;
+  const isProcessing = item.state === 'processing' || (item as CaptureWithQueue).isInQueue === true;
 
   return (
     <AnimatedCaptureCard index={index} enabled={!isReduceMotionEnabled}>
@@ -63,7 +64,7 @@ export function CaptureListItem({
         }}
       >
         <View>
-          <SwipeableCard onDelete={onDelete} onShare={onShare}>
+          <SwipeableCard onDelete={onDelete} onShare={onShare} enabled={!isProcessing}>
             <CaptureCard
               item={item as CaptureWithQueue}
               playback={playback}

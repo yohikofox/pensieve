@@ -58,7 +58,6 @@ export function useCapturesListener() {
     // Nouvelle capture enfilée pour transcription (= capture audio créée)
     const handleAdded = (event: QueueItemAddedEvent) => {
       console.log('[CapturesListener] 🎤 New capture added to queue:', event.payload.captureId);
-      updateCapture(event.payload.captureId);
       setIsInQueue(event.payload.captureId, true);
     };
 

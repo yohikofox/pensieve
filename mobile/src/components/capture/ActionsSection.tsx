@@ -23,8 +23,10 @@ export function ActionsSection() {
   const capture = useCaptureDetailStore((state) => state.capture);
   const isAudio = useCaptureDetailStore((state) => state.isAudio);
   const metadata = useCaptureDetailStore((state) => state.metadata);
+  const isInQueue = useCaptureDetailStore((state) => state.isInQueue);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
+  const isCaptureInProcessing = capture?.state === "processing" || isInQueue;
 
   // Direct store access - no wrapper hooks
   const editedText = useCaptureDetailStore((state) => state.editedText);
@@ -77,15 +79,26 @@ export function ActionsSection() {
           { backgroundColor: themeColors.actionsContentBg },
         ]}
       >
+        {/* Processing indicator */}
+        {isCaptureInProcessing && (
+          <View style={styles.processingIndicator}>
+            <ActivityIndicator size="small" color={isDark ? colors.info[400] : colors.info[700]} />
+            <Text style={[styles.processingText, { color: isDark ? colors.info[400] : colors.info[700] }]}>
+              Traitement en cours...
+            </Text>
+          </View>
+        )}
+
         {/* Post-processing action */}
         {showPostProcessButton && (
           <TouchableOpacity
             style={[
               styles.quickActionButton,
               { backgroundColor: themeColors.actionButtonBg },
+              isCaptureInProcessing && styles.disabledButton,
             ]}
             onPress={handleRePostProcess}
-            disabled={reprocessing.postProcess}
+            disabled={reprocessing.postProcess || isCaptureInProcessing}
           >
             {reprocessing.postProcess ? (
               <>
@@ -137,9 +150,10 @@ export function ActionsSection() {
                 backgroundColor: themeColors.reprocessButtonTranscribe,
                 marginTop: 12,
               },
+              isCaptureInProcessing && styles.disabledButton,
             ]}
             onPress={handleReTranscribe}
-            disabled={reprocessing.transcribe}
+            disabled={reprocessing.transcribe || isCaptureInProcessing}
           >
             {reprocessing.transcribe ? (
               <>
@@ -235,5 +249,20 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFFFFF",
     letterSpacing: 0.5,
+  },
+  processingIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+    marginBottom: 8,
+  },
+  processingText: {
+    fontSize: 14,
+    fontWeight: "500",
+    marginLeft: 8,
+  },
+  disabledButton: {
+    opacity: 0.4,
   },
 });

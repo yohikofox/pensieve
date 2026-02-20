@@ -54,7 +54,8 @@ export function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
   const { onPress, onStop, onPlayPause, onTranscribe, onRetry, onPlayWav, onDeleteWav } = handlers;
 
   const isAudio = item.type === 'audio';
-  const isProcessing = item.state === 'processing';
+  const isProcessing = item.state === 'processing' || item.isInQueue === true;
+  const isStateProcessing = item.state === 'processing';
   const isReady = item.state === 'ready';
   const isFailed = item.state === 'failed';
   const isCaptured = item.state === 'captured';
@@ -155,7 +156,7 @@ export function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
                   </PulsingBadge>
                 )}
 
-              {isProcessing && (
+              {isStateProcessing && (
                 <PulsingBadge enabled={true}>
                   <Badge variant="processing">
                     <View className="flex-row items-center">
@@ -235,7 +236,7 @@ export function CaptureCard({ item, playback, handlers }: CaptureCardProps) {
                 />
               </TouchableOpacity>
 
-              {isCaptured && (
+              {isCaptured && !isProcessing && (
                 <TouchableOpacity
                   className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
                   activeOpacity={0.7}

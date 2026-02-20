@@ -18,6 +18,7 @@ import { container } from 'tsyringe';
 import { EventBus } from '../contexts/shared/events/EventBus';
 import { useCaptureDetailStore } from '../stores/captureDetailStore';
 import type {
+  QueueItemAddedEvent,
   QueueItemCompletedEvent,
   QueueItemFailedEvent,
   QueueItemStartedEvent,
@@ -35,6 +36,7 @@ export function useCaptureDetailListener() {
   // Read from store - autonomous pattern
   const captureId = useCaptureDetailStore((state) => state.captureId);
   const reloadCapture = useCaptureDetailStore((state) => state.reloadCapture);
+  const setIsInQueue = useCaptureDetailStore((state) => state.setIsInQueue);
 
   useEffect(() => {
     if (!captureId || !reloadCapture) {
@@ -46,10 +48,19 @@ export function useCaptureDetailListener() {
 
     const eventBus = container.resolve<EventBus>('EventBus');
 
+    // Capture added to transcription queue — immediate visual feedback
+    const handleAdded = (event: QueueItemAddedEvent) => {
+      if (event.payload.captureId === captureId) {
+        console.log('[CaptureDetailListener] 🎤 Capture added to queue - setting isInQueue');
+        setIsInQueue(true);
+      }
+    };
+
     // Transcription started
     const handleStarted = (event: QueueItemStartedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] 🚀 Transcription started - reloading');
+        setIsInQueue(true);
         reloadCapture();
       }
     };
@@ -58,6 +69,7 @@ export function useCaptureDetailListener() {
     const handleCompleted = (event: QueueItemCompletedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] 📝 Transcription completed - reloading');
+        setIsInQueue(false);
         reloadCapture();
       }
     };
@@ -66,6 +78,7 @@ export function useCaptureDetailListener() {
     const handleFailed = (event: QueueItemFailedEvent) => {
       if (event.payload.captureId === captureId) {
         console.log('[CaptureDetailListener] ❌ Transcription failed - reloading');
+        setIsInQueue(false);
         reloadCapture();
       }
     };
@@ -88,6 +101,7 @@ export function useCaptureDetailListener() {
 
     // Subscribe to events
     const subscriptions = [
+      eventBus.subscribe<QueueItemAddedEvent>('QueueItemAdded', handleAdded),
       eventBus.subscribe<QueueItemStartedEvent>('QueueItemStarted', handleStarted),
       eventBus.subscribe<QueueItemCompletedEvent>('QueueItemCompleted', handleCompleted),
       eventBus.subscribe<QueueItemFailedEvent>('QueueItemFailed', handleFailed),
@@ -102,5 +116,5 @@ export function useCaptureDetailListener() {
       console.log('[CaptureDetailListener] 🛑 Stopping listeners');
       subscriptions.forEach(sub => sub.unsubscribe());
     };
-  }, [captureId, reloadCapture]);
+  }, [captureId, reloadCapture, setIsInQueue]);
 }

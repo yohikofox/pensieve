@@ -159,8 +159,9 @@ export const useCapturesStore = create<CapturesState>()(
 
             if (existingIndex >= 0) {
               // Capture existe déjà → mise à jour
+              // Preserve isInQueue: UI-only flag not persisted in DB
               const newCaptures = [...state.captures];
-              newCaptures[existingIndex] = updated;
+              newCaptures[existingIndex] = { ...updated, isInQueue: state.captures[existingIndex].isInQueue };
               return { captures: newCaptures };
             } else {
               // Capture n'existe pas → ajout en début de liste

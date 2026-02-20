@@ -21,7 +21,9 @@ export function ActionBar() {
   const { handleDelete } = useDeleteCapture();
 
   const capture = useCaptureDetailStore((state) => state.capture);
+  const isInQueue = useCaptureDetailStore((state) => state.isInQueue);
   const { themeColors, isDark } = useCaptureTheme();
+  const isCaptureInProcessing = capture?.state === "processing" || isInQueue;
 
   // Direct store access - no wrapper hooks
   const editedText = useCaptureDetailStore((state) => state.editedText);
@@ -122,15 +124,16 @@ export function ActionBar() {
           )}
 
           <TouchableOpacity
-            style={[styles.actionButton, styles.deleteButton]}
+            style={[styles.actionButton, styles.deleteButton, isCaptureInProcessing && styles.disabledButton]}
             onPress={handleDelete}
+            disabled={isCaptureInProcessing}
           >
             <Feather
               name={ActionIcons.delete}
               size={22}
-              color={colors.error[500]}
+              color={isCaptureInProcessing ? colors.neutral[400] : colors.error[500]}
             />
-            <Text style={[styles.actionLabel, styles.deleteLabel]}>
+            <Text style={[styles.actionLabel, isCaptureInProcessing ? styles.disabledLabel : styles.deleteLabel]}>
               Supprimer
             </Text>
           </TouchableOpacity>
@@ -160,6 +163,12 @@ const styles = StyleSheet.create({
   deleteButton: {},
   deleteLabel: {
     color: "#FF3B30",
+  },
+  disabledButton: {
+    opacity: 0.4,
+  },
+  disabledLabel: {
+    color: "#8E8E93",
   },
   discardButton: {
     borderRadius: 8,
