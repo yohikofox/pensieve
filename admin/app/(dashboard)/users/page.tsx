@@ -23,7 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { DataTable } from '@/components/admin/data-table';
 import { PageHeader } from '@/components/admin/page-header';
-import { apiClient, type UserDetails, type Role } from '@/lib/api-client';
+import { apiClient, type UserDetails, type Role, type Permission } from '@/lib/api-client';
 
 interface User {
   id: string;
@@ -49,15 +49,23 @@ export default function UsersPage() {
   const [resetError, setResetError] = useState<string | null>(null);
   const [resetSuccess, setResetSuccess] = useState(false);
 
-  // Manage roles dialog state
-  const [rolesTarget, setRolesTarget] = useState<User | null>(null);
+  // Manage roles & permissions dialog state
+  const [accessTarget, setAccessTarget] = useState<User | null>(null);
   const [userDetails, setUserDetails] = useState<UserDetails | null>(null);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
-  const [rolesLoading, setRolesLoading] = useState(false);
-  const [rolesError, setRolesError] = useState<string | null>(null);
+  const [allPermissions, setAllPermissions] = useState<Permission[]>([]);
+  const [accessLoading, setAccessLoading] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
+
+  // Role assign state
   const [selectedRoleId, setSelectedRoleId] = useState<string>('');
-  const [assignLoading, setAssignLoading] = useState(false);
-  const [revokeLoadingId, setRevokeLoadingId] = useState<string | null>(null);
+  const [assignRoleLoading, setAssignRoleLoading] = useState(false);
+  const [revokeRoleLoadingId, setRevokeRoleLoadingId] = useState<string | null>(null);
+
+  // Permission grant state
+  const [selectedPermissionId, setSelectedPermissionId] = useState<string>('');
+  const [grantLoading, setGrantLoading] = useState(false);
+  const [revokePermLoadingId, setRevokePermLoadingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadUsers();
@@ -68,9 +76,8 @@ export default function UsersPage() {
       setIsLoading(true);
       const response = await apiClient.getUsers({ page: 1, limit: 50 });
       setUsers(response.data);
-    } catch (error) {
-      console.error('Failed to load users:', error);
-      setError(error instanceof Error ? error.message : 'Failed to load users');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load users');
     } finally {
       setIsLoading(false);
     }
@@ -90,6 +97,8 @@ export default function UsersPage() {
     }
   }
 
+  // ── Reset password ──────────────────────────────────────────────────────────
+
   function openResetDialog(user: User) {
     setResetTarget(user);
     setNewPassword('');
@@ -108,23 +117,10 @@ export default function UsersPage() {
 
   async function handleResetPassword() {
     if (!resetTarget) return;
-
-    if (newPassword.length < 8) {
-      setResetError('Le mot de passe doit contenir au moins 8 caractères.');
-      return;
-    }
-    if (!/[A-Z]/.test(newPassword)) {
-      setResetError('Le mot de passe doit contenir au moins une majuscule.');
-      return;
-    }
-    if (!/[0-9]/.test(newPassword)) {
-      setResetError('Le mot de passe doit contenir au moins un chiffre.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setResetError('Les mots de passe ne correspondent pas.');
-      return;
-    }
+    if (newPassword.length < 8) { setResetError('Min. 8 caractères.'); return; }
+    if (!/[A-Z]/.test(newPassword)) { setResetError('Min. 1 majuscule.'); return; }
+    if (!/[0-9]/.test(newPassword)) { setResetError('Min. 1 chiffre.'); return; }
+    if (newPassword !== confirmPassword) { setResetError('Mots de passe différents.'); return; }
 
     setResetLoading(true);
     setResetError(null);
@@ -139,72 +135,127 @@ export default function UsersPage() {
     }
   }
 
-  async function openRolesDialog(user: User) {
-    setRolesTarget(user);
+  // ── Roles & permissions dialog ──────────────────────────────────────────────
+
+  async function openAccessDialog(user: User) {
+    setAccessTarget(user);
     setUserDetails(null);
     setAllRoles([]);
-    setRolesError(null);
+    setAllPermissions([]);
+    setAccessError(null);
     setSelectedRoleId('');
-    setRolesLoading(true);
+    setSelectedPermissionId('');
+    setAccessLoading(true);
     try {
-      const [details, roles] = await Promise.all([
+      const [details, roles, perms] = await Promise.all([
         apiClient.getUserDetails(user.id),
         apiClient.getRoles(),
+        apiClient.getPermissions(),
       ]);
       setUserDetails(details);
       setAllRoles(roles);
+      setAllPermissions(perms);
     } catch (err) {
-      setRolesError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
+      setAccessError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
     } finally {
-      setRolesLoading(false);
+      setAccessLoading(false);
     }
   }
 
-  function closeRolesDialog() {
-    setRolesTarget(null);
+  function closeAccessDialog() {
+    setAccessTarget(null);
     setUserDetails(null);
     setAllRoles([]);
-    setRolesError(null);
+    setAllPermissions([]);
+    setAccessError(null);
     setSelectedRoleId('');
+    setSelectedPermissionId('');
   }
 
+  async function refreshUserDetails() {
+    if (!accessTarget) return;
+    const details = await apiClient.getUserDetails(accessTarget.id);
+    setUserDetails(details);
+  }
+
+  // Roles
+
   async function handleAssignRole() {
-    if (!rolesTarget || !selectedRoleId) return;
-    setAssignLoading(true);
-    setRolesError(null);
+    if (!accessTarget || !selectedRoleId) return;
+    setAssignRoleLoading(true);
+    setAccessError(null);
     try {
-      await apiClient.assignRole(rolesTarget.id, { roleId: selectedRoleId });
-      // Reload user details to reflect new role
-      const details = await apiClient.getUserDetails(rolesTarget.id);
-      setUserDetails(details);
+      await apiClient.assignRole(accessTarget.id, { roleId: selectedRoleId });
+      await refreshUserDetails();
       setSelectedRoleId('');
     } catch (err) {
-      setRolesError(err instanceof Error ? err.message : "Erreur lors de l'assignation.");
+      setAccessError(err instanceof Error ? err.message : "Erreur lors de l'assignation.");
     } finally {
-      setAssignLoading(false);
+      setAssignRoleLoading(false);
     }
   }
 
   async function handleRevokeRole(roleId: string) {
-    if (!rolesTarget) return;
-    setRevokeLoadingId(roleId);
-    setRolesError(null);
+    if (!accessTarget) return;
+    setRevokeRoleLoadingId(roleId);
+    setAccessError(null);
     try {
-      await apiClient.revokeRole(rolesTarget.id, roleId);
-      const details = await apiClient.getUserDetails(rolesTarget.id);
-      setUserDetails(details);
+      await apiClient.revokeRole(accessTarget.id, roleId);
+      await refreshUserDetails();
     } catch (err) {
-      setRolesError(err instanceof Error ? err.message : 'Erreur lors de la révocation.');
+      setAccessError(err instanceof Error ? err.message : 'Erreur lors de la révocation.');
     } finally {
-      setRevokeLoadingId(null);
+      setRevokeRoleLoadingId(null);
     }
   }
 
-  // Roles already assigned to the user (by id)
-  const assignedRoleIds = new Set(userDetails?.roles.map((r) => r.id) ?? []);
+  // Permissions
 
-  // Only show roles not yet assigned
+  async function handleGrantPermission() {
+    if (!accessTarget || !selectedPermissionId) return;
+    setGrantLoading(true);
+    setAccessError(null);
+    try {
+      await apiClient.grantPermission(accessTarget.id, {
+        permissionId: selectedPermissionId,
+        granted: true,
+      });
+      await refreshUserDetails();
+      setSelectedPermissionId('');
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : "Erreur lors de l'accord de permission.");
+    } finally {
+      setGrantLoading(false);
+    }
+  }
+
+  async function handleRevokePermission(permissionId: string) {
+    if (!accessTarget) return;
+    setRevokePermLoadingId(permissionId);
+    setAccessError(null);
+    try {
+      await apiClient.revokePermission(accessTarget.id, permissionId);
+      await refreshUserDetails();
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : 'Erreur lors de la révocation.');
+    } finally {
+      setRevokePermLoadingId(null);
+    }
+  }
+
+  // Derived
+
+  const assignedRoleIds = new Set(userDetails?.roles.map((r) => r.id) ?? []);
   const availableRoles = allRoles.filter((r) => !assignedRoleIds.has(r.id));
+
+  const assignedPermissionIds = new Set(
+    userDetails?.permissions.map((p) => p.id) ?? [],
+  );
+  const availablePermissions = allPermissions.filter(
+    (p) => !assignedPermissionIds.has(p.id),
+  );
+
+  // ── Table columns ───────────────────────────────────────────────────────────
 
   const columns: ColumnDef<User>[] = [
     {
@@ -229,24 +280,18 @@ export default function UsersPage() {
       id: 'actions',
       cell: ({ row }) => (
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openRolesDialog(row.original)}
-          >
-            Gérer les rôles
+          <Button variant="outline" size="sm" onClick={() => openAccessDialog(row.original)}>
+            Rôles &amp; Permissions
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openResetDialog(row.original)}
-          >
+          <Button variant="outline" size="sm" onClick={() => openResetDialog(row.original)}>
             Réinitialiser MDP
           </Button>
         </div>
       ),
     },
   ];
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   if (error) {
     return (
@@ -285,25 +330,28 @@ export default function UsersPage() {
           </Button>
         </div>
       </div>
+
       <DataTable columns={columns} data={users} />
 
-      {/* ── Manage Roles Dialog ── */}
-      <Dialog open={!!rolesTarget} onOpenChange={(open) => { if (!open) closeRolesDialog(); }}>
-        <DialogContent className="max-w-md">
+      {/* ── Roles & Permissions Dialog ── */}
+      <Dialog open={!!accessTarget} onOpenChange={(open) => { if (!open) closeAccessDialog(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Gérer les rôles</DialogTitle>
+            <DialogTitle>Rôles &amp; Permissions</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Utilisateur : <span className="font-medium">{rolesTarget?.email}</span>
+            Utilisateur : <span className="font-medium">{accessTarget?.email}</span>
           </p>
 
-          {rolesLoading ? (
+          {accessLoading ? (
             <p className="text-sm text-muted-foreground py-4 text-center">Chargement...</p>
           ) : (
-            <div className="space-y-4 py-2">
-              {/* Current roles */}
+            <div className="space-y-5 py-2">
+
+              {/* ── Rôles ── */}
               <div className="space-y-2">
-                <Label>Rôles actuels</Label>
+                <Label className="text-base font-semibold">Rôles</Label>
+
                 {userDetails?.roles.length === 0 ? (
                   <p className="text-sm text-muted-foreground italic">Aucun rôle assigné.</p>
                 ) : (
@@ -324,28 +372,20 @@ export default function UsersPage() {
                           size="sm"
                           className="text-destructive hover:text-destructive"
                           onClick={() => handleRevokeRole(role.id)}
-                          disabled={revokeLoadingId === role.id}
+                          disabled={revokeRoleLoadingId === role.id}
                         >
-                          {revokeLoadingId === role.id ? '...' : 'Révoquer'}
+                          {revokeRoleLoadingId === role.id ? '...' : 'Révoquer'}
                         </Button>
                       </li>
                     ))}
                   </ul>
                 )}
-              </div>
 
-              <Separator />
-
-              {/* Assign new role */}
-              <div className="space-y-2">
-                <Label>Assigner un rôle</Label>
-                {availableRoles.length === 0 ? (
-                  <p className="text-sm text-muted-foreground italic">Tous les rôles sont déjà assignés.</p>
-                ) : (
-                  <div className="flex gap-2">
+                {availableRoles.length > 0 && (
+                  <div className="flex gap-2 pt-1">
                     <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
                       <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Choisir un rôle…" />
+                        <SelectValue placeholder="Assigner un rôle…" />
                       </SelectTrigger>
                       <SelectContent>
                         {availableRoles.map((role) => (
@@ -358,24 +398,81 @@ export default function UsersPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button
-                      onClick={handleAssignRole}
-                      disabled={!selectedRoleId || assignLoading}
-                    >
-                      {assignLoading ? '...' : 'Assigner'}
+                    <Button onClick={handleAssignRole} disabled={!selectedRoleId || assignRoleLoading}>
+                      {assignRoleLoading ? '...' : 'Assigner'}
                     </Button>
                   </div>
                 )}
               </div>
 
-              {rolesError && (
-                <p className="text-sm text-destructive">{rolesError}</p>
+              <Separator />
+
+              {/* ── Permissions directes ── */}
+              <div className="space-y-2">
+                <Label className="text-base font-semibold">Permissions directes</Label>
+                <p className="text-xs text-muted-foreground">
+                  Surcharge individuelle — priorité maximale sur les rôles et abonnements.
+                </p>
+
+                {userDetails?.permissions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Aucune permission directe.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {userDetails?.permissions.map((perm) => (
+                      <li key={perm.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                        <div>
+                          <Badge variant={perm.granted ? 'default' : 'destructive'} className="mr-2 text-xs">
+                            {perm.granted ? 'Accordée' : 'Refusée'}
+                          </Badge>
+                          <span className="text-sm font-medium">{perm.displayName}</span>
+                          <span className="ml-2 text-xs text-muted-foreground">{perm.name}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRevokePermission(perm.id)}
+                          disabled={revokePermLoadingId === perm.id}
+                        >
+                          {revokePermLoadingId === perm.id ? '...' : 'Révoquer'}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {availablePermissions.length > 0 && (
+                  <div className="flex gap-2 pt-1">
+                    <Select value={selectedPermissionId} onValueChange={setSelectedPermissionId}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue placeholder="Accorder une permission…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePermissions.map((perm) => (
+                          <SelectItem key={perm.id} value={perm.id}>
+                            {perm.displayName}
+                            <span className="ml-1 text-xs text-muted-foreground">
+                              ({perm.resourceType}/{perm.action})
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button onClick={handleGrantPermission} disabled={!selectedPermissionId || grantLoading}>
+                      {grantLoading ? '...' : 'Accorder'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {accessError && (
+                <p className="text-sm text-destructive">{accessError}</p>
               )}
             </div>
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={closeRolesDialog}>Fermer</Button>
+            <Button variant="outline" onClick={closeAccessDialog}>Fermer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -413,13 +510,8 @@ export default function UsersPage() {
                 disabled={resetLoading || resetSuccess}
               />
             </div>
-
-            {resetError && (
-              <p className="text-sm text-destructive">{resetError}</p>
-            )}
-            {resetSuccess && (
-              <p className="text-sm text-green-600">Mot de passe réinitialisé avec succès.</p>
-            )}
+            {resetError && <p className="text-sm text-destructive">{resetError}</p>}
+            {resetSuccess && <p className="text-sm text-green-600">Mot de passe réinitialisé avec succès.</p>}
           </div>
 
           <DialogFooter>
