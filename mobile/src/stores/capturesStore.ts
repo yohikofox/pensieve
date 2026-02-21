@@ -230,7 +230,7 @@ export const useCapturesStore = create<CapturesState>()(
           }
 
           set(state => ({
-            captures: [updated, ...state.captures],
+            captures: [updated, ...state.captures.filter(c => c.id !== captureId)],
             pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId),
           }));
           console.log('[CapturesStore] ✓ Reload complete:', captureId);

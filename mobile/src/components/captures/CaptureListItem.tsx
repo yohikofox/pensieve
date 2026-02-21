@@ -5,7 +5,8 @@
  */
 import React from "react";
 import { View, Text } from "react-native";
-import { LongPressGestureHandler, State } from "react-native-gesture-handler";
+import { GestureDetector, Gesture } from "react-native-gesture-handler";
+import { scheduleOnRN } from "react-native-worklets";
 import type { Capture } from "../../contexts/capture/domain/Capture.model";
 import { AnimatedCaptureCard } from "../animations/AnimatedCaptureCard";
 import { SwipeableCard } from "../cards/SwipeableCard";
@@ -45,7 +46,7 @@ interface CaptureListItemProps {
   };
 }
 
-export function CaptureListItem({
+function CaptureListItemBase({
   item,
   index,
   animated = true,
@@ -58,19 +59,18 @@ export function CaptureListItem({
     item.state === "processing" ||
     (item as CaptureWithQueue).isInQueue === true;
 
+  const longPressGesture = Gesture.LongPress()
+    .minDuration(300)
+    .onStart(() => {
+      scheduleOnRN(onLongPress);
+    });
+
   return (
     <AnimatedCaptureCard
       index={index}
       enabled={!isReduceMotionEnabled && animated}
     >
-      <LongPressGestureHandler
-        minDurationMs={300}
-        onHandlerStateChange={({ nativeEvent }) => {
-          if (nativeEvent.state === State.ACTIVE) {
-            onLongPress();
-          }
-        }}
-      >
+      <GestureDetector gesture={longPressGesture}>
         <View>
           <SwipeableCard
             onDelete={onDelete}
@@ -91,7 +91,21 @@ export function CaptureListItem({
             <CaptureSyncBadge capture={item} />
           </View>
         </View>
-      </LongPressGestureHandler>
+      </GestureDetector>
     </AnimatedCaptureCard>
   );
 }
+
+export const CaptureListItem = React.memo(
+  CaptureListItemBase,
+  (prev, next) =>
+    prev.item === next.item &&
+    prev.index === next.index &&
+    prev.animated === next.animated &&
+    prev.isReduceMotionEnabled === next.isReduceMotionEnabled &&
+    prev.playback.isPlaying === next.playback.isPlaying &&
+    prev.playback.isPlayingWav === next.playback.isPlayingWav &&
+    prev.playback.hasModelAvailable === next.playback.hasModelAvailable,
+  // handlers intentionally excluded: arrow functions in renderCaptureItem
+  // create new references every render but are functionally equivalent per item.
+);

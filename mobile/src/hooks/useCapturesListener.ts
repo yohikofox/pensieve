@@ -22,15 +22,10 @@
  */
 
 import { useEffect } from 'react';
-import { LayoutAnimation, Platform, UIManager } from 'react-native';
+import { LayoutAnimation } from 'react-native';
 import { container } from 'tsyringe';
 import { EventBus } from '../contexts/shared/events/EventBus';
 import { useCapturesStore } from '../stores/capturesStore';
-
-// Enable LayoutAnimation on Android
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
 import type {
   QueueItemCompletedEvent,
   QueueItemFailedEvent,

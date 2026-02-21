@@ -197,40 +197,67 @@ export function measureSync<T>(label: string, fn: () => T): T {
 export class FlatListPerformanceMonitor {
   private componentName: string;
   private enabled: boolean;
-  private lastScrollOffset: number = 0;
-  private lastScrollTime: number = 0;
+  private rafId: number | null = null;
+  private frameCount: number = 0;
+  private windowStart: number = 0;
+  private isScrolling: boolean = false;
+  private scrollStopTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(componentName: string, enabled: boolean = __DEV__) {
     this.componentName = componentName;
     this.enabled = enabled;
   }
 
+  private startRAFLoop() {
+    if (this.rafId !== null) return;
+
+    this.frameCount = 0;
+    this.windowStart = performance.now();
+
+    const loop = () => {
+      this.frameCount++;
+      const elapsed = performance.now() - this.windowStart;
+
+      // Report FPS every 1 second of active scrolling
+      if (elapsed >= 1000) {
+        const fps = (this.frameCount / elapsed) * 1000;
+        if (fps < 50) {
+          console.warn(
+            `[Performance] [${this.componentName}] JS thread FPS: ${fps.toFixed(1)} ` +
+            `(target: 60fps) — JS thread jank detected`
+          );
+        }
+        this.frameCount = 0;
+        this.windowStart = performance.now();
+      }
+
+      if (this.isScrolling) {
+        this.rafId = requestAnimationFrame(loop);
+      } else {
+        this.rafId = null;
+      }
+    };
+
+    this.rafId = requestAnimationFrame(loop);
+  }
+
   /**
-   * Callback for FlatList onScroll event
-   * Monitors scroll performance and detects jank
+   * Callback for FlatList onScroll event.
+   * Starts a requestAnimationFrame loop to measure actual JS thread frame rate
+   * during scroll. Reports FPS averaged over 1-second windows — far more reliable
+   * than inter-event timing which conflates JS busyness with scroll deceleration.
    */
-  onScroll = (event: any) => {
+  onScroll = (_event: any) => {
     if (!this.enabled) return;
 
-    const currentOffset = event.nativeEvent.contentOffset.y;
-    const now = performance.now();
+    this.isScrolling = true;
+    this.startRAFLoop();
 
-    if (this.lastScrollTime > 0) {
-      const scrollDelta = Math.abs(currentOffset - this.lastScrollOffset);
-      const timeDelta = now - this.lastScrollTime;
-      const fps = timeDelta > 0 ? 1000 / timeDelta : 0;
-
-      // Warn if FPS drops below 55 (allowing 5fps margin)
-      if (fps < 55 && fps > 0) {
-        console.warn(
-          `[Performance] [${this.componentName}] Scroll FPS: ${fps.toFixed(1)} ` +
-          `(target: 60fps, offset: ${currentOffset.toFixed(0)}px)`
-        );
-      }
-    }
-
-    this.lastScrollOffset = currentOffset;
-    this.lastScrollTime = now;
+    // Stop the RAF loop 200ms after the last scroll event
+    if (this.scrollStopTimer) clearTimeout(this.scrollStopTimer);
+    this.scrollStopTimer = setTimeout(() => {
+      this.isScrolling = false;
+    }, 200);
   };
 
   /**

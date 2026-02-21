@@ -21,11 +21,9 @@ import {
   FlatList,
   ActivityIndicator,
   RefreshControl,
-  Platform,
   AccessibilityInfo,
   StyleSheet,
   LayoutAnimation,
-  UIManager,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { Feather } from "@expo/vector-icons";
@@ -52,10 +50,7 @@ import { ContextMenu } from "../../components/menus/ContextMenu";
 import { OfflineBanner } from "../../components/common/OfflineBanner";
 import { useNetworkStatus } from "../../contexts/NetworkContext";
 import { FLATLIST_PERFORMANCE } from "../../constants/performance";
-import {
-  FlatListPerformanceMonitor,
-  measureAsync,
-} from "../../utils/performanceMonitor";
+import { measureAsync } from "../../utils/performanceMonitor";
 import { StandardLayout } from "../../components/layouts";
 
 // Override with extended param list that includes startAnalysis
@@ -113,20 +108,6 @@ export function CapturesListScreen() {
   );
   const [hasLottieAnimations] = useState(true);
 
-  // Performance monitoring
-  const performanceMonitor = useRef(
-    new FlatListPerformanceMonitor("CapturesListScreen", __DEV__),
-  ).current;
-
-  // Enable LayoutAnimation on Android
-  useEffect(() => {
-    if (
-      Platform.OS === "android" &&
-      UIManager.setLayoutAnimationEnabledExperimental
-    ) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
 
   // Check Reduce Motion preference
   useEffect(() => {
@@ -420,9 +401,6 @@ export function CapturesListScreen() {
           maxToRenderPerBatch={FLATLIST_PERFORMANCE.MAX_TO_RENDER_PER_BATCH}
           windowSize={FLATLIST_PERFORMANCE.WINDOW_SIZE}
           removeClippedSubviews={true}
-          // Story 3.4 Task 7.5: Performance monitoring
-          onScroll={performanceMonitor.onScroll}
-          scrollEventThrottle={16}
         />
 
         {/* Model not available dialog */}

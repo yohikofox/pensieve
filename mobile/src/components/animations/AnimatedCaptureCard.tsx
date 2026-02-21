@@ -35,21 +35,15 @@ export function AnimatedCaptureCard({
     // Staggered animation: 50ms delay per item for organic germination feel
     const delay = index * 50;
 
-    // opacity — JS driver (useNativeDriver: false) :
-    // Avec native driver, l'opacité initiale 0 n'est appliquée qu'après le premier
-    // frame du RenderThread Android (race condition). Pendant ce frame, la Card
-    // rend à opacité 1 → elevation shadow visible comme une bordure.
-    // Le JS driver applique opacity:0 de façon synchrone dès le premier rendu,
-    // sans décalage. Les deux valeurs ne peuvent pas coexister sur le même
-    // Animated.View → vues imbriquées ci-dessous.
+    // New Architecture (Fabric) : rendu initial synchrone → pas de race condition
+    // elevation/opacity sur Android. On peut utiliser le native driver pour les deux.
     Animated.timing(opacity, {
       toValue: 1,
       duration: 400,
       delay,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
 
-    // translateY — native driver : transform 60fps sur le RenderThread
     Animated.spring(translateY, {
       toValue: 0,
       delay,
@@ -63,13 +57,9 @@ export function AnimatedCaptureCard({
     return <>{children}</>;
   }
 
-  // opacity (JS driver) et transform (native driver) ne peuvent pas être sur le
-  // même Animated.View → vue externe pour opacity, vue interne pour transform.
   return (
-    <Animated.View style={{ opacity }}>
-      <Animated.View style={[styles.container, { transform: [{ translateY }] }]}>
-        {children}
-      </Animated.View>
+    <Animated.View style={[styles.container, { opacity, transform: [{ translateY }] }]}>
+      {children}
     </Animated.View>
   );
 }
