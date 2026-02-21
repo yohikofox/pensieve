@@ -1,22 +1,22 @@
-import { View, type ViewProps, Platform } from 'react-native';
-import { cn } from '../utils';
-import { shadows } from '../tokens';
+import { View, type ViewProps, Platform } from "react-native";
+import { cn } from "../utils";
+import { shadows } from "../tokens";
 
 interface CardProps extends ViewProps {
-  variant?: 'elevated' | 'outlined' | 'filled';
+  variant?: "elevated" | "outlined" | "filled";
   className?: string;
   children: React.ReactNode;
 }
 
 // Using semantic theme-aware colors (CSS variables)
-const variantClassNames: Record<CardProps['variant'] & string, string> = {
-  elevated: 'bg-bg-card',
-  outlined: 'bg-bg-card border border-border-default',
-  filled: 'bg-bg-subtle',
+const variantClassNames: Record<CardProps["variant"] & string, string> = {
+  elevated: "bg-bg-card",
+  outlined: "bg-bg-card border border-border-default",
+  filled: "bg-bg-subtle",
 };
 
 export function Card({
-  variant = 'elevated',
+  variant = "elevated",
   className,
   children,
   style,
@@ -24,15 +24,8 @@ export function Card({
 }: CardProps) {
   return (
     <View
-      className={cn('p-4 rounded-lg', variantClassNames[variant], className)}
-      style={[
-        variant === 'elevated' &&
-          Platform.select({
-            ios: shadows.base,
-            android: { elevation: shadows.base.elevation },
-          }),
-        style,
-      ]}
+      className={cn("p-4 rounded-lg", variantClassNames[variant], className)}
+      style={[style]}
       {...props}
     >
       {children}

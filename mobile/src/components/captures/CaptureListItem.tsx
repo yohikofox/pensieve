@@ -3,17 +3,17 @@
  * Handles animations, gestures (swipe, long-press), and delegates to CaptureCard
  * Story 6.4 - AC6: Shows CaptureSyncBadge overlay when capture is not synced
  */
-import React from 'react';
-import { View } from 'react-native';
-import { LongPressGestureHandler, State } from 'react-native-gesture-handler';
-import type { Capture } from '../../contexts/capture/domain/Capture.model';
-import { AnimatedCaptureCard } from '../animations/AnimatedCaptureCard';
-import { SwipeableCard } from '../cards/SwipeableCard';
-import { CaptureCard } from './CaptureCard';
-import { CaptureSyncBadge } from '../CaptureSyncBadge';
+import React from "react";
+import { View, Text } from "react-native";
+import { LongPressGestureHandler, State } from "react-native-gesture-handler";
+import type { Capture } from "../../contexts/capture/domain/Capture.model";
+import { AnimatedCaptureCard } from "../animations/AnimatedCaptureCard";
+import { SwipeableCard } from "../cards/SwipeableCard";
+import { CaptureCard } from "./CaptureCard";
+import { CaptureSyncBadge } from "../CaptureSyncBadge";
 
 type CaptureWithTranscription = Capture & {
-  transcriptionStatus?: 'pending' | 'processing' | 'completed' | 'failed';
+  transcriptionStatus?: "pending" | "processing" | "completed" | "failed";
 };
 
 type CaptureWithQueue = Capture & {
@@ -23,6 +23,8 @@ type CaptureWithQueue = Capture & {
 interface CaptureListItemProps {
   item: CaptureWithTranscription;
   index: number;
+  /** false = pas d'animation fade-in (ex: carte venant de remplacer un skeleton) */
+  animated?: boolean;
   isReduceMotionEnabled: boolean;
   playback: {
     isPlaying: boolean;
@@ -46,15 +48,21 @@ interface CaptureListItemProps {
 export function CaptureListItem({
   item,
   index,
+  animated = true,
   isReduceMotionEnabled,
   playback,
   handlers,
 }: CaptureListItemProps) {
   const { onLongPress, onDelete, onShare, ...cardHandlers } = handlers;
-  const isProcessing = item.state === 'processing' || (item as CaptureWithQueue).isInQueue === true;
+  const isProcessing =
+    item.state === "processing" ||
+    (item as CaptureWithQueue).isInQueue === true;
 
   return (
-    <AnimatedCaptureCard index={index} enabled={!isReduceMotionEnabled}>
+    <AnimatedCaptureCard
+      index={index}
+      enabled={!isReduceMotionEnabled && animated}
+    >
       <LongPressGestureHandler
         minDurationMs={300}
         onHandlerStateChange={({ nativeEvent }) => {
@@ -64,7 +72,11 @@ export function CaptureListItem({
         }}
       >
         <View>
-          <SwipeableCard onDelete={onDelete} onShare={onShare} enabled={!isProcessing}>
+          <SwipeableCard
+            onDelete={onDelete}
+            onShare={onShare}
+            enabled={!isProcessing}
+          >
             <CaptureCard
               item={item as CaptureWithQueue}
               playback={playback}
@@ -72,7 +84,10 @@ export function CaptureListItem({
             />
           </SwipeableCard>
           {/* Story 6.4 - AC6: Sync status badge (top-right overlay) */}
-          <View style={{ position: 'absolute', top: 8, right: 8 }} pointerEvents="none">
+          <View
+            style={{ position: "absolute", top: 8, right: 8 }}
+            pointerEvents="none"
+          >
             <CaptureSyncBadge capture={item} />
           </View>
         </View>

@@ -53,7 +53,7 @@ export function useCapturesListener() {
 
     // Résoudre l'instance singleton d'EventBus (enregistrée avec clé string)
     const eventBus = container.resolve<EventBus>('EventBus');
-    const { updateCapture, addCapture, removeCapture, setIsInQueue } = useCapturesStore.getState();
+    const { updateCapture, addCapture, addPendingCapture, removeCapture, setIsInQueue } = useCapturesStore.getState();
 
     // Nouvelle capture enfilée pour transcription (= capture audio créée)
     const handleAdded = (event: QueueItemAddedEvent) => {
@@ -82,10 +82,11 @@ export function useCapturesListener() {
     };
 
     // Nouvelle capture enregistrée
-    const handleRecorded = async (event: CaptureRecordedEvent) => {
+    const handleRecorded = (event: CaptureRecordedEvent) => {
       console.log('[CapturesListener] 🎙️ Capture recorded:', event.payload.captureId);
-      // Note: On reload via updateCapture() au lieu d'utiliser event.payload
-      // car on veut les données complètes de la DB (avec relations)
+      // addPendingCapture → skeleton card apparaît immédiatement en haut de liste
+      // updateCapture → résout la pending card avec les données DB (avec relations)
+      addPendingCapture(event.payload.captureId);
       updateCapture(event.payload.captureId);
     };
 
@@ -103,23 +104,29 @@ export function useCapturesListener() {
 
     // Story 6.3 - Task 3.4 & 3.5: Reactive UI update after sync with subtle animation
     const handleSyncCompleted = (event: SyncCompletedEvent) => {
-      // Only reload if captures were synced
-      if (event.payload.entities.includes('captures')) {
-        console.log('[CapturesListener] 🔄 Sync completed, reloading captures...');
+      // Only reload if captures were synced AND there were actual changes
+      if (!event.payload.entities.includes('captures')) return;
 
-        // Task 3.5: Subtle fade-in animation for new items (AC3)
-        // LayoutAnimation provides a subtle, system-level animation that's not distracting
-        LayoutAnimation.configureNext(
-          LayoutAnimation.create(
-            200, // duration: short for subtlety
-            LayoutAnimation.Types.easeInEaseOut,
-            LayoutAnimation.Properties.opacity
-          )
-        );
-
-        const { loadCaptures } = useCapturesStore.getState();
-        loadCaptures(); // Reload all captures from DB
+      const changesCount = event.payload.changesCount ?? 0;
+      if (changesCount === 0) {
+        // Rien de nouveau depuis le serveur — pas de reload inutile
+        console.log('[CapturesListener] 🔄 Sync completed, no changes for captures');
+        return;
       }
+
+      console.log('[CapturesListener] 🔄 Sync completed,', changesCount, 'change(s), reloading captures...');
+
+      // Task 3.5: Subtle fade-in animation for new items (AC3)
+      LayoutAnimation.configureNext(
+        LayoutAnimation.create(
+          200, // duration: short for subtlety
+          LayoutAnimation.Types.easeInEaseOut,
+          LayoutAnimation.Properties.opacity
+        )
+      );
+
+      const { loadCaptures } = useCapturesStore.getState();
+      loadCaptures();
     };
 
     // S'abonner aux événements

@@ -14,7 +14,7 @@
  * - Pull-to-refresh (AC5)
  */
 
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -85,11 +85,13 @@ export function CapturesListScreen() {
 
   // Zustand stores
   const captures = useCapturesStore((state) => state.captures);
-  const isLoading = useCapturesStore((state) => state.isLoading);
+  const pendingCaptureIds = useCapturesStore((state) => state.pendingCaptureIds);
+  const isInitialLoading = useCapturesStore((state) => state.isInitialLoading);
   const isLoadingMore = useCapturesStore((state) => state.isLoadingMore);
   const hasMoreCaptures = useCapturesStore((state) => state.hasMoreCaptures);
   const loadCaptures = useCapturesStore((state) => state.loadCaptures);
   const loadMoreCaptures = useCapturesStore((state) => state.loadMoreCaptures);
+  const reloadCapture = useCapturesStore((state) => state.reloadCapture);
 
   // Custom hooks for feature separation
   const audioPlayer = useCaptureAudioPlayer();
@@ -187,9 +189,9 @@ export function CapturesListScreen() {
   }, [isLoadingMore, hasMoreCaptures, loadMoreCaptures]);
 
   const handleLongPress = useCallback((capture: Capture) => {
-    setContextMenuCapture(capture);
-    setContextMenuVisible(true);
-  }, []);
+    // Recharge la carte avec un skeleton de 5 s (test de l'animation)
+    reloadCapture(capture.id);
+  }, [reloadCapture]);
 
   const renderFooter = useCallback(() => {
     if (!isLoadingMore) return null;
@@ -205,7 +207,7 @@ export function CapturesListScreen() {
   }, [isLoadingMore, t]);
 
   const renderCaptureItem = useCallback(
-    ({ item, index }: { item: CaptureWithTranscription; index: number }) => {
+    ({ item, index, animated }: { item: CaptureWithTranscription; index: number; animated?: boolean }) => {
       const isPlaying =
         audioPlayer.playingCaptureId === item.id &&
         audioPlayer.playerStatus.playing;
@@ -217,6 +219,7 @@ export function CapturesListScreen() {
         <CaptureListItem
           item={item}
           index={index}
+          animated={animated}
           isReduceMotionEnabled={isReduceMotionEnabled}
           playback={{
             isPlaying,
@@ -250,16 +253,50 @@ export function CapturesListScreen() {
     ],
   );
 
-  // Story 3.1 AC7: Skeleton loading cards (Liquid Glass design)
-  if (isLoading) {
+  // Ref pour détecter les IDs qui quittent pendingCaptureIds entre deux renders.
+  // Les captures qui viennent d'être résolues depuis le pending ne doivent pas
+  // rejouer l'animation de fade-in (le skeleton a déjà joué ce rôle).
+  const prevPendingRef = useRef<string[]>([]);
+
+  type ScreenListEntry =
+    | { kind: 'capture'; data: CaptureWithQueue; animated: boolean }
+    | { kind: 'skeleton'; id: string };
+
+  // Données FlatList unifiées : skeleton cards (pending) en haut + captures réelles.
+  // animated:false pour les captures qui viennent juste de quitter le pending.
+  const listData: ScreenListEntry[] = useMemo(() => {
+    const justResolved = prevPendingRef.current.filter(id => !pendingCaptureIds.includes(id));
+    prevPendingRef.current = [...pendingCaptureIds]; // mise à jour pour le prochain render
+
+    return [
+      ...pendingCaptureIds.map(id => ({ kind: 'skeleton' as const, id })),
+      ...captures.map(data => ({
+        kind: 'capture' as const,
+        data,
+        animated: !justResolved.includes(data.id),
+      })),
+    ];
+  }, [pendingCaptureIds, captures]);
+
+  const renderListItem = useCallback(({ item }: { item: ScreenListEntry }) => {
+    if (item.kind === 'skeleton') {
+      return <SkeletonCaptureCard />;
+    }
+    return renderCaptureItem({
+      item: item.data,
+      index: captures.indexOf(item.data),
+      animated: item.animated,
+    });
+  }, [renderCaptureItem, captures]);
+
+  // Premier chargement (liste vide, pas de pending) : spinner centré
+  if (isInitialLoading && captures.length === 0 && pendingCaptureIds.length === 0) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <StandardLayout noPadding={false} style={{ padding: 16 }}>
-          <SkeletonCaptureCard delay={0} />
-          <SkeletonCaptureCard delay={100} />
-          <SkeletonCaptureCard delay={200} />
-          <SkeletonCaptureCard delay={300} />
-          <SkeletonCaptureCard delay={400} />
+        <StandardLayout>
+          <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color={colors.primary[500]} />
+          </View>
         </StandardLayout>
       </GestureHandlerRootView>
     );
@@ -267,7 +304,8 @@ export function CapturesListScreen() {
 
   // Story 3.1 AC6: Enhanced empty state with "Jardin d'idées" metaphor
   // Story 3.4 AC8: Animated empty state with breathing animation + Lottie
-  if (captures.length === 0) {
+  // Ne pas afficher si des captures sont en attente d'être résolues (skeleton cards)
+  if (captures.length === 0 && pendingCaptureIds.length === 0) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StandardLayout>
@@ -362,9 +400,9 @@ export function CapturesListScreen() {
         <OfflineBanner />
 
         <FlatList
-          data={captures}
-          keyExtractor={(item) => item.id}
-          renderItem={renderCaptureItem}
+          data={listData}
+          keyExtractor={(item) => item.kind === 'skeleton' ? `pending-${item.id}` : item.data.id}
+          renderItem={renderListItem}
           contentContainerStyle={{ padding: 16 }}
           refreshControl={
             <RefreshControl

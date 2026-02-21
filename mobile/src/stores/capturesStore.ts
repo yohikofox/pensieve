@@ -28,10 +28,16 @@ export type CaptureWithQueue = Capture & {
   isInQueue?: boolean;
 };
 
+// Item de liste unifié : soit une vraie capture, soit un placeholder skeleton
+export type ListEntry =
+  | { kind: 'capture'; data: CaptureWithQueue }
+  | { kind: 'skeleton'; id: string };
+
 interface CapturesState {
   // State
   captures: CaptureWithQueue[];
-  isLoading: boolean;
+  pendingCaptureIds: string[];   // IDs en cours de chargement → skeleton cards
+  isInitialLoading: boolean;     // true uniquement sur 1er load liste vide
   isLoadingMore: boolean;
   hasMoreCaptures: boolean;
   error: Error | null;
@@ -40,6 +46,8 @@ interface CapturesState {
   loadCaptures: () => Promise<void>;
   loadMoreCaptures: () => Promise<void>;
   updateCapture: (captureId: string) => Promise<void>;
+  addPendingCapture: (captureId: string) => void;
+  reloadCapture: (captureId: string) => Promise<void>;
   addCapture: (capture: Capture) => void;
   removeCapture: (captureId: string) => void;
   setCaptures: (captures: Capture[]) => void;
@@ -54,7 +62,8 @@ export const useCapturesStore = create<CapturesState>()(
     (set, get) => ({
       // State initial
       captures: [],
-      isLoading: true,
+      pendingCaptureIds: [],
+      isInitialLoading: true,
       isLoadingMore: false,
       hasMoreCaptures: true,
       error: null,
@@ -62,8 +71,13 @@ export const useCapturesStore = create<CapturesState>()(
       // Charge la première page (au mount)
       // Story 3.1 - AC4: Optimisé avec pagination DB (offset/limit) + LIMIT+1 trick
       loadCaptures: async () => {
+        const { captures, pendingCaptureIds } = get();
+        // Spinner uniquement si vraiment rien à afficher (premier load)
+        if (captures.length === 0 && pendingCaptureIds.length === 0) {
+          set({ isInitialLoading: true, error: null, hasMoreCaptures: true });
+        }
+        // Si du contenu est déjà affiché → refresh silencieux (pas de spinner)
         try {
-          set({ isLoading: true, error: null, hasMoreCaptures: true });
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
 
           /**
@@ -95,13 +109,13 @@ export const useCapturesStore = create<CapturesState>()(
 
           set({
             captures: firstPage,
-            isLoading: false,
+            isInitialLoading: false,
             hasMoreCaptures: hasMore
           });
           console.log('[CapturesStore] ✓ Loaded', firstPage.length, 'captures (first page, hasMore:', hasMore, ')');
         } catch (error) {
           console.error('[CapturesStore] Load failed:', error);
-          set({ error: error as Error, isLoading: false });
+          set({ error: error as Error, isInitialLoading: false });
         }
       },
 
@@ -143,7 +157,8 @@ export const useCapturesStore = create<CapturesState>()(
       },
 
       // Reload UNE seule capture (optimisé)
-      // Si la capture n'existe pas dans la liste, elle est ajoutée
+      // Si la capture n'existe pas dans la liste, elle est ajoutée.
+      // Retire aussi la capture des pendingCaptureIds (skeleton → carte réelle).
       updateCapture: async (captureId: string) => {
         try {
           const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
@@ -151,26 +166,77 @@ export const useCapturesStore = create<CapturesState>()(
 
           if (!updated) {
             console.warn('[CapturesStore] Capture not found:', captureId);
+            // Retire des pending même si non trouvée (évite skeleton bloqué)
+            set(state => ({
+              pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId)
+            }));
             return;
           }
 
           set(state => {
             const existingIndex = state.captures.findIndex(c => c.id === captureId);
+            const newPendingIds = state.pendingCaptureIds.filter(id => id !== captureId);
 
             if (existingIndex >= 0) {
-              // Capture existe déjà → mise à jour
+              // Capture existe déjà → mise à jour en place
               // Preserve isInQueue: UI-only flag not persisted in DB
               const newCaptures = [...state.captures];
               newCaptures[existingIndex] = { ...updated, isInQueue: state.captures[existingIndex].isInQueue };
-              return { captures: newCaptures };
+              return { captures: newCaptures, pendingCaptureIds: newPendingIds };
             } else {
-              // Capture n'existe pas → ajout en début de liste
-              return { captures: [updated, ...state.captures] };
+              // Capture pending → résolue, ajout en tête de liste
+              return { captures: [updated, ...state.captures], pendingCaptureIds: newPendingIds };
             }
           });
           console.log('[CapturesStore] ✓ Updated capture:', captureId);
         } catch (error) {
           console.error('[CapturesStore] Update capture failed:', captureId, error);
+          // Retire des pending même en cas d'erreur (évite skeleton bloqué)
+          set(state => ({ pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId) }));
+        }
+      },
+
+      // Ajoute un ID de capture en attente → affiche une skeleton card en haut de liste
+      addPendingCapture: (captureId: string) => {
+        set(state => ({
+          pendingCaptureIds: [captureId, ...state.pendingCaptureIds]
+        }));
+        console.log('[CapturesStore] ✓ Added pending:', captureId);
+      },
+
+      // Retire la carte de la liste, affiche un skeleton 5 s, puis recharge depuis la DB.
+      // Usage : debug/test de l'animation skeleton via long press.
+      reloadCapture: async (captureId: string) => {
+        console.log('[CapturesStore] 🔄 Reloading capture (skeleton test):', captureId);
+
+        // 1. Retire la vraie carte et met l'ID en pending → skeleton apparaît en haut
+        set(state => ({
+          captures: state.captures.filter(c => c.id !== captureId),
+          pendingCaptureIds: [captureId, ...state.pendingCaptureIds],
+        }));
+
+        // 2. Simulation d'un chargement long pour observer le skeleton
+        await new Promise(resolve => setTimeout(resolve, 5000));
+
+        // 3. Recharge depuis la DB et résout le pending (même logique que updateCapture)
+        try {
+          const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
+          const updated = await repository.findById(captureId);
+
+          if (!updated) {
+            console.warn('[CapturesStore] Reload: capture not found:', captureId);
+            set(state => ({ pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId) }));
+            return;
+          }
+
+          set(state => ({
+            captures: [updated, ...state.captures],
+            pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId),
+          }));
+          console.log('[CapturesStore] ✓ Reload complete:', captureId);
+        } catch (error) {
+          console.error('[CapturesStore] Reload failed:', captureId, error);
+          set(state => ({ pendingCaptureIds: state.pendingCaptureIds.filter(id => id !== captureId) }));
         }
       },
 

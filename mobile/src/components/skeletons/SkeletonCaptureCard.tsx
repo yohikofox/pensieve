@@ -128,12 +128,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    // Pas de borderWidth ni d'elevation : le skeleton est un placeholder temporaire.
+    // borderWidth: 1 + elevation sur Android créaient une bordure sombre visible
+    // lors du premier frame de rendu, avant le démarrage de l'animation shimmer.
   },
   header: {
     flexDirection: 'row',
