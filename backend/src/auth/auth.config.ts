@@ -2,7 +2,7 @@
 import 'dotenv/config';
 
 import { betterAuth } from 'better-auth';
-import { admin, bearer } from 'better-auth/plugins';
+import { admin, bearer, customSession } from 'better-auth/plugins';
 import { expo } from '@better-auth/expo';
 import { Pool } from 'pg';
 import { v7 as uuidv7 } from 'uuid';
@@ -18,6 +18,16 @@ import type { EmailService } from '../email/email.service';
  * EmailService is injected post-initialization via setEmailService()
  * to break the circular dependency (module-level auth object vs NestJS DI).
  */
+
+/**
+ * Calcule les secondes restantes jusqu'à 23:59:59 UTC du jour courant.
+ * Utilisé pour définir la durée de validité locale du token mobile.
+ */
+export function getTokenExpiresInForToday(): number {
+  const endOfToday = new Date();
+  endOfToday.setUTCHours(23, 59, 59, 999);
+  return Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
+}
 
 let emailServiceRef: EmailService | null = null;
 
@@ -46,6 +56,11 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+
+  session: {
+    expiresIn: 7 * 24 * 60 * 60,  // 7 jours — fenêtre absolue de renouvellement (ADR-029)
+    updateAge: 24 * 60 * 60,       // Prolonge la session si la dernière activité > 1j (sliding window)
+  },
 
   advanced: {
     database: {
@@ -106,6 +121,19 @@ export const auth = betterAuth({
     admin(),
     bearer(),  // Convertit Authorization: Bearer {token} en cookie de session (ADR-029 — clients mobiles)
     expo(),    // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
+    // Enrichit getSession() avec tokenExpiresIn (fin du jour UTC) pour les clients mobiles (ADR-029)
+    customSession(async ({ session, user }, ctx) => {
+      const clientType = ctx?.getHeader('x-client-type');
+      if (clientType === 'mobile') {
+        return {
+          session,
+          user,
+          tokenExpiresIn: getTokenExpiresInForToday(),
+          absoluteExpiresAt: session.expiresAt,
+        };
+      }
+      return { session, user };
+    }),
   ],
 
   secret: process.env.BETTER_AUTH_SECRET,

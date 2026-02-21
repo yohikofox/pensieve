@@ -124,6 +124,7 @@
     "coverageDirectory": "../coverage",
     "testEnvironment": "node",
     "moduleNameMapper": {
+      "^@better-auth/expo$": "<rootDir>/../test/__mocks__/better-auth-expo.js",
       "^better-auth/plugins$": "<rootDir>/../test/__mocks__/better-auth-plugins.js",
       "^better-auth/node$": "<rootDir>/../test/__mocks__/better-auth-node.js",
       "^better-auth/crypto$": "<rootDir>/../test/__mocks__/better-auth-crypto.js",

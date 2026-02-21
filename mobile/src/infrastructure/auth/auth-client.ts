@@ -20,4 +20,10 @@ export const authClient = createAuthClient({
       },
     }),
   ],
+  fetchOptions: {
+    headers: {
+      // Permet au serveur de retourner tokenExpiresIn (fin du jour UTC) dans getSession()
+      'X-Client-Type': 'mobile',
+    },
+  },
 });

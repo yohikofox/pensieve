@@ -34,39 +34,59 @@ export class BetterAuthService implements IAuthService {
 
   async getSession(): Promise<AuthSession | null> {
     const tokenResult = await this.tokenManager.getValidToken();
-    if (tokenResult.type !== 'success' || !tokenResult.data) {
-      return null;
+
+    if (tokenResult.type === 'success' && tokenResult.data) {
+      if (this.currentSession) {
+        return {
+          ...this.currentSession,
+          accessToken: tokenResult.data,
+        };
+      }
+
+      // Cold start : currentSession est null (mémoire vidée).
+      // Tente de restaurer depuis SecureStore (offline-first, ADR-022)
+      const storedUserId = await this.tokenManager.getStoredUserId();
+      if (storedUserId) {
+        this.currentSession = { accessToken: tokenResult.data, userId: storedUserId };
+        return this.currentSession;
+      }
     }
 
-    if (this.currentSession) {
-      return {
-        ...this.currentSession,
-        accessToken: tokenResult.data,
-      };
-    }
+    // Token local invalide ou expiré → tenter renouvellement via authClient.
+    // La session serveur est valide jusqu'à 7 jours après la dernière connexion (ADR-029).
+    return this.tryGetSessionFromAuthClient();
+  }
 
-    // Cold start : currentSession est null (mémoire vidée).
-    // 1. Tente de restaurer depuis SecureStore (offline-first, ADR-022)
-    const storedUserId = await this.tokenManager.getStoredUserId();
-    if (storedUserId) {
-      this.currentSession = { accessToken: tokenResult.data, userId: storedUserId };
-      return this.currentSession;
-    }
-
-    // 2. Fallback réseau si le userId n'est pas en SecureStore (ancienne installation)
+  private async tryGetSessionFromAuthClient(): Promise<AuthSession | null> {
     try {
       const response = await authClient.getSession();
       if (response.data?.session && response.data?.user) {
-        this.currentSession = {
-          accessToken: tokenResult.data,
-          userId: response.data.user.id,
+        const sessionData = response.data.session as {
+          token: string;
+          tokenExpiresIn?: number;
         };
+        const user = response.data.user as { id: string };
+
+        // Utiliser tokenExpiresIn du serveur (fin du jour UTC) ou calculer localement
+        const tokenExpiresIn = sessionData.tokenExpiresIn ?? (() => {
+          const endOfToday = new Date();
+          endOfToday.setUTCHours(23, 59, 59, 999);
+          return Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
+        })();
+
+        await this.tokenManager.storeTokens(
+          sessionData.token,
+          sessionData.token,  // session-based auth : pas de refreshToken séparé
+          tokenExpiresIn,
+          user.id,
+        );
+
+        this.currentSession = { accessToken: sessionData.token, userId: user.id };
         return this.currentSession;
       }
     } catch {
-      // Erreur réseau — impossible de récupérer le profil
+      // Hors ligne ou session serveur expirée (> 7 jours)
     }
-
     return null;
   }
 
@@ -94,10 +114,20 @@ export class BetterAuthService implements IAuthService {
 
       const { token, user } = response.data;
 
+      // Lire tokenExpiresIn depuis la réponse serveur (si disponible).
+      // Better Auth n'envoie pas expiresIn ni refreshToken dans signIn.email() —
+      // on calcule localement : fin du jour courant UTC (cohérent avec customSession).
+      const serverExpiresIn = (response.data as { session?: { tokenExpiresIn?: number } }).session?.tokenExpiresIn;
+      const tokenExpiresIn = serverExpiresIn ?? (() => {
+        const endOfToday = new Date();
+        endOfToday.setUTCHours(23, 59, 59, 999);
+        return Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
+      })();
+
       await this.tokenManager.storeTokens(
         token,
-        (response.data as { refreshToken?: string }).refreshToken ?? '',
-        (response.data as { expiresIn?: number }).expiresIn ?? 3600,
+        token,  // session-based auth : le session token est le credential de renouvellement
+        tokenExpiresIn,
         user?.id,
       );
 

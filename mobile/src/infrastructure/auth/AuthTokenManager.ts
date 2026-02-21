@@ -119,7 +119,9 @@ export class AuthTokenManager {
   private async tryRefresh(): Promise<Result<string>> {
     const refreshToken = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
     if (!refreshToken) {
-      return authError('Aucun refresh token');
+      // Better Auth utilise des sessions (pas OAuth2) — pas de refresh token séparé.
+      // networkError active le fallback offline (ADR-029) au lieu de clearTokens.
+      return networkError('Session-based auth — pas de refresh token séparé');
     }
 
     try {
