@@ -16,8 +16,7 @@
  */
 
 import { useMemo } from 'react';
-import { tabScreens, type TabScreenName } from '../screens/registry';
-import type { LayoutConfig } from '../screens/registry';
+import { tabScreensLayout, type TabScreenName, type LayoutConfig } from '../screens/registry-layout';
 
 /**
  * Get layout configuration for a specific screen
@@ -27,7 +26,7 @@ import type { LayoutConfig } from '../screens/registry';
  */
 export function useLayoutConfig(screenName: TabScreenName): LayoutConfig {
   return useMemo(() => {
-    const screenConfig = tabScreens[screenName];
+    const screenConfig = tabScreensLayout[screenName];
 
     // Return screen's layout config or sensible defaults
     return {

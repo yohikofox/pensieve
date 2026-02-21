@@ -9,22 +9,25 @@
  * - useSettingsStore.getState() outside React for imperative access
  */
 
-import { create } from 'zustand';
-import { devtools, persist, createJSONStorage } from 'zustand/middleware';
+import { create } from "zustand";
+import { devtools, persist, createJSONStorage } from "zustand/middleware";
 // ASYNC_STORAGE_OK: UI preferences only (theme, color scheme, debug mode, haptic, LLM settings) — not critical data (ADR-022)
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { LLMModelId, LLMTask } from '../contexts/Normalization/services/LLMModelService';
-import type { ColorScheme } from '../design-system/tokens';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import type {
+  LLMModelId,
+  LLMTask,
+} from "../contexts/Normalization/services/LLMModelService";
+import type { ColorScheme } from "../design-system/tokens";
 
 // Theme preference type
-export type ThemePreference = 'light' | 'dark' | 'system';
+export type ThemePreference = "light" | "dark" | "system";
 
 // Audio player type (Story 3.2b)
-export type AudioPlayerType = 'waveform' | 'simple';
+export type AudioPlayerType = "waveform" | "simple";
 
 // Debug button position (anchored to edge)
 export interface DebugButtonPosition {
-  edge: 'left' | 'right';
+  edge: "left" | "right";
   verticalPercent: number; // 0-1, percentage from top
 }
 
@@ -111,13 +114,13 @@ export const useSettingsStore = create<SettingsState>()(
     persist(
       (set, get) => ({
         // Initial state - system theme by default
-        themePreference: 'system' as ThemePreference,
+        themePreference: "system" as ThemePreference,
 
         // Initial state - blue color scheme by default
-        colorScheme: 'blue' as ColorScheme,
+        colorScheme: "blue" as ColorScheme,
 
         // Initial state - waveform player by default (Story 3.2b)
-        audioPlayerType: 'waveform' as AudioPlayerType,
+        audioPlayerType: "waveform" as AudioPlayerType,
 
         // Story 7.1: Backend permission for debug mode - sourced from backend at startup
         // Not persisted — always re-fetched via useSyncUserFeatures on app launch
@@ -131,7 +134,7 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Default button position: bottom right
         debugButtonPosition: {
-          edge: 'right',
+          edge: "right",
           verticalPercent: 0.85, // Near bottom
         },
 
@@ -158,28 +161,33 @@ export const useSettingsStore = create<SettingsState>()(
         // Actions
         setThemePreference: (preference: ThemePreference) => {
           set({ themePreference: preference });
-          console.log('[SettingsStore] Theme preference:', preference);
+          console.debug("[SettingsStore] Theme preference:", preference);
         },
 
         setColorScheme: (scheme: ColorScheme) => {
           set({ colorScheme: scheme });
-          console.log('[SettingsStore] Color scheme:', scheme);
+          console.debug("[SettingsStore] Color scheme:", scheme);
         },
 
         setAudioPlayerType: (type: AudioPlayerType) => {
           set({ audioPlayerType: type });
-          console.log('[SettingsStore] Audio player type:', type);
+          console.debug("[SettingsStore] Audio player type:", type);
         },
 
         // Story 7.1: Set backend permission for debug mode access
         setDebugModeAccess: (enabled: boolean) => {
           set({ debugModeAccess: enabled });
-          console.log('[SettingsStore] Debug mode access (backend):', enabled ? 'GRANTED' : 'DENIED');
+          console.debug(
+            "[SettingsStore] Debug mode access (backend):",
+            enabled ? "GRANTED" : "DENIED",
+          );
 
           // AC7: If permission denied, disable local debug mode
           if (!enabled) {
             set({ debugMode: false });
-            console.log('[SettingsStore] Debug mode disabled (permission revoked)');
+            console.debug(
+              "[SettingsStore] Debug mode disabled (permission revoked)",
+            );
           }
         },
 
@@ -189,12 +197,14 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Only allow enabling if backend permission is granted
           if (enabled && !debugModeAccess) {
-            console.warn('[SettingsStore] Debug mode activation blocked: no backend permission');
+            console.warn(
+              "[SettingsStore] Debug mode activation blocked: no backend permission",
+            );
             return;
           }
 
           set({ debugMode: enabled });
-          console.log('[SettingsStore] Debug mode:', enabled ? 'ON' : 'OFF');
+          console.debug("[SettingsStore] Debug mode:", enabled ? "ON" : "OFF");
         },
 
         toggleDebugMode: () => {
@@ -202,17 +212,25 @@ export const useSettingsStore = create<SettingsState>()(
 
           // Only allow toggling if backend permission is granted
           if (!debugMode && !debugModeAccess) {
-            console.warn('[SettingsStore] Debug mode toggle blocked: no backend permission');
+            console.warn(
+              "[SettingsStore] Debug mode toggle blocked: no backend permission",
+            );
             return;
           }
 
           set({ debugMode: !debugMode });
-          console.log('[SettingsStore] Debug mode toggled:', !debugMode ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] Debug mode toggled:",
+            !debugMode ? "ON" : "OFF",
+          );
         },
 
         setShowCalibrationGrid: (show: boolean) => {
           set({ showCalibrationGrid: show });
-          console.log('[SettingsStore] Show calibration grid:', show ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] Show calibration grid:",
+            show ? "ON" : "OFF",
+          );
         },
 
         setDebugButtonPosition: (position: DebugButtonPosition) => {
@@ -221,24 +239,33 @@ export const useSettingsStore = create<SettingsState>()(
 
         setAutoTranscription: (enabled: boolean) => {
           set({ autoTranscriptionEnabled: enabled });
-          console.log('[SettingsStore] Auto-transcription:', enabled ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] Auto-transcription:",
+            enabled ? "ON" : "OFF",
+          );
         },
 
         setHapticFeedback: (enabled: boolean) => {
           set({ hapticFeedbackEnabled: enabled });
-          console.log('[SettingsStore] Haptic feedback:', enabled ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] Haptic feedback:",
+            enabled ? "ON" : "OFF",
+          );
         },
 
         // Story 6.4: Sync on Wi-Fi only
         setSyncOnWifiOnly: (enabled: boolean) => {
           set({ syncOnWifiOnly: enabled });
-          console.log('[SettingsStore] Sync on Wi-Fi only:', enabled ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] Sync on Wi-Fi only:",
+            enabled ? "ON" : "OFF",
+          );
         },
 
         // Datamining feature flag
         setDataMiningEnabled: (enabled: boolean) => {
           set({ dataMiningEnabled: enabled });
-          console.log('[SettingsStore] Datamining:', enabled ? 'ON' : 'OFF');
+          console.debug("[SettingsStore] Datamining:", enabled ? "ON" : "OFF");
         },
 
         // LLM Actions
@@ -246,28 +273,33 @@ export const useSettingsStore = create<SettingsState>()(
           set((state) => ({
             llm: { ...state.llm, isEnabled: enabled },
           }));
-          console.log('[SettingsStore] LLM enabled:', enabled ? 'ON' : 'OFF');
+          console.debug("[SettingsStore] LLM enabled:", enabled ? "ON" : "OFF");
         },
 
         setLLMAutoPostProcess: (enabled: boolean) => {
           set((state) => ({
             llm: { ...state.llm, isAutoPostProcess: enabled },
           }));
-          console.log('[SettingsStore] LLM auto post-process:', enabled ? 'ON' : 'OFF');
+          console.debug(
+            "[SettingsStore] LLM auto post-process:",
+            enabled ? "ON" : "OFF",
+          );
         },
 
         setLLMModelForTask: (task: LLMTask, modelId: LLMModelId | null) => {
           set((state) => ({
             llm: {
               ...state.llm,
-              [task === 'postProcessing' ? 'selectedPostProcessingModel' : 'selectedAnalysisModel']: modelId,
+              [task === "postProcessing"
+                ? "selectedPostProcessingModel"
+                : "selectedAnalysisModel"]: modelId,
             },
           }));
-          console.log(`[SettingsStore] LLM model for ${task}:`, modelId);
+          console.debug(`[SettingsStore] LLM model for ${task}:`, modelId);
         },
       }),
       {
-        name: 'pensieve-settings',
+        name: "pensieve-settings",
         storage: createJSONStorage(() => AsyncStorage),
         // debugModeAccess and dataMiningEnabled are volatile — never persist them
         partialize: (state) => {
@@ -275,12 +307,12 @@ export const useSettingsStore = create<SettingsState>()(
           const { debugModeAccess, dataMiningEnabled, ...rest } = state;
           return rest;
         },
-      }
+      },
     ),
     {
-      name: 'settings-store',
-    }
-  )
+      name: "settings-store",
+    },
+  ),
 );
 
 /**

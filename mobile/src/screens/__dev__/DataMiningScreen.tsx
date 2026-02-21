@@ -19,7 +19,7 @@ import { StandardLayout } from '../../components/layouts';
 import { SavedQueryCard } from '../../components/dev/datamining/SavedQueryCard';
 import type { SavedQuery } from '../../components/dev/datamining/QueryAst';
 import { database } from '../../database';
-import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+import type { SettingsStackParamList } from '../../navigation/SettingsNavigationTypes';
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'DataMining'>;
 

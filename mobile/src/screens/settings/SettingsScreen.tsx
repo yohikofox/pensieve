@@ -26,7 +26,7 @@ import { LLMModelService } from '../../contexts/Normalization/services/LLMModelS
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore, type ThemePreference, type AudioPlayerType } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
-import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+import type { SettingsStackParamList } from '../../navigation/SettingsNavigationTypes';
 import { colors } from '../../design-system/tokens';
 import { Card, Button, AlertDialog, useToast } from '../../design-system/components';
 import { StandardLayout } from '../../components/layouts';

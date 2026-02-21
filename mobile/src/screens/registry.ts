@@ -13,6 +13,8 @@
 
 import { ComponentType } from "react";
 import { BottomTabNavigationOptions } from "@react-navigation/bottom-tabs";
+import { type LayoutConfig, type TabScreenName } from "./registry-layout";
+export type { LayoutConfig, TabScreenName } from "./registry-layout";
 import { NewsScreen } from "./news/NewsScreen";
 import { CapturesStackNavigator } from "../navigation/CapturesStackNavigator";
 import { CaptureScreen } from "./capture/CaptureScreen";
@@ -20,16 +22,6 @@ import { ActionsScreen } from "./actions/ActionsScreen";
 import { ProjectsScreen } from "./projects/ProjectsScreen";
 import { SettingsStackNavigator } from "../navigation/SettingsStackNavigator";
 import { TabIcons } from "../navigation/components";
-
-/**
- * Layout configuration for screens using StandardLayout
- */
-export interface LayoutConfig {
-  /** Use SafeAreaView wrapper (default: auto-detect from headerShown) */
-  useSafeArea?: boolean;
-  /** Disable default padding (default: true) */
-  noPadding?: boolean;
-}
 
 /**
  * Tab Screen Configuration Interface
@@ -160,7 +152,3 @@ export const tabScreens = {
   },
 } as const;
 
-/**
- * Type-safe screen names
- */
-export type TabScreenName = keyof typeof tabScreens;

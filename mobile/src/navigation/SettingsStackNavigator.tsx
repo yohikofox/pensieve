@@ -24,20 +24,7 @@ import { DataMiningScreen } from '../screens/__dev__/DataMiningScreen';
 import { QueryBuilderScreen } from '../screens/__dev__/QueryBuilderScreen';
 import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 import { CustomStackHeader } from './components';
-
-export type SettingsStackParamList = {
-  SettingsMain: undefined;
-  TranscriptionEngineSettings: undefined;
-  WhisperSettings: undefined;
-  LLMSettings: undefined;
-  ThemeSettings: undefined;
-  NotificationSettings: undefined;
-  LottieGallery: undefined;
-  TodoDetailPopoverTest: undefined;
-  SqlConsole: undefined;
-  DataMining: undefined;
-  QueryBuilder: { queryId?: string };
-};
+export type { SettingsStackParamList } from './SettingsNavigationTypes';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
 

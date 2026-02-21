@@ -26,7 +26,7 @@ import type { QueryAst, SavedQuery } from '../../components/dev/datamining/Query
 import { DEFAULT_QUERY_AST } from '../../components/dev/datamining/QueryAst';
 import { queryAstToSql } from '../../components/dev/datamining/queryAstToSql';
 import { database } from '../../database';
-import type { SettingsStackParamList } from '../../navigation/SettingsStackNavigator';
+import type { SettingsStackParamList } from '../../navigation/SettingsNavigationTypes';
 
 type Props = NativeStackScreenProps<SettingsStackParamList, 'QueryBuilder'>;
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList, 'QueryBuilder'>;
