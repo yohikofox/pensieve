@@ -93,9 +93,12 @@ services:
       # Message Queue
       RABBITMQ_URL: amqp://pensine:${RABBITMQ_PASSWORD}@rabbitmq:5672
 
-      # Better Auth
+      # Better Auth (story 15.1 — remplace Supabase Auth)
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET}
       BETTER_AUTH_URL: ${BETTER_AUTH_URL}
+
+      # Resend (email transactionnel — story 15.1)
+      RESEND_API_KEY: ${RESEND_API_KEY}
 
       # MinIO Storage
       MINIO_ENDPOINT: minio
@@ -142,7 +145,26 @@ services:
     networks:
       - pensine-network
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:3000').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ==========================================
+  # ADMIN: Next.js Admin Dashboard
+  # ==========================================
+  admin:
+    image: ${REGISTRY:-cregistry.yolo.yt}/pensine-admin:${ADMIN_VERSION:-latest}
+    container_name: pensine-admin
+    restart: unless-stopped
+    ports:
+      - "3002:3001"
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+    networks:
+      - pensine-network
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -2,11 +2,11 @@
 set -e
 
 # ===========================================
-# Pensine Web - Build & Publish
+# Pensine Admin - Build & Publish
 # ===========================================
 
 REGISTRY="${REGISTRY:-cregistry.yolo.yt}"
-IMAGE_NAME="pensine-web"
+IMAGE_NAME="pensine-admin"
 VERSION="${VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo "latest")}"
 
 PLATFORM="${PLATFORM:-linux/amd64}"

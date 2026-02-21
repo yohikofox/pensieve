@@ -43,7 +43,7 @@ import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self
         synchronize: false, // Disabled - using migrations instead
         logging: process.env.NODE_ENV === 'development',
         migrations: ['dist/migrations/*.js'],
-        migrationsRun: false, // Run migrations manually via npm run migration:run
+        migrationsRun: process.env.RUN_MIGRATIONS === 'true', // default: false
       }),
     }),
     // Shared services (MinioService, Guards)
