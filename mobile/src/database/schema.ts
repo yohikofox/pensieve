@@ -7,7 +7,7 @@
  * Migration Strategy: Versioned migrations (see migrations.ts)
  */
 
-export const SCHEMA_VERSION = 27;
+export const SCHEMA_VERSION = 28;
 
 /**
  * Captures Table - Audio and Text Captures
@@ -198,6 +198,8 @@ export const CREATE_IDEAS_TABLE = `
     order_index INTEGER,
     created_at INTEGER NOT NULL,
     updated_at INTEGER NOT NULL,
+    _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted')),
+    _changed INTEGER NOT NULL DEFAULT 0,
     FOREIGN KEY (thought_id) REFERENCES thoughts(id) ON DELETE CASCADE
   )
 `;

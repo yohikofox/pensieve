@@ -2092,6 +2092,30 @@ export const migrations: Migration[] = [
       console.log('[DB] ✅ Rollback v27 completed');
     },
   },
+  {
+    version: 28,
+    name: 'Add _changed column to ideas for sync tracking',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v28: Adding _changed column to ideas');
+
+      db.executeSync(`
+        ALTER TABLE ideas
+        ADD COLUMN _changed INTEGER NOT NULL DEFAULT 0
+      `);
+
+      db.executeSync(`
+        CREATE INDEX IF NOT EXISTS idx_ideas_changed
+        ON ideas(_changed)
+      `);
+
+      console.log('[DB] ✅ Migration v28: _changed column added to ideas');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v28 (_changed column cannot be dropped in SQLite)');
+    },
+  },
 ];
 
 /**
