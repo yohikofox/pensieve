@@ -25,12 +25,19 @@ async function bootstrap() {
   app.useLogger(app.get(Logger));
 
   // Enable CORS for admin frontend and mobile app
+  // CORS_ORIGINS: comma-separated list of additional allowed origins (e.g. production URLs)
+  const extraOrigins = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((o) => o.trim())
+    .filter(Boolean);
+
   app.enableCors({
     origin: [
-      'http://localhost:3001', // Admin frontend
-      'http://localhost:3002', // Web frontend (if needed)
+      'http://localhost:3001', // Admin frontend (local)
+      'http://localhost:3002', // Web frontend (local)
       /^capacitor:\/\/localhost/, // Mobile Capacitor
       /^ionic:\/\/localhost/, // Mobile Ionic
+      ...extraOrigins,
     ],
     credentials: true,
   });
