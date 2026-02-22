@@ -1,4 +1,4 @@
-const { withAppBuildGradle } = require('@expo/config-plugins');
+const { withAppBuildGradle, withGradleProperties } = require('@expo/config-plugins');
 
 const APP_VARIANT = process.env.APP_VARIANT || 'dev'; // default to dev for Expo Dev Client workflow
 const IS_DEV = APP_VARIANT === 'dev';
@@ -6,8 +6,27 @@ const IS_DEV = APP_VARIANT === 'dev';
 // armeabi-v7a (32-bit ARM, pre-2015) exclu : mmkv-shared 2.x (requis par
 // react-native-background-downloader) ne fournit pas de binaire pour cette
 // architecture. Ces appareils ne peuvent pas faire tourner Whisper/Llama.
-const withAbiFilters = (config) =>
-  withAppBuildGradle(config, (c) => {
+//
+// Deux niveaux de filtrage nécessaires :
+// 1. withGradleProperties → reactNativeArchitectures empêche le RNGRP de configurer
+//    CMake pour armeabi-v7a (cause réelle du CXX1210 au configure step).
+// 2. withAppBuildGradle → ndk.abiFilters exclut armeabi-v7a de l'APK final.
+const withAbiFilters = (config) => {
+  // Étape 1 : gradle.properties — reactNativeArchitectures
+  config = withGradleProperties(config, (c) => {
+    const idx = c.modResults.findIndex(
+      (item) => item.type === 'property' && item.key === 'reactNativeArchitectures'
+    );
+    if (idx !== -1) {
+      c.modResults[idx].value = 'arm64-v8a,x86_64';
+    } else {
+      c.modResults.push({ type: 'property', key: 'reactNativeArchitectures', value: 'arm64-v8a,x86_64' });
+    }
+    return c;
+  });
+
+  // Étape 2 : build.gradle — ndk.abiFilters
+  return withAppBuildGradle(config, (c) => {
     if (!c.modResults.contents.includes('abiFilters')) {
       c.modResults.contents = c.modResults.contents.replace(
         /defaultConfig\s*\{/,
@@ -16,6 +35,7 @@ const withAbiFilters = (config) =>
     }
     return c;
   });
+};
 
 module.exports = {
   expo: {
