@@ -11,15 +11,16 @@ LATEST_TAG ?= latest
 BACKEND_IMAGE = $(REGISTRY)/pensine-backend
 WEB_IMAGE = $(REGISTRY)/pensine-web
 ADMIN_IMAGE = $(REGISTRY)/pensine-admin
+APP_CENTER_IMAGE = $(REGISTRY)/pensine-app-center
 
 # ===========================================
 # Build Commands
 # ===========================================
 
-.PHONY: build build-backend build-web build-admin
+.PHONY: build build-backend build-web build-admin build-app-center
 
 ## Build all images
-build: build-backend build-web build-admin
+build: build-backend build-web build-admin build-app-center
 
 ## Build backend image
 build-backend:
@@ -36,14 +37,19 @@ build-admin:
 	@echo "🔨 Building admin image..."
 	docker build -t $(ADMIN_IMAGE):$(VERSION) -t $(ADMIN_IMAGE):$(LATEST_TAG) ./admin
 
+## Build app-center image
+build-app-center:
+	@echo "🔨 Building app-center image..."
+	docker build -t $(APP_CENTER_IMAGE):$(VERSION) -t $(APP_CENTER_IMAGE):$(LATEST_TAG) ./app-center
+
 # ===========================================
 # Push Commands
 # ===========================================
 
-.PHONY: push push-backend push-web push-admin
+.PHONY: push push-backend push-web push-admin push-app-center
 
 ## Push all images to registry
-push: push-backend push-web push-admin
+push: push-backend push-web push-admin push-app-center
 
 ## Push backend image
 push-backend:
@@ -63,11 +69,17 @@ push-admin:
 	docker push $(ADMIN_IMAGE):$(VERSION)
 	docker push $(ADMIN_IMAGE):$(LATEST_TAG)
 
+## Push app-center image
+push-app-center:
+	@echo "📤 Pushing app-center image..."
+	docker push $(APP_CENTER_IMAGE):$(VERSION)
+	docker push $(APP_CENTER_IMAGE):$(LATEST_TAG)
+
 # ===========================================
 # Combined Commands
 # ===========================================
 
-.PHONY: release release-backend release-web release-admin
+.PHONY: release release-backend release-web release-admin release-app-center
 
 ## Build and push all images
 release: build push
@@ -84,6 +96,10 @@ release-web: build-web push-web
 ## Build and push admin
 release-admin: build-admin push-admin
 	@echo "✅ Admin released to $(REGISTRY)"
+
+## Build and push app-center
+release-app-center: build-app-center push-app-center
+	@echo "✅ App Center released to $(REGISTRY)"
 
 # ===========================================
 # Utility Commands
@@ -107,6 +123,7 @@ clean:
 	-docker rmi $(BACKEND_IMAGE):$(VERSION) $(BACKEND_IMAGE):$(LATEST_TAG) 2>/dev/null
 	-docker rmi $(WEB_IMAGE):$(VERSION) $(WEB_IMAGE):$(LATEST_TAG) 2>/dev/null
 	-docker rmi $(ADMIN_IMAGE):$(VERSION) $(ADMIN_IMAGE):$(LATEST_TAG) 2>/dev/null
+	-docker rmi $(APP_CENTER_IMAGE):$(VERSION) $(APP_CENTER_IMAGE):$(LATEST_TAG) 2>/dev/null
 	@echo "✅ Local images cleaned"
 
 ## Show version
@@ -124,19 +141,22 @@ help:
 	@echo "  build           Build all images"
 	@echo "  build-backend   Build backend image"
 	@echo "  build-web       Build web image"
-	@echo "  build-admin     Build admin image"
+	@echo "  build-admin       Build admin image"
+	@echo "  build-app-center  Build app-center image"
 	@echo ""
 	@echo "Push targets:"
-	@echo "  push            Push all images"
-	@echo "  push-backend    Push backend image"
-	@echo "  push-web        Push web image"
-	@echo "  push-admin      Push admin image"
+	@echo "  push              Push all images"
+	@echo "  push-backend      Push backend image"
+	@echo "  push-web          Push web image"
+	@echo "  push-admin        Push admin image"
+	@echo "  push-app-center   Push app-center image"
 	@echo ""
 	@echo "Release targets:"
-	@echo "  release         Build and push all"
-	@echo "  release-backend Build and push backend"
-	@echo "  release-web     Build and push web"
-	@echo "  release-admin   Build and push admin"
+	@echo "  release           Build and push all"
+	@echo "  release-backend   Build and push backend"
+	@echo "  release-web       Build and push web"
+	@echo "  release-admin     Build and push admin"
+	@echo "  release-app-center Build and push app-center"
 	@echo ""
 	@echo "Utility targets:"
 	@echo "  list            List images in registry"

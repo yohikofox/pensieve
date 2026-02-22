@@ -76,9 +76,45 @@ Dans Portainer :
 
 ---
 
-## 2. APK Android release (installation directe, sans Play Store)
+## 2. App Center (portail de distribution APK)
 
-### 2.1 Prérequis mobiles
+### 2.1 Construire et pousser l'image
+
+```bash
+cd app-center && ./publish.sh && cd ..
+# ou via Makefile :
+make release-app-center
+```
+
+### 2.2 Variables d'environnement Portainer requises
+
+| Variable            | Valeur                          |
+|---------------------|---------------------------------|
+| `MINIO_ENDPOINT_URL`| `http://minio:9000`             |
+| `MINIO_REGION`      | `us-east-1`                     |
+| `MINIO_ACCESS_KEY`  | accès MinIO                     |
+| `MINIO_SECRET_KEY`  | secret MinIO                    |
+| `MINIO_BUCKET`      | `pensine-apks`                  |
+| `ACCESS_TOKEN`      | token fort (accès au portail)   |
+
+### 2.3 Créer le bucket MinIO
+
+Via la console MinIO ou mc :
+
+```bash
+mc alias set pensine http://minio.homelab.local:9000 <ACCESS_KEY> <SECRET_KEY>
+mc mb pensine/pensine-apks
+```
+
+### 2.4 Redéployer via Portainer
+
+Même procédure que les autres services (section 1.5).
+
+---
+
+## 3. APK Android release (installation directe, sans Play Store)
+
+### 3.1 Prérequis mobiles
 
 - `mobile/.env` doit pointer sur la production :
   ```
@@ -90,7 +126,7 @@ Dans Portainer :
 - Android SDK installé (`ANDROID_HOME` dans le PATH)
 - Java 17+ disponible
 
-### 2.2 Regénérer le projet natif en variante release
+### 3.2 Regénérer le projet natif en variante release
 
 > À refaire uniquement quand `app.config.js` ou les plugins Expo changent.
 
@@ -104,7 +140,7 @@ Résultat : `android/` regénéré avec :
 - `scheme = pensine`
 - Icône et nom release
 
-### 2.3 Builder l'APK
+### 3.3 Builder l'APK
 
 ```bash
 cd mobile/android
@@ -119,21 +155,31 @@ mobile/android/app/build/outputs/apk/release/app-release.apk
 > La signature utilise le debug.keystore (suffisant pour installation directe).
 > Pour un APK signé avec une clé dédiée, voir section 2.5.
 
-### 2.4 Installer l'APK sur le device
+### 3.4 Installer l'APK sur le device
 
 **Option A — via ADB (device connecté en USB) :**
 ```bash
 adb install mobile/android/app/build/outputs/apk/release/app-release.apk
 ```
 
-**Option B — transfert manuel :**
-1. Copier l'APK sur le device (AirDrop, cable, Google Drive…)
+**Option B — via App Center (recommandé) :**
+1. Configurer `mobile/scripts/.env` (voir `.env.example`)
+2. Depuis `pensieve/mobile/` :
+   ```bash
+   ./scripts/build-and-push.sh
+   ```
+3. Ouvrir l'App Center → télécharger l'APK depuis le portail
+4. Sur le device : **Paramètres → Sécurité → Sources inconnues** → autoriser
+5. Ouvrir le fichier APK → Installer
+
+**Option C — transfert manuel :**
+1. Copier l'APK sur le device (AirDrop, câble, Google Drive…)
 2. Sur le device : **Paramètres → Sécurité → Sources inconnues** → autoriser
 3. Ouvrir le fichier APK → Installer
 
 > Si une version dev (`com.pensine.app.dev`) est installée, les deux coexistent — identifiants différents.
 
-### 2.5 Signature avec keystore dédié (optionnel, recommandé hors démo)
+### 3.5 Signature avec keystore dédié (optionnel, recommandé hors démo)
 
 ```bash
 # Générer un keystore release
@@ -154,13 +200,13 @@ Puis mettre à jour `mobile/android/app/build.gradle` → `signingConfigs.releas
 
 ---
 
-## 3. Ordre de déploiement recommandé
+## 4. Ordre de déploiement recommandé
 
 ```
 1. postgres + rabbitmq + minio   → déjà up sur homelab
 2. backend                       → avec RUN_MIGRATIONS=true si nouvelles migrations
-3. web + admin                   → après backend healthy
-4. APK                           → pointe sur https://api.pensine.pro
+3. web + admin + app-center      → après backend healthy
+4. APK                           → ./scripts/build-and-push.sh → télécharger depuis app-center
 ```
 
 ---
