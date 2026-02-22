@@ -1,5 +1,21 @@
+const { withAppBuildGradle } = require('@expo/config-plugins');
+
 const APP_VARIANT = process.env.APP_VARIANT || 'dev'; // default to dev for Expo Dev Client workflow
 const IS_DEV = APP_VARIANT === 'dev';
+
+// armeabi-v7a (32-bit ARM, pre-2015) exclu : mmkv-shared 2.x (requis par
+// react-native-background-downloader) ne fournit pas de binaire pour cette
+// architecture. Ces appareils ne peuvent pas faire tourner Whisper/Llama.
+const withAbiFilters = (config) =>
+  withAppBuildGradle(config, (c) => {
+    if (!c.modResults.contents.includes('abiFilters')) {
+      c.modResults.contents = c.modResults.contents.replace(
+        /defaultConfig\s*\{/,
+        'defaultConfig {\n        ndk {\n            abiFilters "arm64-v8a", "x86_64"\n        }'
+      );
+    }
+    return c;
+  });
 
 module.exports = {
   expo: {
@@ -93,15 +109,9 @@ module.exports = {
           ios: {
             excludedPods: ['ExpoLlmMediapipe', 'MediaPipeTasksGenAI', 'MediaPipeTasksGenAIC'],
           },
-          android: {
-            // armeabi-v7a (32-bit ARM, pre-2015) exclu : mmkv-shared 2.x
-            // (requis par react-native-background-downloader) ne fournit pas
-            // de binaire pour cette architecture. Ces appareils ne peuvent
-            // de toute façon pas faire tourner les modèles Whisper/Llama.
-            abiFilters: ['arm64-v8a', 'x86_64'],
-          },
         },
       ],
+      withAbiFilters,
     ],
   },
 };
