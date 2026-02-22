@@ -19,10 +19,10 @@ Depuis la racine de `pensieve/` :
 cd backend && ./publish.sh && cd ..
 
 # Web (bake NEXT_PUBLIC_API_URL=https://api.pensine.pro)
-cd web && ./publish.sh && cd ..
+cd web && NEXT_PUBLIC_API_URL=https://api.pensine.pro ./publish.sh && cd ..
 
 # Admin (bake NEXT_PUBLIC_API_URL=https://api.pensine.pro)
-cd admin && ./publish.sh && cd ..
+cd admin && NEXT_PUBLIC_API_URL=https://api.pensine.pro ./publish.sh && cd ..
 ```
 
 > Les scripts ciblent `cregistry.yolo.yt` par défaut.
@@ -39,20 +39,20 @@ make tags IMAGE=pensine-backend    # liste les tags d'une image
 
 Vérifier que ces variables sont présentes dans Portainer avant de redéployer :
 
-| Variable | Valeur |
-|----------|--------|
-| `BACKEND_VERSION` | `latest` (ou tag spécifique) |
-| `WEB_VERSION` | `latest` |
-| `ADMIN_VERSION` | `latest` |
-| `BETTER_AUTH_SECRET` | secret généré (`openssl rand -base64 32`) |
-| `BETTER_AUTH_URL` | `https://api.pensine.pro` |
-| `RESEND_API_KEY` | clé Resend |
-| `POSTGRES_PASSWORD` | mot de passe PostgreSQL |
-| `RABBITMQ_PASSWORD` | mot de passe RabbitMQ |
-| `MINIO_ROOT_USER` | accès MinIO |
-| `MINIO_ROOT_PASSWORD` | secret MinIO |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google |
-| `HF_CLIENT_ID` / `HF_CLIENT_SECRET` | OAuth HuggingFace |
+| Variable                                    | Valeur                                    |
+|---------------------------------------------|-------------------------------------------|
+| `BACKEND_VERSION`                           | `latest` (ou tag spécifique)              |
+| `WEB_VERSION`                               | `latest`                                  |
+| `ADMIN_VERSION`                             | `latest`                                  |
+| `BETTER_AUTH_SECRET`                        | secret généré (`openssl rand -base64 32`) |
+| `BETTER_AUTH_URL`                           | `https://api.pensine.pro`                 |
+| `RESEND_API_KEY`                            | clé Resend                                |
+| `POSTGRES_PASSWORD`                         | mot de passe PostgreSQL                   |
+| `RABBITMQ_PASSWORD`                         | mot de passe RabbitMQ                     |
+| `MINIO_ROOT_USER`                           | accès MinIO                               |
+| `MINIO_ROOT_PASSWORD`                       | secret MinIO                              |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | OAuth Google                              |
+| `HF_CLIENT_ID` / `HF_CLIENT_SECRET`         | OAuth HuggingFace                         |
 
 ### 1.4 Migrations base de données
 
