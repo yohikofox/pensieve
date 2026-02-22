@@ -93,6 +93,13 @@ module.exports = {
           ios: {
             excludedPods: ['ExpoLlmMediapipe', 'MediaPipeTasksGenAI', 'MediaPipeTasksGenAIC'],
           },
+          android: {
+            // armeabi-v7a (32-bit ARM, pre-2015) exclu : mmkv-shared 2.x
+            // (requis par react-native-background-downloader) ne fournit pas
+            // de binaire pour cette architecture. Ces appareils ne peuvent
+            // de toute façon pas faire tourner les modèles Whisper/Llama.
+            abiFilters: ['arm64-v8a', 'x86_64'],
+          },
         },
       ],
     ],
