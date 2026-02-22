@@ -30,7 +30,7 @@ import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self
       useFactory: (config: ConfigService) =>
         buildLoggerConfig(
           config.get<string>('LOG_LEVEL'),
-          config.get<string>('NODE_ENV') !== 'production',
+          config.get<string>('LOG_PRETTY') === 'true',
           config.get<string>('LOG_FILE_PATH'),
         ),
     }),
