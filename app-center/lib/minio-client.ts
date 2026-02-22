@@ -1,4 +1,4 @@
-import { S3Client } from "@aws-sdk/client-s3";
+import { S3Client, HeadBucketCommand, CreateBucketCommand } from "@aws-sdk/client-s3";
 
 // Initialisation lazy : le client n'est créé qu'à la première utilisation
 // (au runtime, pas au build time) pour éviter les erreurs sur les variables
@@ -26,3 +26,14 @@ export function getS3(): S3Client {
 }
 
 export const BUCKET = () => process.env.MINIO_BUCKET ?? "pensine-apks";
+
+export async function ensureBucket(): Promise<void> {
+  const s3 = getS3();
+  const bucket = BUCKET();
+
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: bucket }));
+  } catch {
+    await s3.send(new CreateBucketCommand({ Bucket: bucket }));
+  }
+}

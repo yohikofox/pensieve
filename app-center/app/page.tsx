@@ -1,5 +1,5 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { getS3, BUCKET } from "@/lib/minio-client";
+import { getS3, BUCKET, ensureBucket } from "@/lib/minio-client";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ interface Build {
 }
 
 async function listBuilds(): Promise<Build[]> {
+  await ensureBucket();
   const s3 = getS3();
   const bucket = BUCKET();
 
