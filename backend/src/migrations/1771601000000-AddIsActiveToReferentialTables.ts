@@ -10,10 +10,10 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  * - capture_sync_statuses
  * - capture_types
  * - capture_states
- * - thought_statuses
+ * - thought_statuses (créée par 1771600000000 — doit s'exécuter après)
  */
-export class AddIsActiveToReferentialTables1771509132000 implements MigrationInterface {
-  name = 'AddIsActiveToReferentialTables1771509132000';
+export class AddIsActiveToReferentialTables1771601000000 implements MigrationInterface {
+  name = 'AddIsActiveToReferentialTables1771601000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`
