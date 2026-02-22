@@ -1,5 +1,5 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
-import { s3, BUCKET } from "@/lib/minio-client";
+import { getS3, BUCKET } from "@/lib/minio-client";
 
 interface BuildMetadata {
   version: string;
@@ -17,8 +17,11 @@ interface Build {
 }
 
 async function listBuilds(): Promise<Build[]> {
+  const s3 = getS3();
+  const bucket = BUCKET();
+
   const command = new ListObjectsV2Command({
-    Bucket: BUCKET,
+    Bucket: bucket,
     Prefix: "pensine/mobile/",
     Delimiter: "/",
   });
@@ -35,7 +38,7 @@ async function listBuilds(): Promise<Build[]> {
     const version = versionDir.replace("pensine/mobile/", "").replace("/", "");
 
     const listCommand = new ListObjectsV2Command({
-      Bucket: BUCKET,
+      Bucket: bucket,
       Prefix: versionDir,
     });
 
@@ -57,7 +60,7 @@ async function listBuilds(): Promise<Build[]> {
     if (metaObj?.Key) {
       try {
         const { GetObjectCommand } = await import("@aws-sdk/client-s3");
-        const metaCmd = new GetObjectCommand({ Bucket: BUCKET, Key: metaObj.Key });
+        const metaCmd = new GetObjectCommand({ Bucket: bucket, Key: metaObj.Key });
         const metaRes = await s3.send(metaCmd);
         const body = await metaRes.Body?.transformToString();
         if (body) {

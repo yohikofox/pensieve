@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { s3, BUCKET } from "@/lib/minio-client";
+import { getS3, BUCKET } from "@/lib/minio-client";
 
 export async function GET(req: NextRequest) {
   const key = req.nextUrl.searchParams.get("key");
@@ -16,11 +16,11 @@ export async function GET(req: NextRequest) {
   }
 
   const command = new GetObjectCommand({
-    Bucket: BUCKET,
+    Bucket: BUCKET(),
     Key: key,
   });
 
-  const presignedUrl = await getSignedUrl(s3, command, { expiresIn: 3600 });
+  const presignedUrl = await getSignedUrl(getS3(), command, { expiresIn: 3600 });
 
   return NextResponse.redirect(presignedUrl);
 }
