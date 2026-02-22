@@ -1,6 +1,8 @@
 import { ListObjectsV2Command } from "@aws-sdk/client-s3";
 import { getS3, BUCKET } from "@/lib/minio-client";
 
+export const dynamic = "force-dynamic";
+
 interface BuildMetadata {
   version: string;
   buildDate: string;
