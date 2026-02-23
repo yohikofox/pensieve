@@ -22,7 +22,7 @@ import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self
     // Global configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      envFilePath: '.env',
+      envFilePath: [`.env.${process.env.NODE_ENV}`, '.env'],
     }),
     // Structured JSON logger (pino) — ADR-015 / Story 14.3
     LoggerModule.forRootAsync({

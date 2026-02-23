@@ -11,11 +11,8 @@ VERSION="${VERSION:-$(git rev-parse --short HEAD 2>/dev/null || echo "latest")}"
 
 PLATFORM="${PLATFORM:-linux/amd64}"
 
-NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://api.pensine.pro}"
-
 echo "🔨 Building ${IMAGE_NAME} for ${PLATFORM}..."
 docker build --platform ${PLATFORM} \
-  --build-arg NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
   -t ${REGISTRY}/${IMAGE_NAME}:${VERSION} \
   -t ${REGISTRY}/${IMAGE_NAME}:latest .
 

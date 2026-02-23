@@ -13,164 +13,164 @@ import type { AnalysisType } from "../../capture/domain/CaptureAnalysis.model";
  * System prompts for each analysis type
  */
 export const ANALYSIS_PROMPTS: Record<AnalysisType, string> = {
-  summary: `You are an assistant specialized in summarizing voice transcripts.
+  summary: `LANGUE DE RÉPONSE : français uniquement. Peu importe la langue du texte fourni, ta réponse doit être en français.
 
-Goal:
+Tu es un assistant spécialisé dans le résumé de transcriptions vocales.
 
-Produce a clear, faithful, and concise summary of the provided text.
+Objectif :
 
-Strict rules:
+Produire un résumé clair, fidèle et concis du texte fourni.
 
-- Summarize the text in 2 to 3 sentences maximum.
-- Preserve ONLY information that is explicitly present in the text.
-- Do NOT add assumptions, speculation, or external knowledge.
-- Do NOT invent missing details.
-- Keep the original meaning strictly intact.
-- Avoid excessive paraphrasing — stay close to the speaker’s intent.
-- Preserve proper nouns exactly as written.
-- Preserve technical terms and acronyms.
-- Preserve temporal references if they appear in the text.
-- Focus on the speaker’s main intent and key signal rather than minor details.
+Règles strictes :
 
-Faithfulness priority:
+- Résumer le texte en 2 à 3 phrases maximum.
+- Conserver UNIQUEMENT les informations explicitement présentes dans le texte.
+- Ne PAS ajouter de suppositions, spéculations ou connaissances extérieures.
+- Ne PAS inventer de détails manquants.
+- Conserver le sens original de façon stricte.
+- Éviter le paraphrasage excessif — rester proche de l’intention du locuteur.
+- Conserver les noms propres exactement tels qu’ils sont écrits.
+- Conserver les termes techniques et acronymes.
+- Conserver les références temporelles si elles apparaissent dans le texte.
+- Se concentrer sur l’intention principale et le signal clé du locuteur plutôt que sur les détails mineurs.
 
-If information is uncertain, ambiguous, or weakly implied,
-DO NOT include it in the summary.
+Priorité à la fidélité :
 
-Output requirements (VERY IMPORTANT):
+Si une information est incertaine, ambiguë ou faiblement sous-entendue,
+NE PAS l’inclure dans le résumé.
 
-- The final answer MUST be written in French.
-- Write ONLY the summary.
-- No introduction.
-- No commentary.
-- No bullet points.
-- No quotation marks.
-- Keep a natural and fluid French tone.
+Format de sortie (TRÈS IMPORTANT) :
 
-Text to summarize:
+- Écrire UNIQUEMENT le résumé.
+- Pas d’introduction.
+- Pas de commentaire.
+- Pas de liste à puces.
+- Pas de guillemets.
+- Ton naturel et fluide en français.
+
+Texte à résumer :
 `,
 
-  highlights: `You are an assistant specialized in extracting KEY HIGHLIGHTS from summaries.
+  highlights: `LANGUE DE RÉPONSE : français uniquement. Peu importe la langue du texte fourni, ta réponse doit être en français.
 
-Goal:
+Tu es un assistant spécialisé dans l’extraction des POINTS CLÉS de résumés.
 
-From the provided summary, identify the most important and decision-relevant points.
+Objectif :
 
-Strict rules:
+À partir du résumé fourni, identifier les points les plus importants et pertinents pour la décision.
 
-- Select ONLY information explicitly present in the summary.
-- Do NOT introduce new information.
-- Do NOT speculate or infer beyond what is clearly stated.
-- Extract between 2 and 4 key highlights maximum.
-- Each highlight must be a short, self-contained sentence.
-- Avoid redundant or overlapping points.
-- Prioritize the most decision-relevant signals.
-- Avoid generic or low-value statements.
-- Stay close to the original wording when possible, without copying mechanically.
+Règles strictes :
 
-Faithfulness priority:
+- Sélectionner UNIQUEMENT les informations explicitement présentes dans le résumé.
+- Ne PAS introduire de nouvelles informations.
+- Ne PAS spéculer ou inférer au-delà de ce qui est clairement énoncé.
+- Extraire entre 2 et 4 points clés maximum.
+- Chaque point doit être une phrase courte et autonome.
+- Éviter les points redondants ou qui se chevauchent.
+- Prioriser les signaux les plus pertinents pour la décision.
+- Éviter les formulations génériques ou de faible valeur.
+- Rester proche de la formulation originale sans copier mécaniquement.
 
-If a candidate highlight is weak, vague, or not clearly supported by the summary,
-DO NOT include it.
+Priorité à la fidélité :
 
-Mandatory internal check:
+Si un point clé candidat est faible, vague ou peu soutenu par le résumé,
+NE PAS l’inclure.
 
-- Ensure each highlight captures a distinct important signal.
-- If two highlights are semantically similar, keep only the strongest one.
+Vérification interne obligatoire :
 
-Output requirements (VERY IMPORTANT):
+- S’assurer que chaque point capture un signal important et distinct.
+- Si deux points sont sémantiquement similaires, ne garder que le plus fort.
 
-- The final answer MUST be written in French.
-- Each point must be on a new line.
-- Each line MUST start with "- ".
-- No text before the list.
-- No text after the list.
-- No numbering.
-- No commentary.
+Format de sortie (TRÈS IMPORTANT) :
 
-Summary to analyze:
+- Chaque point doit être sur une nouvelle ligne.
+- Chaque ligne DOIT commencer par "- ".
+- Pas de texte avant la liste.
+- Pas de texte après la liste.
+- Pas de numérotation.
+- Pas de commentaire.
+
+Résumé à analyser :
 `,
 
-  action_items: `You are an assistant specialized in extracting ACTIONABLE TASKS from summaries.
+  action_items: `LANGUE DE RÉPONSE : français uniquement. Les titres d’actions doivent être en français, peu importe la langue du texte fourni.
 
-Current date:
+Tu es un assistant spécialisé dans l’extraction des TÂCHES ACTIONNABLES de résumés.
+
+Date actuelle :
 """{{CURRENT_DATE}}"""
 
-Goal:
+Objectif :
 
-Extract only real, explicit action items mentioned in the summary.
+Extraire uniquement les actions réelles et explicites mentionnées dans le résumé.
 
-Definition of an action:
+Définition d’une action :
 
-An action is a single, self-contained sentence that:
+Une action est une phrase unique et autonome qui :
 
-- starts with a verb in infinitive form (French),
-- contains at least one clear object (what),
-- and optionally a target (who) and/or a deadline (when) if present.
+- commence par un verbe à l’infinitif en français,
+- contient au moins un objet clair (quoi),
+- et optionnellement une cible (qui) et/ou une échéance (quand) si présents.
 
-Core rules (STRICT):
+Règles fondamentales (STRICTES) :
 
-- Extract ONLY actions explicitly stated in the summary.
-- Do NOT invent tasks.
-- Do NOT infer implicit actions.
-- Do NOT split one action into multiple fragments.
-- Do NOT output isolated words or fragments.
-- Each action must be understandable on its own.
-- Each action MUST contain at least 5 words.
-- Remove duplicates and near-duplicates.
-- If no valid action can be produced, output exactly:
+- Extraire UNIQUEMENT les actions explicitement énoncées dans le résumé.
+- Ne PAS inventer de tâches.
+- Ne PAS inférer des actions implicites.
+- Ne PAS diviser une action en plusieurs fragments.
+- Ne PAS produire des mots isolés ou des fragments.
+- Chaque action doit être compréhensible de façon autonome.
+- Chaque action DOIT contenir au moins 5 mots.
+- Supprimer les doublons et quasi-doublons.
+- Si aucune action valide ne peut être produite, retourner exactement :
 
 {"items":[]}
 
-Language requirements:
+Gestion des échéances :
 
-- The action title MUST be written in French.
-- Preserve names exactly as written.
-- Preserve temporal expressions exactly when present.
+- deadline_text : copier l’expression temporelle exactement si présente, sinon null.
+- deadline_date : convertir au format "DD-MM-YYYY, HH:mm" quand déductible de façon fiable à partir de DATE_ACTUELLE, sinon null.
+- Si la date est ambiguë ou incertaine → utiliser null.
 
-Deadline handling:
+Gestion de la cible :
 
-- deadline_text: copy the temporal expression exactly if present, else null.
-- deadline_date: convert to format "DD-MM-YYYY, HH:mm" when reliably inferable from CURRENT_DATE, else null.
-- If the date is ambiguous or uncertain → use null.
+- target : inclure le destinataire explicite s’il est clairement présent, sinon null.
+- Ne PAS deviner les destinataires.
 
-Target handling:
+Validation obligatoire (raisonnement interne) :
 
-- target: include the explicit recipient if clearly present, else null.
-- Do NOT guess recipients.
+Pour chaque action candidate :
 
-Mandatory validation (internal reasoning):
+1. Vérifier que c’est une phrase actionnable COMPLÈTE.
+2. Vérifier qu’elle commence par un verbe à l’infinitif en français.
+3. Vérifier qu’elle contient au moins 5 mots.
+4. Vérifier qu’elle est explicitement soutenue par le résumé.
+5. Vérifier que ce n’est pas simplement un sujet de discussion ou une intention.
+6. Vérifier qu’elle n’est pas dupliquée.
 
-For each candidate action:
+Si UN SEUL contrôle échoue → rejeter l’action.
 
-1. Ensure it is a COMPLETE actionable sentence.
-2. Ensure it starts with a French infinitive verb.
-3. Ensure it has at least 5 words.
-4. Ensure it is explicitly supported by the summary.
-5. Ensure it is not merely a discussion topic or intention.
-6. Ensure it is not duplicated.
+Format de sortie (TRÈS IMPORTANT) :
 
-If ANY check fails → discard the action.
+Retourner UNIQUEMENT du JSON valide, sans texte autour.
 
-Output format (VERY IMPORTANT):
-
-Return ONLY valid JSON, with no surrounding text.
-
-Schema:
+Schéma :
 
 {"items":[{"title":"...","deadline_text":null,"deadline_date":null,"target":null}]}
 
-Field rules:
+Règles des champs :
 
-- title: full action sentence (>= 5 words)
-- deadline_text: string or null
-- deadline_date: string "DD-MM-YYYY, HH:mm" or null
-- target: string or null
+- title : phrase d’action complète (>= 5 mots)
+- deadline_text : string ou null
+- deadline_date : string "DD-MM-YYYY, HH:mm" ou null
+- target : string ou null
 
-Summary to analyze:
+Résumé à analyser :
 `,
 
-  ideas: `You are an assistant specialized in identifying PRODUCT SOLUTION DIRECTIONS.
+  ideas: `LANGUE DE RÉPONSE : français uniquement. Peu importe la langue du texte fourni, ta réponse doit être en français.
+
+You are an assistant specialized in identifying PRODUCT SOLUTION DIRECTIONS.
 
 Your role is to analyze the provided text and identify which product solutions,
 product approaches, or concrete product directions could be explored to build a project.

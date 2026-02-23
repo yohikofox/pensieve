@@ -21,6 +21,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
+  AppState,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
@@ -262,6 +263,21 @@ export function LLMSettingsScreen() {
     const standard = await modelService.getModelsForBackendAndDevice('llamarn');
     setModels(tpu, standard);
   }, [npuInfo, modelService, setModels]);
+
+  // Re-sync HuggingFace auth state when app comes back to foreground.
+  // Handles the case where openAuthSessionAsync returns 'dismiss' (iOS production)
+  // and useDeepLinkAuth has already stored the token via handleDeepLinkToken,
+  // but llmSettingsScreenStore was never notified.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'active') {
+        const isAuth = authService.isAuthenticated();
+        setHfAuth(isAuth, authService.getUser());
+        if (isAuth) await refreshModels();
+      }
+    });
+    return () => subscription.remove();
+  }, [authService, setHfAuth, refreshModels]);
 
   /**
    * Handle model deletion - refresh list and check if we need to disable post-processing

@@ -182,6 +182,8 @@ export class LitertLmBackend implements IPostProcessingBackend {
       processedText = processedText
         .replace(/<end_of_turn>/g, '')
         .replace(/<start_of_turn>/g, '')
+        // Convert literal \n (two chars backslash+n) to real newlines
+        .replace(/\\n/g, '\n')
         .trim();
 
       console.log('[LitertLmBackend] Processing completed:', {
@@ -229,6 +231,8 @@ export class LitertLmBackend implements IPostProcessingBackend {
       processedText = processedText
         .replace(/<end_of_turn>/g, '')
         .replace(/<start_of_turn>/g, '')
+        // Convert literal \n (two chars backslash+n) to real newlines
+        .replace(/\\n/g, '\n')
         .trim();
 
       return {

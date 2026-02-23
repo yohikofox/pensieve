@@ -178,8 +178,8 @@ export class MediaPipeBackend implements IPostProcessingBackend {
       this.modelHandle = await module.createModel(
         cleanPath,
         2048,   // maxTokens (increased for longer transcripts)
-        64,     // topK (Gemma 3 recommended: 64)
-        1.0,    // temperature (Gemma 3 recommended: 1.0)
+        40,     // topK (reduced for more focused outputs)
+        0.4,    // temperature (lowered from 1.0 to improve instruction following)
         42      // randomSeed
       );
 
@@ -314,6 +314,8 @@ export class MediaPipeBackend implements IPostProcessingBackend {
       processedText = processedText
         .replace(/<end_of_turn>/g, '')
         .replace(/<start_of_turn>/g, '')
+        // Convert literal \n (two chars backslash+n) to real newlines
+        .replace(/\\n/g, '\n')
         .trim();
 
       return {

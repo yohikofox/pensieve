@@ -28,11 +28,8 @@ COPY . .
 # Disable Next.js telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# Build-time public env vars (baked into the bundle by Next.js)
-ARG NEXT_PUBLIC_API_URL
-ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
-
 # Build the application
+# NEXT_PUBLIC_* vars are read from .env.production at build time by Next.js
 RUN npm run build
 
 # ===========================================

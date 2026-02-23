@@ -84,7 +84,6 @@ fi
 REGISTRY="${REGISTRY:-cregistry.yolo.yt}"
 VERSION="${VERSION:-$(git -C "${SCRIPT_DIR}" rev-parse --short HEAD 2>/dev/null || echo "latest")}"
 PLATFORM="${PLATFORM:-linux/amd64}"
-NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL:-https://api.pensine.pro}"
 
 # Portainer CE API
 PORTAINER_URL="${PORTAINER_URL:-}"
@@ -125,6 +124,17 @@ run() {
     dry "$*"
   else
     "$@"
+  fi
+}
+
+# Run a command from a specific directory (subshell — does not affect cwd)
+run_in() {
+  local dir="$1"
+  shift
+  if [ "${DRY_RUN}" = true ]; then
+    dry "(cd ${dir} && $*)"
+  else
+    (cd "${dir}" && "$@")
   fi
 }
 
@@ -249,7 +259,6 @@ header "Pensine — Full Deploy"
 log "Version  : ${BOLD}${VERSION}${RESET}"
 log "Registry : ${REGISTRY}"
 log "Platform : ${PLATFORM}"
-log "API URL  : ${NEXT_PUBLIC_API_URL}"
 [ -n "${PORTAINER_URL}" ] && log "Portainer: ${PORTAINER_URL} (stack ID: ${PORTAINER_STACK_ID})"
 [ "${SKIP_MOBILE}" = true ]  && warn "Mobile APK : SKIPPED"
 [ "${SKIP_DEPLOY}" = true ]  && warn "Portainer  : SKIPPED"
@@ -273,11 +282,11 @@ fi
 # -------------------------------------------
 if should_run "backend"; then
   step_start "Backend — Build & Push"
-  run env \
+  run_in "${SCRIPT_DIR}/backend" env \
     REGISTRY="${REGISTRY}" \
     VERSION="${VERSION}" \
     PLATFORM="${PLATFORM}" \
-    bash "${SCRIPT_DIR}/backend/publish.sh"
+    bash publish.sh
   step_end
 fi
 
@@ -286,12 +295,11 @@ fi
 # -------------------------------------------
 if should_run "web"; then
   step_start "Web — Build & Push"
-  run env \
+  run_in "${SCRIPT_DIR}/web" env \
     REGISTRY="${REGISTRY}" \
     VERSION="${VERSION}" \
     PLATFORM="${PLATFORM}" \
-    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
-    bash "${SCRIPT_DIR}/web/publish.sh"
+    bash publish.sh
   step_end
 fi
 
@@ -300,12 +308,11 @@ fi
 # -------------------------------------------
 if should_run "admin"; then
   step_start "Admin — Build & Push"
-  run env \
+  run_in "${SCRIPT_DIR}/admin" env \
     REGISTRY="${REGISTRY}" \
     VERSION="${VERSION}" \
     PLATFORM="${PLATFORM}" \
-    NEXT_PUBLIC_API_URL="${NEXT_PUBLIC_API_URL}" \
-    bash "${SCRIPT_DIR}/admin/publish.sh"
+    bash publish.sh
   step_end
 fi
 
@@ -314,10 +321,10 @@ fi
 # -------------------------------------------
 if should_run "app-center"; then
   step_start "App-Center — Build & Push"
-  run env \
+  run_in "${SCRIPT_DIR}/app-center" env \
     REGISTRY="${REGISTRY}" \
     VERSION="${VERSION}" \
-    bash "${SCRIPT_DIR}/app-center/publish.sh"
+    bash publish.sh
   step_end
 fi
 
@@ -333,12 +340,12 @@ if [ "${SKIP_MOBILE}" = false ] && should_run "mobile"; then
     exit 1
   fi
 
-  run env \
+  run_in "${SCRIPT_DIR}/mobile" env \
     MINIO_ENDPOINT="${MINIO_ENDPOINT}" \
     MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
     MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
     MINIO_BUCKET="${MINIO_BUCKET}" \
-    bash "${SCRIPT_DIR}/mobile/scripts/build-and-push.sh"
+    bash scripts/build-and-push.sh
   step_end
 fi
 
