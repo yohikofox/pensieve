@@ -5,18 +5,38 @@
  */
 
 import { Test, TestingModule } from '@nestjs/testing';
+import { getRepositoryToken } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
 import { UploadsController } from '../application/controllers/uploads.controller';
 import { MinioService } from '../../shared/infrastructure/storage/minio.service';
+import { Capture } from '../../capture/domain/entities/capture.entity';
 import { BetterAuthGuard } from '../../../auth/guards/better-auth.guard';
 
 describe('UploadsController', () => {
+  const BACKEND_URL = 'http://api.example.local:3000';
+
   let controller: UploadsController;
   let minioService: jest.Mocked<MinioService>;
+  let captureRepository: { update: jest.Mock };
 
   beforeEach(async () => {
     // Mock MinioService
     const mockMinioService = {
       putObject: jest.fn(),
+      getObjectStream: jest.fn(),
+    };
+
+    // Mock CaptureRepository
+    const mockCaptureRepository = {
+      update: jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+
+    // Mock ConfigService
+    const mockConfigService = {
+      get: jest.fn().mockImplementation((key: string, defaultValue = '') => {
+        if (key === 'BETTER_AUTH_URL') return BACKEND_URL;
+        return defaultValue;
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -26,6 +46,14 @@ describe('UploadsController', () => {
           provide: MinioService,
           useValue: mockMinioService,
         },
+        {
+          provide: getRepositoryToken(Capture),
+          useValue: mockCaptureRepository,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
       ],
     })
       .overrideGuard(BetterAuthGuard)
@@ -34,6 +62,7 @@ describe('UploadsController', () => {
 
     controller = module.get<UploadsController>(UploadsController);
     minioService = module.get(MinioService);
+    captureRepository = module.get(getRepositoryToken(Capture));
   });
 
   it('should be defined', () => {
@@ -60,7 +89,7 @@ describe('UploadsController', () => {
       },
     };
 
-    it('should upload audio file to MinIO with user isolation', async () => {
+    it('should upload audio file to MinIO with user isolation and return backend proxy URL', async () => {
       const captureId = 'capture-456';
 
       minioService.putObject.mockResolvedValue(
@@ -73,8 +102,9 @@ describe('UploadsController', () => {
         mockRequest as any,
       );
 
+      // Returns backend proxy URL (not MinIO path — MinIO is not internet-exposed)
       expect(result).toEqual({
-        audioUrl: 'audio/user-123/capture-456.m4a',
+        audioUrl: `${BACKEND_URL}/api/uploads/audio/capture-456`,
       });
 
       // Verify MinioService called with correct params
@@ -83,6 +113,39 @@ describe('UploadsController', () => {
         mockFile.buffer,
         mockFile.mimetype,
       );
+    });
+
+    it('should update capture.rawContent with MinIO key after upload (BUG 3 fix)', async () => {
+      const captureId = 'capture-456';
+      const expectedKey = 'audio/user-123/capture-456.m4a';
+
+      minioService.putObject.mockResolvedValue(expectedKey);
+      captureRepository.update.mockResolvedValue({ affected: 1 });
+
+      await controller.uploadAudio(mockFile, { captureId }, mockRequest as any);
+
+      expect(captureRepository.update).toHaveBeenCalledWith(
+        { clientId: captureId, ownerId: 'user-123' },
+        expect.objectContaining({ rawContent: expectedKey }),
+      );
+    });
+
+    it('should still return audioUrl even when capture not found in DB (no throw)', async () => {
+      const captureId = 'orphan-capture';
+
+      minioService.putObject.mockResolvedValue('audio/user-123/orphan-capture.m4a');
+      captureRepository.update.mockResolvedValue({ affected: 0 });
+
+      const result = await controller.uploadAudio(
+        mockFile,
+        { captureId },
+        mockRequest as any,
+      );
+
+      // Upload should succeed even if capture row not found (PUSH may come later)
+      expect(result).toEqual({
+        audioUrl: `${BACKEND_URL}/api/uploads/audio/orphan-capture`,
+      });
     });
 
     it('should reject if captureId missing', async () => {

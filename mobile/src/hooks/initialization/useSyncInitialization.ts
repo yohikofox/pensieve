@@ -17,6 +17,7 @@ import { SyncService } from "../../infrastructure/sync/SyncService";
 import { AutoSyncOrchestrator } from "../../infrastructure/sync/AutoSyncOrchestrator";
 import { PeriodicSyncService } from "../../infrastructure/sync/PeriodicSyncService";
 import { NetworkMonitor } from "../../infrastructure/network/NetworkMonitor";
+import { UploadOrchestrator } from "../../infrastructure/upload/UploadOrchestrator";
 import { useSyncStatusStore } from "../../stores/SyncStatusStore";
 import { useToast } from "../../design-system/components";
 import type { IAuthService } from "../../contexts/identity/domain/IAuthService";
@@ -54,10 +55,14 @@ export function useSyncInitialization() {
         // CRITICAL: Await auth token BEFORE starting orchestrator
         const session = await authService.getSession();
 
+        // Resolve UploadOrchestrator (already instantiated in container, needs auth token)
+        const uploadOrchestrator = container.resolve(UploadOrchestrator);
+
         if (session?.accessToken) {
           console.log("[SyncInit] ✅ Auth token set");
           console.log(`[SyncInit] Auth token: ${session.accessToken}`);
           syncService.setAuthToken(session.accessToken);
+          uploadOrchestrator.setAuthToken(session.accessToken);
         } else {
           console.log("[SyncInit] ⚠️ No session - sync will fail until login");
         }
@@ -66,6 +71,7 @@ export function useSyncInitialization() {
         orchestrator = container.resolve(AutoSyncOrchestrator);
         orchestrator.start();
         console.log("[SyncInit] ✅ AutoSyncOrchestrator started");
+        console.log("[SyncInit] ✅ UploadOrchestrator ready (auto-started in container)");
 
         // Story 6.3 Task 8.4: Start PeriodicSyncService for 15-min background polling
         // ADR-009.1: launch + post-action + polling 15min
@@ -78,6 +84,7 @@ export function useSyncInitialization() {
         authService.onAuthStateChange((session) => {
           if (session?.accessToken) {
             syncService.setAuthToken(session.accessToken);
+            uploadOrchestrator.setAuthToken(session.accessToken);
           }
         });
       } catch (error) {

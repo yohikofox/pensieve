@@ -10,7 +10,7 @@
  * - Dynamic data (badges, counts) is injected via hooks
  */
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -34,17 +34,24 @@ export const MainNavigator = () => {
   const { data: activeTodoCount } = useActiveTodoCount();
   const todoCount = activeTodoCount ?? 0;
 
-  // Memoized haptic feedback handler
-  const handleTabPress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  }, []);
-
-  // Memoized tab press listeners (shared by all tabs)
-  const tabPressListener = useMemo(
-    () => ({
-      tabPress: handleTabPress,
-    }),
-    [handleTabPress],
+  // Tab press handler: haptic + reset nested stack to root when re-pressing active tab.
+  // Using a factory function (not a shared object) so the listener has access to
+  // `navigation` and `route` — required to detect whether the tab is already focused
+  // and to dispatch the navigate action that pops the nested stack to its initial screen.
+  const createTabListeners = useCallback(
+    (name: string) =>
+      ({ navigation }: { navigation: any }) => ({
+        tabPress: () => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (navigation.isFocused()) {
+            // Re-pressing an already active tab: navigate to the tab's root.
+            // React Navigation propagates this to the nested stack, which pops
+            // all screens on top of the initial route (e.g. WhisperSettings → SettingsMain).
+            navigation.navigate(name);
+          }
+        },
+      }),
+    [],
   );
 
   // Helper: Create tab bar icon renderer with optional badge
@@ -129,7 +136,7 @@ export const MainNavigator = () => {
                   todoCount,
                 ),
               }}
-              listeners={tabPressListener}
+              listeners={createTabListeners(name)}
             />
           );
         })}

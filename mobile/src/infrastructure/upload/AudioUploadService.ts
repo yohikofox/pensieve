@@ -55,9 +55,19 @@ export interface UploadResult {
  */
 export class AudioUploadService {
   private readonly apiUrl: string;
+  private authToken: string | null = null;
 
   constructor(apiUrl: string) {
     this.apiUrl = apiUrl;
+  }
+
+  /**
+   * Set the JWT auth token for API requests (mirrors SyncService pattern)
+   *
+   * @param token - Bearer token from the authenticated session
+   */
+  setAuthToken(token: string): void {
+    this.authToken = token;
   }
 
   /**
@@ -138,8 +148,13 @@ export class AudioUploadService {
       // TODO (ADR-025): Implement upload progress tracking with fetch
       // fetch doesn't support onUploadProgress natively - requires ReadableStream or XHR
       // For now, upload works but progress tracking is disabled during upload
+      const uploadHeaders: Record<string, string> = {};
+      if (this.authToken) {
+        uploadHeaders['Authorization'] = `Bearer ${this.authToken}`;
+      }
       const httpResponse = await fetchWithRetry(`${this.apiUrl}/api/uploads/audio`, {
         method: 'POST',
+        headers: uploadHeaders,
         body: formData,
         // Note: Do NOT set Content-Type header for FormData
         // Browser/fetch will set it automatically with correct boundary

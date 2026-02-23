@@ -207,8 +207,8 @@ export function registerServices() {
   // SINGLETON: AutoSyncOrchestrator — orchestrateur avec état, dépend de singletons sync (ADR-021)
   container.registerSingleton(AutoSyncOrchestrator);
 
-  // SINGLETON: UploadOrchestrator — dépend de services avec état (ADR-021)
-  container.registerSingleton(UploadOrchestrator);
+  // NOTE: UploadOrchestrator est instancié manuellement après AudioUploadService
+  // (voir plus bas dans la section Upload Infrastructure)
 
   // ── TRANSIENT ──────────────────────────────────────────────────────────────
   // Services et repositories stateless — nouvelle instance à chaque résolution (ADR-021)
@@ -260,6 +260,14 @@ export function registerServices() {
       return new ChunkedUploadService(url);
     },
   });
+
+  // SINGLETON: UploadOrchestrator — wired manually: EventBus (string token) +
+  // AudioUploadService (useFactory). Le constructeur appelle this.start() automatiquement
+  // ce qui souscrit aux événements SyncSuccess via EventBus (ADR-019, ADR-021).
+  container.registerInstance(
+    UploadOrchestrator,
+    new UploadOrchestrator(eventBus, container.resolve(AudioUploadService)),
+  );
 
   servicesRegistered = true;
   container.resolve<ILogger>(TOKENS.ILogger).debug('[DI Container] ✅ Services registered (ADR-021 Transient First applied)');

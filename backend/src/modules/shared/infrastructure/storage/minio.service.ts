@@ -120,6 +120,25 @@ export class MinioService implements OnModuleInit {
   }
 
   /**
+   * Get a readable stream for an object (used by audio proxy endpoint)
+   *
+   * Story 6.5: Audio download via backend proxy (MinIO not exposed on internet)
+   *
+   * @param objectName The name/path of the object in the bucket
+   * @returns Readable stream of the object content
+   */
+  async getObjectStream(
+    objectName: string,
+  ): Promise<NodeJS.ReadableStream> {
+    try {
+      return await this.client.getObject(this.bucket, objectName);
+    } catch (error) {
+      console.error('Error getting object stream:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Upload object directly from buffer
    *
    * Story 6.2 - Task 7.3: Direct upload support

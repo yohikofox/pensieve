@@ -89,6 +89,15 @@ export class UploadOrchestrator {
   }
 
   /**
+   * Set auth token for upload requests (mirrors SyncService pattern)
+   *
+   * @param token - Bearer token from the authenticated session
+   */
+  setAuthToken(token: string): void {
+    this.audioUploadService.setAuthToken(token);
+  }
+
+  /**
    * Stop listening for events and cleanup
    */
   stop(): void {
@@ -119,9 +128,77 @@ export class UploadOrchestrator {
       for (const capture of audioCaptures) {
         await this.enqueueAudioUpload(capture);
       }
+
+      // Process the upload queue immediately after enqueuing
+      await this.processUploadQueue();
     } catch (error: any) {
       // Log error but don't throw (non-blocking background operation)
       console.error('[UploadOrchestrator] Failed to process audio uploads:', error.message);
+    }
+  }
+
+  /**
+   * Process pending uploads from the upload queue
+   *
+   * Consumes all pending entries in upload_queue, calling AudioUploadService.uploadFile()
+   * for each, then persists the returned audioUrl into captures.audio_url.
+   */
+  private async processUploadQueue(): Promise<void> {
+    const pendingResult = await this.audioUploadService.getPendingUploads();
+
+    if (pendingResult.type !== RepositoryResultType.SUCCESS) {
+      console.error('[UploadOrchestrator] Failed to read pending uploads:', pendingResult.error);
+      return;
+    }
+
+    const pending = pendingResult.data ?? [];
+
+    if (pending.length === 0) {
+      return;
+    }
+
+    console.log(`[UploadOrchestrator] Processing ${pending.length} pending upload(s)...`);
+
+    for (const upload of pending) {
+      const uploadResult = await this.audioUploadService.uploadFile(
+        upload.id,
+        upload.capture_id,
+        upload.file_path,
+        upload.file_size,
+      );
+
+      if (uploadResult.type === RepositoryResultType.SUCCESS && uploadResult.data?.audioUrl) {
+        console.log(`[UploadOrchestrator] Upload success for capture ${upload.capture_id}`);
+        await this.updateCaptureAudioUrl(upload.capture_id, uploadResult.data.audioUrl);
+      } else {
+        console.error(
+          `[UploadOrchestrator] Upload failed for capture ${upload.capture_id}:`,
+          uploadResult.error,
+        );
+      }
+    }
+  }
+
+  /**
+   * Persist the audioUrl returned by the backend into captures.audio_url
+   *
+   * Allows LazyAudioDownloader to retrieve the file after reinstall.
+   *
+   * @param captureId - Local capture ID (primary key of captures table)
+   * @param audioUrl  - MinIO path returned by the upload endpoint
+   */
+  private async updateCaptureAudioUrl(captureId: string, audioUrl: string): Promise<void> {
+    try {
+      database.execute(
+        'UPDATE captures SET audio_url = ?, updated_at = ? WHERE id = ?',
+        [audioUrl, Date.now(), captureId],
+      );
+      console.log(`[UploadOrchestrator] audio_url persisted for capture ${captureId}`);
+    } catch (error: any) {
+      console.error(
+        `[UploadOrchestrator] Failed to persist audio_url for ${captureId}:`,
+        error.message,
+      );
     }
   }
 

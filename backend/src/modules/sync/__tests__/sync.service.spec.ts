@@ -12,6 +12,7 @@ import { CaptureStateRepository } from '../../capture/infrastructure/repositorie
 import { SyncLog } from '../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../infrastructure/sync-conflict-resolver';
 import { PushRequestDto } from '../application/dto/push-request.dto';
+import { ConfigService } from '@nestjs/config';
 
 // UUIDs déterministes (reference-data.constants.ts)
 const CAPTURE_STATE_UUID_CAPTURED = 'b0000000-0000-7000-8000-000000000002';
@@ -84,6 +85,13 @@ describe('SyncService', () => {
     resolve: jest.fn(),
   };
 
+  const mockConfigService = {
+    get: jest.fn().mockImplementation((key: string, defaultValue = '') => {
+      if (key === 'BETTER_AUTH_URL') return 'http://api.example.local:3000';
+      return defaultValue;
+    }),
+  };
+
   const mockTransactionManager = {
     getRepository: jest.fn(),
   };
@@ -151,10 +159,129 @@ describe('SyncService', () => {
         },
         { provide: SyncConflictResolver, useValue: mockConflictResolver },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
 
     service = module.get<SyncService>(SyncService);
+  });
+
+  describe('processPull - audioUrl proxy backend pour captures audio (BUG 4 fix)', () => {
+    const userId = 'user-123';
+    const BACKEND_URL = 'http://api.example.local:3000';
+
+    beforeEach(() => {
+      jest.clearAllMocks();
+      mockCaptureSyncStatusRepository.findByNaturalKey.mockResolvedValue({
+        id: CAPTURE_SYNC_STATUS_UUID_ACTIVE,
+        name: 'active',
+      });
+      mockSyncLogRepository.create.mockReturnValue({});
+      mockSyncLogRepository.save.mockResolvedValue({ id: 1 });
+      mockConfigService.get.mockImplementation((key: string, defaultValue = '') => {
+        if (key === 'BETTER_AUTH_URL') return BACKEND_URL;
+        return defaultValue;
+      });
+    });
+
+    it('should include backend proxy audioUrl in PULL for audio captures with rawContent', async () => {
+      const audioCapture = {
+        id: 'backend-uuid',
+        clientId: 'mobile-uuid',
+        typeId: CAPTURE_TYPE_UUID_AUDIO,
+        stateId: CAPTURE_STATE_UUID_CAPTURED,
+        rawContent: 'audio/user-123/mobile-uuid.m4a',
+        normalizedText: null,
+        duration: 5000,
+        fileSize: 1024000,
+        lastModifiedAt: 1700000001000,
+        createdAt: new Date(1700000000000),
+      };
+
+      mockCaptureRepository.find
+        .mockResolvedValueOnce([audioCapture]) // active captures
+        .mockResolvedValueOnce([]);            // deleted captures
+
+      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' },
+      ]);
+      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+      ]);
+
+      const result = await service.processPull(userId, { lastPulledAt: 0 });
+
+      expect(result.changes['captures']?.updated).toBeDefined();
+      const pulledCapture = result.changes['captures']!.updated[0];
+      // URL must point to backend (not MinIO directly)
+      expect(pulledCapture.audioUrl).toBe(
+        `${BACKEND_URL}/api/uploads/audio/mobile-uuid`,
+      );
+    });
+
+    it('should not include audioUrl for text captures', async () => {
+      const CAPTURE_TYPE_UUID_TEXT = 'a0000000-0000-7000-8000-000000000002';
+
+      const textCapture = {
+        id: 'backend-uuid-2',
+        clientId: 'mobile-uuid-2',
+        typeId: CAPTURE_TYPE_UUID_TEXT,
+        stateId: CAPTURE_STATE_UUID_CAPTURED,
+        rawContent: 'Some captured text',
+        normalizedText: 'Some captured text',
+        duration: null,
+        fileSize: null,
+        lastModifiedAt: 1700000001000,
+        createdAt: new Date(1700000000000),
+      };
+
+      mockCaptureRepository.find
+        .mockResolvedValueOnce([textCapture])
+        .mockResolvedValueOnce([]);
+
+      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_TYPE_UUID_TEXT, name: 'text' },
+      ]);
+      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+      ]);
+
+      const result = await service.processPull(userId, { lastPulledAt: 0 });
+
+      const pulledCapture = result.changes['captures']?.updated?.[0];
+      expect(pulledCapture?.audioUrl).toBeUndefined();
+    });
+
+    it('should not include audioUrl for audio captures without rawContent', async () => {
+      const audioCapture = {
+        id: 'backend-uuid-3',
+        clientId: 'mobile-uuid-3',
+        typeId: CAPTURE_TYPE_UUID_AUDIO,
+        stateId: CAPTURE_STATE_UUID_CAPTURED,
+        rawContent: null, // Pas encore uploadé
+        normalizedText: null,
+        duration: 3000,
+        fileSize: null,
+        lastModifiedAt: 1700000001000,
+        createdAt: new Date(1700000000000),
+      };
+
+      mockCaptureRepository.find
+        .mockResolvedValueOnce([audioCapture])
+        .mockResolvedValueOnce([]);
+
+      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' },
+      ]);
+      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
+        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+      ]);
+
+      const result = await service.processPull(userId, { lastPulledAt: 0 });
+
+      const pulledCapture = result.changes['captures']?.updated?.[0];
+      expect(pulledCapture?.audioUrl).toBeUndefined();
+    });
   });
 
   describe('processPush - unknown entity handling', () => {

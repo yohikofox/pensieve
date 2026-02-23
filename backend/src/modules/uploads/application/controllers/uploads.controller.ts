@@ -19,19 +19,30 @@
 
 import {
   Controller,
+  Get,
   Post,
+  Param,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   Body,
   Request,
+  Res,
   BadRequestException,
   PayloadTooLargeException,
   InternalServerErrorException,
+  NotFoundException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { InjectRepository } from '@nestjs/typeorm';
+import { ConfigService } from '@nestjs/config';
+import { Repository } from 'typeorm';
+import type { Response } from 'express';
 import { BetterAuthGuard } from '../../../../auth/guards/better-auth.guard';
 import { MinioService } from '../../../shared/infrastructure/storage/minio.service';
+import { Capture } from '../../../capture/domain/entities/capture.entity';
 
 /**
  * Upload audio DTO
@@ -55,6 +66,8 @@ interface UploadAudioResponse {
 @Controller('api/uploads')
 @UseGuards(BetterAuthGuard)
 export class UploadsController {
+  private readonly logger = new Logger(UploadsController.name);
+
   // File size limit: 500MB
   private readonly MAX_FILE_SIZE = 500 * 1024 * 1024;
 
@@ -68,7 +81,12 @@ export class UploadsController {
     'audio/aac',
   ];
 
-  constructor(private readonly minioService: MinioService) {}
+  constructor(
+    private readonly minioService: MinioService,
+    @InjectRepository(Capture)
+    private readonly captureRepository: Repository<Capture>,
+    private readonly configService: ConfigService,
+  ) {}
 
   /**
    * Upload audio file to MinIO S3
@@ -81,7 +99,7 @@ export class UploadsController {
    * @returns Audio URL in MinIO
    */
   @Post('audio')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', { storage: memoryStorage() }))
   async uploadAudio(
     @UploadedFile() file: Express.Multer.File,
     @Body() body: UploadAudioDto,
@@ -117,13 +135,77 @@ export class UploadsController {
     // Upload to MinIO with user isolation
     const key = `audio/${userId}/${body.captureId}.m4a`;
 
+    this.logger.log(
+      `[UploadsController] Receiving upload: captureId=${body.captureId} ` +
+      `file.size=${file.size} buffer.length=${file.buffer?.length ?? 'NO_BUFFER'} ` +
+      `mimetype=${file.mimetype} key=${key}`,
+    );
+
     try {
       await this.minioService.putObject(key, file.buffer, file.mimetype);
+      this.logger.log(`[UploadsController] ✅ MinIO upload success: ${key}`);
 
-      return { audioUrl: key };
+      // Update capture.rawContent with the MinIO path so PULL can return a presigned URL
+      const updateResult = await this.captureRepository.update(
+        { clientId: body.captureId, ownerId: userId },
+        { rawContent: key, lastModifiedAt: Date.now() },
+      );
+
+      if (updateResult.affected === 0) {
+        this.logger.warn(
+          `[UploadsController] No capture found for clientId=${body.captureId}, ownerId=${userId} — rawContent not updated`,
+        );
+      }
+
+      // Return a backend proxy URL — MinIO is not exposed on the internet
+      const backendUrl = this.configService.get<string>('BETTER_AUTH_URL', '');
+      const audioUrl = `${backendUrl}/api/uploads/audio/${body.captureId}`;
+
+      return { audioUrl };
     } catch (error: any) {
-      console.error('[UploadsController] Upload failed:', error);
+      this.logger.error('[UploadsController] Upload failed:', error);
       throw new InternalServerErrorException(`Upload failed: ${error.message}`);
+    }
+  }
+
+  /**
+   * Download audio file from MinIO via backend proxy
+   *
+   * GET /api/uploads/audio/:captureClientId
+   *
+   * Story 6.5 - MinIO not exposed on internet: all audio access goes through backend.
+   *
+   * @param captureClientId - Mobile capture ID (clientId in backend DB)
+   * @param req - Request with user JWT payload
+   * @param res - HTTP response to pipe audio stream into
+   */
+  @Get('audio/:captureClientId')
+  async downloadAudio(
+    @Param('captureClientId') captureClientId: string,
+    @Request() req: any,
+    @Res() res: Response,
+  ): Promise<void> {
+    const userId = req.user.id;
+    const key = `audio/${userId}/${captureClientId}.m4a`;
+
+    try {
+      const stream = await this.minioService.getObjectStream(key);
+      res.setHeader('Content-Type', 'audio/m4a');
+      res.setHeader(
+        'Content-Disposition',
+        `inline; filename="${captureClientId}.m4a"`,
+      );
+      stream.pipe(res);
+    } catch (error: any) {
+      if (!res.headersSent) {
+        throw new NotFoundException(
+          `Audio not found for capture ${captureClientId}`,
+        );
+      }
+      this.logger.error(
+        `[UploadsController] Stream error for ${captureClientId}:`,
+        error,
+      );
     }
   }
 }

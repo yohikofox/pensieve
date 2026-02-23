@@ -472,6 +472,7 @@ const CaptureScreenContent = () => {
           state: "captured",
           rawContent: storageResult.data.permanentPath,
           duration: storageResult.data.metadata.duration,
+          fileSize: storageResult.data.metadata.size,
         },
       );
 
@@ -573,11 +574,10 @@ const CaptureScreenContent = () => {
   // AC2: Modal handlers (Story 2.7)
   const handleGoToSettings = () => {
     setShowModelPrompt(false);
-    // Navigate to Whisper Settings screen (nested in Settings tab)
-    navigation.navigate(
-      "Settings" as never,
-      { screen: "WhisperSettings" } as never,
-    );
+    // Navigate to Settings root — user chooses between native or Whisper from there.
+    // Navigating directly to a nested screen would bypass SettingsMain in the back stack,
+    // making the back button invisible (back prop undefined in CustomStackHeader).
+    navigation.navigate("Settings" as never);
   };
 
   const handleContinueWithoutTranscription = async () => {

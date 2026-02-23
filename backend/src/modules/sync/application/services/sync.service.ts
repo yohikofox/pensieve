@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan, DataSource, Not, IsNull } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { v7 as uuidv7 } from 'uuid';
 import { Thought } from '../../../knowledge/domain/entities/thought.entity';
 import { Idea } from '../../../knowledge/domain/entities/idea.entity';
@@ -44,6 +45,7 @@ export class SyncService {
     private readonly syncLogRepository: Repository<SyncLog>,
     private readonly conflictResolver: SyncConflictResolver,
     private readonly dataSource: DataSource,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -309,18 +311,33 @@ export class SyncService {
     const stateMap = new Map(states.map((s) => [s.id, s.name]));
 
     // Objets plats — primitifs uniquement, noms résolus pour la couche de conversion mobile
-    const updated = rawUpdated.map((c) => ({
-      id: c.id,
-      clientId: c.clientId,
-      typeName: typeMap.get(c.typeId!) ?? null,
-      stateName: stateMap.get(c.stateId!) ?? null,
-      rawContent: c.rawContent ?? null,
-      normalizedText: c.normalizedText ?? null,
-      duration: c.duration ?? null,
-      fileSize: c.fileSize ?? null,
-      lastModifiedAt: Number(c.lastModifiedAt),
-      createdAt: c.createdAt instanceof Date ? c.createdAt.getTime() : Number(c.createdAt),
-    }));
+    // Pour les captures audio avec rawContent (chemin MinIO), retourne une URL proxy backend
+    // (MinIO n'est pas exposé sur internet — tout passe par le backend)
+    const backendUrl = this.configService.get<string>('BETTER_AUTH_URL', '');
+
+    const updated = rawUpdated.map((c) => {
+      const typeName = typeMap.get(c.typeId!) ?? null;
+
+      // Backend proxy URL — format: {backendUrl}/api/uploads/audio/{clientId}
+      const audioUrl =
+        typeName === 'audio' && c.rawContent && c.clientId
+          ? `${backendUrl}/api/uploads/audio/${c.clientId}`
+          : null;
+
+      return {
+        id: c.id,
+        clientId: c.clientId,
+        typeName,
+        stateName: stateMap.get(c.stateId!) ?? null,
+        rawContent: c.rawContent ?? null,
+        normalizedText: c.normalizedText ?? null,
+        duration: c.duration ?? null,
+        fileSize: c.fileSize ?? null,
+        lastModifiedAt: Number(c.lastModifiedAt),
+        createdAt: c.createdAt instanceof Date ? c.createdAt.getTime() : Number(c.createdAt),
+        ...(audioUrl ? { audioUrl } : {}),
+      };
+    });
 
     const deleted = deletedSyncStatus
       ? await this.captureRepository.find({

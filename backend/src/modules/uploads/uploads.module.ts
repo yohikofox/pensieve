@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { UploadsController } from './application/controllers/uploads.controller';
+import { CaptureModule } from '../capture/capture.module';
 
 /**
  * Uploads Module
@@ -14,8 +15,10 @@ import { UploadsController } from './application/controllers/uploads.controller'
  * Dependencies:
  * - MinioService (provided by @Global() SharedModule)
  * - BetterAuthGuard (provided by AuthModule — ADR-029)
+ * - CaptureModule (provides Repository<Capture> for rawContent update after upload)
  */
 @Module({
+  imports: [CaptureModule],
   controllers: [UploadsController],
 })
 export class UploadsModule {}
