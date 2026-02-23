@@ -4,6 +4,9 @@ import type { Response } from 'express';
 const HF_TOKEN_ENDPOINT = 'https://huggingface.co/oauth/token';
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 
+// Deep link scheme helper — lu à runtime pour garantir que ConfigModule a chargé .env
+const getAppScheme = () => process.env.APP_SCHEME || 'pensine';
+
 @Controller()
 export class AppController {
   @Get('health')
@@ -123,7 +126,7 @@ export class AppController {
 
           if (accessToken && refreshToken) {
             // Build deep link for mobile app
-            const deepLink = \`pensine://auth/callback?access_token=\${accessToken}&refresh_token=\${refreshToken}&type=\${type}\`;
+            const deepLink = \`${getAppScheme()}://auth/callback?access_token=\${accessToken}&refresh_token=\${refreshToken}&type=\${type}\`;
 
             // Update UI
             document.getElementById('title').textContent = 'Email Confirmed!';
@@ -172,12 +175,12 @@ export class AppController {
     if (error) {
       console.error('[HuggingFace] OAuth error:', error);
       return res.redirect(
-        `pensine://auth/huggingface?error=${encodeURIComponent(error)}`,
+        `${getAppScheme()}://auth/huggingface?error=${encodeURIComponent(error)}`,
       );
     }
 
     if (!code) {
-      return res.redirect('pensine://auth/huggingface?error=no_code');
+      return res.redirect(`${getAppScheme()}://auth/huggingface?error=no_code`);
     }
 
     // Read env vars at runtime (after ConfigModule has loaded .env)
@@ -195,7 +198,7 @@ export class AppController {
       console.error(
         '[HuggingFace] Missing HF_CLIENT_ID, HF_CLIENT_SECRET, or HF_REDIRECT_URI',
       );
-      return res.redirect('pensine://auth/huggingface?error=server_config');
+      return res.redirect(`${getAppScheme()}://auth/huggingface?error=server_config`);
     }
 
     try {
@@ -222,7 +225,7 @@ export class AppController {
           errorText,
         );
         return res.redirect(
-          'pensine://auth/huggingface?error=token_exchange_failed',
+          `${getAppScheme()}://auth/huggingface?error=token_exchange_failed`,
         );
       }
 
@@ -231,81 +234,18 @@ export class AppController {
 
       if (!accessToken) {
         console.error('[HuggingFace] No access_token in response:', tokenData);
-        return res.redirect('pensine://auth/huggingface?error=no_token');
+        return res.redirect(`${getAppScheme()}://auth/huggingface?error=no_token`);
       }
 
       console.log('[HuggingFace] OAuth successful, redirecting to app');
 
-      // Serve HTML page that redirects to mobile app via deep link
-      const deepLink = `pensine://auth/huggingface?access_token=${encodeURIComponent(accessToken)}`;
-
-      return res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>HuggingFace Connected</title>
-          <style>
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-              display: flex;
-              justify-content: center;
-              align-items: center;
-              min-height: 100vh;
-              margin: 0;
-              background: linear-gradient(135deg, #FFD21E 0%, #FF9500 100%);
-            }
-            .container {
-              background: white;
-              padding: 40px;
-              border-radius: 12px;
-              box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-              text-align: center;
-              max-width: 400px;
-            }
-            h1 { color: #333; margin-bottom: 20px; }
-            p { color: #666; margin-bottom: 30px; }
-            .emoji { font-size: 64px; margin-bottom: 20px; }
-            .button {
-              display: inline-block;
-              background: #FFD21E;
-              color: #333;
-              padding: 12px 24px;
-              border-radius: 6px;
-              text-decoration: none;
-              font-weight: 600;
-              margin-top: 20px;
-            }
-            .button:hover {
-              background: #FFC000;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="emoji">🤗</div>
-            <h1>HuggingFace Connected!</h1>
-            <p id="message">Opening Pensieve app...</p>
-            <a id="deeplink" href="${deepLink}" class="button">Open Pensieve App</a>
-          </div>
-          <script>
-            // Try to open app automatically
-            setTimeout(() => {
-              window.location.href = "${deepLink}";
-            }, 500);
-
-            // Update message after delay
-            setTimeout(() => {
-              document.getElementById('message').textContent = 'Click the button below if the app did not open automatically.';
-            }, 2000);
-          </script>
-        </body>
-        </html>
-      `);
+      // HTTP 302 redirect directly to the custom scheme — more reliable with
+      // openAuthSessionAsync (Chrome Custom Tab intercepts at HTTP level, not JS level)
+      const deepLink = `${getAppScheme()}://auth/huggingface?access_token=${encodeURIComponent(accessToken)}`;
+      return res.redirect(deepLink);
     } catch (err) {
       console.error('[HuggingFace] Callback error:', err);
-      return res.redirect('pensine://auth/huggingface?error=server_error');
+      return res.redirect(`${getAppScheme()}://auth/huggingface?error=server_error`);
     }
   }
 
@@ -322,12 +262,12 @@ export class AppController {
     if (error) {
       console.error('[Google] OAuth error:', error);
       return res.redirect(
-        `pensine://auth/google?error=${encodeURIComponent(error)}`,
+        `${getAppScheme()}://auth/google?error=${encodeURIComponent(error)}`,
       );
     }
 
     if (!code) {
-      return res.redirect('pensine://auth/google?error=no_code');
+      return res.redirect(`${getAppScheme()}://auth/google?error=no_code`);
     }
 
     // Read env vars at runtime
@@ -345,7 +285,7 @@ export class AppController {
       console.error(
         '[Google] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI',
       );
-      return res.redirect('pensine://auth/google?error=server_config');
+      return res.redirect(`${getAppScheme()}://auth/google?error=server_config`);
     }
 
     try {
@@ -372,7 +312,7 @@ export class AppController {
           errorText,
         );
         return res.redirect(
-          'pensine://auth/google?error=token_exchange_failed',
+          `${getAppScheme()}://auth/google?error=token_exchange_failed`,
         );
       }
 
@@ -383,7 +323,7 @@ export class AppController {
 
       if (!accessToken) {
         console.error('[Google] No access_token in response:', tokenData);
-        return res.redirect('pensine://auth/google?error=no_token');
+        return res.redirect(`${getAppScheme()}://auth/google?error=no_token`);
       }
 
       console.log('[Google] OAuth successful, redirecting to app');
@@ -399,7 +339,7 @@ export class AppController {
         params.set('expires_in', expiresIn.toString());
       }
 
-      const deepLink = `pensine://auth/google?${params.toString()}`;
+      const deepLink = `${getAppScheme()}://auth/google?${params.toString()}`;
 
       // Serve HTML page that redirects to mobile app via deep link
       return res.send(`
@@ -468,7 +408,7 @@ export class AppController {
       `);
     } catch (err) {
       console.error('[Google] Callback error:', err);
-      return res.redirect('pensine://auth/google?error=server_error');
+      return res.redirect(`${getAppScheme()}://auth/google?error=server_error`);
     }
   }
 

@@ -15,6 +15,9 @@ import { useAuthRecoveryStore } from '../../../stores/authRecoveryStore';
 import { AuthTokenManager } from '../../../infrastructure/auth/AuthTokenManager';
 import { isDebugModeEnabled } from '../../../stores/settingsStore';
 import { database } from '../../../database';
+import { container } from '../../../infrastructure/di/container';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import type { IHuggingFaceAuthService } from '../../Normalization/domain/IHuggingFaceAuthService';
 
 export const useDeepLinkAuth = () => {
   const toast = useToast();
@@ -64,6 +67,26 @@ export const useDeepLinkAuth = () => {
       } catch (e: unknown) {
         console.error('[DeepLink SQL] Error:', e);
         Alert.alert('SQL Error', e instanceof Error ? e.message : String(e));
+      }
+      return;
+    }
+
+    // HuggingFace OAuth callback — pensine-dev://auth/huggingface?access_token=...
+    // Fallback for Android: when openAuthSessionAsync fails to intercept and the app
+    // is launched fresh via the deep link (Expo Dev Client cold-start scenario)
+    if (parsed.hostname === 'auth' && parsed.path === 'huggingface') {
+      const accessToken = parsed.queryParams?.access_token as string | undefined;
+      if (accessToken) {
+        try {
+          const hfService = container.resolve<IHuggingFaceAuthService>(TOKENS.IHuggingFaceAuthService);
+          await hfService.handleDeepLinkToken(accessToken);
+          toast.success('HuggingFace connected successfully');
+        } catch (e) {
+          console.error('[DeepLink] HuggingFace token handling failed:', e);
+        }
+      } else {
+        const error = parsed.queryParams?.error as string | undefined;
+        console.error('[DeepLink] HuggingFace auth error:', error);
       }
       return;
     }

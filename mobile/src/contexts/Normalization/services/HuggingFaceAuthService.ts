@@ -17,6 +17,7 @@ import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 import type { IHuggingFaceAuthService, HuggingFaceUser, AuthState } from '../domain/IHuggingFaceAuthService';
 
 // Complete any pending auth sessions when app loads
@@ -166,9 +167,11 @@ export class HuggingFaceAuthService implements IHuggingFaceAuthService {
         console.log('[HuggingFaceAuth] Full auth URL:', authUrl.toString());
 
         // Use openAuthSessionAsync which handles deep link return automatically
+        // Linking.createURL() uses the correct scheme for the current build variant
+        // (pensine-dev:// in dev, pensine:// in production)
         const result = await WebBrowser.openAuthSessionAsync(
           authUrl.toString(),
-          'pensine://auth/huggingface'
+          Linking.createURL('auth/huggingface')
         );
 
         console.log('[HuggingFaceAuth] Auth session result:', result.type);
@@ -213,6 +216,19 @@ export class HuggingFaceAuthService implements IHuggingFaceAuthService {
         resolve(false);
       }
     });
+  }
+
+  /**
+   * Handle OAuth token received via deep link (Android cold-start fallback)
+   * Called by useDeepLinkAuth when openAuthSessionAsync fails to intercept the URL
+   */
+  async handleDeepLinkToken(accessToken: string): Promise<void> {
+    console.log('[HuggingFaceAuth] Handling token from deep link');
+    this.accessToken = accessToken;
+    await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+    await this.fetchUserInfo();
+    this.isInitialized = true;
+    console.log('[HuggingFaceAuth] Deep link login successful:', this.user?.name);
   }
 
   /**

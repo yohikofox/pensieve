@@ -83,6 +83,13 @@ export interface IHuggingFaceAuthService {
   getAuthHeader(): Record<string, string>;
 
   /**
+   * Handle OAuth token received via deep link (fallback for Android cold-start)
+   * Called by useDeepLinkAuth when the app is launched fresh via pensine-dev://auth/huggingface
+   * @param accessToken - The HuggingFace access token from the deep link
+   */
+  handleDeepLinkToken(accessToken: string): Promise<void>;
+
+  /**
    * Check if a model URL requires authentication
    * @param url - Model download URL
    * @returns true if URL is for a gated model

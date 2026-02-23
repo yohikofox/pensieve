@@ -14,6 +14,7 @@
 
 import * as SecureStore from 'expo-secure-store';
 import * as WebBrowser from 'expo-web-browser';
+import * as Linking from 'expo-linking';
 
 // Complete any pending auth sessions when app loads
 WebBrowser.maybeCompleteAuthSession();
@@ -159,7 +160,7 @@ class GoogleCalendarServiceClass {
       // Use openAuthSessionAsync which handles deep link return automatically
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl.toString(),
-        'pensine://auth/google'
+        Linking.createURL('auth/google')
       );
 
       console.log('[GoogleCalendar] Auth session result:', result.type);
