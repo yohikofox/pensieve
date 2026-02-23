@@ -20,7 +20,28 @@ const withAbiSplits = (config) => {
       return c; // Déjà appliqué
     }
 
-    // 1. Injecter splits + bundle à l'intérieur du bloc android {}
+    // 1. Exclure les prebuilt .so llama.rn inutilisés du packaging
+    //    (les JNI wrappers correspondants ne sont plus compilés via le patch CMakeLists.txt,
+    //     mais les .so précompilés dans jniLibs/ seraient packagés automatiquement par Gradle)
+    const EXCLUDED_LLAMA_LIBS = [
+      '**/librnllama_v8.so',
+      '**/librnllama_jni_v8.so',
+      '**/librnllama_v8_2.so',
+      '**/librnllama_jni_v8_2.so',
+      '**/librnllama_v8_2_dotprod.so',
+      '**/librnllama_jni_v8_2_dotprod.so',
+      '**/librnllama_v8_2_i8mm.so',
+      '**/librnllama_jni_v8_2_i8mm.so',
+      '**/librnllama_v8_2_dotprod_i8mm_hexagon_opencl.so',
+      '**/librnllama_jni_v8_2_dotprod_i8mm_hexagon_opencl.so',
+    ];
+    const excludesLines = EXCLUDED_LLAMA_LIBS.map(p => `            '${p}',`).join('\n');
+    c.modResults.contents = c.modResults.contents.replace(
+      'useLegacyPackaging enableLegacyPackaging.toBoolean()',
+      `useLegacyPackaging enableLegacyPackaging.toBoolean()\n        excludes += [\n${excludesLines}\n        ]`
+    );
+
+    // 2. Injecter splits + bundle à l'intérieur du bloc android {}
     //    Ancre : fermeture du bloc androidResources + fermeture du bloc android
     c.modResults.contents = c.modResults.contents.replace(
       /([ \t]*androidResources\s*\{[^}]+\})\n\}/,
