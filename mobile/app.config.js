@@ -111,12 +111,22 @@ const withAbiFilters = (config) => {
     return c;
   });
 
-  // Étape 2 : build.gradle — ndk.abiFilters
+  // Étape 2 : build.gradle — ndk.abiFilters (conditionnel)
+  // En mode appcenter, splits.abi.include gère déjà le filtrage des ABIs —
+  // ndk.abiFilters serait en conflit ("Conflicting configuration").
+  // En mode googleplay (AAB, splits désactivés), ndk.abiFilters reste nécessaire.
   return withAppBuildGradle(config, (c) => {
     if (!c.modResults.contents.includes('abiFilters')) {
       c.modResults.contents = c.modResults.contents.replace(
         /defaultConfig\s*\{/,
-        'defaultConfig {\n        ndk {\n            abiFilters "arm64-v8a", "x86_64"\n        }'
+        `defaultConfig {
+        // ndk.abiFilters: skipped in appcenter mode — splits.abi.include handles ABI filtering.
+        // Required in googleplay mode (AAB) where splits are disabled.
+        if ((findProperty('distributionTarget') ?: 'appcenter') != 'appcenter') {
+            ndk {
+                abiFilters "arm64-v8a", "x86_64"
+            }
+        }`
       );
     }
     return c;
