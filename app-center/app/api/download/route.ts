@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GetObjectCommand } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { getS3, BUCKET } from "@/lib/minio-client";
 
 export async function GET(req: NextRequest) {
@@ -20,7 +19,16 @@ export async function GET(req: NextRequest) {
     Key: key,
   });
 
-  const presignedUrl = await getSignedUrl(getS3(), command, { expiresIn: 3600 });
+  const s3Response = await getS3().send(command);
+  const filename = key.split("/").pop() ?? "download.apk";
 
-  return NextResponse.redirect(presignedUrl);
+  return new Response(s3Response.Body?.transformToWebStream(), {
+    headers: {
+      "Content-Type": "application/vnd.android.package-archive",
+      "Content-Disposition": `attachment; filename="${filename}"`,
+      ...(s3Response.ContentLength && {
+        "Content-Length": String(s3Response.ContentLength),
+      }),
+    },
+  });
 }
