@@ -1,5 +1,5 @@
 # ===========================================
-# Pensine - Docker Build & Push
+# Pensine - Docker Build & Push & Deploy
 # ===========================================
 
 # Registry configuration
@@ -102,6 +102,25 @@ release-app-center: build-app-center push-app-center
 	@echo "✅ App Center released to $(REGISTRY)"
 
 # ===========================================
+# Deploy Commands (build + push + Portainer redeploy)
+# ===========================================
+
+.PHONY: deploy deploy-services deploy-mobile
+
+## Full deploy: build + push all images & APK, then trigger Portainer redeployment
+## Reads config from deploy.env (copy from deploy.env.example)
+deploy:
+	@bash ./deploy.sh
+
+## Deploy only Docker services (no mobile APK)
+deploy-services:
+	@bash ./deploy.sh --skip-mobile
+
+## Deploy only mobile APK (build + push to MinIO)
+deploy-mobile:
+	@bash ./deploy.sh --only=mobile
+
+# ===========================================
 # Utility Commands
 # ===========================================
 
@@ -137,10 +156,16 @@ help:
 	@echo ""
 	@echo "Usage: make [target] [REGISTRY=host:port] [VERSION=tag]"
 	@echo ""
+	@echo "Deploy targets (build + push + Portainer redeploy):"
+	@echo "  deploy            Full deploy: all images + APK + Portainer webhooks"
+	@echo "  deploy-services   Docker services only (no mobile APK)"
+	@echo "  deploy-mobile     Mobile APK only (build + push to MinIO)"
+	@echo "  (reads config from deploy.env — copy from deploy.env.example)"
+	@echo ""
 	@echo "Build targets:"
-	@echo "  build           Build all images"
-	@echo "  build-backend   Build backend image"
-	@echo "  build-web       Build web image"
+	@echo "  build             Build all images"
+	@echo "  build-backend     Build backend image"
+	@echo "  build-web         Build web image"
 	@echo "  build-admin       Build admin image"
 	@echo "  build-app-center  Build app-center image"
 	@echo ""
@@ -151,7 +176,7 @@ help:
 	@echo "  push-admin        Push admin image"
 	@echo "  push-app-center   Push app-center image"
 	@echo ""
-	@echo "Release targets:"
+	@echo "Release targets (build + push):"
 	@echo "  release           Build and push all"
 	@echo "  release-backend   Build and push backend"
 	@echo "  release-web       Build and push web"
@@ -165,9 +190,9 @@ help:
 	@echo "  version         Show current version"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make build"
-	@echo "  make release REGISTRY=192.168.1.100:5000"
-	@echo "  make release VERSION=v1.0.0"
+	@echo "  make deploy                               # Full deploy (recommended)"
+	@echo "  make deploy-services                      # Services only, no APK"
+	@echo "  make release REGISTRY=192.168.1.100:5000  # Build + push, no Portainer"
 	@echo "  make tags IMAGE=pensine-backend"
 
 .DEFAULT_GOAL := help

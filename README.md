@@ -157,6 +157,65 @@ npx expo start
 
 ---
 
+## 🚢 Déploiement
+
+Le script `deploy.sh` orchestre en une seule commande :
+- Build + push des images Docker (backend, web, admin, app-center) vers le registry
+- Build de l'APK Android + upload vers MinIO
+- Mise à jour des variables de version dans la stack Portainer + redéploiement
+
+### Prérequis
+
+- **Docker** avec accès au registry `cregistry.yolo.yt`
+- **jq** — `brew install jq`
+- **mc** (MinIO client, pour le build APK) — `brew install minio/stable/mc`
+- Un **token API Portainer** : Settings → API Keys → Add API key
+
+### Configuration (une seule fois)
+
+```bash
+cp deploy.env.example deploy.env
+```
+
+Remplir dans `deploy.env` :
+
+```env
+PORTAINER_TOKEN=ptr_ton_token_ici
+MINIO_ACCESS_KEY=ta_cle
+MINIO_SECRET_KEY=ton_secret
+```
+
+Les autres valeurs (`PORTAINER_URL`, `PORTAINER_STACK_ID`, `REGISTRY`...) sont déjà pré-remplies.
+
+### Utilisation
+
+```bash
+# Deploy complet (Docker + APK Android + Portainer redeploy)
+make deploy
+
+# Docker uniquement (sans build APK mobile)
+make deploy-services
+
+# APK Android uniquement
+make deploy-mobile
+
+# Tester sans rien exécuter
+./deploy.sh --dry-run
+
+# Déployer un ou plusieurs composants spécifiques
+./deploy.sh --only=backend,web
+```
+
+### Ce qui se passe en coulisses
+
+1. Build + push `pensine-backend:SHA`, `pensine-web:SHA`, `pensine-admin:SHA`, `pensine-app-center:SHA`
+2. Build APK Android + upload vers MinIO (`pensine-apks/pensine/mobile/{version}/`)
+3. `GET /api/stacks/44` → récupère les env actuelles de la stack Portainer
+4. Met à jour `BACKEND_VERSION`, `WEB_VERSION`, `ADMIN_VERSION` → nouveau SHA (les autres vars sont préservées)
+5. `PUT /api/stacks/44` avec `pullImage: true` → Portainer pull + redémarre les containers
+
+---
+
 ## 📦 Dépendances Principales
 
 ### Mobile
