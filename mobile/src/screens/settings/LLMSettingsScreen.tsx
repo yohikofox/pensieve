@@ -229,10 +229,14 @@ export function LLMSettingsScreen() {
       setNpuInfo(info);
 
       // Load models by category, filtered for current device
-      // Only show MediaPipe models on Google Pixel devices
-      const tpu = info.type === 'tensor-tpu'
+      // Only show MediaPipe/LiteRT-LM models on Google Pixel devices
+      const tpuMediapipe = info.type === 'tensor-tpu'
         ? await modelService.getModelsForBackendAndDevice('mediapipe')
         : [];
+      const tpuLitert = info.type === 'tensor-tpu'
+        ? await modelService.getModelsForBackendAndDevice('litert-lm')
+        : [];
+      const tpu = [...tpuMediapipe, ...tpuLitert];
       // Get llamarn models filtered for current device (Apple->Llama, Google->Gemma, Others->generic)
       const standard = await modelService.getModelsForBackendAndDevice('llamarn');
       setModels(tpu, standard);
@@ -248,9 +252,13 @@ export function LLMSettingsScreen() {
     if (!npuInfo) return;
 
     // Reload models by category, filtered for current device
-    const tpu = npuInfo.type === 'tensor-tpu'
+    const tpuMediapipe = npuInfo.type === 'tensor-tpu'
       ? await modelService.getModelsForBackendAndDevice('mediapipe')
       : [];
+    const tpuLitert = npuInfo.type === 'tensor-tpu'
+      ? await modelService.getModelsForBackendAndDevice('litert-lm')
+      : [];
+    const tpu = [...tpuMediapipe, ...tpuLitert];
     const standard = await modelService.getModelsForBackendAndDevice('llamarn');
     setModels(tpu, standard);
   }, [npuInfo, modelService, setModels]);

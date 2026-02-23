@@ -284,6 +284,52 @@ export class MediaPipeBackend implements IPostProcessingBackend {
   }
 
   /**
+   * Process text with a custom system prompt (for analysis tasks)
+   * Formats the prompt in Gemma turn format with the provided system instructions
+   */
+  async processWithCustomPrompt(systemPrompt: string, userText: string): Promise<PostProcessingResult> {
+    if (this.modelHandle === null) {
+      throw new Error('No model loaded. Call loadModel() first.');
+    }
+
+    const module = getExpoLlmMediapipeModule();
+    if (!module) {
+      throw new Error('MediaPipe native module not available');
+    }
+
+    const startTime = Date.now();
+
+    // Gemma turn format with custom system prompt embedded in user turn
+    const prompt = `<start_of_turn>user\n${systemPrompt}\n\n${userText}<end_of_turn>\n<start_of_turn>model\n`;
+
+    try {
+      const requestId = this.nextRequestId++;
+      const result = await module.generateResponse(this.modelHandle, requestId, prompt);
+      const processingDuration = Date.now() - startTime;
+
+      let processedText = result?.trim() || '';
+      if (processedText.startsWith('"') && processedText.endsWith('"')) {
+        processedText = processedText.slice(1, -1);
+      }
+      processedText = processedText
+        .replace(/<end_of_turn>/g, '')
+        .replace(/<start_of_turn>/g, '')
+        .trim();
+
+      return {
+        text: processedText,
+        processingDuration,
+        backend: 'mediapipe',
+        model: this.modelPath || 'unknown',
+      };
+    } catch (error) {
+      throw new Error(
+        `MediaPipe processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      );
+    }
+  }
+
+  /**
    * Build the prompt for Gemma 3 models
    * Uses Gemma's conversation format with proper turn markers
    */

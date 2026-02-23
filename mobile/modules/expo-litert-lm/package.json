@@ -1,0 +1,33 @@
+{
+  "name": "expo-litert-lm",
+  "version": "1.0.0",
+  "description": "Native LiteRT-LM inference module for Expo SDK 54 (Android only)",
+  "main": "index.ts",
+  "scripts": {
+    "build": "expo-module build",
+    "clean": "expo-module clean",
+    "lint": "expo-module lint",
+    "test": "expo-module test",
+    "prepare": "expo-module prepare",
+    "prepublishOnly": "expo-module prepublishOnly",
+    "expo-module": "expo-module"
+  },
+  "keywords": [
+    "expo",
+    "expo-module",
+    "litert",
+    "llm",
+    "gemma",
+    "android"
+  ],
+  "author": "Pensieve",
+  "license": "MIT",
+  "devDependencies": {
+    "expo-module-scripts": "^4.0.0"
+  },
+  "peerDependencies": {
+    "expo": "*",
+    "react": "*",
+    "react-native": "*"
+  }
+}

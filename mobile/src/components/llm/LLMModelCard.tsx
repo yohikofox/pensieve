@@ -11,27 +11,36 @@
  * - Use button to select model for post-processing
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import {
-  LLMModelService,
-  type LLMModelId,
-  type LLMModelConfig,
-  type DownloadProgress,
-} from '../../contexts/Normalization/services/LLMModelService';
-import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
+import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
+import type {
+  ILLMModelService,
+  LLMModelId,
+  LLMModelConfig,
+  DownloadProgress,
+} from '../../contexts/Normalization/domain/ILLMModelService';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
 
 type ModelStatus = 'checking' | 'not_downloaded' | 'downloading' | 'ready' | 'auth_required';
+
+// https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/...
+// → https://huggingface.co/google/gemma-3n-E2B-it-litert-lm
+const getModelPageUrl = (downloadUrl: string): string => {
+  const match = downloadUrl.match(/^(https:\/\/huggingface\.co\/[^/]+\/[^/]+)/);
+  return match ? match[1] : 'https://huggingface.co';
+};
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -89,6 +98,7 @@ export function LLMModelCard({
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
   const [downloadSpeed, setDownloadSpeed] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+  const is403Error = error?.includes('403') ?? false;
   const [isSelecting, setIsSelecting] = useState(false);
   const [config, setConfig] = useState<LLMModelConfig | null>(null);
   const [canDownload, setCanDownload] = useState(true);
@@ -96,8 +106,7 @@ export function LLMModelCard({
   const [isPaused, setIsPaused] = useState(false);
   const toast = useToast();
 
-  const npuDetection = new NPUDetectionService();
-  const modelService = new LLMModelService(npuDetection);
+  const modelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
 
   // Load model config
   useEffect(() => {
@@ -369,7 +378,26 @@ export function LLMModelCard({
             )}
           </View>
 
-          {error && <Text style={[styles.errorText, { color: themeColors.errorText }]}>{error}</Text>}
+          {error && (
+            <View>
+              <Text style={[styles.errorText, { color: themeColors.errorText }]}>
+                {is403Error
+                  ? 'Accès refusé : vous devez accepter la licence de ce modèle sur HuggingFace.'
+                  : error}
+              </Text>
+              {is403Error && config && (
+                <TouchableOpacity
+                  style={[styles.licenseButton, { borderColor: themeColors.downloadButtonText }]}
+                  onPress={() => Linking.openURL(getModelPageUrl(config.downloadUrl))}
+                >
+                  <Feather name="external-link" size={14} color={themeColors.downloadButtonText} />
+                  <Text style={[styles.licenseButtonText, { color: themeColors.downloadButtonText }]}>
+                    Accepter la licence sur HuggingFace
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
 
           <View style={styles.buttonRow}>
             <TouchableOpacity style={[styles.downloadButton, { backgroundColor: themeColors.downloadButtonBg }]} onPress={handleDownload}>
@@ -774,5 +802,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  licenseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignSelf: 'flex-start',
+  },
+  licenseButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });

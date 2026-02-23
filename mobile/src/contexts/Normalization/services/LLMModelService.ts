@@ -359,6 +359,10 @@ export class LLMModelService implements ILLMModelService {
     } catch (error) {
       lastError = error instanceof Error ? error : new Error("Unknown error");
       console.error("[LLMModelService] Initial download failed:", lastError.message);
+      // 4xx errors are permanent (auth/access denied) — no point retrying
+      if (/HTTP error: 4\d\d/.test(lastError.message)) {
+        throw lastError;
+      }
     }
 
     // Retry attempts
@@ -373,6 +377,9 @@ export class LLMModelService implements ILLMModelService {
       } catch (error) {
         lastError = error instanceof Error ? error : new Error("Unknown error");
         console.error(`[LLMModelService] Retry ${attempt + 1} failed:`, lastError.message);
+        if (/HTTP error: 4\d\d/.test(lastError.message)) {
+          throw lastError;
+        }
       }
     }
 

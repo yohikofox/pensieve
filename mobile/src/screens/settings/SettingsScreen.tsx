@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -22,7 +22,8 @@ import { apiConfig } from '../../config/api';
 import { container } from 'tsyringe';
 import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
 import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
-import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
+import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMModelService';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore, type ThemePreference, type AudioPlayerType } from '../../stores/settingsStore';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
@@ -110,7 +111,7 @@ export const SettingsScreen = () => {
 
   const queryClient = useQueryClient();
   const modelService = new TranscriptionModelService();
-  const llmModelService = new LLMModelService();
+  const llmModelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
   const engineService = container.resolve(TranscriptionEngineService);
 
   // Refresh user features (debug mode access) when screen comes into focus

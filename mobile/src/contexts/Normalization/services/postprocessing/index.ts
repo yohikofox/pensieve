@@ -5,3 +5,4 @@
 export * from './IPostProcessingBackend';
 export * from './LlamaRnBackend';
 export * from './MediaPipeBackend';
+export * from './LitertLmBackend';

@@ -29,6 +29,8 @@ export type LLMModelId =
   | "phi3-mini"
   | "gemma3-1b-mediapipe"
   | "gemma3n-2b"
+  | "gemma3n-2b-gguf"
+  | "gemma3n-2b-base-gguf"
   | "smollm-135m-q4"
   | "smollm-135m-q2";
 
@@ -37,7 +39,7 @@ export type PromptTemplate = "chatml" | "gemma" | "phi" | "llama";
 /** Device compatibility for model recommendations */
 export type DeviceCompatibility = "all" | "google" | "apple";
 
-export type LLMBackendType = "llamarn" | "mediapipe";
+export type LLMBackendType = "llamarn" | "mediapipe" | "litert-lm";
 
 /** Model categories for better navigation */
 export type LLMModelCategory = "qwen" | "llama" | "gemma" | "other";
@@ -357,24 +359,64 @@ export const MODEL_CONFIGS: Record<LLMModelId, LLMModelConfig> = {
   },
   "gemma3n-2b": {
     id: "gemma3n-2b",
-    name: "Gemma 3n 2B (TPU)",
+    name: "Gemma 3n 2B (LiteRT-LM)",
     filename: "gemma3n-2b-tpu.litertlm",
     // Google official - requires HuggingFace auth (gated)
     downloadUrl:
       "https://huggingface.co/google/gemma-3n-E2B-it-litert-lm/resolve/main/gemma-3n-E2B-it-int4.litertlm",
     expectedSize: 3660 * 1024 * 1024, // ~3.66GB
-    backend: "mediapipe",
-    description: "Gemma 3n 2B - Optimisé TPU Tensor (Pixel 6+)",
+    backend: "litert-lm",
+    description: "Gemma 3n 2B - Format LiteRT-LM natif (Pixel 6+, TPU) — accélération maximale",
     category: "gemma",
     promptTemplate: "gemma",
     deviceCompatibility: "google",
     optimizedFor: "google",
     requiresAuth: true,
-    recommended: true,
     languages: ["Anglais", "Français", "Espagnol", "Allemand", "Italien", "Multilingue"],
     specializations: ["Accélération TPU", "Code", "Analyse", "Raisonnement"],
-    strengths: ["Maximum performance TPU", "Qualité élevée", "Officiel Google", "Excellent sur Pixel"],
-    weaknesses: ["Très lourd (3.66GB)", "Nécessite HF auth", "Pixel 6+ uniquement", "Consommation élevée"],
+    strengths: ["Maximum performance TPU", "Officiel Google", "Excellent sur Pixel", "Runtime LiteRT-LM natif"],
+    weaknesses: ["Très lourd (3.66GB)", "Nécessite HF auth", "Pixel 6+ uniquement"],
+  },
+  "gemma3n-2b-gguf": {
+    id: "gemma3n-2b-gguf",
+    name: "Gemma 3n 2B (GGUF Q4)",
+    filename: "google_gemma-3n-E2B-it-Q4_K_M.gguf",
+    // bartowski community GGUF - public, no auth required
+    downloadUrl:
+      "https://huggingface.co/bartowski/google_gemma-3n-E2B-it-GGUF/resolve/main/google_gemma-3n-E2B-it-Q4_K_M.gguf",
+    expectedSize: 2990 * 1024 * 1024, // ~2.79GB
+    backend: "llamarn",
+    description: "Gemma 3n 2B quantifié Q4 - Compatible llama.rn (tous appareils)",
+    category: "gemma",
+    promptTemplate: "gemma",
+    deviceCompatibility: "all",
+    optimizedFor: "google",
+    recommended: true,
+    languages: ["Anglais", "Français", "Espagnol", "Allemand", "Italien", "Multilingue"],
+    specializations: ["Code", "Analyse", "Raisonnement", "Post-traitement audio"],
+    strengths: ["Architecture Gemma 3n", "Compatible llama.rn", "Tous appareils", "Bon rapport taille/qualité"],
+    weaknesses: ["Lourd (2.79GB)", "Moins rapide que version TPU", "CPU inference"],
+  },
+  "gemma3n-2b-base-gguf": {
+    id: "gemma3n-2b-base-gguf",
+    name: "Gemma 3n 2B Base (GGUF Q4)",
+    filename: "gemma-3n-E2B.Q4_K_M.gguf",
+    // mradermacher community GGUF of base model (non instruction-tuned)
+    // Source: google/gemma-3n-E2B — accepter la licence Gemma sur HuggingFace requis
+    downloadUrl:
+      "https://huggingface.co/mradermacher/gemma-3n-E2B-GGUF/resolve/main/gemma-3n-E2B.Q4_K_M.gguf",
+    expectedSize: 2900 * 1024 * 1024, // ~2.9GB
+    backend: "llamarn",
+    description: "Gemma 3n 2B base (non instruction-tuné) — moins adapté aux tâches avec instructions",
+    category: "gemma",
+    promptTemplate: "gemma",
+    deviceCompatibility: "all",
+    optimizedFor: "google",
+    requiresAuth: true,
+    languages: ["Anglais", "Français", "Espagnol", "Allemand", "Italien", "Multilingue"],
+    specializations: ["Complétion de texte", "Génération libre"],
+    strengths: ["Modèle de base officiel Google", "Architecture Gemma 3n", "Compatible llama.rn"],
+    weaknesses: ["⚠️ Base model — ne suit pas les instructions", "Lourd (2.9GB)", "Nécessite HF auth", "Moins adapté au post-traitement"],
   },
 
   // ==========================================

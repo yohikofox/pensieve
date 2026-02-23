@@ -19,6 +19,7 @@ import { inject, injectable } from 'tsyringe';
 import { type IPostProcessingBackend, type PostProcessingResult } from './postprocessing/IPostProcessingBackend';
 import { LlamaRnBackend } from './postprocessing/LlamaRnBackend';
 import { MediaPipeBackend } from './postprocessing/MediaPipeBackend';
+import { LitertLmBackend } from './postprocessing/LitertLmBackend';
 import type { ILLMModelService, LLMModelId, LLMBackendType } from '../domain/ILLMModelService';
 import { NPUDetectionService, type NPUInfo } from './NPUDetectionService';
 import { TOKENS } from '../../../infrastructure/di/tokens';
@@ -79,7 +80,9 @@ export class PostProcessingService {
     return {
       enabled,
       modelId,
-      backendType: preferredBackend === 'mediapipe' ? 'mediapipe' : 'llamarn',
+      backendType: modelId
+        ? this.modelService.getModelConfig(modelId).backend
+        : preferredBackend === 'mediapipe' ? 'mediapipe' : 'llamarn',
       npuInfo,
     };
   }
@@ -167,6 +170,25 @@ export class PostProcessingService {
           }
           console.log('[PostProcessingService] Fallback to llama.rn model:', targetModelId);
           // Update modelConfig for the new fallback model
+          modelConfig = this.modelService.getModelConfig(targetModelId);
+        }
+      }
+
+      if (targetBackend === 'litert-lm') {
+        const litertlm = new LitertLmBackend();
+        if (await litertlm.initialize()) {
+          this.backend = litertlm;
+          console.log('[PostProcessingService] Using LiteRT-LM backend (Tensor TPU native)');
+        } else {
+          // LiteRT-LM failed - fall back to llama.rn
+          console.warn('[PostProcessingService] LiteRT-LM unavailable, falling back to llama.rn');
+          targetBackend = 'llamarn';
+          targetModelId = await this.modelService.getBestAvailableModel('llamarn');
+          if (!targetModelId) {
+            console.error('[PostProcessingService] No llama.rn model available for fallback');
+            return false;
+          }
+          console.log('[PostProcessingService] Fallback to llama.rn model:', targetModelId);
           modelConfig = this.modelService.getModelConfig(targetModelId);
         }
       }
@@ -333,7 +355,7 @@ export class PostProcessingService {
   /**
    * Get current backend name
    */
-  getBackendName(): 'mediapipe' | 'llamarn' | null {
+  getBackendName(): 'mediapipe' | 'llamarn' | 'litert-lm' | null {
     return this.backend?.name || null;
   }
 

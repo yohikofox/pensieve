@@ -16,7 +16,7 @@ export interface PostProcessingResult {
   /** Processing duration in milliseconds */
   processingDuration: number;
   /** Backend that processed the text */
-  backend: "mediapipe" | "llamarn";
+  backend: "mediapipe" | "llamarn" | "litert-lm";
   /** Model used for processing */
   model: string;
 }
@@ -25,7 +25,7 @@ export interface IPostProcessingBackend {
   /**
    * Backend identifier
    */
-  readonly name: "mediapipe" | "llamarn";
+  readonly name: "mediapipe" | "llamarn" | "litert-lm";
 
   /**
    * Initialize the backend
@@ -68,6 +68,16 @@ export interface IPostProcessingBackend {
    * @returns Processed text with improved quality
    */
   process(text: string): Promise<PostProcessingResult>;
+
+  /**
+   * Process text with a custom system prompt
+   * Used by CaptureAnalysisService to run task-specific prompts (summary, highlights, etc.)
+   *
+   * @param systemPrompt - Task-specific system prompt
+   * @param userText - Text to process
+   * @returns Processing result
+   */
+  processWithCustomPrompt(systemPrompt: string, userText: string): Promise<PostProcessingResult>;
 
   /**
    * Get the system prompt used for post-processing
@@ -229,6 +239,18 @@ class DebugPromptManager {
    */
   getDefaultPrompt(): string {
     return POSTPROCESSING_SYSTEM_PROMPT;
+  }
+
+  /**
+   * Get the enriched prompt with the transcript substituted into the user template.
+   * Combines the system prompt + user prompt with {{TRANSCRIPT}} replaced.
+   *
+   * @param transcript - The text to insert into the user template
+   */
+  getEnrichedPrompt(transcript: string): string {
+    const systemPrompt = this.getPrompt();
+    const userPrompt = POSTPROCESSING_USER_PROMPT.replace('{{TRANSCRIPT}}', transcript);
+    return `${systemPrompt}\n\n${userPrompt}`;
   }
 }
 

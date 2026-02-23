@@ -21,7 +21,10 @@ import {
   ANALYSIS_TYPES,
 } from '../../capture/domain/CaptureAnalysis.model';
 import { getPreparedSystemPrompt, filterIdeasContent } from './analysisPrompts';
+import { type IPostProcessingBackend } from './postprocessing/IPostProcessingBackend';
 import { LlamaRnBackend } from './postprocessing/LlamaRnBackend';
+import { MediaPipeBackend } from './postprocessing/MediaPipeBackend';
+import { LitertLmBackend } from './postprocessing/LitertLmBackend';
 
 export interface AnalysisResult {
   analysis: CaptureAnalysis;
@@ -37,7 +40,7 @@ export type AnalyzeResult = AnalysisResult | AnalysisError;
 
 @injectable()
 export class CaptureAnalysisService {
-  private llamaBackend: LlamaRnBackend | null = null;
+  private backend: IPostProcessingBackend | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<boolean> | null = null;
   private currentModelId: string | null = null;
@@ -58,11 +61,11 @@ export class CaptureAnalysisService {
       return this.initializationPromise;
     }
 
-    // Check if model selection has changed
-    const selectedModelId = await this.modelService.getBestAvailableModelForTask('analysis', 'llamarn')
-      || await this.modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
+    // Check if model selection has changed (any backend)
+    const selectedModelId = await this.modelService.getBestAvailableModelForTask('analysis')
+      || await this.modelService.getBestAvailableModelForTask('postProcessing');
 
-    if (this.isInitialized && this.llamaBackend?.isModelLoaded()) {
+    if (this.isInitialized && this.backend?.isModelLoaded()) {
       // Check if the selected model is different from the loaded one
       if (selectedModelId && selectedModelId !== this.currentModelId) {
         console.log('[CaptureAnalysisService] Model changed, reloading...', {
@@ -94,66 +97,54 @@ export class CaptureAnalysisService {
         return false;
       }
 
-      // Get the best available model for analysis task
-      const modelId = await this.modelService.getBestAvailableModelForTask('analysis', 'llamarn');
+      // Get the best available model for analysis (any backend)
+      const modelId = await this.modelService.getBestAvailableModelForTask('analysis')
+        || await this.modelService.getBestAvailableModelForTask('postProcessing');
+
       if (!modelId) {
-        // Fallback to postProcessing model if no analysis-specific model
-        const fallbackModelId = await this.modelService.getBestAvailableModelForTask('postProcessing', 'llamarn');
-        if (!fallbackModelId) {
-          console.warn('[CaptureAnalysisService] No LLM model downloaded for analysis');
-          return false;
-        }
-        console.log('[CaptureAnalysisService] Using postProcessing model as fallback:', fallbackModelId);
-        const modelConfig = this.modelService.getModelConfig(fallbackModelId);
-        const modelPath = this.modelService.getModelPath(fallbackModelId);
-
-        // Create and initialize the backend
-        this.llamaBackend = new LlamaRnBackend();
-        const backendReady = await this.llamaBackend.initialize();
-        if (!backendReady) {
-          console.error('[CaptureAnalysisService] Failed to initialize LlamaRnBackend');
-          return false;
-        }
-
-        console.log('[CaptureAnalysisService] Loading fallback model from:', modelPath);
-        const modelLoaded = await this.llamaBackend.loadModel(modelPath, modelConfig.promptTemplate);
-
-        if (!modelLoaded) {
-          console.error('[CaptureAnalysisService] Failed to load fallback model');
-          return false;
-        }
-
-        this.isInitialized = true;
-        this.currentModelId = fallbackModelId;
-        console.log('[CaptureAnalysisService] Initialized with fallback model:', fallbackModelId);
-        return true;
-      }
-
-      console.log('[CaptureAnalysisService] Using analysis model:', modelId);
-
-      // Create and initialize the backend
-      this.llamaBackend = new LlamaRnBackend();
-      const backendReady = await this.llamaBackend.initialize();
-      if (!backendReady) {
-        console.error('[CaptureAnalysisService] Failed to initialize LlamaRnBackend');
+        console.warn('[CaptureAnalysisService] No LLM model downloaded for analysis');
         return false;
       }
 
-      // Load the model
       const modelConfig = this.modelService.getModelConfig(modelId);
       const modelPath = this.modelService.getModelPath(modelId);
+      console.log('[CaptureAnalysisService] Using model:', modelId, 'backend:', modelConfig.backend);
 
-      console.log('[CaptureAnalysisService] Loading model from:', modelPath);
-      const modelLoaded = await this.llamaBackend.loadModel(modelPath, modelConfig.promptTemplate);
+      // Select backend based on model type
+      let backend: IPostProcessingBackend;
+      if (modelConfig.backend === 'mediapipe') {
+        const mediapipe = new MediaPipeBackend();
+        if (!await mediapipe.initialize()) {
+          console.error('[CaptureAnalysisService] MediaPipe backend unavailable');
+          return false;
+        }
+        backend = mediapipe;
+      } else if (modelConfig.backend === 'litert-lm') {
+        const litertlm = new LitertLmBackend();
+        if (!await litertlm.initialize()) {
+          console.error('[CaptureAnalysisService] LiteRT-LM backend unavailable');
+          return false;
+        }
+        backend = litertlm;
+      } else {
+        const llamarn = new LlamaRnBackend();
+        if (!await llamarn.initialize()) {
+          console.error('[CaptureAnalysisService] LlamaRn backend unavailable');
+          return false;
+        }
+        backend = llamarn;
+      }
 
+      const modelLoaded = await backend.loadModel(modelPath, modelConfig.promptTemplate);
       if (!modelLoaded) {
-        console.error('[CaptureAnalysisService] Failed to load model');
+        console.error('[CaptureAnalysisService] Failed to load model:', modelId);
         return false;
       }
 
+      this.backend = backend;
       this.isInitialized = true;
       this.currentModelId = modelId;
-      console.log('[CaptureAnalysisService] Initialized successfully with model:', modelId);
+      console.log('[CaptureAnalysisService] Initialized successfully with model:', modelId, 'backend:', modelConfig.backend);
       return true;
     } catch (error) {
       console.error('[CaptureAnalysisService] Initialization failed:', error);
@@ -166,7 +157,7 @@ export class CaptureAnalysisService {
    * Check if service is ready
    */
   isReady(): boolean {
-    return this.isInitialized && this.llamaBackend !== null && this.llamaBackend.isModelLoaded();
+    return this.isInitialized && this.backend !== null && this.backend.isModelLoaded();
   }
 
   /**
@@ -264,7 +255,7 @@ export class CaptureAnalysisService {
 
       // Process with the LLM
       console.log('[CaptureAnalysisService] Calling LLM...');
-      const result = await this.llamaBackend!.processWithCustomPrompt(systemPrompt, textToAnalyze);
+      const result = await this.backend!.processWithCustomPrompt(systemPrompt, textToAnalyze);
       console.log('[CaptureAnalysisService] LLM result:', result.text.substring(0, 100) + '...');
 
       // Filtrer les pistes opérationnelles pour le type "ideas"
@@ -345,9 +336,9 @@ export class CaptureAnalysisService {
    * Release resources
    */
   async dispose(): Promise<void> {
-    if (this.llamaBackend) {
-      await this.llamaBackend.dispose();
-      this.llamaBackend = null;
+    if (this.backend) {
+      await this.backend.dispose();
+      this.backend = null;
     }
     this.isInitialized = false;
     this.currentModelId = null;
