@@ -13,6 +13,7 @@
 #   --dry-run         Print actions without executing them
 #   --only=LIST       Deploy only specified components (comma-separated)
 #                     Values: backend,web,admin,app-center,mobile
+#   --distribution-target=VALUE  Mobile build target: "appcenter" (default) or "googleplay"
 #   --help            Show this help
 #
 # Config:
@@ -49,13 +50,15 @@ SKIP_MOBILE=false
 SKIP_DEPLOY=false
 DRY_RUN=false
 ONLY_COMPONENTS=""
+DISTRIBUTION_TARGET="appcenter"
 
 for arg in "$@"; do
   case "$arg" in
-    --skip-mobile)  SKIP_MOBILE=true ;;
-    --skip-deploy)  SKIP_DEPLOY=true ;;
-    --dry-run)      DRY_RUN=true ;;
-    --only=*)       ONLY_COMPONENTS="${arg#--only=}" ;;
+    --skip-mobile)           SKIP_MOBILE=true ;;
+    --skip-deploy)           SKIP_DEPLOY=true ;;
+    --dry-run)               DRY_RUN=true ;;
+    --only=*)                ONLY_COMPONENTS="${arg#--only=}" ;;
+    --distribution-target=*) DISTRIBUTION_TARGET="${arg#--distribution-target=}" ;;
     --help)
       sed -n '/^# Usage/,/^# =/p' "$0" | sed 's/^# *//'
       exit 0
@@ -345,6 +348,7 @@ if [ "${SKIP_MOBILE}" = false ] && should_run "mobile"; then
     MINIO_ACCESS_KEY="${MINIO_ACCESS_KEY}" \
     MINIO_SECRET_KEY="${MINIO_SECRET_KEY}" \
     MINIO_BUCKET="${MINIO_BUCKET}" \
+    DISTRIBUTION_TARGET="${DISTRIBUTION_TARGET}" \
     bash scripts/build-and-push.sh
   step_end
 fi

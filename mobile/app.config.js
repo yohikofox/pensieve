@@ -11,6 +11,71 @@ const IS_DEV = APP_VARIANT === 'dev';
 // 1. withGradleProperties → reactNativeArchitectures empêche le RNGRP de configurer
 //    CMake pour armeabi-v7a (cause réelle du CXX1210 au configure step).
 // 2. withAppBuildGradle → ndk.abiFilters exclut armeabi-v7a de l'APK final.
+// Plugin: injecte splits (APKs par ABI) et bundle (AAB) dans android/app/build.gradle.
+// La cible est contrôlée au moment du build via -PdistributionTarget=appcenter|googleplay.
+// Ce plugin est idempotent (guard sur 'distributionTarget').
+const withAbiSplits = (config) => {
+  return withAppBuildGradle(config, (c) => {
+    if (c.modResults.contents.includes('distributionTarget')) {
+      return c; // Déjà appliqué
+    }
+
+    // 1. Injecter splits + bundle à l'intérieur du bloc android {}
+    //    Ancre : fermeture du bloc androidResources + fermeture du bloc android
+    c.modResults.contents = c.modResults.contents.replace(
+      /([ \t]*androidResources\s*\{[^}]+\})\n\}/,
+      `$1\n
+    // Distribution mode: "appcenter" (multiple APKs) or "googleplay" (single AAB)
+    // Usage: ./gradlew assembleRelease -PdistributionTarget=appcenter
+    //        ./gradlew bundleRelease   -PdistributionTarget=googleplay
+    def distributionTarget = findProperty('distributionTarget') ?: 'appcenter'
+
+    splits {
+        abi {
+            enable distributionTarget == 'appcenter'
+            reset()
+            include "arm64-v8a", "x86_64"
+            universalApk false
+        }
+    }
+
+    bundle {
+        abi {
+            enableSplit = distributionTarget == 'googleplay'
+        }
+    }
+}`
+    );
+
+    // 2. Injecter le bloc versionCode override après android {}
+    //    Ancre : commentaire stable du template Expo généré
+    c.modResults.contents = c.modResults.contents.replace(
+      '// Apply static values from `gradle.properties` to the `android.packagingOptions`',
+      `// Assign unique versionCode per ABI for App Center multi-APK distribution
+// Convention: arm64-v8a = 1xxx, x86_64 = 2xxx
+// Not applied in googleplay mode (single AAB, versionCode managed by Play Console)
+def distributionTarget = findProperty('distributionTarget') ?: 'appcenter'
+if (distributionTarget == 'appcenter') {
+    def abiVersionCodes = ["arm64-v8a": 1, "x86_64": 2]
+    android.applicationVariants.all { variant ->
+        variant.outputs.each { output ->
+            def abiFilter = output.getFilter(com.android.build.OutputFile.ABI)
+            def abiMultiplier = abiVersionCodes.get(abiFilter, 0)
+            if (abiMultiplier != 0) {
+                output.versionCodeOverride =
+                    abiMultiplier * 1000 + variant.versionCode
+            }
+        }
+    }
+}
+
+// Apply static values from \`gradle.properties\` to the \`android.packagingOptions\``
+    );
+
+    return c;
+  });
+};
+
 const withAbiFilters = (config) => {
   // Étape 1 : gradle.properties — reactNativeArchitectures
   config = withGradleProperties(config, (c) => {
@@ -132,6 +197,7 @@ module.exports = {
         },
       ],
       withAbiFilters,
+      withAbiSplits,
     ],
   },
 };

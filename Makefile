@@ -7,6 +7,9 @@ REGISTRY ?= localhost:5000
 VERSION ?= $(shell git rev-parse --short HEAD)
 LATEST_TAG ?= latest
 
+# Mobile distribution target: "appcenter" (default) or "googleplay"
+DISTRIBUTION_TARGET ?= appcenter
+
 # Image names
 BACKEND_IMAGE = $(REGISTRY)/pensine-backend
 WEB_IMAGE = $(REGISTRY)/pensine-web
@@ -105,20 +108,29 @@ release-app-center: build-app-center push-app-center
 # Deploy Commands (build + push + Portainer redeploy)
 # ===========================================
 
-.PHONY: deploy deploy-services deploy-mobile
+.PHONY: deploy deploy-services deploy-mobile deploy-mobile-appcenter deploy-mobile-googleplay
 
-## Full deploy: build + push all images & APK, then trigger Portainer redeployment
+## Full deploy: build + push all images & APK (App Center mode), then trigger Portainer redeployment
 ## Reads config from deploy.env (copy from deploy.env.example)
+## Override mobile target: make deploy DISTRIBUTION_TARGET=googleplay
 deploy:
-	@bash ./deploy.sh
+	@bash ./deploy.sh --distribution-target=$(DISTRIBUTION_TARGET)
 
 ## Deploy only Docker services (no mobile APK)
 deploy-services:
 	@bash ./deploy.sh --skip-mobile
 
-## Deploy only mobile APK (build + push to MinIO)
+## Deploy only mobile (build + push to MinIO) — mode contrôlé par DISTRIBUTION_TARGET (défaut: appcenter)
 deploy-mobile:
-	@bash ./deploy.sh --only=mobile
+	@bash ./deploy.sh --only=mobile --distribution-target=$(DISTRIBUTION_TARGET)
+
+## Deploy mobile — mode App Center (multiple APKs par ABI)
+deploy-mobile-appcenter:
+	@bash ./deploy.sh --only=mobile --distribution-target=appcenter
+
+## Deploy mobile — mode Google Play (AAB unique)
+deploy-mobile-googleplay:
+	@bash ./deploy.sh --only=mobile --distribution-target=googleplay
 
 # ===========================================
 # Utility Commands
@@ -157,10 +169,16 @@ help:
 	@echo "Usage: make [target] [REGISTRY=host:port] [VERSION=tag]"
 	@echo ""
 	@echo "Deploy targets (build + push + Portainer redeploy):"
-	@echo "  deploy            Full deploy: all images + APK + Portainer webhooks"
-	@echo "  deploy-services   Docker services only (no mobile APK)"
-	@echo "  deploy-mobile     Mobile APK only (build + push to MinIO)"
+	@echo "  deploy                      Full deploy: all images + APK + Portainer webhooks"
+	@echo "  deploy-services             Docker services only (no mobile APK)"
+	@echo "  deploy-mobile               Mobile only — DISTRIBUTION_TARGET=$(DISTRIBUTION_TARGET)"
+	@echo "  deploy-mobile-appcenter     Mobile — App Center (multiple APKs par ABI)"
+	@echo "  deploy-mobile-googleplay    Mobile — Google Play (AAB unique)"
 	@echo "  (reads config from deploy.env — copy from deploy.env.example)"
+	@echo ""
+	@echo "Mobile distribution:"
+	@echo "  DISTRIBUTION_TARGET=appcenter   Multiple APKs (arm64-v8a, x86_64) — défaut"
+	@echo "  DISTRIBUTION_TARGET=googleplay  Single AAB (Google Play Delivery)"
 	@echo ""
 	@echo "Build targets:"
 	@echo "  build             Build all images"
@@ -190,9 +208,12 @@ help:
 	@echo "  version         Show current version"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make deploy                               # Full deploy (recommended)"
-	@echo "  make deploy-services                      # Services only, no APK"
-	@echo "  make release REGISTRY=192.168.1.100:5000  # Build + push, no Portainer"
+	@echo "  make deploy                                         # Full deploy (App Center APKs)"
+	@echo "  make deploy DISTRIBUTION_TARGET=googleplay          # Full deploy (Google Play AAB)"
+	@echo "  make deploy-mobile-appcenter                        # APKs only → MinIO"
+	@echo "  make deploy-mobile-googleplay                       # AAB only → MinIO"
+	@echo "  make deploy-services                                # Services only, no APK"
+	@echo "  make release REGISTRY=192.168.1.100:5000            # Build + push, no Portainer"
 	@echo "  make tags IMAGE=pensine-backend"
 
 .DEFAULT_GOAL := help
