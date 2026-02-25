@@ -7,6 +7,12 @@
  * - AC3 : audio court (un seul isFinal) — non régressé
  * - AC4 : séparateur espace entre segments
  *
+ * Contrat du callback onFinalResult (startRealTime) :
+ *   Le callback reçoit le texte du SEGMENT COURANT (non accumulé).
+ *   Pour obtenir le texte complet après plusieurs segments, utiliser
+ *   getAccumulatedText() après stopRealTime().
+ *   Ce comportement est intentionnel pour le streaming temps réel.
+ *
  * Note : jest.mock est hoisted avant les const, donc le mock est créé
  * dans la factory et récupéré via jest.requireMock.
  */
@@ -101,6 +107,19 @@ function emitResultEvent(
   });
 }
 
+/**
+ * Émet un événement multi-alternatives (pour tester la sélection par confidence).
+ */
+function emitMultiAlternativeEvent(
+  alternatives: Array<{ transcript: string; confidence: number }>,
+  isFinal: boolean
+): void {
+  ExpoSpeechRecognitionModule.__listeners["result"]?.({
+    results: alternatives,
+    isFinal,
+  });
+}
+
 function emitEndEvent(): void {
   ExpoSpeechRecognitionModule.__listeners["end"]?.();
 }
@@ -146,6 +165,10 @@ describe("NativeTranscriptionEngine", () => {
         "bonjour je suis en train de parler depuis longtemps"
       );
       expect(result.isPartial).toBe(false);
+      // L4 — Le fichier WAV temporaire est nettoyé après transcription
+      expect(mockAudioConversionService.cleanupTempFile).toHaveBeenCalledWith(
+        "/tmp/test.wav"
+      );
     });
 
     it("AC3 — un seul segment isFinal retourne le même résultat (non régressé)", async () => {
@@ -162,6 +185,10 @@ describe("NativeTranscriptionEngine", () => {
       });
 
       expect(result.text).toBe("texte court");
+      // L4 — Nettoyage garanti même pour audio court
+      expect(mockAudioConversionService.cleanupTempFile).toHaveBeenCalledWith(
+        "/tmp/test.wav"
+      );
     });
 
     it("AC4 — les segments sont séparés par un espace simple (pas de doublon)", async () => {
@@ -180,6 +207,10 @@ describe("NativeTranscriptionEngine", () => {
 
       expect(result.text).toBe("premier deuxième");
       expect(result.text).not.toContain("  ");
+      // L4 — Nettoyage garanti
+      expect(mockAudioConversionService.cleanupTempFile).toHaveBeenCalledWith(
+        "/tmp/test.wav"
+      );
     });
 
     it("AC1 — 2 segments isFinal : le texte final est la concaténation complète", async () => {
@@ -197,11 +228,49 @@ describe("NativeTranscriptionEngine", () => {
       });
 
       expect(result.text).toBe("segment un segment deux");
+      // L4 — Nettoyage garanti
+      expect(mockAudioConversionService.cleanupTempFile).toHaveBeenCalledWith(
+        "/tmp/test.wav"
+      );
+    });
+
+    // L3 — Tester la sélection de la meilleure alternative par confidence
+    it("sélectionne la meilleure alternative par confidence dans un segment isFinal", async () => {
+      ExpoSpeechRecognitionModule.start.mockImplementation(() => {
+        setImmediate(() => {
+          emitMultiAlternativeEvent(
+            [
+              { transcript: "mauvaise alternative", confidence: 0.3 },
+              { transcript: "meilleure alternative", confidence: 0.9 },
+              { transcript: "alternative moyenne", confidence: 0.6 },
+            ],
+            true
+          );
+          emitEndEvent();
+        });
+      });
+
+      const result = await engine.transcribeFile("/mock/audio.m4a", {
+        language: "fr",
+        vocabulary: [],
+      });
+
+      // La meilleure alternative (confidence 0.9) doit être sélectionnée
+      expect(result.text).toBe("meilleure alternative");
+      expect(result.confidence).toBe(0.9);
+      expect(mockAudioConversionService.cleanupTempFile).toHaveBeenCalledWith(
+        "/tmp/test.wav"
+      );
     });
   });
 
   // --------------------------------------------------------------------------
   // startRealTime — AC2 + AC4
+  //
+  // Contrat du callback onFinalResult :
+  //   Reçoit le texte du SEGMENT COURANT (non accumulé) à chaque événement isFinal.
+  //   Ce comportement est intentionnel pour le streaming temps réel.
+  //   Pour le texte complet, utiliser getAccumulatedText() après stopRealTime().
   // --------------------------------------------------------------------------
 
   describe("startRealTime", () => {
@@ -224,6 +293,19 @@ describe("NativeTranscriptionEngine", () => {
 
       // Assert : accumulatedText contient les deux segments
       expect(engine.getAccumulatedText()).toBe("premier segment deuxième segment");
+
+      // M1 — Le callback onFinalResult est appelé pour CHAQUE segment (non accumulé)
+      expect(onFinal).toHaveBeenCalledTimes(2);
+      expect(onFinal).toHaveBeenNthCalledWith(1, {
+        text: "premier segment",
+        isPartial: false,
+        confidence: 0.9,
+      });
+      expect(onFinal).toHaveBeenNthCalledWith(2, {
+        text: "deuxième segment",
+        isPartial: false,
+        confidence: 0.9,
+      });
     });
 
     it("AC4 — les segments isFinal sont séparés par un espace", async () => {
@@ -244,6 +326,9 @@ describe("NativeTranscriptionEngine", () => {
 
       expect(engine.getAccumulatedText()).toBe("a b c");
       expect(engine.getAccumulatedText()).not.toContain("  ");
+
+      // M1 — Le callback est appelé 3 fois, une par segment isFinal
+      expect(onFinal).toHaveBeenCalledTimes(3);
     });
 
     it("AC2 — résultat partiel ne perturbe pas l'accumulation isFinal", async () => {
@@ -265,6 +350,15 @@ describe("NativeTranscriptionEngine", () => {
 
       // L'accumulatedText après le 2ème isFinal doit contenir les 2 segments finaux
       expect(engine.getAccumulatedText()).toBe("phrase complète deuxième phrase");
+
+      // M1 — onFinalResult n'est appelé que pour les segments isFinal (pas les partiels)
+      expect(onFinal).toHaveBeenCalledTimes(2);
+      // M1 — onPartialResult est appelé pour le résultat partiel
+      expect(onPartial).toHaveBeenCalledTimes(1);
+      expect(onPartial).toHaveBeenCalledWith({
+        text: "résultat partiel en cours",
+        isPartial: true,
+      });
     });
 
     it("AC3 — un seul isFinal : accumulatedText identique à l'implémentation actuelle", async () => {
@@ -282,6 +376,14 @@ describe("NativeTranscriptionEngine", () => {
       emitResultEvent("texte unique", 0.95, true);
 
       expect(engine.getAccumulatedText()).toBe("texte unique");
+
+      // M1 — Le callback est appelé une fois avec le texte du segment
+      expect(onFinal).toHaveBeenCalledTimes(1);
+      expect(onFinal).toHaveBeenCalledWith({
+        text: "texte unique",
+        isPartial: false,
+        confidence: 0.95,
+      });
     });
   });
 });

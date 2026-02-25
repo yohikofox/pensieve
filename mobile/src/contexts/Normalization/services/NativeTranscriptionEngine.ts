@@ -161,6 +161,9 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
                 const newSegment = event.results[selectedIndex]?.transcript || "";
                 finalText = finalText ? finalText + " " + newSegment : newSegment;
 
+                // nativeResults reflects only the LAST isFinal segment (intentional).
+                // It carries debug metadata only — the complete text is in finalText.
+                // Rationale: story 8.20 Dev Notes — nativeResults is not the transcript.
                 const rawNativeResults = {
                   selectedIndex,
                   selectionReason: `Highest confidence: ${bestConfidence}`,
