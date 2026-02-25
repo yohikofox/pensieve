@@ -38,8 +38,8 @@ Each module follows the same layered structure: `domain/entities/`, `domain/even
 
 | Module            | Purpose                                                                                                  |
 |-------------------|----------------------------------------------------------------------------------------------------------|
-| **shared**        | `@Global()` module. MinioService (S3 storage), SupabaseAuthGuard (JWT validation), User entity           |
-| **identity**      | Supabase OAuth callbacks (Google, HuggingFace), mobile deep linking                                      |
+| **shared**        | `@Global()` module. MinioService (S3 storage), BetterAuthGuard (JWT validation — ADR-029), User entity   |
+| **identity**      | Better Auth + OAuth callbacks (Google, HuggingFace), mobile deep linking                                 |
 | **authorization** | Multi-level permission system (RBAC + PBAC + ACL) with swappable implementations                         |
 | **knowledge**     | AI digestion pipeline: RabbitMQ job queue, OpenAI GPT-4o-mini, WebSocket progress, Thought/Idea entities |
 | **action**        | Todo extraction from thoughts: deadline parsing (chrono-node), priority inference                        |
@@ -48,7 +48,7 @@ Each module follows the same layered structure: `domain/entities/`, `domain/even
 
 ### Authorization System
 
-Uses DI string tokens for swappable implementations (currently PostgreSQL, designed for future Supabase RLS swap):
+Uses DI string tokens for swappable implementations (currently PostgreSQL):
 - `'IAuthorizationService'` - Main authorization orchestrator
 - `'IPermissionChecker'` - Multi-source permission resolution
 - `'IResourceAccessControl'` - Resource sharing and ACL
@@ -87,7 +87,7 @@ BDD uses `jest-cucumber`. Features in `.feature` files, step definitions in `.te
 
 ## External Services
 
-Supabase (auth/JWT), PostgreSQL, RabbitMQ, MinIO (S3-compatible storage), OpenAI (GPT-4o-mini), Redis (optional, for progress store).
+Better Auth (auth/JWT — self-hosted, ADR-029), PostgreSQL, RabbitMQ, MinIO (S3-compatible storage), OpenAI (GPT-4o-mini), Redis (optional, for progress store).
 
 
 ## Snippets and patterns

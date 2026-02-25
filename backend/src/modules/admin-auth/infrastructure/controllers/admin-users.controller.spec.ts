@@ -14,7 +14,7 @@ describe('AdminUsersController', () => {
 
   const mockUserFeaturesService = {
     getUserFeatures: jest.fn(),
-    updateDebugModeAccess: jest.fn(),
+    updateFeatures: jest.fn(),
   };
 
   const mockAdminJwtGuard = {
@@ -71,7 +71,10 @@ describe('AdminUsersController', () => {
 
   describe('getUserFeatures', () => {
     it('should return user features', async () => {
-      const expectedDto: UserFeaturesDto = { debug_mode_access: false };
+      const expectedDto: UserFeaturesDto = {
+        debug_mode_access: false,
+        data_mining_access: false,
+      };
       mockUserFeaturesService.getUserFeatures.mockResolvedValue(expectedDto);
 
       const result = await controller.getUserFeatures('test-user-id');
@@ -96,43 +99,65 @@ describe('AdminUsersController', () => {
   describe('updateUserFeatures', () => {
     it('should update debug_mode_access to true', async () => {
       const dto: UpdateUserFeaturesDto = { debug_mode_access: true };
-      const expectedDto: UserFeaturesDto = { debug_mode_access: true };
-      mockUserFeaturesService.updateDebugModeAccess.mockResolvedValue(
-        expectedDto,
-      );
+      const expectedDto: UserFeaturesDto = {
+        debug_mode_access: true,
+        data_mining_access: false,
+      };
+      mockUserFeaturesService.updateFeatures.mockResolvedValue(expectedDto);
 
       const result = await controller.updateUserFeatures('test-user-id', dto);
 
       expect(result).toEqual(expectedDto);
-      expect(
-        mockUserFeaturesService.updateDebugModeAccess,
-      ).toHaveBeenCalledWith('test-user-id', true);
+      expect(mockUserFeaturesService.updateFeatures).toHaveBeenCalledWith(
+        'test-user-id',
+        { debug_mode_access: true, data_mining_access: undefined },
+      );
     });
 
     it('should update debug_mode_access to false', async () => {
       const dto: UpdateUserFeaturesDto = { debug_mode_access: false };
-      const expectedDto: UserFeaturesDto = { debug_mode_access: false };
-      mockUserFeaturesService.updateDebugModeAccess.mockResolvedValue(
-        expectedDto,
-      );
+      const expectedDto: UserFeaturesDto = {
+        debug_mode_access: false,
+        data_mining_access: false,
+      };
+      mockUserFeaturesService.updateFeatures.mockResolvedValue(expectedDto);
 
       const result = await controller.updateUserFeatures('test-user-id', dto);
 
       expect(result).toEqual(expectedDto);
-      expect(
-        mockUserFeaturesService.updateDebugModeAccess,
-      ).toHaveBeenCalledWith('test-user-id', false);
+      expect(mockUserFeaturesService.updateFeatures).toHaveBeenCalledWith(
+        'test-user-id',
+        { debug_mode_access: false, data_mining_access: undefined },
+      );
     });
 
     it('should throw NotFoundException when user not found', async () => {
       const dto: UpdateUserFeaturesDto = { debug_mode_access: true };
-      mockUserFeaturesService.updateDebugModeAccess.mockRejectedValue(
+      mockUserFeaturesService.updateFeatures.mockRejectedValue(
         new NotFoundException('User not found'),
       );
 
       await expect(
         controller.updateUserFeatures('non-existent-id', dto),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('syncUsers', () => {
+    it('should sync users and return result with message', async () => {
+      const syncResult = { created: 2, updated: 1, unchanged: 5 };
+      mockRgpdService.syncUsers.mockResolvedValue(syncResult);
+
+      const result = await controller.syncUsers();
+
+      expect(result).toEqual({ message: 'Sync completed', ...syncResult });
+      expect(mockRgpdService.syncUsers).toHaveBeenCalled();
+    });
+
+    it('should propagate errors from RgpdService', async () => {
+      mockRgpdService.syncUsers.mockRejectedValue(new Error('Sync failed'));
+
+      await expect(controller.syncUsers()).rejects.toThrow('Sync failed');
     });
   });
 });

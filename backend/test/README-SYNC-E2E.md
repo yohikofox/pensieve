@@ -53,7 +53,7 @@ userId = 'test-user-123';
 
 **To run tests successfully, you need to:**
 
-**Option A: Override SupabaseAuthGuard in E2E tests**
+**Option A: Override BetterAuthGuard in E2E tests**
 
 ```typescript
 // In test setup
@@ -61,7 +61,7 @@ beforeAll(async () => {
   const moduleFixture: TestingModule = await Test.createTestingModule({
     imports: [AppModule],
   })
-    .overrideGuard(SupabaseAuthGuard)
+    .overrideGuard(BetterAuthGuard)
     .useValue({
       canActivate: (context: ExecutionContext) => {
         const request = context.switchToHttp().getRequest();
@@ -76,13 +76,13 @@ beforeAll(async () => {
 });
 ```
 
-**Option B: Use real Supabase test user**
+**Option B: Use real Better Auth test user**
 
 ```typescript
-// Create test user in Supabase
-// Get real JWT token from Supabase Auth
-authToken = await getSupabaseTestToken();
-userId = 'real-supabase-user-id';
+// Create test user via Better Auth API
+// Get real session token
+authToken = await getBetterAuthTestToken();
+userId = 'real-better-auth-user-id';
 ```
 
 ### Database Cleanup
@@ -206,7 +206,7 @@ Time:        4.823 s
 
 ## Next Steps
 
-1. **Configure E2E auth** (override guard or use real Supabase test user)
+1. **Configure E2E auth** (override guard or use real Better Auth test user)
 2. **Run tests** (`npm run test:e2e test/sync-e2e.spec.ts`)
 3. **Fix any failures** (likely auth-related on first run)
 4. **Add to CI/CD pipeline** (run on every PR)

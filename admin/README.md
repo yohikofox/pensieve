@@ -20,9 +20,7 @@ cp .env.example .env.local
 ```
 
 Variables requises :
-- `NEXT_PUBLIC_API_URL` : URL du backend (ex: `http://localhost:3000`)
-- `NEXT_PUBLIC_SUPABASE_URL` : URL Supabase
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY` : Clé anonyme Supabase
+- `NEXT_PUBLIC_API_URL` : URL du backend Better Auth (ex: `http://localhost:3000`)
 
 ### 3. Lancer le serveur de développement
 
@@ -89,7 +87,7 @@ admin/
 │
 └── lib/
     ├── api-client.ts         # ✅ Client API TypeScript
-    ├── auth.ts               # ✅ Supabase client-side auth
+    ├── auth.ts               # ✅ Better Auth client + adminClient plugin
     └── utils.ts              # ✅ Helper cn()
 ```
 
@@ -108,7 +106,7 @@ admin/
 - [x] Configuration TypeScript strict
 - [x] Tailwind CSS + shadcn/ui setup
 - [x] Client API TypeScript complet
-- [x] Client auth Supabase
+- [x] Better Auth client (better-auth/react + adminClient plugin)
 - [x] Dockerfile production-ready
 - [x] Makefile targets (build-admin, push-admin, release-admin)
 
@@ -151,15 +149,15 @@ npm run lint     # ESLint
 ### Backend
 
 - Tous les endpoints admin sont protégés par :
-  - `SupabaseAuthGuard` : Authentification JWT
+  - `AdminJwtGuard` : Authentification JWT (Better Auth — ADR-029/ADR-030)
   - `PermissionGuard` : Vérification de la permission `admin.access`
 - Seuls les utilisateurs avec le rôle `admin` peuvent accéder au backoffice
 
 ### Frontend
 
 - Middleware Next.js pour protéger toutes les routes sauf `/login`
-- Vérification de session Supabase côté serveur
-- Token JWT envoyé dans le header `Authorization` pour chaque requête API
+- Token JWT admin stocké dans localStorage (`admin_token`) et envoyé via `Authorization` header
+- `lib/auth.ts` : Better Auth client pour la gestion des utilisateurs finaux
 
 ## 🚢 Déploiement Docker
 
@@ -265,7 +263,7 @@ npm install
 **Option A : Via l'app mobile**
 1. Télécharger et lancer l'app mobile
 2. Se connecter avec Google OAuth
-3. Récupérer le user ID depuis Supabase ou logs
+3. Récupérer le user ID depuis Better Auth (via `POST /api/admin/users/sync` ou logs backend)
 4. Assigner le rôle admin via SQL :
 
 ```sql
@@ -274,19 +272,19 @@ psql -U votre_user -d pensieve
 
 -- Assigner le rôle admin
 INSERT INTO user_roles (user_id, role_id)
-SELECT 'votre-user-id-supabase', id FROM roles WHERE name = 'admin';
+SELECT 'votre-user-id', id FROM roles WHERE name = 'admin';
 ```
 
 **Option B : Via SQL direct**
-1. Créer un utilisateur Supabase manuellement
-2. Insérer dans la table users :
+1. S'assurer que le user existe dans Better Auth (via signup ou admin API)
+2. Insérer dans la table users (ou utiliser le sync endpoint) :
 
 ```sql
 INSERT INTO users (id, email, status)
-VALUES ('uuid-from-supabase', 'admin@example.com', 'active');
+VALUES ('uuid-from-better-auth', 'admin@example.com', 'active');
 
 INSERT INTO user_roles (user_id, role_id)
-SELECT 'uuid-from-supabase', id FROM roles WHERE name = 'admin';
+SELECT 'uuid-from-better-auth', id FROM roles WHERE name = 'admin';
 ```
 
 ### 3. Tester le login
@@ -382,7 +380,7 @@ WHERE r.name = 'admin' AND p.name = 'admin.access';
 
 ### 10. Tester la protection des routes
 
-1. Se déconnecter (supprimer les cookies Supabase ou ouvrir en navigation privée)
+1. Se déconnecter (supprimer le token `admin_token` dans localStorage ou ouvrir en navigation privée)
 2. Essayer d'accéder à `http://localhost:3001/`
 3. Vérifier la redirection automatique vers `/login`
 4. Se reconnecter
@@ -436,12 +434,12 @@ SELECT 'autre-uuid', id FROM roles WHERE name = 'user';
 
 ### Erreur "API Error: 401" ou "Failed to load users"
 
-**Cause** : Token JWT invalide ou expiré
+**Cause** : Token JWT admin invalide ou expiré
 
 **Solution** :
-1. Supprimer les cookies Supabase (DevTools → Application → Cookies)
+1. Supprimer `admin_token` dans localStorage (DevTools → Application → Local Storage)
 2. Se reconnecter
-3. Vérifier que NEXT_PUBLIC_SUPABASE_URL et NEXT_PUBLIC_SUPABASE_ANON_KEY sont corrects
+3. Vérifier que `NEXT_PUBLIC_API_URL` pointe vers le backend Better Auth
 
 ### Erreur "API Error: 500" sur les stats
 
@@ -470,7 +468,7 @@ npm run seed:authorization
 **Solution** :
 1. Vérifier que `backend/.env` existe et contient :
    - DATABASE_URL
-   - SUPABASE_URL
-   - SUPABASE_SERVICE_ROLE_KEY
-   - JWT_SECRET (pour le backend)
+   - BETTER_AUTH_URL
+   - BETTER_AUTH_SECRET
+   - ADMIN_JWT_SECRET
 2. Redémarrer le backend : `npm run start:dev`

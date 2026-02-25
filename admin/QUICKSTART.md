@@ -24,7 +24,7 @@ npm run start:dev
 cd admin
 npm install
 cp .env.example .env
-# Éditer .env avec vos vraies valeurs Supabase
+# Éditer .env avec NEXT_PUBLIC_API_URL (URL du backend Better Auth)
 npm run dev
 ```
 
@@ -48,11 +48,11 @@ INSERT INTO user_roles (user_id, role_id)
 SELECT 'COPIER-LE-USER-ID-ICI', id FROM roles WHERE name = 'admin';
 ```
 
-**Option alternative : Depuis Supabase Dashboard**
+**Option alternative : Via le sync endpoint Better Auth**
 
-1. Aller dans Supabase > Auth > Users
-2. Créer un utilisateur ou copier l'ID d'un existant
-3. Exécuter le SQL ci-dessus avec cet ID
+1. S'assurer que l'utilisateur existe dans Better Auth (signup ou admin API)
+2. Appeler `POST /api/admin/users/sync` pour synchroniser les users dans PostgreSQL
+3. Exécuter le SQL ci-dessus avec l'ID récupéré
 
 ---
 
@@ -102,8 +102,8 @@ Backend pas lancé ou mauvaise URL. Vérifier :
 
 ### "Unauthorized" / "Invalid JWT"
 
-Token Supabase invalide. Solution :
-1. Supprimer les cookies (DevTools > Application > Cookies)
+Token admin JWT invalide. Solution :
+1. Supprimer `admin_token` dans localStorage (DevTools > Application > Local Storage)
 2. Se reconnecter
 
 ---

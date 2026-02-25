@@ -61,7 +61,7 @@ Toutes les fonctionnalités principales du plan ont été implémentées avec su
 
 - ✅ Permission `admin.access` créée dans le seed
 - ✅ `@RequirePermission('admin.access')` sur tous les endpoints
-- ✅ `SupabaseAuthGuard` + `PermissionGuard` sur le controller
+- ✅ `AdminJwtGuard` + `PermissionGuard` sur le controller (Better Auth — ADR-029)
 - ✅ Logging de toutes les actions admin (avec email de l'admin)
 - ✅ Validation des rôles système (ne peuvent pas être supprimés/modifiés)
 
@@ -77,7 +77,7 @@ Toutes les fonctionnalités principales du plan ont été implémentées avec su
 - ✅ Composants shadcn/ui installés (button, table, form, dialog, badge, card, etc.)
 - ✅ TanStack Table v8 pour les tableaux
 - ✅ React Hook Form + Zod pour les formulaires
-- ✅ Supabase SSR pour l'authentification
+- ✅ Better Auth client (better-auth/react + adminClient plugin)
 - ✅ Dockerfile pour déploiement production
 - ✅ Makefile avec targets build/push/release
 
@@ -91,11 +91,11 @@ Toutes les fonctionnalités principales du plan ont été implémentées avec su
 
 #### Authentification (`lib/auth.ts` + `middleware.ts`)
 
-- ✅ Client Supabase SSR
-- ✅ Helper `getAccessToken()` pour récupérer le JWT
-- ✅ Middleware Next.js pour protéger les routes
+- ✅ Better Auth client (better-auth/react + adminClient plugin)
+- ✅ Helper `getAccessToken()` — lit `admin_token` depuis localStorage
+- ✅ Helper `signOut()` — nettoie localStorage et redirige vers `/login`
+- ✅ Middleware Next.js pour protéger les routes `/dashboard`
 - ✅ Redirection automatique `/login` si non authentifié
-- ✅ Redirection automatique `/` si déjà connecté sur `/login`
 
 #### Composants réutilisables (`components/admin/`)
 
@@ -146,8 +146,8 @@ Toutes les fonctionnalités principales du plan ont été implémentées avec su
 - ✅ Section "Fonctionnalités futures" (modération complète)
 
 **Login** (`app/login/page.tsx`) :
-- ✅ Bouton "Se connecter avec Google"
-- ✅ OAuth Supabase avec redirection
+- ✅ Formulaire email/password
+- ✅ Authentification via `POST /api/auth/admin/login` (AdminJwtGuard)
 - ✅ Design centré avec branding Pensieve
 
 #### Layout & Navigation
@@ -165,14 +165,12 @@ Toutes les fonctionnalités principales du plan ont été implémentées avec su
 
 **Plan original** : Système admin séparé avec table `admin_users`, email/password, JWT custom
 
-**Implémentation finale** : Supabase OAuth + permission `admin.access`
+**Implémentation finale** : JWT admin custom (`AdminJwtGuard`) + permission `admin.access` (ADR-029/ADR-030 — Better Auth)
 
 **Raison** :
-- Réutilise l'infrastructure Supabase existante
-- Évite de dupliquer la logique d'authentification
-- Permet aux admins d'utiliser leur compte Google
-- Plus simple à maintenir (pas de gestion de mots de passe)
-- Sécurité renforcée (OAuth > email/password)
+- Séparation claire entre auth admin backoffice (JWT stateless) et auth utilisateurs (Better Auth cookies)
+- AdminJwtGuard vérifie `ADMIN_JWT_SECRET` sans dépendance à Supabase
+- Better Auth `adminClient` plugin utilisé pour gérer les utilisateurs finaux depuis l'interface
 
 ### Fonctionnalités non implémentées (optionnelles)
 
@@ -229,8 +227,8 @@ npm run dev
 **Via SQL** :
 
 ```sql
--- Récupérer l'ID d'un utilisateur Supabase existant
--- Ou créer manuellement dans Supabase Dashboard
+-- Récupérer l'ID d'un utilisateur via Better Auth (POST /api/admin/users/sync)
+-- Ou via la liste des users : GET /api/admin/users
 
 -- Assigner le rôle admin
 INSERT INTO user_roles (user_id, role_id)
@@ -250,7 +248,7 @@ SELECT 'votre-user-id', id FROM roles WHERE name = 'admin';
 
 ### Base URL : `http://localhost:3000`
 
-**Authentification** : Header `Authorization: Bearer <token-jwt-supabase>`
+**Authentification** : Header `Authorization: Bearer <token-jwt-admin>`
 
 **Permission requise** : `admin.access` (via rôle `admin`)
 
@@ -301,9 +299,7 @@ make release-admin REGISTRY=192.168.1.100:5000
 
 ```env
 # Dans le container admin
-NEXT_PUBLIC_API_URL=https://api.pensieve.com
-NEXT_PUBLIC_SUPABASE_URL=https://xxx.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJxxx...
+NEXT_PUBLIC_API_URL=https://api.pensieve.example.com
 ```
 
 ---
@@ -379,10 +375,10 @@ Pour valider que tout fonctionne correctement :
 
 ### Sécurité
 
-- Tous les endpoints sont protégés par `SupabaseAuthGuard` + `PermissionGuard`
+- Tous les endpoints admin sont protégés par `AdminJwtGuard` + `PermissionGuard`
 - La permission `admin.access` est vérifiée sur CHAQUE requête
-- Les JWT Supabase expirent après X jours (configurable dans Supabase)
-- Les cookies Supabase sont httpOnly (pas accessible en JS)
+- Les JWT admin sont signés avec `ADMIN_JWT_SECRET` et ont une expiration configurable
+- Le token est stocké dans localStorage (`admin_token`) côté client
 
 ### Performance
 

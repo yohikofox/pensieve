@@ -60,6 +60,8 @@ describe('RgpdService', () => {
             findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
+            update: jest.fn(),
+            query: jest.fn(),
           },
         },
         {
@@ -74,6 +76,7 @@ describe('RgpdService', () => {
             getUserProfile: jest.fn(),
             deleteUser: jest.fn(),
             verifyPassword: jest.fn(),
+            listAllUsers: jest.fn(),
           },
         },
         {
@@ -343,6 +346,106 @@ describe('RgpdService', () => {
 
       // Assert
       expect(result).toBe(false);
+    });
+  });
+
+  describe('syncUsers', () => {
+    it('should create a new user not found by id or email', async () => {
+      const betterAuthUsers = [{ id: 'new-id', email: 'new@example.com' }];
+      jest
+        .spyOn(betterAuthAdminService, 'listAllUsers')
+        .mockResolvedValue(betterAuthUsers);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValue(null);
+      jest.spyOn(userRepository, 'create').mockReturnValue({
+        id: 'new-id',
+        email: 'new@example.com',
+        status: 'active',
+      } as User);
+      jest.spyOn(userRepository, 'save').mockResolvedValue({} as User);
+
+      const result = await service.syncUsers();
+
+      expect(result).toEqual({ created: 1, updated: 0, unchanged: 0 });
+      expect(userRepository.create).toHaveBeenCalledWith({
+        id: 'new-id',
+        email: 'new@example.com',
+        status: 'active',
+      });
+      expect(userRepository.save).toHaveBeenCalled();
+    });
+
+    it('should update email when user found by id with different email', async () => {
+      const betterAuthUsers = [
+        { id: 'existing-id', email: 'updated@example.com' },
+      ];
+      jest
+        .spyOn(betterAuthAdminService, 'listAllUsers')
+        .mockResolvedValue(betterAuthUsers);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValueOnce({
+        id: 'existing-id',
+        email: 'old@example.com',
+      } as User);
+      jest.spyOn(userRepository, 'update').mockResolvedValue(undefined as any);
+
+      const result = await service.syncUsers();
+
+      expect(result).toEqual({ created: 0, updated: 1, unchanged: 0 });
+      expect(userRepository.update).toHaveBeenCalledWith(
+        { id: 'existing-id' },
+        { email: 'updated@example.com' },
+      );
+    });
+
+    it('should mark unchanged when user found by id with same email', async () => {
+      const betterAuthUsers = [
+        { id: 'existing-id', email: 'same@example.com' },
+      ];
+      jest
+        .spyOn(betterAuthAdminService, 'listAllUsers')
+        .mockResolvedValue(betterAuthUsers);
+      jest.spyOn(userRepository, 'findOne').mockResolvedValueOnce({
+        id: 'existing-id',
+        email: 'same@example.com',
+      } as User);
+
+      const result = await service.syncUsers();
+
+      expect(result).toEqual({ created: 0, updated: 0, unchanged: 1 });
+    });
+
+    it('should update via raw SQL when email matches but different provider id', async () => {
+      const betterAuthUsers = [
+        { id: 'new-provider-id', email: 'existing@example.com' },
+      ];
+      jest
+        .spyOn(betterAuthAdminService, 'listAllUsers')
+        .mockResolvedValue(betterAuthUsers);
+      jest
+        .spyOn(userRepository, 'findOne')
+        .mockResolvedValueOnce(null) // not found by id
+        .mockResolvedValueOnce({
+          id: 'old-id',
+          email: 'existing@example.com',
+        } as User); // found by email
+      jest.spyOn(userRepository, 'query').mockResolvedValue(undefined);
+
+      const result = await service.syncUsers();
+
+      expect(result).toEqual({ created: 0, updated: 1, unchanged: 0 });
+      expect(userRepository.query).toHaveBeenCalledWith(
+        'UPDATE users SET id = $1, email = $2 WHERE email = $3',
+        ['new-provider-id', 'existing@example.com', 'existing@example.com'],
+      );
+    });
+
+    it('should handle empty user list', async () => {
+      jest
+        .spyOn(betterAuthAdminService, 'listAllUsers')
+        .mockResolvedValue([]);
+
+      const result = await service.syncUsers();
+
+      expect(result).toEqual({ created: 0, updated: 0, unchanged: 0 });
     });
   });
 
