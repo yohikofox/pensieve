@@ -23,12 +23,14 @@ public class ExpoWaveformExtractorModule: Module {
       }
 
       do {
+        let resolveBlock: @convention(block) (Any?) -> Void = { result in promise.resolve(result) }
+        let rejectBlock: @convention(block) (String, String, Error?) -> Void = { code, message, _ in promise.reject(code, message) }
         let extractor = try WaveformExtractor(
           url: fileURL,
           module: self,
           playerKey: playerKey,
-          resolve: promise.resolve,
-          reject: promise.reject
+          resolve: resolveBlock,
+          reject: rejectBlock
         )
 
         self.extractors[playerKey] = extractor
@@ -67,6 +69,6 @@ public class ExpoWaveformExtractorModule: Module {
   }
 
   func sendEvent(name: String, body: Any?) {
-    sendEvent(name, body)
+    sendEvent(name, (body as? [String: Any?]) ?? [:])
   }
 }

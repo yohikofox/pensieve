@@ -1,4 +1,5 @@
-import 'reflect-metadata'; // MUST be first for TSyringe decorators
+import './src/components/dev/earlyConsoleSetup'; // MUST be first — intercepts console.error before react-native/LogBox
+import 'reflect-metadata'; // MUST be second for TSyringe decorators
 import 'react-native-get-random-values';
 import 'react-native-gesture-handler';
 import { registerRootComponent } from 'expo';

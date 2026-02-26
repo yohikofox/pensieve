@@ -485,7 +485,7 @@ export const CaptureDevTools = () => {
                 </View>
               )}
 
-              {capture.duration && (
+              {capture.duration != null && (
                 <View style={styles.captureRow}>
                   <Text style={styles.label}>Durée:</Text>
                   <Text style={styles.valueSmall}>
@@ -494,7 +494,7 @@ export const CaptureDevTools = () => {
                 </View>
               )}
 
-              {capture.fileSize && (
+              {capture.fileSize != null && (
                 <View style={styles.captureRow}>
                   <Text style={styles.label}>Taille:</Text>
                   <Text style={styles.valueSmall}>

@@ -82,7 +82,7 @@ export const LogsViewer: React.FC = () => {
               ]}
             >
               <Text style={styles.logTime}>
-                {log.timestamp.toLocaleTimeString()}
+                {new Date(log.timestamp).toLocaleTimeString()}
               </Text>
               <Text style={styles.logMessage}>{log.message}</Text>
             </View>
@@ -167,7 +167,7 @@ export const InAppLogger: React.FC = () => {
                 ]}
               >
                 <Text style={styles.logTime}>
-                  {log.timestamp.toLocaleTimeString()}
+                  {new Date(log.timestamp).toLocaleTimeString()}
                 </Text>
                 <Text style={styles.logMessage}>{log.message}</Text>
               </View>

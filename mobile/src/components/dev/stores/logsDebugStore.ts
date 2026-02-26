@@ -10,6 +10,10 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import { isDebugModeEnabled } from '../../../stores/settingsStore';
+import { installErrorForwarder } from '../earlyConsoleSetup';
+
+/** Nombre maximum d'entrées conservées dans le buffer de logs (rotation FIFO) */
+export const MAX_LOGS = 100;
 
 export interface LogEntry {
   timestamp: Date;
@@ -36,10 +40,13 @@ export const useLogsDebugStore = create<LogsDebugState>()(
       sniffing: true,
 
       // Actions
-      addLog: (entry) =>
-        set((state) => ({
-          logs: [...state.logs, entry],
-        })),
+      addLog: (entry: LogEntry) =>
+        set((state: LogsDebugState) => {
+          const newLogs = [...state.logs, entry];
+          return {
+            logs: newLogs.length > MAX_LOGS ? newLogs.slice(-MAX_LOGS) : newLogs,
+          };
+        }),
 
       clearLogs: () => set({ logs: [] }),
 
@@ -65,11 +72,9 @@ export function setupConsoleInterception(): void {
 
   const originalLog = console.log;
   const originalWarn = console.warn;
-  // NOTE: console.error NOT intercepted to preserve stack traces for debugging
 
   console.log = (...args) => {
     const { sniffing } = useLogsDebugStore.getState();
-    // Story 7.1: Only capture logs when debug mode is FULLY enabled (permission + toggle)
     if (sniffing && isDebugModeEnabled()) {
       const message = args
         .map((arg) =>
@@ -87,7 +92,6 @@ export function setupConsoleInterception(): void {
 
   console.warn = (...args) => {
     const { sniffing } = useLogsDebugStore.getState();
-    // Story 7.1: Only capture logs when debug mode is FULLY enabled (permission + toggle)
     if (sniffing && isDebugModeEnabled()) {
       const message = args.map((arg) => String(arg)).join(' ');
       useLogsDebugStore.getState().addLog({
@@ -99,8 +103,21 @@ export function setupConsoleInterception(): void {
     originalWarn(...args);
   };
 
-  // console.error left UNTOUCHED - preserves stack traces for debugging
-  // Errors will show in Metro console with correct file/line numbers
+  installErrorForwarder((entry) => {
+    const { sniffing } = useLogsDebugStore.getState();
+    if (sniffing && isDebugModeEnabled()) {
+      const message = entry.args
+        .map((arg) =>
+          typeof arg === 'object' ? JSON.stringify(arg, null, 2) : String(arg)
+        )
+        .join(' ');
+      useLogsDebugStore.getState().addLog({
+        timestamp: entry.timestamp,
+        level: 'error',
+        message,
+      });
+    }
+  });
 
   isInterceptionSetup = true;
   console.log('[LogsDebugStore] ✅ Console interception setup');
