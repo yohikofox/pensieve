@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pensieve is a hybrid mobile-first app (Supabase Cloud Auth + Homelab backend) for audio capture, AI digestion, and knowledge management. Monorepo with three independent packages (no shared workspaces): `mobile/`, `backend/`, `web/`.
+Pensieve is a hybrid mobile-first app (Supabase Cloud Auth + Homelab backend) for audio capture, AI digestion, and knowledge management. Monorepo with five independent packages (no shared workspaces): `mobile/`, `backend/`, `web/`, `admin/`, `app-center/`.
 
 **Tech stack**: Node 22 (.nvmrc), Expo SDK 54, NestJS 11, Next.js 15, TypeScript strict mode everywhere.
 
@@ -42,6 +42,7 @@ npm run test:unit                   # Unit tests only (src/**/*.test.ts)
 npm run test:acceptance             # BDD/Gherkin tests (jest.config.acceptance.js)
 npm run test:acceptance:watch       # BDD watch mode
 npm run test:acceptance:story-2-1   # Single story acceptance test
+npm run test:architecture           # Tests d'architecture (deps circulaires, ADR)
 npm run test:e2e                    # Detox E2E (iOS)
 ```
 
@@ -50,16 +51,31 @@ Jest uses `babel-jest` (not jest-expo) due to Expo SDK 54 Winter runtime incompa
 ### Web (`cd web`)
 
 ```bash
-npm run dev     # Next.js dev server
+npm run dev     # Next.js dev server (port 3000)
 npm run build   # Production build
 npm run lint    # ESLint
+```
+
+### Admin (`cd admin`)
+
+```bash
+npm run dev     # Next.js dev server (port 3001)
+npm run build   # Production build
+npm run lint    # ESLint
+```
+
+### App Center (`cd app-center`)
+
+```bash
+npm run dev     # Portail distribution APK
+npm run build   # Production build
 ```
 
 ### Infrastructure (`cd infrastructure`)
 
 ```bash
-docker-compose up -d    # Start PostgreSQL, RabbitMQ, MinIO
-docker-compose down     # Stop services
+docker compose up -d    # Start PostgreSQL, RabbitMQ, MinIO
+docker compose down     # Stop services
 ```
 
 ### Docker builds (root Makefile)
@@ -95,14 +111,25 @@ Modules in `backend/src/modules/`:
 - **State**: Zustand for global state, React Query for server state
 - **Local DB**: `@op-engineering/op-sqlite` (offline-first, synchronous queries)
 - **Contexts** in `src/contexts/`: capture, knowledge, action, identity, shared (mirrors backend DDD)
-- **Navigation**: React Navigation (bottom tabs + native stack)
+- **Navigation**: React Navigation v7 (bottom tabs + native stack). Screen Registry centralisé dans `src/screens/registry.ts` — chaque écran déclare icon, i18n keys et nav options en un seul endroit.
+- **Styling**: NativeWind (Tailwind pour RN) avec tokens dans `src/design-system/`
+- **Screen pattern**: Wrapper + Content — le Wrapper extrait les route params, le Content porte toute la logique (testable sans navigation)
 - **i18n**: i18next
 - **AI on-device**: whisper.rn (speech-to-text), llama.rn, expo-llm-mediapipe
 - **Custom native module**: `modules/expo-waveform-extractor/` (local file: dependency)
+- **Patterns de référence**: `_patterns/` — snippets et guides pour les patterns récurrents du projet
 
 ### Web (Next.js 15)
 
-Minimal dashboard. App Router, Tailwind CSS, standalone Docker deployment.
+Dashboard minimal. App Router, Tailwind CSS, standalone Docker deployment.
+
+### Admin (Next.js 15, port 3001)
+
+Interface d'administration. App Router, Tailwind CSS, Radix UI.
+
+### App Center (Next.js 15)
+
+Portail de distribution d'APK Android. Hébergement des builds mobiles via MinIO.
 
 ## Testing
 

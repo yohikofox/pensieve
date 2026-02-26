@@ -4,8 +4,11 @@
 **Architecture:** Hybrid (Supabase Cloud Auth + Homelab Storage)
 
 Ce repository contient le code source de l'application Pensine :
-- **Mobile:** React Native avec Expo (iOS & Android)
-- **Backend:** NestJS API avec architecture DDD
+- **Mobile:** React Native avec Expo SDK 54 (iOS & Android)
+- **Backend:** NestJS 11 API avec architecture DDD
+- **Web:** Dashboard Next.js 15
+- **Admin:** Interface d'administration Next.js 15
+- **App Center:** Portail de distribution d'APK
 
 ---
 
@@ -13,42 +16,58 @@ Ce repository contient le code source de l'application Pensine :
 
 ```
 pensieve/
-├── infrastructure/      # Docker Compose infrastructure
+├── infrastructure/       # Docker Compose infrastructure
 │   ├── docker-compose.yml  # PostgreSQL, RabbitMQ, MinIO
 │   ├── .env.example        # Template variables d'environnement
 │   └── README.md           # Guide setup infrastructure
 │
-├── mobile/               # Application mobile (React Native + Expo)
+├── mobile/               # Application mobile (React Native + Expo SDK 54)
 │   ├── src/
-│   │   ├── lib/         # Supabase client, utilities
-│   │   ├── database/    # WatermelonDB (offline storage)
-│   │   ├── contexts/    # DDD Bounded Contexts
+│   │   ├── config/        # Bootstrap + configuration
+│   │   ├── database/      # OP-SQLite (offline storage, sync queries)
+│   │   ├── design-system/ # Tokens NativeWind/Tailwind
+│   │   ├── infrastructure/
+│   │   │   └── di/        # TSyringe DI container + tokens
+│   │   ├── contexts/      # DDD Bounded Contexts
 │   │   │   ├── capture/
 │   │   │   ├── knowledge/
-│   │   │   ├── opportunity/
 │   │   │   ├── action/
-│   │   │   └── identity/
-│   │   ├── navigation/  # React Navigation setup
-│   │   ├── hooks/       # Custom React hooks
-│   │   └── components/  # Shared UI components
-│   ├── app.json         # Expo configuration
+│   │   │   ├── identity/
+│   │   │   ├── Normalization/ # Transcription (Whisper)
+│   │   │   └── shared/        # EventBus, Result pattern
+│   │   ├── screens/       # Screen Registry centralisé
+│   │   ├── navigation/    # React Navigation v7
+│   │   ├── stores/        # Zustand state
+│   │   └── components/    # Shared UI components
+│   ├── tests/
+│   │   ├── acceptance/    # BDD/Gherkin (jest-cucumber)
+│   │   └── e2e/           # Detox tests
+│   ├── modules/           # Custom native modules (expo-waveform-extractor)
+│   ├── _patterns/         # Patterns d'implémentation et snippets de référence
+│   ├── app.config.js      # Expo config (variants dev/release)
 │   └── package.json
 │
-└── backend/             # API Backend (NestJS)
-    ├── src/
-    │   ├── modules/
-    │   │   ├── shared/       # Shared infrastructure
-    │   │   │   └── infrastructure/
-    │   │   │       ├── guards/   # Supabase Auth Guard
-    │   │   │       └── storage/  # MinIO Service
-    │   │   ├── capture/      # Bounded Context: Capture
-    │   │   ├── knowledge/    # Bounded Context: Knowledge
-    │   │   ├── opportunity/  # Bounded Context: Opportunity
-    │   │   ├── action/       # Bounded Context: Action
-    │   │   └── identity/     # Bounded Context: Identity
-    │   ├── app.module.ts
-    │   └── main.ts
-    └── package.json
+├── backend/              # API Backend (NestJS 11)
+│   ├── src/
+│   │   ├── modules/
+│   │   │   ├── shared/        # MinIO, Supabase Auth Guard (@Global)
+│   │   │   ├── capture/       # Bounded Context: Capture
+│   │   │   ├── knowledge/     # Bounded Context: Knowledge (pipeline AI)
+│   │   │   ├── action/        # Bounded Context: Action (Todos)
+│   │   │   ├── identity/      # Bounded Context: Identity
+│   │   │   ├── authorization/ # RBAC/PBAC/ACL
+│   │   │   ├── notification/  # Push notifications
+│   │   │   └── rgpd/          # GDPR compliance
+│   │   ├── migrations/        # TypeORM migrations (synchronize: false)
+│   │   ├── app.module.ts
+│   │   └── main.ts
+│   └── package.json
+│
+├── web/                  # Dashboard (Next.js 15, App Router)
+│
+├── admin/                # Interface admin (Next.js 15, port 3001)
+│
+└── app-center/           # Portail distribution APK (Next.js 15)
 ```
 
 ---
@@ -59,7 +78,7 @@ Pensine utilise une architecture hybride pour optimiser les coûts et le time-to
 
 | Service | Provider | Coût | Raison |
 |---------|----------|------|---------|
-| **Auth** | Supabase Cloud | €0/mois | Social login trivial (Google/Apple) |
+| **Auth** | Supabase Cloud | €0/mois | Social login (Google/Apple) |
 | **Storage** | MinIO Homelab | €0/mois | Stockage audio illimité |
 | **Backend** | Homelab (Docker) | €0/mois | API & logique métier |
 | **Database** | PostgreSQL Homelab | €0/mois | Données applicatives |
@@ -73,9 +92,9 @@ Pensine utilise une architecture hybride pour optimiser les coûts et le time-to
 
 ### Prérequis
 
-- **Node.js:** >= 20.19.4 (utiliser `nvm use 22` recommandé)
+- **Node.js:** 22.x (`nvm use 22`)
 - **Docker:** Pour l'infrastructure homelab
-- **Expo CLI:** Pour le développement mobile
+- **Expo Dev Client:** Requis — l'app utilise des modules natifs custom (pas Expo Go)
 
 ### 1. Infrastructure Homelab
 
@@ -85,52 +104,47 @@ cd infrastructure
 # Copier .env.example vers .env et remplir les credentials
 cp .env.example .env
 
-# Éditer le fichier et ajouter vos credentials Supabase
-nano .env
-
 # Démarrer les services Docker
-docker-compose up -d
+docker compose up -d
 
 # Vérifier que tous les services sont healthy
-docker-compose ps
-
-# Voir le README complet pour l'initialisation MinIO
-cat README.md
+docker compose ps
 ```
 
 ### 2. Backend (NestJS)
 
 ```bash
 cd backend
-
-# Copier .env.example vers .env et configurer
 cp .env.example .env
-
-# Installer les dépendances
 npm install
-
-# Démarrer en mode développement
+npm run migration:run
 npm run start:dev
-
 # API accessible sur: http://localhost:3000
 ```
 
-### 3. Mobile (Expo)
+### 3. Mobile (Expo Dev Client)
 
 ```bash
 cd mobile
-
-# Installer les dépendances
 npm install
 
-# Configurer les credentials Supabase dans src/lib/supabase.ts
-# Ou utiliser les variables d'environnement Expo
+# iOS simulator
+npm run ios
 
-# Démarrer Expo
-npx expo start
+# Android emulator
+npm run android
+```
 
-# Scanner le QR code avec Expo Go (dev)
-# Ou lancer sur simulateur iOS/Android
+> ⚠️ **Expo Dev Client obligatoire** — l'app utilise `expo-waveform-extractor` et d'autres modules natifs custom. Expo Go n'est pas compatible.
+
+### 4. Web / Admin
+
+```bash
+# Dashboard web
+cd web && npm install && npm run dev     # http://localhost:3000
+
+# Interface admin
+cd admin && npm install && npm run dev   # http://localhost:3001
 ```
 
 ---
@@ -149,10 +163,7 @@ npx expo start
    JWT_SECRET=your-jwt-secret
    ```
 
-3. **Configurer dans le mobile**
-   - Mettre à jour `mobile/src/lib/supabase.ts`
-
-4. **Configurer dans le backend**
+3. **Configurer dans le backend**
    - Mettre à jour `backend/.env`
 
 ---
@@ -160,16 +171,16 @@ npx expo start
 ## 🚢 Déploiement
 
 Le script `deploy.sh` orchestre en une seule commande :
-- Build + push des images Docker (backend, web, admin, app-center) vers le registry
+- Build + push des images Docker vers le registry privé
 - Build de l'APK Android + upload vers MinIO
-- Mise à jour des variables de version dans la stack Portainer + redéploiement
+- Mise à jour des variables de version dans la stack + redéploiement
 
 ### Prérequis
 
-- **Docker** avec accès au registry `cregistry.yolo.yt`
+- **Docker** avec accès au registry privé
 - **jq** — `brew install jq`
 - **mc** (MinIO client, pour le build APK) — `brew install minio/stable/mc`
-- Un **token API Portainer** : Settings → API Keys → Add API key
+- Un **token API** pour le gestionnaire de containers (Portainer)
 
 ### Configuration (une seule fois)
 
@@ -177,20 +188,12 @@ Le script `deploy.sh` orchestre en une seule commande :
 cp deploy.env.example deploy.env
 ```
 
-Remplir dans `deploy.env` :
-
-```env
-PORTAINER_TOKEN=ptr_ton_token_ici
-MINIO_ACCESS_KEY=ta_cle
-MINIO_SECRET_KEY=ton_secret
-```
-
-Les autres valeurs (`PORTAINER_URL`, `PORTAINER_STACK_ID`, `REGISTRY`...) sont déjà pré-remplies.
+Remplir dans `deploy.env` les credentials du registry, de MinIO, et le token Portainer.
 
 ### Utilisation
 
 ```bash
-# Deploy complet (Docker + APK Android + Portainer redeploy)
+# Deploy complet (Docker + APK Android + redeploy)
 make deploy
 
 # Docker uniquement (sans build APK mobile)
@@ -206,33 +209,31 @@ make deploy-mobile
 ./deploy.sh --only=backend,web
 ```
 
-### Ce qui se passe en coulisses
-
-1. Build + push `pensine-backend:SHA`, `pensine-web:SHA`, `pensine-admin:SHA`, `pensine-app-center:SHA`
-2. Build APK Android + upload vers MinIO (`pensine-apks/pensine/mobile/{version}/`)
-3. `GET /api/stacks/44` → récupère les env actuelles de la stack Portainer
-4. Met à jour `BACKEND_VERSION`, `WEB_VERSION`, `ADMIN_VERSION` → nouveau SHA (les autres vars sont préservées)
-5. `PUT /api/stacks/44` avec `pullImage: true` → Portainer pull + redémarre les containers
-
 ---
 
 ## 📦 Dépendances Principales
 
 ### Mobile
 
-- **Expo:** Framework React Native
+- **Expo SDK 54:** Framework React Native
+- **tsyringe:** Injection de dépendances (DI container)
+- **@op-engineering/op-sqlite:** Base de données locale offline-first (sync queries)
+- **@tanstack/react-query:** Server state management
+- **zustand:** Client state management
+- **@react-navigation/native (v7):** Navigation entre écrans
+- **nativewind:** Tailwind CSS pour React Native
 - **@supabase/supabase-js:** Client Supabase pour auth
-- **@nozbe/watermelondb:** Base de données locale offline-first
-- **@react-navigation:** Navigation entre écrans
-- **@react-native-async-storage:** Stockage local
+- **whisper.rn:** Transcription audio on-device
+- **expo-llm-mediapipe:** Inférence LLM locale
+- **@react-native-async-storage/async-storage:** Stockage clé-valeur
 
 ### Backend
 
-- **@nestjs/core:** Framework NestJS
+- **@nestjs/core (v11):** Framework NestJS
 - **@nestjs/typeorm + typeorm + pg:** ORM PostgreSQL
-- **@supabase/supabase-js:** Validation JWT Supabase
-- **minio:** Client MinIO pour storage S3-compatible
 - **@nestjs/microservices + amqplib:** RabbitMQ integration
+- **minio:** Client MinIO pour storage S3-compatible
+- **winston:** Logging structuré
 
 ---
 
@@ -243,14 +244,10 @@ make deploy-mobile
 ```bash
 cd backend
 
-# Tests unitaires
-npm run test
-
-# Tests e2e
-npm run test:e2e
-
-# Coverage
-npm run test:cov
+npm run test              # Tests unitaires (*.spec.ts dans src/)
+npm run test:acceptance   # BDD/Gherkin (test/acceptance/)
+npm run test:e2e          # Tests E2E
+npm run test:cov          # Coverage
 ```
 
 ### Mobile
@@ -258,9 +255,13 @@ npm run test:cov
 ```bash
 cd mobile
 
-# Tests (à configurer dans les stories suivantes)
-npm test
+npm run test:unit         # Tests unitaires (src/**/*.test.ts)
+npm run test:acceptance   # BDD/Gherkin (tests/acceptance/)
+npm run test:architecture # Tests d'architecture (dépendances circulaires, etc.)
+npm run test:e2e          # Detox E2E (iOS)
 ```
+
+> **Note:** Jest utilise `babel-jest` (pas `jest-expo`) — incompatibilité Expo SDK 54 Winter runtime avec l'environnement Node.js de test. Les tests acceptance utilisent `ts-jest`.
 
 ---
 
@@ -269,37 +270,23 @@ npm test
 ### Backend
 
 ```bash
-# Développement avec watch mode
-npm run start:dev
-
-# Build production
-npm run build
-
-# Lancer en production
-npm run start:prod
-
-# Linting
-npm run lint
-
-# Format code
-npm run format
+npm run start:dev          # Dev avec watch mode (port 3000)
+npm run build              # Build production
+npm run lint               # ESLint auto-fix
+npm run format             # Prettier
+npm run migration:run      # Appliquer les migrations TypeORM
+npm run seed:authorization # Seeder les permissions RBAC
 ```
 
 ### Mobile
 
 ```bash
-# Démarrer Expo
-npx expo start
-
-# Lancer sur iOS simulator
-npx expo start --ios
-
-# Lancer sur Android emulator
-npx expo start --android
-
-# Build pour production
-npx expo build:ios
-npx expo build:android
+npm run ios                # iOS simulator (dev variant)
+npm run android            # Android emulator (dev variant)
+npm run ios:release        # iOS release variant
+npm run prebuild:clean     # Regénérer les projets natifs
+npm run check:deps         # Vérifier dépendances circulaires (madge)
+npm run wipe:ios           # Reset simulateur iOS + relance
 ```
 
 ---
@@ -307,31 +294,34 @@ npx expo build:android
 ## 📚 Documentation
 
 - **Architecture complète:** `../_bmad-output/planning-artifacts/architecture.md`
-- **ADR-016 (Hybrid Architecture):** Voir docs/adr/
+- **Stories d'implémentation:** `../_bmad-output/implementation-artifacts/stories/`
+- **Sprint status:** `../_bmad-output/implementation-artifacts/sprint-status.yaml`
+- **Patterns de code:** `mobile/_patterns/`
 - **Setup Supabase:** `../_bmad-output/implementation-artifacts/supabase-setup-instructions.md`
 - **Setup Cloudflare Tunnel:** `../_bmad-output/implementation-artifacts/cloudflare-tunnel-setup-instructions.md`
-- **Stories d'implémentation:** `../_bmad-output/implementation-artifacts/`
 
 ---
 
 ## 🔗 Liens Utiles
 
-- [Supabase Dashboard](https://supabase.com/dashboard)
-- [Cloudflare Zero Trust](https://dash.cloudflare.com)
 - [Expo Documentation](https://docs.expo.dev/)
 - [NestJS Documentation](https://docs.nestjs.com/)
-- [WatermelonDB Documentation](https://watermelondb.dev/docs)
+- [OP-SQLite Documentation](https://op-engineering.github.io/op-sqlite/)
+- [TSyringe Documentation](https://github.com/microsoft/tsyringe)
+- [NativeWind Documentation](https://www.nativewind.dev/)
 
 ---
 
 ## 🤝 Contribution
 
-Ce projet suit l'approche **From Scratch** (ADR-007) et l'architecture **DDD par Bounded Contexts**.
+Ce projet suit l'architecture **DDD par Bounded Contexts** et une gouvernance stricte des ADR.
 
 Avant de contribuer:
 1. Lire les ADR dans `../docs/adr/`
-2. Suivre la structure DDD établie
-3. Respecter les conventions de code (ESLint/Prettier)
+2. Consulter `CLAUDE.md` pour les règles architecturales
+3. Suivre la structure DDD établie
+4. Respecter les conventions de code (ESLint/Prettier)
+5. **Ne jamais remplacer une librairie prescrite par un ADR sans validation de l'architecte**
 
 ---
 
