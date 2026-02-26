@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Pensieve is a hybrid mobile-first app (Supabase Cloud Auth + Homelab backend) for audio capture, AI digestion, and knowledge management. Monorepo with five independent packages (no shared workspaces): `mobile/`, `backend/`, `web/`, `admin/`, `app-center/`.
+Pensieve is a hybrid mobile-first app (Better Auth self-hosted + Homelab backend) for audio capture, AI digestion, and knowledge management. Monorepo with five independent packages (no shared workspaces): `mobile/`, `backend/`, `web/`, `admin/`, `app-center/`.
 
 **Tech stack**: Node 22 (.nvmrc), Expo SDK 54, NestJS 11, Next.js 15, TypeScript strict mode everywhere.
 
@@ -93,8 +93,8 @@ make release         # Build + push all to registry
 Each NestJS module is a **DDD Bounded Context** with layers: `domain/entities/`, `application/services/`, `application/repositories/`, `application/controllers/`, `infrastructure/`.
 
 Modules in `backend/src/modules/`:
-- **shared** - Global (`@Global()`) providers: MinioService, SupabaseAuthGuard
-- **identity** - Supabase JWT authentication
+- **shared** - Global (`@Global()`) providers: MinioService, BetterAuthGuard (ADR-029)
+- **identity** - Better Auth + OAuth callbacks (Google, HuggingFace), mobile deep linking
 - **authorization** - Multi-level permissions (RBAC/PBAC/ACL) with swappable implementation via DI tokens (`'IAuthorizationService'`, `'IPermissionChecker'`, `'IResourceAccessControl'`)
 - **knowledge** - AI digestion pipeline: RabbitMQ jobs, OpenAI GPT-4o-mini, WebSocket progress notifications
 - **action** - Todos extraction with deadline parsing and priority inference
@@ -139,7 +139,7 @@ Uses `jest-cucumber`. Features in `*.feature` files, step definitions in `*.test
 
 **Mobile test structure**:
 - `tests/acceptance/features/` - Gherkin .feature files
-- `tests/acceptance/support/test-context.ts` - 12 in-memory mocks (Supabase, OP-SQLite, API)
+- `tests/acceptance/support/test-context.ts` - 12 in-memory mocks (Better Auth, OP-SQLite, API)
 - `tests/acceptance/story-*.test.ts` - Step definitions
 
 **Backend test structure**:
@@ -188,4 +188,4 @@ La conformité aux ADRs prime sur l'optimisation technique unilatérale.
 
 ## Key Env Files
 
-Each package has a `.env.example` template. Key services: Supabase (auth), PostgreSQL, RabbitMQ, MinIO (S3-compatible storage), OpenAI.
+Each package has a `.env.example` template. Key services: Better Auth (self-hosted, ADR-029), PostgreSQL, RabbitMQ, MinIO (S3-compatible storage), OpenAI.

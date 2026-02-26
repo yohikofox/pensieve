@@ -1,7 +1,7 @@
 # Pensine - Source Code Repository
 
 **Version:** 1.0.0
-**Architecture:** Hybrid (Supabase Cloud Auth + Homelab Storage)
+**Architecture:** Hybrid (Better Auth self-hosted + Homelab Storage)
 
 Ce repository contient le code source de l'application Pensine :
 - **Mobile:** React Native avec Expo SDK 54 (iOS & Android)
@@ -78,7 +78,7 @@ Pensine utilise une architecture hybride pour optimiser les coûts et le time-to
 
 | Service | Provider | Coût | Raison |
 |---------|----------|------|---------|
-| **Auth** | Supabase Cloud | €0/mois | Social login (Google/Apple) |
+| **Auth** | Better Auth (self-hosted) | €0/mois | Social login (Google, HuggingFace) |
 | **Storage** | MinIO Homelab | €0/mois | Stockage audio illimité |
 | **Backend** | Homelab (Docker) | €0/mois | API & logique métier |
 | **Database** | PostgreSQL Homelab | €0/mois | Données applicatives |
@@ -149,22 +149,18 @@ cd admin && npm install && npm run dev   # http://localhost:3001
 
 ---
 
-## 🔐 Configuration Supabase
+## 🔐 Configuration Auth (Better Auth)
 
-### Étapes
+Better Auth est auto-hébergé dans le backend NestJS (ADR-029). Pas de service cloud externe requis.
 
-1. **Créer un projet Supabase Cloud** (Gratuit)
-   - Suivre les instructions dans: `../_bmad-output/implementation-artifacts/supabase-setup-instructions.md`
-
-2. **Récupérer les credentials**
+1. **Configurer les variables d'environnement**
    ```
-   SUPABASE_URL=https://xxxxx.supabase.co
-   SUPABASE_ANON_KEY=eyJhbGc...
-   JWT_SECRET=your-jwt-secret
+   BETTER_AUTH_SECRET=your-secret-key
+   BETTER_AUTH_URL=https://your-backend-url
    ```
 
-3. **Configurer dans le backend**
-   - Mettre à jour `backend/.env`
+2. **Configurer dans le backend**
+   - Mettre à jour `backend/.env` avec les credentials OAuth (Google, HuggingFace) si nécessaire
 
 ---
 
@@ -222,7 +218,7 @@ make deploy-mobile
 - **zustand:** Client state management
 - **@react-navigation/native (v7):** Navigation entre écrans
 - **nativewind:** Tailwind CSS pour React Native
-- **@supabase/supabase-js:** Client Supabase pour auth
+- **better-auth / @better-auth/expo:** Authentification self-hosted (ADR-029)
 - **whisper.rn:** Transcription audio on-device
 - **expo-llm-mediapipe:** Inférence LLM locale
 - **@react-native-async-storage/async-storage:** Stockage clé-valeur
