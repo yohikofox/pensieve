@@ -83,10 +83,15 @@ interface SettingsState {
   // LLM settings - AI post-processing configuration (consulted app-wide)
   llm: LLMSettings;
 
+  // Story 7.3: GitHub Bug Reporting config (stored in settingsStore for non-sensitive fields)
+  // Note: GitHub token is stored in expo-secure-store via GitHubIssueService (ADR-022)
+  githubRepo: string; // Format: "owner/repo"
+
   // Actions
   setThemePreference: (preference: ThemePreference) => void;
   setColorScheme: (scheme: ColorScheme) => void;
   setAudioPlayerType: (type: AudioPlayerType) => void;
+  setGithubRepo: (repo: string) => void;
 
   // Story 24.3: Set all features at once (replaces setDebugModeAccess / setDataMiningEnabled)
   setFeatures: (features: Record<string, boolean>) => void;
@@ -145,6 +150,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Initial state - haptic feedback enabled by default (Story 5.2 Code Review Fix #7)
         hapticFeedbackEnabled: true,
+
+        // Story 7.3: GitHub Bug Reporting — non-sensitive config
+        githubRepo: '',
 
         // Story 6.4: Sync only on Wi-Fi - disabled by default (sync on all connections)
         syncOnWifiOnly: false,
@@ -245,6 +253,12 @@ export const useSettingsStore = create<SettingsState>()(
             "[SettingsStore] Haptic feedback:",
             enabled ? "ON" : "OFF",
           );
+        },
+
+        // Story 7.3: GitHub repo config
+        setGithubRepo: (repo: string) => {
+          set({ githubRepo: repo });
+          console.debug('[SettingsStore] GitHub repo:', repo);
         },
 
         // Story 6.4: Sync on Wi-Fi only

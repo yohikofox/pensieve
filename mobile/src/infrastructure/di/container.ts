@@ -83,6 +83,10 @@ import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMM
 import { NativeTranscriptionEngine } from '../../contexts/Normalization/services/NativeTranscriptionEngine';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 
+// Dev Tools Services (Story 7.3)
+import { GitHubIssueService } from '../../components/dev/services/GitHubIssueService';
+import { LogsAnalysisService } from '../../components/dev/services/LogsAnalysisService';
+
 // Identity Services (Story 7.1)
 import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
 import { FirstLaunchInitializer } from '../../contexts/identity/services/FirstLaunchInitializer';
@@ -245,6 +249,13 @@ export function registerServices() {
 
   // Identity Services — stateless (ADR-021 Transient First)
   container.register(UserFeaturesService, { useClass: UserFeaturesService });
+
+  // Dev Tools Services — Story 7.3
+  // GitHubIssueService: Transient (stateless — token lu depuis SecureStore à chaque appel)
+  container.register(TOKENS.IGitHubIssueService, { useClass: GitHubIssueService });
+  // LogsAnalysisService: SINGLETON — exception ADR-021 (LLM backend chargé en mémoire ~30-60s).
+  // Transient forcerait un rechargement de modèle à chaque résolution.
+  container.registerSingleton(TOKENS.ILogsAnalysisService, LogsAnalysisService);
 
   // SINGLETON: FirstLaunchInitializer — exception ADR-021 (Story 24.4)
   // Justification: service à usage unique au premier lancement.

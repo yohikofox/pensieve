@@ -45,4 +45,8 @@ export const TOKENS = {
 
   // First Launch (Story 24.4)
   FirstLaunchInitializer: Symbol.for('FirstLaunchInitializer'),
+
+  // Dev Tools — Story 7.3
+  IGitHubIssueService: Symbol.for('IGitHubIssueService'),
+  ILogsAnalysisService: Symbol.for('ILogsAnalysisService'),
 };

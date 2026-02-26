@@ -26,6 +26,7 @@ import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMM
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore, type ThemePreference, type AudioPlayerType } from '../../stores/settingsStore';
+import type { IGitHubIssueService } from '../../components/dev/services/GitHubIssueService';
 import { FEATURE_KEYS } from '../../contexts/identity/domain/feature-keys';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsNavigationTypes';
@@ -72,6 +73,11 @@ export const SettingsScreen = () => {
   // Story 6.4: Sync only on Wi-Fi from global settings store
   const syncOnWifiOnly = useSettingsStore((state) => state.syncOnWifiOnly);
   const setSyncOnWifiOnly = useSettingsStore((state) => state.setSyncOnWifiOnly);
+
+  // Story 7.3: GitHub Bug Reporting config (AC5, AC9)
+  const githubRepo = useSettingsStore((state) => state.githubRepo);
+  const setGithubRepo = useSettingsStore((state) => state.setGithubRepo);
+  const [githubToken, setGithubTokenState] = useState('');
 
   // dataMiningEnabled is now derived from getFeature above — no separate selector needed
 
@@ -423,6 +429,35 @@ export const SettingsScreen = () => {
     // Navigation handled by auth state listener
   };
 
+  // Story 7.3: Load GitHub token from SecureStore on mount (AC5)
+  useEffect(() => {
+    const loadGithubToken = async () => {
+      try {
+        const svc = container.resolve<IGitHubIssueService>(TOKENS.IGitHubIssueService);
+        const token = await svc.getToken();
+        setGithubTokenState(token ? '••••••••••••' : '');
+      } catch {
+        // token load failure is non-blocking
+      }
+    };
+    if (debugMode && debugModeAccess) {
+      loadGithubToken();
+    }
+  }, [debugMode, debugModeAccess]);
+
+  const handleGithubTokenSave = async (newToken: string) => {
+    try {
+      const svc = container.resolve<IGitHubIssueService>(TOKENS.IGitHubIssueService);
+      if (newToken && !newToken.startsWith('•')) {
+        await svc.setToken(newToken);
+        setGithubTokenState('••••••••••••');
+        toast.success('Token GitHub enregistré');
+      }
+    } catch {
+      toast.error('Erreur lors de l\'enregistrement du token');
+    }
+  };
+
   /**
    * Handle audio player type selection (Story 3.2b)
    */
@@ -698,6 +733,50 @@ export const SettingsScreen = () => {
             {deleteLoading && <ActivityIndicator />}
           </TouchableOpacity>
         </Card>
+
+          {/* Bug Reporting Section — Story 7.3 AC5, AC9 */}
+          {/* Visible ONLY when debug mode is fully active (double gate: backend + toggle) */}
+          {debugModeAccess && debugMode && (
+            <Card variant="elevated" className="mx-4 py-2">
+              <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+                Bug Reporting
+              </Text>
+
+              <View className="py-3 px-4 border-b border-border-default">
+                <Text className="text-lg text-text-primary mb-1">GitHub Token</Text>
+                <Text className="text-xs text-text-tertiary mb-2">
+                  Personal Access Token (stocké de façon sécurisée)
+                </Text>
+                <TextInput
+                  className="border border-border-default rounded-base p-3 text-base bg-bg-input text-text-primary"
+                  placeholder="ghp_xxxxxxxxxxxxxxxxxx"
+                  placeholderTextColor="#888"
+                  value={githubToken}
+                  onChangeText={setGithubTokenState}
+                  onEndEditing={(e) => handleGithubTokenSave(e.nativeEvent.text)}
+                  secureTextEntry={false}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+
+              <View className="py-3 px-4">
+                <Text className="text-lg text-text-primary mb-1">GitHub Repo</Text>
+                <Text className="text-xs text-text-tertiary mb-2">
+                  Format : owner/repo (ex: yohikofox/pensieve)
+                </Text>
+                <TextInput
+                  className="border border-border-default rounded-base p-3 text-base bg-bg-input text-text-primary"
+                  placeholder="owner/repo"
+                  placeholderTextColor="#888"
+                  value={githubRepo}
+                  onChangeText={setGithubRepo}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </Card>
+          )}
 
           {/* Development Section */}
           {/* Story 7.1 AC6, AC7: Debug section only visible when backend grants permission */}
