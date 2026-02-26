@@ -22,6 +22,7 @@ import { ActionsScreen } from "./actions/ActionsScreen";
 import { ProjectsScreen } from "./projects/ProjectsScreen";
 import { SettingsStackNavigator } from "../navigation/SettingsStackNavigator";
 import { TabIcons } from "../navigation/components";
+import { FEATURE_KEYS } from "../contexts/identity/domain/feature-keys";
 
 /**
  * Tab Screen Configuration Interface
@@ -41,6 +42,13 @@ export interface TabScreenConfig {
 
   /** Layout configuration for StandardLayout wrapper */
   layout?: LayoutConfig;
+
+  /**
+   * Story 24.3: Optional feature key — if defined, the tab is only rendered
+   * when getFeature(featureKey) returns true.
+   * If absent, the tab is always rendered.
+   */
+  featureKey?: string;
 
   /** i18n translation keys */
   i18n: {
@@ -64,6 +72,8 @@ export const tabScreens = {
   News: {
     component: NewsScreen,
     icon: "rss",
+    // Story 24.3 AC3: Tab only visible when news_tab feature is enabled
+    featureKey: FEATURE_KEYS.NEWS_TAB,
     layout: {
       // Header is shown by tab navigator, no need for SafeAreaView
       useSafeArea: false,
@@ -124,6 +134,8 @@ export const tabScreens = {
   Projects: {
     component: ProjectsScreen,
     icon: "folder",
+    // Story 24.3 AC4: Tab only visible when projects_tab feature is enabled
+    featureKey: FEATURE_KEYS.PROJECTS_TAB,
     layout: {
       // Header is shown by tab navigator, no need for SafeAreaView
       useSafeArea: false,

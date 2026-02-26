@@ -1,32 +1,19 @@
 /**
  * User feature flags model
- * Story 7.1: Support Mode avec Permissions Backend
+ * Story 24.3: Feature Flag System — Adaptation Mobile & UI Gating
  *
- * Represents user permissions for various features.
- * Extensible for future feature flags.
+ * UserFeatures is now a dynamic Record<string, boolean>.
+ * Feature keys are defined as constants in feature-keys.ts.
+ *
+ * Previous static fields (debug_mode_access, data_mining_access) have been
+ * migrated to the generic record format by the backend (Story 24.1).
  */
-export interface UserFeatures {
-  /**
-   * Backend permission to access debug mode features
-   * When false, debug mode toggle is hidden in settings
-   */
-  debug_mode_access: boolean;
-
-  /**
-   * Backend permission to access datamining (query builder) features
-   * When false, the datamining section is hidden in settings
-   */
-  data_mining_access: boolean;
-
-  // Future feature flags
-  // error_reporting_enabled?: boolean;
-  // transcription_retry_enabled?: boolean;
-  // beta_features_access?: boolean;
-}
+export type UserFeatures = Record<string, boolean>;
 
 /**
  * User features cache structure
- * Stored in AsyncStorage/MMKV with expiration at midnight
+ * Stored in AsyncStorage with expiration at midnight (ADR-022 compliant).
+ * The cache holds the full Record, not individual fields.
  */
 export interface UserFeaturesCache {
   features: UserFeatures;

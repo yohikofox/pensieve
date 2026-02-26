@@ -1,8 +1,9 @@
 /**
  * useSyncUserFeatures Hook
- * Story 7.1: Support Mode avec Permissions Backend
+ * Story 24.3: Feature Flag System — Adaptation Mobile & UI Gating
  *
- * Syncs user features from backend to SettingsStore
+ * Syncs user features from backend to SettingsStore.
+ * Uses setFeatures() to store the full Record<string, boolean>.
  * AC3: Fetch at app startup
  * AC5: Manual refresh
  */
@@ -26,8 +27,9 @@ interface UseSyncUserFeaturesOptions {
 }
 
 /**
- * Hook to automatically sync user features from backend to SettingsStore
- * Runs at app startup and whenever user features change
+ * Hook to automatically sync user features from backend to SettingsStore.
+ * Stores the full Record<string, boolean> via setFeatures().
+ * Runs at app startup and whenever user features change.
  *
  * @param options - Hook options with userId
  *
@@ -41,20 +43,14 @@ interface UseSyncUserFeaturesOptions {
 export function useSyncUserFeatures(options: UseSyncUserFeaturesOptions) {
   const { userId, enabled = true } = options;
   const { data: features, isSuccess, refetch } = useUserFeatures({ userId, enabled });
-  const setDebugModeAccess = useSettingsStore(
-    (state) => state.setDebugModeAccess,
-  );
-  const setDataMiningEnabled = useSettingsStore(
-    (state) => state.setDataMiningEnabled,
-  );
+  const setFeatures = useSettingsStore((state) => state.setFeatures);
 
   // Sync features to SettingsStore when they change
   useEffect(() => {
     if (isSuccess && features) {
-      setDebugModeAccess(features.debug_mode_access);
-      setDataMiningEnabled(features.data_mining_access);
+      setFeatures(features);
     }
-  }, [isSuccess, features, setDebugModeAccess, setDataMiningEnabled]);
+  }, [isSuccess, features, setFeatures]);
 
   // Force-refresh when app comes back to foreground
   useEffect(() => {

@@ -10,7 +10,7 @@
  * - Dynamic data (badges, counts) is injected via hooks
  */
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import * as Haptics from "expo-haptics";
@@ -21,6 +21,7 @@ import { useActiveTodoCount } from "../contexts/action/hooks/useActiveTodoCount"
 import { tabScreens, type TabScreenConfig } from "../screens/registry";
 import { SyncStatusIndicatorButton } from "../components/SyncStatusIndicatorButton";
 import { SyncStatusDetailModal } from "../components/SyncStatusDetailModal";
+import { useSettingsStore } from "../stores/settingsStore";
 
 const Tab = createBottomTabNavigator();
 
@@ -33,6 +34,29 @@ export const MainNavigator = () => {
   // Dynamic badge count for Actions tab
   const { data: activeTodoCount } = useActiveTodoCount();
   const todoCount = activeTodoCount ?? 0;
+
+  // Story 24.3: Feature-gated tabs — subscribe to features object for reactivity.
+  // Using state.getFeature (stable fn ref) as selector would NOT trigger re-renders on feature changes.
+  const features = useSettingsStore((state) => state.features);
+
+  // Story 24.3 Subtask 6.3: Compute visible tab names for safe initial route and deep link protection.
+  // React Navigation gracefully ignores navigation to screens absent from the current navigator,
+  // so this also guards against deep links targeting feature-gated tabs.
+  const visibleTabNames = useMemo(
+    () =>
+      Object.entries(tabScreens)
+        .filter(([, config]) => {
+          const screenConfig = config as TabScreenConfig;
+          return !screenConfig.featureKey || (features[screenConfig.featureKey] ?? false);
+        })
+        .map(([name]) => name),
+    [features],
+  );
+
+  // "Capture" is never feature-gated; derive dynamically for safety
+  const safeInitialRoute = visibleTabNames.includes('Capture')
+    ? 'Capture'
+    : (visibleTabNames[0] ?? 'Capture');
 
   // Tab press handler: haptic + reset nested stack to root when re-pressing active tab.
   // Using a factory function (not a shared object) so the listener has access to
@@ -93,7 +117,7 @@ export const MainNavigator = () => {
   return (
     <>
       <Tab.Navigator
-        initialRouteName="Capture"
+        initialRouteName={safeInitialRoute}
         screenOptions={{
           ...tabHeaderOptions,
           headerShown: true,
@@ -106,7 +130,14 @@ export const MainNavigator = () => {
           tabBarStyle: tabBarStyle.style,
         }}
       >
-        {Object.entries(tabScreens).map(([name, config]) => {
+        {Object.entries(tabScreens)
+          // Story 24.3 AC3-AC4: Filter feature-gated tabs using features object (reactive)
+          .filter(([, config]) => {
+            const screenConfig = config as TabScreenConfig;
+            if (!screenConfig.featureKey) return true; // Always show non-gated tabs
+            return features[screenConfig.featureKey] ?? false;
+          })
+          .map(([name, config]) => {
           // Type assertion: config satisfies TabScreenConfig
           const screenConfig = config as TabScreenConfig;
 

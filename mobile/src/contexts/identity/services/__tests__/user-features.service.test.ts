@@ -13,8 +13,10 @@ describe('UserFeaturesService', () => {
   let service: UserFeaturesService;
   let mockRepository: jest.Mocked<IUserFeaturesRepository>;
 
+  // Story 24.3: UserFeatures is now Record<string, boolean>
   const mockFeatures: UserFeatures = {
-    debug_mode_access: false,
+    debug_mode: false,
+    data_mining: false,
   };
 
   beforeEach(() => {
@@ -126,8 +128,9 @@ describe('UserFeaturesService', () => {
 
       const result = await service.getUserFeatures('user-id');
 
+      // Story 24.3 AC6: Default is {} (empty record) — all getFeature() calls return false (security by default)
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
-      expect(result.data).toEqual({ debug_mode_access: false });
+      expect(result.data).toEqual({});
     });
   });
 

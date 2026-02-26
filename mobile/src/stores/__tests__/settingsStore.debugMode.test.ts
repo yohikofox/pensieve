@@ -1,104 +1,104 @@
 /**
  * SettingsStore Debug Mode Tests
- * Story 7.1: Support Mode avec Permissions Backend
+ * Story 24.3: Feature Flag System — Adaptation Mobile & UI Gating
  *
- * Tests for debugModeAccess (backend permission) and debugMode (local toggle)
+ * Tests for debug mode with new feature flag system.
+ * Migrated from Story 7.1: setDebugModeAccess(true) → setFeatures({ debug_mode: true })
+ * Migrated from Story 7.1: state.debugModeAccess → state.getFeature('debug_mode')
  */
 
 import { useSettingsStore, isDebugModeEnabled } from '../settingsStore';
+import { FEATURE_KEYS } from '../../contexts/identity/domain/feature-keys';
 
-describe('SettingsStore - Debug Mode (Story 7.1)', () => {
+describe('SettingsStore - Debug Mode (Story 24.3)', () => {
   beforeEach(() => {
     // Reset store to initial state
     useSettingsStore.setState({
-      debugModeAccess: false,
+      features: {},
       debugMode: false,
     });
   });
 
-  describe('setDebugModeAccess', () => {
-    it('should set debugModeAccess to true', () => {
-      const { setDebugModeAccess } = useSettingsStore.getState();
+  describe('setFeatures + debug_mode (replaces setDebugModeAccess)', () => {
+    it('should grant debug mode access via setFeatures({ debug_mode: true })', () => {
+      const { setFeatures, getFeature } = useSettingsStore.getState();
 
-      setDebugModeAccess(true);
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
 
-      const { debugModeAccess } = useSettingsStore.getState();
-      expect(debugModeAccess).toBe(true);
+      expect(getFeature(FEATURE_KEYS.DEBUG_MODE)).toBe(true);
     });
 
-    it('should set debugModeAccess to false', () => {
-      const { setDebugModeAccess } = useSettingsStore.getState();
+    it('should revoke debug mode access via setFeatures({ debug_mode: false })', () => {
+      const { setFeatures, getFeature } = useSettingsStore.getState();
 
-      setDebugModeAccess(true);
-      setDebugModeAccess(false);
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: false });
 
-      const { debugModeAccess } = useSettingsStore.getState();
-      expect(debugModeAccess).toBe(false);
+      expect(getFeature(FEATURE_KEYS.DEBUG_MODE)).toBe(false);
     });
 
-    it('should disable debugMode when debugModeAccess is revoked (AC7)', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should disable debugMode when debug_mode feature is absent after setFeatures', () => {
+      // Setup: debug mode was active
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: true },
+        debugMode: true,
+      });
 
-      // Enable both
-      setDebugModeAccess(true);
-      setDebugMode(true);
+      // Remove the debug_mode feature
+      const { setFeatures } = useSettingsStore.getState();
+      setFeatures({});
 
-      expect(useSettingsStore.getState().debugMode).toBe(true);
-
-      // Revoke backend permission
-      setDebugModeAccess(false);
-
-      // Debug mode should be automatically disabled
-      const { debugMode } = useSettingsStore.getState();
-      expect(debugMode).toBe(false);
+      // isDebugModeEnabled reads features dynamically, so it's now false
+      expect(isDebugModeEnabled()).toBe(false);
     });
   });
 
   describe('setDebugMode', () => {
-    it('should enable debugMode when debugModeAccess is granted (AC8)', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should enable debugMode when debug_mode feature is granted', () => {
+      useSettingsStore.setState({ features: { [FEATURE_KEYS.DEBUG_MODE]: true } });
+      const { setDebugMode } = useSettingsStore.getState();
 
-      setDebugModeAccess(true);
       setDebugMode(true);
 
       const { debugMode } = useSettingsStore.getState();
       expect(debugMode).toBe(true);
     });
 
-    it('should block debugMode activation when debugModeAccess is denied (AC8)', () => {
+    it('should block debugMode activation when debug_mode feature is denied', () => {
+      useSettingsStore.setState({ features: {} });
       const { setDebugMode } = useSettingsStore.getState();
 
-      // Try to enable debug mode without backend permission
       setDebugMode(true);
 
       const { debugMode } = useSettingsStore.getState();
       expect(debugMode).toBe(false);
     });
 
-    it('should allow disabling debugMode even without permission', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should allow disabling debugMode even without feature', () => {
+      // Enable with feature
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: true },
+        debugMode: true,
+      });
 
-      // Enable with permission
-      setDebugModeAccess(true);
-      setDebugMode(true);
+      // Remove feature (access revoked)
+      const { setFeatures } = useSettingsStore.getState();
+      setFeatures({});
 
-      // Revoke permission
-      setDebugModeAccess(false);
+      // Debug mode is now blocked by double-gate
+      expect(isDebugModeEnabled()).toBe(false);
 
-      // Should already be disabled by AC7
-      expect(useSettingsStore.getState().debugMode).toBe(false);
-
-      // Explicitly disable should still work
+      // Explicitly disabling should still work
+      const { setDebugMode } = useSettingsStore.getState();
       setDebugMode(false);
       expect(useSettingsStore.getState().debugMode).toBe(false);
     });
   });
 
   describe('toggleDebugMode', () => {
-    it('should toggle debugMode when debugModeAccess is granted', () => {
-      const { setDebugModeAccess, toggleDebugMode } = useSettingsStore.getState();
-
-      setDebugModeAccess(true);
+    it('should toggle debugMode when debug_mode feature is granted', () => {
+      useSettingsStore.setState({ features: { [FEATURE_KEYS.DEBUG_MODE]: true } });
+      const { toggleDebugMode } = useSettingsStore.getState();
 
       toggleDebugMode();
       expect(useSettingsStore.getState().debugMode).toBe(true);
@@ -107,73 +107,77 @@ describe('SettingsStore - Debug Mode (Story 7.1)', () => {
       expect(useSettingsStore.getState().debugMode).toBe(false);
     });
 
-    it('should block toggle when debugModeAccess is denied (AC8)', () => {
+    it('should block toggle when debug_mode feature is absent', () => {
+      useSettingsStore.setState({ features: {} });
       const { toggleDebugMode } = useSettingsStore.getState();
 
-      // debugModeAccess is false by default
       toggleDebugMode();
 
       const { debugMode } = useSettingsStore.getState();
       expect(debugMode).toBe(false);
     });
 
-    it('should allow toggling OFF even without permission', () => {
-      const { setDebugModeAccess, setDebugMode, toggleDebugMode } =
-        useSettingsStore.getState();
+    it('should allow toggling OFF even without feature', () => {
+      // Enable debug mode with feature
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: true },
+        debugMode: true,
+      });
 
-      // Enable with permission
-      setDebugModeAccess(true);
-      setDebugMode(true);
+      // Revoke feature access
+      const { setFeatures } = useSettingsStore.getState();
+      setFeatures({});
 
-      // Revoke permission (auto-disables debug mode)
-      setDebugModeAccess(false);
+      // Even without feature, user must be able to toggle OFF (always allowed to disable)
+      const { toggleDebugMode } = useSettingsStore.getState();
+      toggleDebugMode(); // debugMode: true → false (toggle OFF is never blocked)
 
-      // Debug mode should already be false
       expect(useSettingsStore.getState().debugMode).toBe(false);
+      expect(isDebugModeEnabled()).toBe(false); // double-gate: feature absent + toggle off
     });
   });
 
-  describe('isDebugModeEnabled - AC9', () => {
-    it('should return true when both debugModeAccess and debugMode are true', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
-
-      setDebugModeAccess(true);
-      setDebugMode(true);
+  describe('isDebugModeEnabled — double gate', () => {
+    it('should return true when both debug_mode feature and debugMode toggle are true', () => {
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: true },
+        debugMode: true,
+      });
 
       expect(isDebugModeEnabled()).toBe(true);
     });
 
-    it('should return false when debugModeAccess is false', () => {
-      const { setDebugMode } = useSettingsStore.getState();
-
-      // debugModeAccess is false by default
-      setDebugMode(true); // This will be blocked
-
-      expect(isDebugModeEnabled()).toBe(false);
-    });
-
-    it('should return false when debugMode is false', () => {
-      const { setDebugModeAccess } = useSettingsStore.getState();
-
-      setDebugModeAccess(true);
-      // debugMode is false by default
+    it('should return false when debug_mode feature is false', () => {
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: false },
+        debugMode: true,
+      });
 
       expect(isDebugModeEnabled()).toBe(false);
     });
 
-    it('should return false when both are false', () => {
+    it('should return false when debugMode toggle is false', () => {
+      useSettingsStore.setState({
+        features: { [FEATURE_KEYS.DEBUG_MODE]: true },
+        debugMode: false,
+      });
+
+      expect(isDebugModeEnabled()).toBe(false);
+    });
+
+    it('should return false when both are false/absent', () => {
       // Both are false by default
       expect(isDebugModeEnabled()).toBe(false);
     });
   });
 
   describe('Integration scenarios', () => {
-    it('should handle full activation flow (AC11)', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should handle full activation flow', () => {
+      const { setFeatures, setDebugMode } = useSettingsStore.getState();
 
-      // Admin activates permission
-      setDebugModeAccess(true);
-      expect(useSettingsStore.getState().debugModeAccess).toBe(true);
+      // Admin activates feature
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
+      expect(useSettingsStore.getState().getFeature(FEATURE_KEYS.DEBUG_MODE)).toBe(true);
 
       // User sees switch and activates it
       setDebugMode(true);
@@ -183,42 +187,37 @@ describe('SettingsStore - Debug Mode (Story 7.1)', () => {
       expect(isDebugModeEnabled()).toBe(true);
     });
 
-    it('should handle full deactivation flow (AC11)', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should handle full deactivation flow', () => {
+      const { setFeatures, setDebugMode } = useSettingsStore.getState();
 
       // Start with debug mode enabled
-      setDebugModeAccess(true);
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
       setDebugMode(true);
       expect(isDebugModeEnabled()).toBe(true);
 
-      // Admin revokes permission
-      setDebugModeAccess(false);
+      // Admin revokes feature
+      setFeatures({});
 
-      // Debug mode should be automatically disabled
-      expect(useSettingsStore.getState().debugMode).toBe(false);
+      // Debug mode should be effectively disabled via double-gate
       expect(isDebugModeEnabled()).toBe(false);
     });
 
-    it('should maintain local toggle preference when permission is re-granted', () => {
-      const { setDebugModeAccess, setDebugMode } = useSettingsStore.getState();
+    it('should maintain local toggle preference when feature is re-granted', () => {
+      const { setFeatures, setDebugMode } = useSettingsStore.getState();
 
       // User had debug mode enabled
-      setDebugModeAccess(true);
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
       setDebugMode(true);
 
-      // Permission revoked (auto-disables debug mode)
-      setDebugModeAccess(false);
-      expect(useSettingsStore.getState().debugMode).toBe(false);
-
-      // Permission re-granted
-      setDebugModeAccess(true);
-
-      // Debug mode remains disabled (user must re-enable)
-      expect(useSettingsStore.getState().debugMode).toBe(false);
+      // Feature revoked
+      setFeatures({});
       expect(isDebugModeEnabled()).toBe(false);
 
-      // User can now re-enable
-      setDebugMode(true);
+      // Feature re-granted
+      setFeatures({ [FEATURE_KEYS.DEBUG_MODE]: true });
+
+      // Debug mode toggle is still true in state — isDebugModeEnabled returns true
+      // (double gate: feature true + debugMode true)
       expect(isDebugModeEnabled()).toBe(true);
     });
   });

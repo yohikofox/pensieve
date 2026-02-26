@@ -18,6 +18,7 @@ import type {
   LLMTask,
 } from "../contexts/Normalization/services/LLMModelService";
 import type { ColorScheme } from "../design-system/tokens";
+import { FEATURE_KEYS } from "../contexts/identity/domain/feature-keys";
 
 // Theme preference type
 export type ThemePreference = "light" | "dark" | "system";
@@ -54,14 +55,14 @@ interface SettingsState {
   // Audio player type - 'waveform' (default) or 'simple' (Story 3.2b)
   audioPlayerType: AudioPlayerType;
 
-  // Story 7.1: Support Mode avec Permissions Backend
-  // Backend permission to access debug mode features
-  // Controls whether the debug mode toggle appears in settings
-  debugModeAccess: boolean;
+  // Story 24.3: Dynamic feature flags from backend.
+  // Replaces individual debugModeAccess / dataMiningEnabled booleans.
+  // Volatile: NOT persisted — reset on every app launch and re-fetched via useSyncUserFeatures.
+  // ADR-022: Never persist this in AsyncStorage directly.
+  features: Record<string, boolean>;
 
-  // Debug mode local toggle - user's preference to enable/disable debug mode
-  // Only effective when debugModeAccess is true
-  // This was previously just "debugMode" but renamed for clarity
+  // Debug mode local toggle - user's preference to enable/disable debug mode.
+  // Only effective when getFeature('debug_mode') is true (double gate — AC2).
   debugMode: boolean;
 
   // Show calibration grid - override to hide grid even when debugMode is on
@@ -86,7 +87,13 @@ interface SettingsState {
   setThemePreference: (preference: ThemePreference) => void;
   setColorScheme: (scheme: ColorScheme) => void;
   setAudioPlayerType: (type: AudioPlayerType) => void;
-  setDebugModeAccess: (enabled: boolean) => void; // Story 7.1: Update backend permission
+
+  // Story 24.3: Set all features at once (replaces setDebugModeAccess / setDataMiningEnabled)
+  setFeatures: (features: Record<string, boolean>) => void;
+
+  // Story 24.3: Get a single feature value by key (returns false if absent)
+  getFeature: (key: string) => boolean;
+
   setDebugMode: (enabled: boolean) => void;
   toggleDebugMode: () => void;
   setShowCalibrationGrid: (show: boolean) => void;
@@ -97,11 +104,6 @@ interface SettingsState {
   // Story 6.4: Sync only on Wi-Fi
   syncOnWifiOnly: boolean;
   setSyncOnWifiOnly: (enabled: boolean) => void;
-
-  // Datamining feature flag — volatile (non-persisté), reset à chaque redémarrage
-  // Visible uniquement si debugModeAccess est actif
-  dataMiningEnabled: boolean;
-  setDataMiningEnabled: (enabled: boolean) => void;
 
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
@@ -122,9 +124,9 @@ export const useSettingsStore = create<SettingsState>()(
         // Initial state - waveform player by default (Story 3.2b)
         audioPlayerType: "waveform" as AudioPlayerType,
 
-        // Story 7.1: Backend permission for debug mode - sourced from backend at startup
+        // Story 24.3: features — volatile, starts empty (all getFeature() return false)
         // Not persisted — always re-fetched via useSyncUserFeatures on app launch
-        debugModeAccess: false,
+        features: {},
 
         // Initial state - debug mode local toggle off by default
         debugMode: false,
@@ -146,9 +148,6 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Story 6.4: Sync only on Wi-Fi - disabled by default (sync on all connections)
         syncOnWifiOnly: false,
-
-        // Datamining feature flag — volatile, non-persisté
-        dataMiningEnabled: false,
 
         // Initial LLM state - disabled by default
         llm: {
@@ -174,31 +173,25 @@ export const useSettingsStore = create<SettingsState>()(
           console.debug("[SettingsStore] Audio player type:", type);
         },
 
-        // Story 7.1: Set backend permission for debug mode access
-        setDebugModeAccess: (enabled: boolean) => {
-          set({ debugModeAccess: enabled });
-          console.debug(
-            "[SettingsStore] Debug mode access (backend):",
-            enabled ? "GRANTED" : "DENIED",
-          );
-
-          // AC7: If permission denied, disable local debug mode
-          if (!enabled) {
-            set({ debugMode: false });
-            console.debug(
-              "[SettingsStore] Debug mode disabled (permission revoked)",
-            );
-          }
+        // Story 24.3: Replace all feature flags at once (from backend response)
+        setFeatures: (features: Record<string, boolean>) => {
+          set({ features });
+          console.debug("[SettingsStore] Features updated:", Object.keys(features).length, "keys");
         },
 
-        // AC8: Verify permission before activating debug mode
-        setDebugMode: (enabled: boolean) => {
-          const { debugModeAccess } = get();
+        // Story 24.3: Get a single feature value (returns false if absent — security by default)
+        getFeature: (key: string): boolean => {
+          return get().features[key] ?? false;
+        },
 
-          // Only allow enabling if backend permission is granted
-          if (enabled && !debugModeAccess) {
+        // AC2: Verify debug_mode feature before activating debug mode (double gate)
+        setDebugMode: (enabled: boolean) => {
+          const hasDebugAccess = get().features[FEATURE_KEYS.DEBUG_MODE] ?? false;
+
+          // Only allow enabling if backend feature is granted
+          if (enabled && !hasDebugAccess) {
             console.warn(
-              "[SettingsStore] Debug mode activation blocked: no backend permission",
+              "[SettingsStore] Debug mode activation blocked: debug_mode feature not granted",
             );
             return;
           }
@@ -208,12 +201,13 @@ export const useSettingsStore = create<SettingsState>()(
         },
 
         toggleDebugMode: () => {
-          const { debugMode, debugModeAccess } = get();
+          const { debugMode } = get();
+          const hasDebugAccess = get().features[FEATURE_KEYS.DEBUG_MODE] ?? false;
 
-          // Only allow toggling if backend permission is granted
-          if (!debugMode && !debugModeAccess) {
+          // Only allow toggling ON if backend feature is granted
+          if (!debugMode && !hasDebugAccess) {
             console.warn(
-              "[SettingsStore] Debug mode toggle blocked: no backend permission",
+              "[SettingsStore] Debug mode toggle blocked: debug_mode feature not granted",
             );
             return;
           }
@@ -262,12 +256,6 @@ export const useSettingsStore = create<SettingsState>()(
           );
         },
 
-        // Datamining feature flag
-        setDataMiningEnabled: (enabled: boolean) => {
-          set({ dataMiningEnabled: enabled });
-          console.debug("[SettingsStore] Datamining:", enabled ? "ON" : "OFF");
-        },
-
         // LLM Actions
         setLLMEnabled: (enabled: boolean) => {
           set((state) => ({
@@ -301,10 +289,10 @@ export const useSettingsStore = create<SettingsState>()(
       {
         name: "pensieve-settings",
         storage: createJSONStorage(() => AsyncStorage),
-        // debugModeAccess and dataMiningEnabled are volatile — never persist them
+        // features is volatile — never persist (ADR-022: non-authoritative, TTL-based cache managed by UserFeaturesRepository)
         partialize: (state) => {
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          const { debugModeAccess, dataMiningEnabled, ...rest } = state;
+          const { features, ...rest } = state;
           return rest;
         },
       },
@@ -319,22 +307,36 @@ export const useSettingsStore = create<SettingsState>()(
  * Helper to check if debug mode is enabled
  * Can be used outside React components
  *
- * Story 7.1 - Support Mode Logic:
+ * Story 24.3 — Double gate:
  * Debug mode is ONLY active when BOTH conditions are met:
- * 1. debugModeAccess = true (backend permission granted)
+ * 1. getFeature('debug_mode') = true (backend feature granted)
  * 2. debugMode = true (user toggle enabled)
  *
  * This is an AND operation, not OR.
  */
 export function isDebugModeEnabled(): boolean {
-  const { debugMode, debugModeAccess } = useSettingsStore.getState();
-  return debugMode && debugModeAccess;
+  const state = useSettingsStore.getState();
+  const hasDebugAccess = state.features[FEATURE_KEYS.DEBUG_MODE] ?? false;
+  return state.debugMode && hasDebugAccess;
 }
 
 /**
  * Zustand selector for debug mode (for use in React components)
- * Returns true only if BOTH permission AND toggle are enabled
+ * Returns true only if BOTH feature AND toggle are enabled
  */
 export const selectIsDebugModeEnabled = (state: SettingsState): boolean => {
-  return state.debugMode && state.debugModeAccess;
+  const hasDebugAccess = state.features[FEATURE_KEYS.DEBUG_MODE] ?? false;
+  return state.debugMode && hasDebugAccess;
 };
+
+/**
+ * Helper to check if data mining is enabled
+ * Can be used outside React components
+ *
+ * Story 24.3 — AC2:
+ * Data mining is active when getFeature('data_mining') = true.
+ */
+export function isDataMiningEnabled(): boolean {
+  const state = useSettingsStore.getState();
+  return state.features[FEATURE_KEYS.DATA_MINING] ?? false;
+}

@@ -16,7 +16,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useTranslation } from 'react-i18next';
 import { AuthTokenManager } from '../../infrastructure/auth/AuthTokenManager';
 import { authClient } from '../../infrastructure/auth/auth-client';
-import * as FileSystem from 'expo-file-system/legacy';
+import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 import { container } from 'tsyringe';
@@ -26,6 +26,7 @@ import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMM
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
 import { useSettingsStore, type ThemePreference, type AudioPlayerType } from '../../stores/settingsStore';
+import { FEATURE_KEYS } from '../../contexts/identity/domain/feature-keys';
 import { GoogleCalendarService, type GoogleAuthState } from '../../services/GoogleCalendarService';
 import type { SettingsStackParamList } from '../../navigation/SettingsNavigationTypes';
 import { colors } from '../../design-system/tokens';
@@ -53,8 +54,10 @@ export const SettingsScreen = () => {
   // Audio player type from global settings store (Story 3.2b)
   const audioPlayerType = useSettingsStore((state) => state.audioPlayerType);
 
-  // Debug mode from global settings store (Story 7.1)
-  const debugModeAccess = useSettingsStore((state) => state.debugModeAccess);
+  // Story 24.3: Feature flags from store (replaces debugModeAccess / dataMiningEnabled)
+  // Subscribe to features object directly — getFeature fn ref is stable and won't trigger re-renders
+  const debugModeAccess = useSettingsStore((state) => state.features[FEATURE_KEYS.DEBUG_MODE] ?? false);
+  const dataMiningEnabled = useSettingsStore((state) => state.features[FEATURE_KEYS.DATA_MINING] ?? false);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const toggleDebugMode = useSettingsStore((state) => state.toggleDebugMode);
 
@@ -70,8 +73,7 @@ export const SettingsScreen = () => {
   const syncOnWifiOnly = useSettingsStore((state) => state.syncOnWifiOnly);
   const setSyncOnWifiOnly = useSettingsStore((state) => state.setSyncOnWifiOnly);
 
-  // Datamining feature flag — contrôlé depuis le backend (comme debugModeAccess)
-  const dataMiningEnabled = useSettingsStore((state) => state.dataMiningEnabled);
+  // dataMiningEnabled is now derived from getFeature above — no separate selector needed
 
   // Get theme label for display
   const getThemeLabel = (preference: ThemePreference): string => {

@@ -38,6 +38,8 @@ import { colors, shadows } from "../../design-system/tokens";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { ScreenCalibrationOrigin } from "../../components/debug";
 import { FullScreenLayout } from "../../components/layouts";
+import { useSettingsStore } from "../../stores/settingsStore";
+import { FEATURE_KEYS } from "../../contexts/identity/domain/feature-keys";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const ICON_SIZE = (SCREEN_WIDTH - 80) / 3; // 3 icons per row with padding
@@ -60,8 +62,11 @@ interface CaptureTool {
  * - Symbolic, not literal (represent the action/concept)
  * - Minimalist line icons (Feather)
  * - Consistent visual weight
+ *
+ * Media tools (photo, url, document, clipboard) are feature-gated.
+ * They are only shown when capture_media_buttons feature is enabled (AC5).
  */
-const CAPTURE_TOOLS: CaptureTool[] = [
+const CAPTURE_TOOLS_ALWAYS: CaptureTool[] = [
   {
     id: "voice",
     labelKey: "capture.tools.voice",
@@ -76,6 +81,10 @@ const CAPTURE_TOOLS: CaptureTool[] = [
     color: colors.secondary[500],
     available: true,
   },
+];
+
+/** Story 24.3 AC5: Media capture tools — only shown when capture_media_buttons feature is enabled */
+const CAPTURE_TOOLS_MEDIA: CaptureTool[] = [
   {
     id: "photo",
     labelKey: "capture.tools.photo",
@@ -262,6 +271,12 @@ const CaptureScreenContent = () => {
   const { user } = useAuthListener();
   const navigation = useNavigation();
   const [state, setState] = useState<RecordingState>("idle");
+
+  // Story 24.3 AC5: Show media buttons only when capture_media_buttons feature is enabled
+  const showMediaButtons = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.CAPTURE_MEDIA_BUTTONS));
+  const captureTools = showMediaButtons
+    ? [...CAPTURE_TOOLS_ALWAYS, ...CAPTURE_TOOLS_MEDIA]
+    : CAPTURE_TOOLS_ALWAYS;
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [showRecordingOverlay, setShowRecordingOverlay] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
@@ -666,9 +681,9 @@ const CaptureScreenContent = () => {
         </Text>
       </View>
 
-      {/* Tools Grid */}
+      {/* Tools Grid — Story 24.3 AC5: media buttons gated by capture_media_buttons feature */}
       <View className="flex-row flex-wrap justify-center px-5 gap-4">
-        {CAPTURE_TOOLS.map((tool) => (
+        {captureTools.map((tool) => (
           <CaptureToolButton
             key={tool.id}
             tool={tool}

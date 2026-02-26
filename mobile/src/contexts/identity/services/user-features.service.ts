@@ -26,11 +26,11 @@ export class UserFeaturesService {
 
   /**
    * Get user features with smart caching
-   * AC3: Fetch at startup, use cache if offline
-   * AC4: Cache valid until midnight
+   * Story 7.1 AC3: Fetch at startup, use cache if offline
+   * Story 7.1 AC4: Cache valid until midnight
    *
    * @param userId - User ID to fetch features for
-   * @param forceRefresh - Force fetch from server even if cache is valid
+   * @param forceRefresh - Force fetch from server; still falls back to cache if server unreachable
    * @returns UserFeatures or default safe values
    */
   async getUserFeatures(
@@ -47,20 +47,23 @@ export class UserFeaturesService {
         return success(fetchResult.data);
       }
 
-      // Server unreachable — fall back to cache (offline scenario)
-      if (!forceRefresh) {
-        const cachedResult = await this.getCachedFeaturesIfValid();
-        if (cachedResult.type === RepositoryResultType.SUCCESS && cachedResult.data) {
-          console.warn('Using cache due to server fetch failure:', fetchResult.error);
-          return success(cachedResult.data);
-        }
+      // Server unreachable — fall back to cache.
+      // Even when forceRefresh=true, if the server is unreachable we prefer cached features
+      // over returning empty features {} which would hide all gated UI elements (AC6).
+      const cachedResult = await this.getCachedFeaturesIfValid();
+      if (cachedResult.type === RepositoryResultType.SUCCESS && cachedResult.data) {
+        const msg = forceRefresh
+          ? 'Force refresh failed (server unreachable), falling back to valid cache'
+          : 'Using cache due to server fetch failure';
+        console.warn(msg, fetchResult.error);
+        return success(cachedResult.data);
+      }
 
-        // Try expired cache as last resort
-        const cache = await this.repository.getCachedFeatures();
-        if (cache) {
-          console.warn('Using expired cache due to fetch failure:', fetchResult.error);
-          return success(cache.features);
-        }
+      // Try expired cache as last resort
+      const cache = await this.repository.getCachedFeatures();
+      if (cache) {
+        console.warn('Using expired cache as last resort due to fetch failure:', fetchResult.error);
+        return success(cache.features);
       }
 
       // AC4: If offline and no cache, return safe defaults
@@ -75,7 +78,7 @@ export class UserFeaturesService {
 
   /**
    * Refresh user features from server
-   * AC5: Manual refresh from profile/settings
+   * Story 7.1 AC5: Manual refresh from profile/settings
    */
   async refreshUserFeatures(
     userId: string,
@@ -113,12 +116,10 @@ export class UserFeaturesService {
 
   /**
    * Get default safe feature values
-   * AC4: Default to false for security
+   * AC6: If offline and no cache, return empty record — all getFeature() calls return false
+   * This is intentional "security by default": no feature accessible offline without cache.
    */
   private getDefaultFeatures(): UserFeatures {
-    return {
-      debug_mode_access: false,
-      data_mining_access: false,
-    };
+    return {};
   }
 }
