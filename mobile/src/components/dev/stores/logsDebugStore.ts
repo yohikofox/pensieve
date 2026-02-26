@@ -122,8 +122,3 @@ export function setupConsoleInterception(): void {
   isInterceptionSetup = true;
   console.log('[LogsDebugStore] ✅ Console interception setup');
 }
-
-// Auto-setup in DEV mode
-if (__DEV__) {
-  setupConsoleInterception();
-}

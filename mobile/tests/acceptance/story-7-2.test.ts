@@ -145,4 +145,26 @@ defineFeature(feature, (test) => {
       expect(logs[0].message).toBe('post-clear');
     });
   });
+
+  test('Non-régression — toggle sniffing', ({ given, when, then, and }) => {
+    given('le store de logs est réinitialisé', () => {
+      useLogsDebugStore.setState({ logs: [], sniffing: true });
+    });
+
+    when('sniffing est désactivé via setSniffing', () => {
+      useLogsDebugStore.getState().setSniffing(false);
+    });
+
+    then('sniffing est false dans le store', () => {
+      expect(useLogsDebugStore.getState().sniffing).toBe(false);
+    });
+
+    and('sniffing est réactivé via setSniffing', () => {
+      useLogsDebugStore.getState().setSniffing(true);
+    });
+
+    and('sniffing est true dans le store', () => {
+      expect(useLogsDebugStore.getState().sniffing).toBe(true);
+    });
+  });
 });

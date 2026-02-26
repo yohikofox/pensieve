@@ -28,7 +28,14 @@ export function bootstrap() {
   // 3. Configure network detection
   configureNetInfo();
 
-  // 4-5. Auth + AutoSync moved to useSyncInitialization hook
+  // 4. Setup console interception for DevTools (DEV mode only)
+  // Must run after earlyConsoleSetup (imported first in index.ts) and after registerServices()
+  if (__DEV__) {
+    const { setupConsoleInterception } = require('../components/dev/stores/logsDebugStore');
+    setupConsoleInterception();
+  }
+
+  // 5. Auth + AutoSync moved to useSyncInitialization hook
   // (starts after React renders to avoid race condition)
 }
 

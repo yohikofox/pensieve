@@ -30,3 +30,9 @@ Feature: Logs DevTools — Rotation FIFO (limite 100 entrées)
     When clearLogs est appelé
     Then le store est complètement vide
     And de nouvelles entrées peuvent être ajoutées normalement
+
+  Scenario: Non-régression — toggle sniffing
+    When sniffing est désactivé via setSniffing
+    Then sniffing est false dans le store
+    And sniffing est réactivé via setSniffing
+    And sniffing est true dans le store

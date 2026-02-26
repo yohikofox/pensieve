@@ -20,7 +20,7 @@ import {
   Linking,
 } from 'react-native';
 import * as Network from 'expo-network';
-import * as FileSystem from 'expo-file-system/legacy';
+import { Directory, File, Paths } from 'expo-file-system';
 import { container } from 'tsyringe';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import type { EventBus } from '../../contexts/shared/events/EventBus';
@@ -190,25 +190,25 @@ export const CaptureDevTools = () => {
               let deletedCount = 0;
 
               // Purge cache expo-audio
-              const cacheAudioDir = `${FileSystem.cacheDirectory}Audio/`;
-              const cacheInfo = await FileSystem.getInfoAsync(cacheAudioDir);
-
-              if (cacheInfo.exists) {
-                const cacheFiles = await FileSystem.readDirectoryAsync(cacheAudioDir);
-                for (const file of cacheFiles) {
-                  await FileSystem.deleteAsync(`${cacheAudioDir}${file}`, { idempotent: true });
+              const cacheAudioPath = `${Paths.cache}/Audio/`;
+              const cacheDir = new Directory(cacheAudioPath);
+              if (cacheDir.exists) {
+                const cacheFiles = await cacheDir.list();
+                for (const filename of cacheFiles) {
+                  const file = new File(`${cacheAudioPath}${filename}`);
+                  await file.delete();
                   deletedCount++;
                 }
               }
 
               // Purge stockage permanent
-              const audioDir = `${FileSystem.documentDirectory}audio/`;
-              const audioInfo = await FileSystem.getInfoAsync(audioDir);
-
-              if (audioInfo.exists) {
-                const audioFiles = await FileSystem.readDirectoryAsync(audioDir);
-                for (const file of audioFiles) {
-                  await FileSystem.deleteAsync(`${audioDir}${file}`, { idempotent: true });
+              const audioPath = `${Paths.document}/audio/`;
+              const audioDir = new Directory(audioPath);
+              if (audioDir.exists) {
+                const audioFiles = await audioDir.list();
+                for (const filename of audioFiles) {
+                  const file = new File(`${audioPath}${filename}`);
+                  await file.delete();
                   deletedCount++;
                 }
               }
