@@ -108,9 +108,9 @@ export class ApiClient {
     );
   }
 
-  // Story 24.2: Features résolues utilisateur (Record<string, boolean>, résolution backend)
+  // Story 24.2: Features résolues utilisateur avec trace (resolved + sources)
   async getAdminUserFeatures(userId: string) {
-    return this.fetch<Record<string, boolean>>(`/api/admin/users/${userId}/features`);
+    return this.fetch<Record<string, UserFeatureResolution>>(`/api/admin/users/${userId}/features`);
   }
 
   async upsertUserFeatureAssignment(userId: string, featureKey: string, value: boolean) {
@@ -398,6 +398,16 @@ export interface FeatureItem {
 export interface FeatureAssignment {
   featureKey: string;
   value: boolean;
+}
+
+export interface UserFeatureSource {
+  type: 'user' | 'role' | 'permission';
+  value: boolean;
+}
+
+export interface UserFeatureResolution {
+  resolved: boolean;
+  sources: UserFeatureSource[];
 }
 
 export interface CreateFeatureDto {

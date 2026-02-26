@@ -65,6 +65,8 @@ defineFeature(feature, (test) => {
     await dataSource.query('DELETE FROM features');
     await dataSource.query(`DELETE FROM admin_users WHERE email = $1`, [TEST_ADMIN_EMAIL]);
     await dataSource.query(`DELETE FROM users WHERE email LIKE '%@story-24-2.test'`);
+    await dataSource.query(`DELETE FROM roles WHERE name = 'role-ff-test'`);
+    await dataSource.query(`DELETE FROM permissions WHERE name = 'perm-ff-test'`);
 
     adminToken = '';
   });
@@ -268,6 +270,150 @@ defineFeature(feature, (test) => {
 
     and('la trace de "debug_mode" a 0 sources', () => {
       expect(response.body['debug_mode'].sources).toHaveLength(0);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Scénario 4: Admin assigne feature à un rôle (AC3)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  test('Admin assigne une feature à un rôle et supprime l\'assignation (AC3)', ({
+    given,
+    and,
+    when,
+    then,
+  }) => {
+    const TEST_ROLE_ID = 'a0000001-0000-7000-8000-00000000ff03';
+
+    given('les features initiales sont seédées dans la base de données', async () => {
+      await seedFeatures();
+    });
+
+    given('je suis authentifié en tant qu\'admin', async () => {
+      adminToken = await loginAsAdmin();
+    });
+
+    and('il existe un rôle avec l\'ID "role-ff-test"', async () => {
+      await dataSource.query(
+        `INSERT INTO roles (id, name, display_name, is_system)
+         VALUES ($1, 'role-ff-test', 'Role FF Test', false)
+         ON CONFLICT (name) DO NOTHING`,
+        [TEST_ROLE_ID],
+      );
+    });
+
+    when('l\'admin requête PUT /api/admin/roles/role-ff-test/features/debug_mode avec value true', async () => {
+      response = await request(app.getHttpServer())
+        .put(`/api/admin/roles/${TEST_ROLE_ID}/features/debug_mode`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ value: true });
+    });
+
+    then('la réponse a le statut 200', () => {
+      expect(response.status).toBe(200);
+    });
+
+    and('la réponse contient source "role"', () => {
+      expect(response.body.source).toBe('role');
+    });
+
+    when('l\'admin requête GET /api/admin/roles/role-ff-test/features', async () => {
+      response = await request(app.getHttpServer())
+        .get(`/api/admin/roles/${TEST_ROLE_ID}/features`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    });
+
+    then('la réponse a le statut 200', () => {
+      expect(response.status).toBe(200);
+    });
+
+    and('la liste d\'assignations contient "debug_mode" à true', () => {
+      const assignments = response.body as Array<{ featureKey: string; value: boolean }>;
+      const found = assignments.find((a) => a.featureKey === 'debug_mode');
+      expect(found).toBeDefined();
+      expect(found?.value).toBe(true);
+    });
+
+    when('l\'admin requête DELETE /api/admin/roles/role-ff-test/features/debug_mode', async () => {
+      response = await request(app.getHttpServer())
+        .delete(`/api/admin/roles/${TEST_ROLE_ID}/features/debug_mode`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    });
+
+    then('la réponse a le statut 204', () => {
+      expect(response.status).toBe(204);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Scénario 5: Admin assigne feature à une permission (AC4)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  test('Admin assigne une feature à une permission et supprime l\'assignation (AC4)', ({
+    given,
+    and,
+    when,
+    then,
+  }) => {
+    const TEST_PERM_ID = 'b0000001-0000-7000-8000-00000000ff04';
+
+    given('les features initiales sont seédées dans la base de données', async () => {
+      await seedFeatures();
+    });
+
+    given('je suis authentifié en tant qu\'admin', async () => {
+      adminToken = await loginAsAdmin();
+    });
+
+    and('il existe une permission avec l\'ID "perm-ff-test"', async () => {
+      await dataSource.query(
+        `INSERT INTO permissions (id, name, display_name, resource_type, action, is_paid_feature)
+         VALUES ($1, 'perm-ff-test', 'Permission FF Test', 'feature', 'read', false)
+         ON CONFLICT (name) DO NOTHING`,
+        [TEST_PERM_ID],
+      );
+    });
+
+    when('l\'admin requête PUT /api/admin/permissions/perm-ff-test/features/news_tab avec value true', async () => {
+      response = await request(app.getHttpServer())
+        .put(`/api/admin/permissions/${TEST_PERM_ID}/features/news_tab`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ value: true });
+    });
+
+    then('la réponse a le statut 200', () => {
+      expect(response.status).toBe(200);
+    });
+
+    and('la réponse contient source "permission"', () => {
+      expect(response.body.source).toBe('permission');
+    });
+
+    when('l\'admin requête GET /api/admin/permissions/perm-ff-test/features', async () => {
+      response = await request(app.getHttpServer())
+        .get(`/api/admin/permissions/${TEST_PERM_ID}/features`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    });
+
+    then('la réponse a le statut 200', () => {
+      expect(response.status).toBe(200);
+    });
+
+    and('la liste d\'assignations contient "news_tab" à true', () => {
+      const assignments = response.body as Array<{ featureKey: string; value: boolean }>;
+      const found = assignments.find((a) => a.featureKey === 'news_tab');
+      expect(found).toBeDefined();
+      expect(found?.value).toBe(true);
+    });
+
+    when('l\'admin requête DELETE /api/admin/permissions/perm-ff-test/features/news_tab', async () => {
+      response = await request(app.getHttpServer())
+        .delete(`/api/admin/permissions/${TEST_PERM_ID}/features/news_tab`)
+        .set('Authorization', `Bearer ${adminToken}`);
+    });
+
+    then('la réponse a le statut 204', () => {
+      expect(response.status).toBe(204);
     });
   });
 });

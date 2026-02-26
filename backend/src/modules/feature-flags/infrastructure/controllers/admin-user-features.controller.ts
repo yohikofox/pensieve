@@ -35,7 +35,7 @@ export class AdminUserFeaturesController {
   @Get(':userId/features')
   getUserFeatures(
     @Param('userId') userId: string,
-  ): Promise<Record<string, boolean>> {
+  ): Promise<Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }>> {
     this.logger.log(`Admin getting features for user ${userId}`);
     return this.adminService.getUserFeatures(userId);
   }

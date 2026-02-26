@@ -59,23 +59,27 @@ export class AdminFeatureFlagsService {
   // ──────────────────────────────────────────────
 
   /**
-   * Retourne les features résolues (deny-wins) pour un utilisateur.
-   * Format identique à GET /api/users/:userId/features — la résolution
-   * est exclusivement côté backend.
+   * Retourne les features résolues (deny-wins) pour un utilisateur avec trace de résolution.
+   * Format: { featureKey: { resolved: boolean, sources: [{type, value}] } }
+   * - resolved: algorithme deny-wins sur toutes les sources actives
+   * - sources: liste des assignations qui ont contribué (user/role/permission)
+   * - Si aucune source, fallback sur defaultValue de la feature
    */
-  async getUserFeatures(userId: string): Promise<Record<string, boolean>> {
+  async getUserFeatures(
+    userId: string,
+  ): Promise<Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }>> {
     const allFeatures = await this.featureRepository.findAll();
 
-    const rows: Array<{ featureKey: string; value: boolean }> =
+    const rows: Array<{ featureKey: string; value: boolean; sourceType: string }> =
       await this.dataSource.query(
-        `SELECT f.key AS "featureKey", ufa.value
+        `SELECT f.key AS "featureKey", ufa.value, 'user' AS "sourceType"
          FROM user_feature_assignments ufa
          INNER JOIN features f ON f.id = ufa.feature_id AND f.deleted_at IS NULL
          WHERE ufa.user_id = $1
 
          UNION ALL
 
-         SELECT f.key AS "featureKey", rfa.value
+         SELECT f.key AS "featureKey", rfa.value, 'role' AS "sourceType"
          FROM role_feature_assignments rfa
          INNER JOIN features f ON f.id = rfa.feature_id AND f.deleted_at IS NULL
          WHERE rfa.role_id IN (
@@ -85,7 +89,7 @@ export class AdminFeatureFlagsService {
 
          UNION ALL
 
-         SELECT f.key AS "featureKey", pfa.value
+         SELECT f.key AS "featureKey", pfa.value, 'permission' AS "sourceType"
          FROM permission_feature_assignments pfa
          INNER JOIN features f ON f.id = pfa.feature_id AND f.deleted_at IS NULL
          WHERE pfa.permission_id IN (
@@ -94,17 +98,20 @@ export class AdminFeatureFlagsService {
         [userId],
       );
 
-    const valueMap = new Map<string, boolean[]>();
+    const sourceMap = new Map<string, Array<{ type: string; value: boolean }>>();
     for (const f of allFeatures) {
-      valueMap.set(f.key, []);
+      sourceMap.set(f.key, []);
     }
     for (const row of rows) {
-      valueMap.get(row.featureKey)?.push(row.value);
+      sourceMap.get(row.featureKey)?.push({ type: row.sourceType, value: row.value });
     }
 
-    const result: Record<string, boolean> = {};
-    for (const [key, values] of valueMap) {
-      result[key] = values.length > 0 && values.every((v) => v);
+    const result: Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }> = {};
+    for (const f of allFeatures) {
+      const sources = sourceMap.get(f.key) ?? [];
+      // Deny-wins: si aucune source, fallback sur defaultValue ; sinon toutes les sources doivent être true
+      const resolved = sources.length === 0 ? f.defaultValue : sources.every((s) => s.value);
+      result[f.key] = { resolved, sources };
     }
     return result;
   }

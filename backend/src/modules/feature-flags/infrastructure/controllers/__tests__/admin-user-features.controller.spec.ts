@@ -37,10 +37,10 @@ describe('AdminUserFeaturesController', () => {
   });
 
   describe('getUserFeatures', () => {
-    it('should return resolved features for a user', async () => {
-      const resolved: Record<string, boolean> = {
-        debug_mode: false,
-        news_tab: true,
+    it('should return resolved features with trace for a user', async () => {
+      const resolved: Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }> = {
+        debug_mode: { resolved: false, sources: [] },
+        news_tab: { resolved: true, sources: [{ type: 'user', value: true }] },
       };
       (mockService.getUserFeatures as jest.Mock).mockResolvedValue(resolved);
 

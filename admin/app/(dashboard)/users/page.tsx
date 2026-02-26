@@ -29,6 +29,7 @@ import {
   type UserDetails,
   type Role,
   type Permission,
+  type UserFeatureResolution,
 } from '@/lib/api-client';
 
 interface User {
@@ -74,7 +75,7 @@ export default function UsersPage() {
   const [revokePermLoadingId, setRevokePermLoadingId] = useState<string | null>(null);
 
   // Feature flags state
-  const [userFeatures, setUserFeatures] = useState<Record<string, boolean> | null>(null);
+  const [userFeatures, setUserFeatures] = useState<Record<string, UserFeatureResolution> | null>(null);
   const [featureToggleLoading, setFeatureToggleLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -521,21 +522,53 @@ export default function UsersPage() {
                   <p className="text-sm text-muted-foreground italic">Aucune feature définie.</p>
                 ) : (
                   <ul className="space-y-1">
-                    {Object.entries(userFeatures).map(([key, resolved]) => {
+                    {Object.entries(userFeatures).map(([key, resolution]) => {
                       const isLoading = featureToggleLoading === key;
+                      const hasDirectAssignment = resolution.sources.some((s) => s.type === 'user');
+                      const sourceLabels: Record<string, string> = { user: 'direct', role: 'rôle', permission: 'permission' };
                       return (
-                        <li key={key} className="flex items-center justify-between rounded-md border px-3 py-2">
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs font-mono">{key}</code>
-                            <Badge variant={resolved ? 'default' : 'secondary'} className="text-xs">
-                              {resolved ? 'true' : 'false'}
-                            </Badge>
+                        <li key={key} className="rounded-md border px-3 py-2 space-y-1">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <code className="text-xs font-mono">{key}</code>
+                              <Badge variant={resolution.resolved ? 'default' : 'secondary'} className="text-xs">
+                                {resolution.resolved ? 'true' : 'false'}
+                              </Badge>
+                              {resolution.sources.length === 0 ? (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">non défini</Badge>
+                              ) : (
+                                resolution.sources.map((s, i) => (
+                                  <Badge
+                                    key={i}
+                                    variant={s.type === 'user' ? 'default' : 'secondary'}
+                                    className="text-xs"
+                                  >
+                                    {sourceLabels[s.type] ?? s.type}:{s.value ? 'true' : 'false'}
+                                  </Badge>
+                                ))
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={hasDirectAssignment
+                                  ? (resolution.sources.find((s) => s.type === 'user')?.value ?? false)
+                                  : false}
+                                onCheckedChange={(v) => handleUpsertFeature(key, v)}
+                                disabled={isLoading}
+                                className={!hasDirectAssignment ? 'opacity-50' : undefined}
+                              />
+                              {hasDirectAssignment && (
+                                <button
+                                  onClick={() => handleDeleteFeature(key)}
+                                  disabled={isLoading}
+                                  className="text-xs text-muted-foreground hover:text-destructive"
+                                  title="Supprimer l'assignation directe"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
                           </div>
-                          <Switch
-                            checked={resolved}
-                            onCheckedChange={(v) => handleUpsertFeature(key, v)}
-                            disabled={isLoading}
-                          />
                         </li>
                       );
                     })}

@@ -32,3 +32,27 @@ Feature: Feature Flag System — Admin API & Interface d'Administration
     When l'admin requête GET /api/admin/users/user-ff-delete-test/features
     Then la trace de "debug_mode" a resolved à false
     And la trace de "debug_mode" a 0 sources
+
+  Scenario: Admin assigne une feature à un rôle et supprime l'assignation (AC3)
+    Given je suis authentifié en tant qu'admin
+    And il existe un rôle avec l'ID "role-ff-test"
+    When l'admin requête PUT /api/admin/roles/role-ff-test/features/debug_mode avec value true
+    Then la réponse a le statut 200
+    And la réponse contient source "role"
+    When l'admin requête GET /api/admin/roles/role-ff-test/features
+    Then la réponse a le statut 200
+    And la liste d'assignations contient "debug_mode" à true
+    When l'admin requête DELETE /api/admin/roles/role-ff-test/features/debug_mode
+    Then la réponse a le statut 204
+
+  Scenario: Admin assigne une feature à une permission et supprime l'assignation (AC4)
+    Given je suis authentifié en tant qu'admin
+    And il existe une permission avec l'ID "perm-ff-test"
+    When l'admin requête PUT /api/admin/permissions/perm-ff-test/features/news_tab avec value true
+    Then la réponse a le statut 200
+    And la réponse contient source "permission"
+    When l'admin requête GET /api/admin/permissions/perm-ff-test/features
+    Then la réponse a le statut 200
+    And la liste d'assignations contient "news_tab" à true
+    When l'admin requête DELETE /api/admin/permissions/perm-ff-test/features/news_tab
+    Then la réponse a le statut 204
