@@ -24,7 +24,12 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { DataTable } from '@/components/admin/data-table';
 import { PageHeader } from '@/components/admin/page-header';
-import { apiClient, type UserDetails, type Role, type Permission } from '@/lib/api-client';
+import {
+  apiClient,
+  type UserDetails,
+  type Role,
+  type Permission,
+} from '@/lib/api-client';
 
 interface User {
   id: string;
@@ -69,8 +74,7 @@ export default function UsersPage() {
   const [revokePermLoadingId, setRevokePermLoadingId] = useState<string | null>(null);
 
   // Feature flags state
-  const [debugModeAccess, setDebugModeAccess] = useState(false);
-  const [dataMiningAccess, setDataMiningAccess] = useState(false);
+  const [userFeatures, setUserFeatures] = useState<Record<string, boolean> | null>(null);
   const [featureToggleLoading, setFeatureToggleLoading] = useState<string | null>(null);
 
   useEffect(() => {
@@ -157,13 +161,12 @@ export default function UsersPage() {
         apiClient.getUserDetails(user.id),
         apiClient.getRoles(),
         apiClient.getPermissions(),
-        apiClient.getUserFeatures(user.id),
+        apiClient.getAdminUserFeatures(user.id),
       ]);
       setUserDetails(details);
       setAllRoles(roles);
       setAllPermissions(perms);
-      setDebugModeAccess(features.debug_mode_access);
-      setDataMiningAccess(features.data_mining_access);
+      setUserFeatures(features);
     } catch (err) {
       setAccessError(err instanceof Error ? err.message : 'Erreur lors du chargement.');
     } finally {
@@ -179,21 +182,35 @@ export default function UsersPage() {
     setAccessError(null);
     setSelectedRoleId('');
     setSelectedPermissionId('');
-    setDebugModeAccess(false);
-    setDataMiningAccess(false);
+    setUserFeatures(null);
     setFeatureToggleLoading(null);
   }
 
-  async function handleToggleFeature(flag: 'debug_mode_access' | 'data_mining_access', enabled: boolean) {
+  async function handleUpsertFeature(featureKey: string, value: boolean) {
     if (!accessTarget) return;
-    setFeatureToggleLoading(flag);
+    setFeatureToggleLoading(featureKey);
     setAccessError(null);
     try {
-      const result = await apiClient.updateUserFeatures(accessTarget.id, { [flag]: enabled });
-      setDebugModeAccess(result.debug_mode_access);
-      setDataMiningAccess(result.data_mining_access);
+      await apiClient.upsertUserFeatureAssignment(accessTarget.id, featureKey, value);
+      const updated = await apiClient.getAdminUserFeatures(accessTarget.id);
+      setUserFeatures(updated);
     } catch (err) {
       setAccessError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour.');
+    } finally {
+      setFeatureToggleLoading(null);
+    }
+  }
+
+  async function handleDeleteFeature(featureKey: string) {
+    if (!accessTarget) return;
+    setFeatureToggleLoading(featureKey);
+    setAccessError(null);
+    try {
+      await apiClient.deleteUserFeatureAssignment(accessTarget.id, featureKey);
+      const updated = await apiClient.getAdminUserFeatures(accessTarget.id);
+      setUserFeatures(updated);
+    } catch (err) {
+      setAccessError(err instanceof Error ? err.message : "Erreur lors de la suppression de l'assignation.");
     } finally {
       setFeatureToggleLoading(null);
     }
@@ -494,35 +511,36 @@ export default function UsersPage() {
 
               <Separator />
 
-              {/* ── Fonctionnalités ── */}
+              {/* ── Feature Flags ── */}
               <div className="space-y-2">
-                <Label className="text-base font-semibold">Fonctionnalités</Label>
-                <div className="flex items-center justify-between rounded-md border px-3 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Mode debug</p>
-                    <p className="text-xs text-muted-foreground">
-                      Accès au Dev Panel et aux outils de diagnostic
-                    </p>
-                  </div>
-                  <Switch
-                    checked={debugModeAccess}
-                    onCheckedChange={(v) => handleToggleFeature('debug_mode_access', v)}
-                    disabled={featureToggleLoading !== null}
-                  />
-                </div>
-                <div className="flex items-center justify-between rounded-md border px-3 py-3">
-                  <div>
-                    <p className="text-sm font-medium">Datamining</p>
-                    <p className="text-xs text-muted-foreground">
-                      Accès au Query Builder SQL dans les settings
-                    </p>
-                  </div>
-                  <Switch
-                    checked={dataMiningAccess}
-                    onCheckedChange={(v) => handleToggleFeature('data_mining_access', v)}
-                    disabled={featureToggleLoading !== null}
-                  />
-                </div>
+                <Label className="text-base font-semibold">Feature Flags</Label>
+                <p className="text-xs text-muted-foreground">
+                  Assignation directe utilisateur. La logique deny-wins s&apos;applique avec les rôles et permissions.
+                </p>
+                {userFeatures === null || Object.keys(userFeatures).length === 0 ? (
+                  <p className="text-sm text-muted-foreground italic">Aucune feature définie.</p>
+                ) : (
+                  <ul className="space-y-1">
+                    {Object.entries(userFeatures).map(([key, resolved]) => {
+                      const isLoading = featureToggleLoading === key;
+                      return (
+                        <li key={key} className="flex items-center justify-between rounded-md border px-3 py-2">
+                          <div className="flex items-center gap-2">
+                            <code className="text-xs font-mono">{key}</code>
+                            <Badge variant={resolved ? 'default' : 'secondary'} className="text-xs">
+                              {resolved ? 'true' : 'false'}
+                            </Badge>
+                          </div>
+                          <Switch
+                            checked={resolved}
+                            onCheckedChange={(v) => handleUpsertFeature(key, v)}
+                            disabled={isLoading}
+                          />
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
               </div>
 
               {accessError && (

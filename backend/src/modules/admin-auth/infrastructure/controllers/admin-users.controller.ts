@@ -1,27 +1,23 @@
 import {
   Controller,
-  Patch,
   Post,
   Param,
   Body,
   UseGuards,
   Logger,
-  Get,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
 import { AdminJwtGuard } from '../guards/admin-jwt.guard';
-import { UserFeaturesService } from '../../../identity/application/services/user-features.service';
 import { BetterAuthAdminService } from '../../../rgpd/application/services/better-auth-admin.service';
 import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
-import { UpdateUserFeaturesDto } from '../../application/dtos/update-user-features.dto';
 import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password.dto';
-import { UserFeaturesDto } from '../../../identity/application/dtos/user-features.dto';
 
 /**
- * Admin controller for managing user features/permissions
+ * Admin controller for managing users
  * Story 7.1: Support Mode avec Permissions Backend - Task 2
  * Story 8.18: Admin Reset Password
+ * Story 24.2: GET/PATCH :userId/features supprimés — délégués à AdminUserFeaturesController
  *
  * Protected by AdminJwtGuard - requires admin authentication
  */
@@ -31,58 +27,9 @@ export class AdminUsersController {
   private readonly logger = new Logger(AdminUsersController.name);
 
   constructor(
-    private readonly userFeaturesService: UserFeaturesService,
     private readonly betterAuthAdminService: BetterAuthAdminService,
     private readonly rgpdService: RgpdService,
   ) {}
-
-  /**
-   * Get user's feature flags (admin view)
-   * GET /api/admin/users/:userId/features
-   *
-   * @param userId - User ID to retrieve features for
-   * @returns UserFeaturesDto with current feature flags
-   */
-  @Get(':userId/features')
-  async getUserFeatures(
-    @Param('userId') userId: string,
-  ): Promise<UserFeaturesDto> {
-    this.logger.log(`Admin retrieving features for user ${userId}`);
-    return this.userFeaturesService.getUserFeatures(userId);
-  }
-
-  /**
-   * Update user's feature flags/permissions (admin action)
-   * PATCH /api/admin/users/:userId/features
-   * AC2: Admin can activate/deactivate debug mode access
-   *
-   * @param userId - User ID to update features for
-   * @param dto - Feature flags to update
-   * @returns Updated UserFeaturesDto
-   */
-  @Patch(':userId/features')
-  async updateUserFeatures(
-    @Param('userId') userId: string,
-    @Body() dto: UpdateUserFeaturesDto,
-  ): Promise<UserFeaturesDto> {
-    this.logger.log(
-      `Admin updating features for user ${userId}: ${JSON.stringify(dto)}`,
-    );
-
-    const updatedFeatures = await this.userFeaturesService.updateFeatures(
-      userId,
-      {
-        debug_mode_access: dto.debug_mode_access,
-        data_mining_access: dto.data_mining_access,
-      },
-    );
-
-    this.logger.log(
-      `Successfully updated features for user ${userId}: ${JSON.stringify(updatedFeatures)}`,
-    );
-
-    return updatedFeatures;
-  }
 
   /**
    * Sync Better Auth users → backend PostgreSQL

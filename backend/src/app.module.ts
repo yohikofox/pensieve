@@ -16,6 +16,7 @@ import { SyncModule } from './modules/sync/sync.module'; // Story 6.1: Mobile â†
 import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: Audio file uploads
 import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: Persistance captures backend
 import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self-hosted (ADR-029)
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module'; // Story 24.1: Feature Flag System
 
 @Module({
   imports: [
@@ -69,6 +70,8 @@ import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self
     UploadsModule,
     // Auth module (Better Auth self-hosted - Story 15.1, ADR-029)
     AuthModule,
+    // Feature flags module (Story 24.1: Generic feature flag system)
+    FeatureFlagsModule,
   ],
   controllers: [AppController],
   providers: [],

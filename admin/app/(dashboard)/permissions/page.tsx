@@ -3,8 +3,17 @@
 import { useState, useEffect } from 'react';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { DataTable } from '@/components/admin/data-table';
 import { PageHeader } from '@/components/admin/page-header';
+import { FeatureFlagAssignments } from '@/components/admin/feature-flag-assignments';
 import { apiClient } from '@/lib/api-client';
 
 interface Permission {
@@ -19,6 +28,7 @@ interface Permission {
 export default function PermissionsPage() {
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [featuresPermTarget, setFeaturesPermTarget] = useState<Permission | null>(null);
 
   useEffect(() => {
     loadPermissions();
@@ -63,6 +73,18 @@ export default function PermissionsPage() {
         row.original.isPaidFeature ? <Badge>Premium</Badge> : <Badge variant="secondary">Free</Badge>
       ),
     },
+    {
+      id: 'actions',
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setFeaturesPermTarget(row.original)}
+        >
+          Feature Flags
+        </Button>
+      ),
+    },
   ];
 
   return (
@@ -73,6 +95,26 @@ export default function PermissionsPage() {
       ) : (
         <DataTable columns={columns} data={permissions} />
       )}
+
+      <Dialog
+        open={!!featuresPermTarget}
+        onOpenChange={(open) => { if (!open) setFeaturesPermTarget(null); }}
+      >
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Feature Flags — {featuresPermTarget?.displayName}</DialogTitle>
+          </DialogHeader>
+          {featuresPermTarget && (
+            <FeatureFlagAssignments
+              targetId={featuresPermTarget.id}
+              targetType="permission"
+            />
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setFeaturesPermTarget(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

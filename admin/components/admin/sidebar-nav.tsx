@@ -3,13 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Users, Shield, Key, CreditCard, FileText, BarChart } from 'lucide-react';
+import { Users, Shield, Key, CreditCard, FileText, BarChart, ToggleLeft } from 'lucide-react';
 
 const navItems = [
   { href: '/', label: 'Dashboard', icon: BarChart },
   { href: '/users', label: 'Utilisateurs', icon: Users },
   { href: '/roles', label: 'Rôles', icon: Shield },
   { href: '/permissions', label: 'Permissions', icon: Key },
+  { href: '/features', label: 'Feature Flags', icon: ToggleLeft },
   { href: '/subscriptions', label: 'Abonnements', icon: CreditCard },
   { href: '/content', label: 'Contenu', icon: FileText },
 ];

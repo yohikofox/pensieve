@@ -32,6 +32,11 @@ export class ApiClient {
       throw new Error(error.message || `API Error: ${response.status}`);
     }
 
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return undefined as unknown as T;
+    }
+
     return response.json();
   }
 
@@ -103,14 +108,85 @@ export class ApiClient {
     );
   }
 
-  async getUserFeatures(userId: string) {
-    return this.fetch<UserFeatureFlags>(`/api/admin/users/${userId}/features`);
+  // Story 24.2: Features résolues utilisateur (Record<string, boolean>, résolution backend)
+  async getAdminUserFeatures(userId: string) {
+    return this.fetch<Record<string, boolean>>(`/api/admin/users/${userId}/features`);
   }
 
-  async updateUserFeatures(userId: string, data: Partial<UserFeatureFlags>) {
-    return this.fetch<UserFeatureFlags>(`/api/admin/users/${userId}/features`, {
+  async upsertUserFeatureAssignment(userId: string, featureKey: string, value: boolean) {
+    return this.fetch<{ key: string; value: boolean; source: string }>(
+      `/api/admin/users/${userId}/features/${featureKey}`,
+      { method: 'PUT', body: JSON.stringify({ value }) }
+    );
+  }
+
+  async deleteUserFeatureAssignment(userId: string, featureKey: string) {
+    return this.fetch<void>(`/api/admin/users/${userId}/features/${featureKey}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ========================================
+  // Feature Flags Catalogue (Story 24.2)
+  // ========================================
+
+  async getAdminFeatures() {
+    return this.fetch<FeatureItem[]>(`/api/admin/features`);
+  }
+
+  async createAdminFeature(data: CreateFeatureDto) {
+    return this.fetch<FeatureItem>(`/api/admin/features`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateAdminFeature(id: string, data: UpdateFeatureDto) {
+    return this.fetch<FeatureItem>(`/api/admin/features/${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    });
+  }
+
+  // ========================================
+  // Role Feature Flags (Story 24.2)
+  // ========================================
+
+  async getRoleFeatures(roleId: string) {
+    return this.fetch<FeatureAssignment[]>(`/api/admin/roles/${roleId}/features`);
+  }
+
+  async upsertRoleFeatureAssignment(roleId: string, featureKey: string, value: boolean) {
+    return this.fetch<{ key: string; value: boolean; source: string }>(
+      `/api/admin/roles/${roleId}/features/${featureKey}`,
+      { method: 'PUT', body: JSON.stringify({ value }) }
+    );
+  }
+
+  async deleteRoleFeatureAssignment(roleId: string, featureKey: string) {
+    return this.fetch<void>(`/api/admin/roles/${roleId}/features/${featureKey}`, {
+      method: 'DELETE',
+    });
+  }
+
+  // ========================================
+  // Permission Feature Flags (Story 24.2)
+  // ========================================
+
+  async getPermissionFeatures(permissionId: string) {
+    return this.fetch<FeatureAssignment[]>(`/api/admin/permissions/${permissionId}/features`);
+  }
+
+  async upsertPermissionFeatureAssignment(permissionId: string, featureKey: string, value: boolean) {
+    return this.fetch<{ key: string; value: boolean; source: string }>(
+      `/api/admin/permissions/${permissionId}/features/${featureKey}`,
+      { method: 'PUT', body: JSON.stringify({ value }) }
+    );
+  }
+
+  async deletePermissionFeatureAssignment(permissionId: string, featureKey: string) {
+    return this.fetch<void>(`/api/admin/permissions/${permissionId}/features/${featureKey}`, {
+      method: 'DELETE',
     });
   }
 
@@ -311,9 +387,28 @@ export interface Tier {
   permissionsCount?: number;
 }
 
-export interface UserFeatureFlags {
-  debug_mode_access: boolean;
-  data_mining_access: boolean;
+// Story 24.2: Feature flag types
+export interface FeatureItem {
+  id: string;
+  key: string;
+  description: string | null;
+  defaultValue: boolean;
+}
+
+export interface FeatureAssignment {
+  featureKey: string;
+  value: boolean;
+}
+
+export interface CreateFeatureDto {
+  key: string;
+  description?: string;
+  defaultValue?: boolean;
+}
+
+export interface UpdateFeatureDto {
+  description?: string;
+  defaultValue?: boolean;
 }
 
 export interface AssignRoleDto {

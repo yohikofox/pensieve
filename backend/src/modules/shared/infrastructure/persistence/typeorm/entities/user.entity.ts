@@ -41,13 +41,8 @@ export class User {
   @Column({ type: 'boolean', default: true })
   hapticFeedbackEnabled!: boolean;
 
-  // Story 7.1: Support Mode avec Permissions Backend
-  @Column({ type: 'boolean', default: false })
-  debug_mode_access!: boolean;
-
-  // Datamining (query builder) access — assigned from admin
-  @Column({ type: 'boolean', default: false })
-  data_mining_access!: boolean;
+  // debug_mode_access et data_mining_access supprimés (Story 24.1)
+  // → déplacés vers user_feature_assignments via FeatureResolutionService
 
   @OneToMany(() => AuditLog, (auditLog) => auditLog.user)
   audit_logs!: AuditLog[];

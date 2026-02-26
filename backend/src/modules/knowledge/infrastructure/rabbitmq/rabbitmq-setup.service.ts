@@ -20,8 +20,6 @@ import { getRabbitMQUrl, DIGESTION_QUEUE_OPTIONS } from './rabbitmq.config';
 @Injectable()
 export class RabbitMQSetupService implements OnModuleInit {
   private readonly logger = new Logger(RabbitMQSetupService.name);
-  private connection!: amqp.Connection;
-  private channel!: amqp.Channel;
 
   async onModuleInit() {
     await this.setupInfrastructure();
@@ -40,16 +38,25 @@ export class RabbitMQSetupService implements OnModuleInit {
       );
 
       // @ts-expect-error - amqplib types issue with Connection
-      this.connection = await amqp.connect(url, {
+      const connection: amqp.Connection = await amqp.connect(url, {
         // Connection pooling settings (Subtask 1.5)
         heartbeat: 30,
       });
 
+      // Prevent unhandled 'error' events from crashing the process
+      // (amqplib emits 'error' on heartbeat timeout or network drop)
+      connection.on('error', (err: Error) => {
+        this.logger.warn(`RabbitMQ setup connection error: ${err.message}`);
+      });
+
       // @ts-expect-error - amqplib types issue with createChannel
-      this.channel = await this.connection.createChannel();
+      const channel: amqp.Channel = await connection.createChannel();
+      channel.on('error', (err: Error) => {
+        this.logger.warn(`RabbitMQ setup channel error: ${err.message}`);
+      });
 
       // Create dead-letter exchange (Subtask 1.4)
-      await this.channel.assertExchange(ExchangeNames.DIGESTION_DLX, 'direct', {
+      await channel.assertExchange(ExchangeNames.DIGESTION_DLX, 'direct', {
         durable: true,
       });
       this.logger.log(
@@ -57,7 +64,7 @@ export class RabbitMQSetupService implements OnModuleInit {
       );
 
       // Create dead-letter queue (Subtask 1.4)
-      await this.channel.assertQueue(QueueNames.DIGESTION_FAILED, {
+      await channel.assertQueue(QueueNames.DIGESTION_FAILED, {
         durable: true, // Survive restarts
       });
       this.logger.log(
@@ -65,7 +72,7 @@ export class RabbitMQSetupService implements OnModuleInit {
       );
 
       // Bind DLQ to DLX
-      await this.channel.bindQueue(
+      await channel.bindQueue(
         QueueNames.DIGESTION_FAILED,
         ExchangeNames.DIGESTION_DLX,
         RoutingKeys.DIGESTION_FAILED,
@@ -74,7 +81,7 @@ export class RabbitMQSetupService implements OnModuleInit {
       // Create main digestion jobs queue (Subtask 1.3)
       // Uses centralized DIGESTION_QUEUE_OPTIONS to ensure consistency
       // with consumer configuration (prevents PRECONDITION_FAILED errors)
-      await this.channel.assertQueue(
+      await channel.assertQueue(
         QueueNames.DIGESTION_JOBS,
         DIGESTION_QUEUE_OPTIONS,
       );
@@ -83,6 +90,14 @@ export class RabbitMQSetupService implements OnModuleInit {
       );
 
       this.logger.log('✅ RabbitMQ infrastructure setup complete');
+
+      // Close the setup connection — queues/exchanges persist in RabbitMQ
+      // regardless of connection state. Keeping it open indefinitely would
+      // cause heartbeat timeouts after hours of inactivity (unhandled 'error').
+      await channel.close();
+      // @ts-expect-error - amqplib types issue with close
+      await connection.close();
+      this.logger.log('RabbitMQ setup connection closed (infrastructure persists)');
     } catch (error) {
       // Detect queue parameter mismatch error (common when queue exists with different config)
       const errorMessage =
@@ -114,20 +129,5 @@ export class RabbitMQSetupService implements OnModuleInit {
     }
   }
 
-  /**
-   * Get channel for manual operations (testing purposes)
-   */
-  getChannel(): amqp.Channel {
-    return this.channel;
-  }
-
-  /**
-   * Cleanup on module destroy
-   */
-  async onModuleDestroy() {
-    await this.channel?.close();
-    // @ts-expect-error - amqplib types issue with close
-    await this.connection?.close();
-    this.logger.log('RabbitMQ connection closed');
-  }
 }
+
