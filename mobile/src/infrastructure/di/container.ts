@@ -85,6 +85,7 @@ import { TranscriptionEngineService } from '../../contexts/Normalization/service
 
 // Identity Services (Story 7.1)
 import { UserFeaturesService } from '../../contexts/identity/services/user-features.service';
+import { FirstLaunchInitializer } from '../../contexts/identity/services/FirstLaunchInitializer';
 import { BetterAuthService } from '../auth/BetterAuthService';
 import { AuthTokenManager } from '../auth/AuthTokenManager';
 import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
@@ -244,6 +245,11 @@ export function registerServices() {
 
   // Identity Services — stateless (ADR-021 Transient First)
   container.register(UserFeaturesService, { useClass: UserFeaturesService });
+
+  // SINGLETON: FirstLaunchInitializer — exception ADR-021 (Story 24.4)
+  // Justification: service à usage unique au premier lancement.
+  // Garantit un seul appel effectif même en cas de re-résolution.
+  container.registerSingleton(TOKENS.FirstLaunchInitializer, FirstLaunchInitializer);
 
   // Upload Infrastructure (Story 6.2 - Task 6-7)
   // Note: AudioUploadService and ChunkedUploadService need API URL

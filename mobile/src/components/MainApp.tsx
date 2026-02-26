@@ -33,6 +33,8 @@ import { useTranscriptionInitialization } from '../hooks/initialization/useTrans
 import { useSyncInitialization } from '../hooks/initialization/useSyncInitialization';
 import { useSyncStatusBridge } from '../hooks/useSyncStatusBridge';
 import { useLongOfflineReminder } from '../hooks/useLongOfflineReminder';
+import { useFirstLaunchInitialization } from '../hooks/initialization/useFirstLaunchInitialization';
+import { FirstLaunchProgress } from './FirstLaunchProgress';
 
 /**
  * Check the initial deep link URL for a password recovery token.
@@ -102,6 +104,9 @@ function AppContent() {
   // Story 6.4: Remind user when offline for too long
   useLongOfflineReminder();
 
+  // Story 24.4: First launch initialization for Pixel 9+ defaults
+  const firstLaunch = useFirstLaunchInitialization(user?.id ?? null);
+
   // Wait for both auth session AND initial URL check to complete
   if (loading || !initialUrlChecked) {
     return <LoadingView fullScreen />;
@@ -117,6 +122,11 @@ function AppContent() {
       </NavigationContainer>
       <DevPanel />
       <CalibrationGridWrapper />
+      <FirstLaunchProgress
+        visible={firstLaunch.isVisible}
+        progress={firstLaunch.progress}
+        onSkip={firstLaunch.skip}
+      />
     </DevPanelProvider>
   );
 }

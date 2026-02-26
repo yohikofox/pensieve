@@ -123,7 +123,7 @@ export class NPUDetectionService {
 
     // Try to get more specific model info
     // On iOS, we can use the model identifier pattern
-    const deviceModel = Platform.constants?.Model || 'iPhone';
+    const deviceModel = (Platform.constants as Record<string, unknown>)?.['Model'] as string || 'iPhone';
 
     // Check for Neural Engine support (A11+, iPhone X and later)
     // All modern iPhones (2017+) have Neural Engine

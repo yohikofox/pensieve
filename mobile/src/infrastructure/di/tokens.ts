@@ -42,4 +42,7 @@ export const TOKENS = {
 
   // Auth Services (Story 15.2 — Better Auth)
   IAuthTokenManager: Symbol.for('IAuthTokenManager'),
+
+  // First Launch (Story 24.4)
+  FirstLaunchInitializer: Symbol.for('FirstLaunchInitializer'),
 };
