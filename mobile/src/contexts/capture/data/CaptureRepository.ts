@@ -173,7 +173,7 @@ export class CaptureRepository implements ICaptureRepository {
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
-              captureType: capture.type,
+              captureType: capture.type as 'audio' | 'text',
               audioPath:
                 capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
               audioDuration: capture.duration ?? undefined,
@@ -303,7 +303,7 @@ export class CaptureRepository implements ICaptureRepository {
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
-              captureType: capture.type,
+              captureType: capture.type as 'audio' | 'text',
               audioPath:
                 capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
               audioDuration: capture.duration ?? undefined,
@@ -460,7 +460,7 @@ export class CaptureRepository implements ICaptureRepository {
             timestamp: Date.now(),
             payload: {
               captureId: capture.id,
-              captureType: capture.type,
+              captureType: capture.type as 'audio' | 'text',
               audioPath:
                 capture.type === CAPTURE_TYPES.AUDIO ? capture.rawContent : undefined,
             },

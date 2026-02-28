@@ -31,6 +31,8 @@ const mockTodoRepository: jest.Mocked<ITodoRepository> = {
   countActive: jest.fn(),
   countByStatus: jest.fn(),
   countAllByStatus: jest.fn(),
+  findAllDeletedWithSource: jest.fn(),
+  deleteAllDeleted: jest.fn(),
   findAllWithSource: jest.fn(),
   findByAnalysisId: jest.fn(),
 };
@@ -191,5 +193,45 @@ describe('useToggleTodoStatus', () => {
 
     // Verify reset method exists (testing React Query integration)
     expect(typeof result.current.reset).toBe('function');
+  });
+
+  // Regression test for Issue #20 — setQueriesData must use QueryFilters object syntax
+  it('should restore previous todos on rollback when mutation fails', async () => {
+    const todoId = 'rollback-todo-id';
+    const previousTodo: Todo = {
+      id: todoId,
+      thoughtId: 'thought-1',
+      ideaId: 'idea-1',
+      captureId: 'capture-1',
+      userId: 'user-1',
+      description: 'Todo before toggle',
+      status: 'todo',
+      priority: 'medium',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    // Simulate failed mutation
+    mockTodoRepository.toggleStatus.mockResolvedValue(notFound('Database error'));
+
+    const queryClient = createTestQueryClient();
+    // Pre-populate the query cache with previous todos
+    queryClient.setQueryData(['todos'], [previousTodo]);
+
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    );
+
+    const { result } = renderHook(() => useToggleTodoStatus(), { wrapper });
+
+    result.current.mutate(todoId);
+
+    await waitFor(() => {
+      expect(result.current.isError).toBe(true);
+    });
+
+    // After rollback, cache should be restored to previous todos
+    const restoredTodos = queryClient.getQueryData<Todo[]>(['todos']);
+    expect(restoredTodos).toEqual([previousTodo]);
   });
 });

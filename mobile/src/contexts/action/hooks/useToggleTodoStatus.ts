@@ -77,7 +77,7 @@ export const useToggleTodoStatus = (): UseMutationResult<
     // Rollback on error (Subtask 5.9)
     onError: (err, todoId, context) => {
       if (context?.previousTodos) {
-        queryClient.setQueriesData(["todos"], context.previousTodos);
+        queryClient.setQueriesData<Todo[]>({ queryKey: ["todos"] }, context.previousTodos);
       }
 
       console.error("[useToggleTodoStatus] Error toggling todo:", err);

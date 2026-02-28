@@ -29,7 +29,7 @@ interface UpdateTodoParams {
  * @returns React Query mutation
  */
 export const useUpdateTodo = (): UseMutationResult<
-  void,
+  boolean,
   Error,
   UpdateTodoParams
 > => {
@@ -52,6 +52,8 @@ export const useUpdateTodo = (): UseMutationResult<
           if (items) {
             useCaptureDetailStore.getState().setActionItems(items);
           }
+        }).catch((err) => {
+          console.error("[useUpdateTodo] Failed to refresh action items:", err);
         });
       }
     },
