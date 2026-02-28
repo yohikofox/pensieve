@@ -110,6 +110,10 @@ interface SettingsState {
   syncOnWifiOnly: boolean;
   setSyncOnWifiOnly: (enabled: boolean) => void;
 
+  // Story 8.3: Audio silence trim - optional feature (disabled by default)
+  audioTrimEnabled: boolean;
+  setAudioTrimEnabled: (enabled: boolean) => void;
+
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
   setLLMAutoPostProcess: (enabled: boolean) => void;
@@ -156,6 +160,9 @@ export const useSettingsStore = create<SettingsState>()(
 
         // Story 6.4: Sync only on Wi-Fi - disabled by default (sync on all connections)
         syncOnWifiOnly: false,
+
+        // Story 8.3: Audio silence trim - disabled by default (preserve full audio)
+        audioTrimEnabled: false,
 
         // Initial LLM state - disabled by default
         llm: {
@@ -266,6 +273,15 @@ export const useSettingsStore = create<SettingsState>()(
           set({ syncOnWifiOnly: enabled });
           console.debug(
             "[SettingsStore] Sync on Wi-Fi only:",
+            enabled ? "ON" : "OFF",
+          );
+        },
+
+        // Story 8.3: Audio silence trim toggle
+        setAudioTrimEnabled: (enabled: boolean) => {
+          set({ audioTrimEnabled: enabled });
+          console.debug(
+            "[SettingsStore] Audio trim enabled:",
             enabled ? "ON" : "OFF",
           );
         },

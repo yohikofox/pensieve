@@ -13,6 +13,7 @@ import {
   businessError,
   unknownError,
 } from "../../shared/domain/Result";
+import { useSettingsStore } from "../../../stores/settingsStore";
 
 export interface PerformanceMetrics {
   audioDuration: number; // Audio file duration in ms
@@ -79,8 +80,10 @@ export class TranscriptionService {
         audioFilePath,
       );
 
+      // Story 8.3: Read audio trim preference from settings
+      const audioTrimEnabled = useSettingsStore.getState().audioTrimEnabled;
       const conversionResult =
-        await this.audioConversionService.convertToWhisperFormat(audioFilePath);
+        await this.audioConversionService.convertToWhisperFormat(audioFilePath, { trimSilence: audioTrimEnabled });
 
       if (conversionResult.type !== RepositoryResultType.SUCCESS) {
         return businessError(conversionResult.error ?? "Audio conversion failed");

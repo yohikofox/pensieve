@@ -26,6 +26,7 @@ import {
   type NativeRecognitionResults,
 } from "../../capture/domain/NativeRecognitionResults.schema";
 import { RepositoryResultType } from "../../shared/domain/Result";
+import { useSettingsStore } from "../../../stores/settingsStore";
 
 const SpeechRecognitionResultSchema = z.object({
   results: z.array(
@@ -118,9 +119,11 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
 
     // Convert audio to WAV format (16kHz mono 16-bit PCM) with end padding
     // The padding ensures the native recognition engine has time to finalize the last word
+    // Story 8.3: Read audio trim preference from settings
+    const audioTrimEnabled = useSettingsStore.getState().audioTrimEnabled;
     console.log("[NativeTranscription] Converting audio to WAV format with end padding...");
     const conversionResult =
-      await this.audioConversionService.convertToWhisperFormatWithPadding(audioFilePath);
+      await this.audioConversionService.convertToWhisperFormatWithPadding(audioFilePath, { trimSilence: audioTrimEnabled });
     if (conversionResult.type !== RepositoryResultType.SUCCESS) {
       throw new Error(conversionResult.error ?? "Audio conversion failed");
     }
