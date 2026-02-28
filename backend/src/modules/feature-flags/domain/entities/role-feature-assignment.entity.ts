@@ -5,7 +5,7 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
-  PrimaryGeneratedColumn,
+  PrimaryColumn,
   Unique,
 } from 'typeorm';
 import { Feature } from './feature.entity';
@@ -20,7 +20,7 @@ import { Feature } from './feature.entity';
 @Entity('role_feature_assignments')
 @Unique(['roleId', 'featureId'])
 export class RoleFeatureAssignment {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn('uuid')
   id!: string;
 
   @Column({ type: 'uuid', name: 'role_id' })

@@ -16,7 +16,7 @@ import { auth } from './auth.config';
 export class AuthController {
   private readonly handler = toNodeHandler(auth);
 
-  @All('*')
+  @All('{*path}')
   handleAuth(@Req() req: Request, @Res() res: Response): void {
     void this.handler(req, res);
   }

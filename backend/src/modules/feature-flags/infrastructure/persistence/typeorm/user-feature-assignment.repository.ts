@@ -42,9 +42,9 @@ export class UserFeatureAssignmentRepository {
   async upsert(userId: string, featureId: string, value: boolean): Promise<void> {
     await this.repo.query(
       `INSERT INTO user_feature_assignments (id, user_id, feature_id, value, created_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, NOW())
-       ON CONFLICT (user_id, feature_id) DO UPDATE SET value = $3`,
-      [userId, featureId, value],
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, feature_id) DO UPDATE SET value = $4`,
+      [crypto.randomUUID(), userId, featureId, value],
     );
   }
 

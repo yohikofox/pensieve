@@ -43,13 +43,13 @@ export abstract class AppBaseEntity {
   /**
    * Timestamp de création — TIMESTAMPTZ pour cohérence timezone (ADR-026 R5)
    */
-  @CreateDateColumn({ type: 'timestamptz' })
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 
   /**
    * Timestamp de dernière modification — TIMESTAMPTZ (ADR-026 R5)
    */
-  @UpdateDateColumn({ type: 'timestamptz' })
+  @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt!: Date;
 
   /**
@@ -61,6 +61,10 @@ export abstract class AppBaseEntity {
    * - repository.find({ withDeleted: true }) — inclut les supprimés
    */
   @Index()
-  @DeleteDateColumn({ type: 'timestamptz', nullable: true })
+  @DeleteDateColumn({
+    type: 'timestamptz',
+    nullable: true,
+    name: 'deleted_at',
+  })
   deletedAt: Date | null = null;
 }

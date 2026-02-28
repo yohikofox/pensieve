@@ -33,6 +33,7 @@ export class FeatureRepository {
     defaultValue?: boolean;
   }): Promise<Feature> {
     const feature = this.repo.create({
+      id: crypto.randomUUID(),
       key: data.key,
       description: data.description ?? null,
       defaultValue: data.defaultValue ?? false,

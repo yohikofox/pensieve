@@ -57,9 +57,9 @@ export class RoleFeatureAssignmentRepository {
   async upsert(roleId: string, featureId: string, value: boolean): Promise<void> {
     await this.dataSource.query(
       `INSERT INTO role_feature_assignments (id, role_id, feature_id, value, created_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, NOW())
-       ON CONFLICT (role_id, feature_id) DO UPDATE SET value = $3`,
-      [roleId, featureId, value],
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (role_id, feature_id) DO UPDATE SET value = $4`,
+      [crypto.randomUUID(), roleId, featureId, value],
     );
   }
 
