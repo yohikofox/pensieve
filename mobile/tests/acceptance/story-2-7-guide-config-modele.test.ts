@@ -13,6 +13,7 @@ import { TranscriptionQueueService } from '../../src/contexts/Normalization/serv
 import type { ICaptureRepository } from '../../src/contexts/capture/domain/ICaptureRepository';
 import { TOKENS } from '../../src/infrastructure/di/tokens';
 import type { Capture } from '../../src/contexts/capture/domain/Capture.model';
+import { CAPTURE_TYPES } from '../../src/contexts/capture/domain/Capture.model';
 
 const feature = loadFeature('tests/acceptance/features/story-2-7-guide-config-modele.feature');
 
@@ -152,7 +153,7 @@ defineFeature(feature, (test) => {
     and('qu\'une capture audio existe avec state="captured" et normalizedText=null', () => {
       capture = {
         id: 'test-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/audio.m4a',
         normalizedText: null,
@@ -191,7 +192,7 @@ defineFeature(feature, (test) => {
     const pendingCaptures: Capture[] = [
       {
         id: 'cap-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/1.m4a',
         normalizedText: null,
@@ -201,7 +202,7 @@ defineFeature(feature, (test) => {
       },
       {
         id: 'cap-2',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/2.m4a',
         normalizedText: null,
@@ -211,7 +212,7 @@ defineFeature(feature, (test) => {
       },
       {
         id: 'cap-3',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/3.m4a',
         normalizedText: null,
@@ -246,7 +247,7 @@ defineFeature(feature, (test) => {
       // Simulate auto-resume logic from TranscriptionModelService
       const allCaptures = await mockRepository.findAll();
       const pending = allCaptures.filter(
-        c => c.type === 'audio' && c.state === 'captured' && !c.normalizedText
+        c => c.type === CAPTURE_TYPES.AUDIO && c.state === 'captured' && !c.normalizedText
       );
       expect(pending).toHaveLength(3);
     });
@@ -255,7 +256,7 @@ defineFeature(feature, (test) => {
       // Simulate enqueuing all pending captures
       const allCaptures = await mockRepository.findAll();
       const pending = allCaptures.filter(
-        c => c.type === 'audio' && c.state === 'captured' && !c.normalizedText
+        c => c.type === CAPTURE_TYPES.AUDIO && c.state === 'captured' && !c.normalizedText
       );
 
       for (const capture of pending) {
@@ -278,7 +279,7 @@ defineFeature(feature, (test) => {
     const captures: Capture[] = [
       {
         id: 'pending-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/1.m4a',
         normalizedText: null,
@@ -288,7 +289,7 @@ defineFeature(feature, (test) => {
       },
       {
         id: 'pending-2',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/2.m4a',
         normalizedText: null,
@@ -298,7 +299,7 @@ defineFeature(feature, (test) => {
       },
       {
         id: 'done',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'ready',
         rawContent: '/path/3.m4a',
         normalizedText: 'Already transcribed',
@@ -335,7 +336,7 @@ defineFeature(feature, (test) => {
     then('le système détecte 2 captures en attente', async () => {
       const allCaptures = await mockRepository.findAll();
       const pending = allCaptures.filter(
-        c => c.type === 'audio' && c.state === 'captured' && !c.normalizedText
+        c => c.type === CAPTURE_TYPES.AUDIO && c.state === 'captured' && !c.normalizedText
       );
       expect(pending).toHaveLength(2);
     });
@@ -343,7 +344,7 @@ defineFeature(feature, (test) => {
     and('seulement 2 captures sont ajoutées à la queue', async () => {
       const allCaptures = await mockRepository.findAll();
       const pending = allCaptures.filter(
-        c => c.type === 'audio' && c.state === 'captured' && !c.normalizedText
+        c => c.type === CAPTURE_TYPES.AUDIO && c.state === 'captured' && !c.normalizedText
       );
 
       for (const capture of pending) {
@@ -372,7 +373,7 @@ defineFeature(feature, (test) => {
     const captures: Capture[] = [
       {
         id: 'cap-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/1.m4a',
         normalizedText: null,
@@ -382,7 +383,7 @@ defineFeature(feature, (test) => {
       },
       {
         id: 'cap-2',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '/path/2.m4a',
         normalizedText: null,
@@ -410,7 +411,7 @@ defineFeature(feature, (test) => {
 
       // Count captures that should show "Modèle requis" badge
       badgeCount = allCaptures.filter(
-        c => c.type === 'audio' && c.state === 'captured' && !c.normalizedText && !hasModel
+        c => c.type === CAPTURE_TYPES.AUDIO && c.state === 'captured' && !c.normalizedText && !hasModel
       ).length;
     });
 
@@ -470,7 +471,7 @@ defineFeature(feature, (test) => {
   test('Badge "Pending model" a priorité sur "Pending"', ({ given, when, then, and }) => {
     const capture: Capture = {
       id: 'test',
-      type: 'audio',
+      type: CAPTURE_TYPES.AUDIO,
       state: 'captured',
       rawContent: '/path/audio.m4a',
       normalizedText: null,

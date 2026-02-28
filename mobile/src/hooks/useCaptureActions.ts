@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import { useTranslation } from 'react-i18next';
 import { useCaptureRepository } from './useServices';
 import type { Capture } from '../contexts/capture/domain/Capture.model';
+import { CAPTURE_TYPES } from '../contexts/capture/domain/Capture.model';
 import { useToast } from '../design-system/components';
 import { useCapturesStore } from '../stores/capturesStore';
 
@@ -35,7 +36,7 @@ export function useCaptureActions() {
     async (capture: Capture) => {
       try {
         const content = capture.normalizedText || capture.rawContent || '';
-        const title = capture.type === 'audio' ? 'Capture audio Pensieve' : 'Capture texte Pensieve';
+        const title = capture.type === CAPTURE_TYPES.AUDIO ? 'Capture audio Pensieve' : 'Capture texte Pensieve';
 
         await Share.share({
           message: content,

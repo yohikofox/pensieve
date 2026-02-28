@@ -3,7 +3,7 @@ import { container } from 'tsyringe';
 import { TranscriptionQueueProcessor } from '../TranscriptionQueueProcessor';
 import { TranscriptionQueueService } from '../../services/TranscriptionQueueService';
 import { EventBus } from '../../../shared/events/EventBus';
-import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../../Capture/events/CaptureEvents';
+import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../../capture/events/CaptureEvents';
 import { database } from '../../../../database';
 import { useSettingsStore } from '../../../../stores/settingsStore';
 

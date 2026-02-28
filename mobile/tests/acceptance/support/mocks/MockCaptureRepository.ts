@@ -9,14 +9,14 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { type ICaptureRepository } from '../../../../src/contexts/capture/domain/ICaptureRepository';
-import { type Capture } from '../../../../src/contexts/capture/domain/Capture.model';
+import { type Capture, type CaptureType } from '../../../../src/contexts/capture/domain/Capture.model';
 import { type RepositoryResult, success, databaseError } from '../../../../src/contexts/capture/domain/Result';
 
 export class MockCaptureRepository implements ICaptureRepository {
   private captures: Map<string, Capture> = new Map();
 
   async create(data: {
-    type: 'audio' | 'text' | 'image' | 'url';
+    type: CaptureType;
     state: 'recording' | 'captured' | 'processing' | 'ready' | 'failed';
     rawContent: string;
     syncStatus: 'pending' | 'synced';

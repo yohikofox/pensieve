@@ -26,6 +26,7 @@ import { PermissionService } from '../services/PermissionService';
 import { MockFileSystem } from '../__tests__/helpers/MockFileSystem';
 import { ISyncQueueService } from '../domain/ISyncQueueService';
 import { File, __clearMockFiles } from 'expo-file-system';
+import { CAPTURE_TYPES } from '../domain/Capture.model';
 
 // Mock all external dependencies
 jest.mock('../data/CaptureRepository');
@@ -103,7 +104,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-123',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/recording.m4a',
           createdAt: new Date(),
@@ -117,7 +118,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-123',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/permanent/capture_capture-123_123456.m4a',
           createdAt: new Date(),
@@ -144,7 +145,7 @@ describe('Audio Capture Integration Tests', () => {
       // Verify capture entity created with "recording" state
       expect(repository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/recording.m4a',
         })
@@ -231,7 +232,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'offline-capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/offline.m4a',
           createdAt: new Date(),
@@ -244,7 +245,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'offline-capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/offline.m4a',
           createdAt: new Date(),
@@ -264,7 +265,7 @@ describe('Audio Capture Integration Tests', () => {
       repository.findPendingSync.mockResolvedValue([
         {
           id: 'offline-capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/capture.m4a',
           createdAt: new Date(),
@@ -312,7 +313,7 @@ describe('Audio Capture Integration Tests', () => {
       repository.findByState.mockResolvedValue([
         {
           id: 'crashed-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording', // Still in recording state
           rawContent: '/temp/incomplete.m4a',
           createdAt: new Date(),
@@ -330,7 +331,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'crashed-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/temp/incomplete.m4a',
           createdAt: new Date(),
@@ -362,7 +363,7 @@ describe('Audio Capture Integration Tests', () => {
       repository.findByState.mockResolvedValue([
         {
           id: 'lost-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '', // No file path
           createdAt: new Date(),
@@ -375,7 +376,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'lost-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'failed',
           rawContent: '',
           createdAt: new Date(),
@@ -409,7 +410,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/capture1.m4a',
           createdAt: new Date(),
@@ -422,7 +423,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/capture1.m4a',
           createdAt: new Date(),
@@ -440,7 +441,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-2',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/capture2.m4a',
           createdAt: new Date(),
@@ -453,7 +454,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-2',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/capture2.m4a',
           createdAt: new Date(),
@@ -476,7 +477,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/capture1.m4a',
           createdAt: new Date(),
@@ -502,7 +503,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/file.m4a',
           createdAt: new Date(),
@@ -515,7 +516,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/file.m4a',
           createdAt: new Date(),
@@ -550,7 +551,7 @@ describe('Audio Capture Integration Tests', () => {
         type: 'success',
         data: {
           id: 'cancel-capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/cancel.m4a',
           createdAt: new Date(),
@@ -562,7 +563,7 @@ describe('Audio Capture Integration Tests', () => {
       // Mock getById for cancel flow
       repository.findById = jest.fn().mockResolvedValue({
         id: 'cancel-capture-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'recording',
         rawContent: '/temp/cancel.m4a',
         createdAt: new Date(),

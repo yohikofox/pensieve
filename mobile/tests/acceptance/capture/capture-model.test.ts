@@ -8,7 +8,7 @@
 
 import { Database } from '@nozbe/watermelondb';
 import { schemaMigrations } from '@/database/schema';
-import { Capture } from '@/contexts/Capture/domain/Capture.model';
+import { Capture, CAPTURE_TYPES } from '@/contexts/Capture/domain/Capture.model';
 import { createCaptureFactory } from '../../support/factories/capture.factory';
 
 describe('Capture Model Integration Tests', () => {
@@ -36,7 +36,7 @@ describe('Capture Model Integration Tests', () => {
     it('should create Capture with correct schema', async () => {
       // GIVEN: Valid capture data
       const captureData = {
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'recording',
         rawContent: null, // Not yet saved
         capturedAt: new Date(),
@@ -77,7 +77,7 @@ describe('Capture Model Integration Tests', () => {
     it('should set default syncStatus to "pending" for offline mode', async () => {
       // GIVEN: New capture without explicit syncStatus
       const capture = await captureFactory.create({
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'recording',
       });
 
@@ -91,7 +91,7 @@ describe('Capture Model Integration Tests', () => {
     it('should transition state from "recording" to "captured"', async () => {
       // GIVEN: Capture in "recording" state
       const capture = await captureFactory.create({
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'recording',
       });
 
@@ -114,7 +114,7 @@ describe('Capture Model Integration Tests', () => {
 
       // WHEN: Save file path
       const capture = await captureFactory.create({
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: filePath,
       });
@@ -133,7 +133,7 @@ describe('Capture Model Integration Tests', () => {
 
       // WHEN: Create capture with metadata
       const capture = await captureFactory.create({
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: 'file://path.m4a',
         // Note: Metadata might be stored as JSON in a separate field
@@ -150,7 +150,7 @@ describe('Capture Model Integration Tests', () => {
     it('should mark new captures as "pending" sync', async () => {
       // GIVEN: Offline mode (simulated)
       const capture = await captureFactory.create({
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
       });
 

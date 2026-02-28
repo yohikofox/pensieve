@@ -23,6 +23,7 @@ import type { EventBus } from '../../shared/events/EventBus';
 import type { CaptureRecordedEvent } from '../events/CaptureEvents';
 import type { ICaptureMetadataRepository } from '../domain/ICaptureMetadataRepository';
 import { METADATA_KEYS } from '../domain/CaptureMetadata.model';
+import { CAPTURE_TYPES } from '../domain/Capture.model';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import { extractWaveform } from 'expo-waveform-extractor';
 
@@ -132,7 +133,7 @@ export class WaveformExtractionService {
    */
   private async handleCaptureRecorded(event: CaptureRecordedEvent): Promise<void> {
     // Filter: Only process audio captures
-    if (event.payload.captureType !== 'audio') {
+    if (event.payload.captureType !== CAPTURE_TYPES.AUDIO) {
       return;
     }
 

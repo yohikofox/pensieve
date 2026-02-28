@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileHash } from '@preeternal/react-native-file-hash';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
+import { CAPTURE_TYPES, CAPTURE_STATES } from '../../capture/domain/Capture.model';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
@@ -447,7 +448,7 @@ export class TranscriptionModelService {
    */
   private async autoResumePendingCaptures(): Promise<number> {
     try {
-      console.log('[TranscriptionModelService] AC6: Checking for pending captures to auto-resume...');
+      console.log('[TranscriptionModelService] Checking for pending captures to auto-resume...');
 
       const repository = container.resolve<ICaptureRepository>(TOKENS.ICaptureRepository);
       const allCaptures = await repository.findAll();
@@ -455,18 +456,18 @@ export class TranscriptionModelService {
       // Filter: audio captures that are captured but not yet transcribed
       const pendingCaptures = allCaptures.filter(
         (capture) =>
-          capture.type === 'audio' &&
-          capture.state === 'captured' &&
+          capture.type === CAPTURE_TYPES.AUDIO &&
+          capture.state === CAPTURE_STATES.CAPTURED &&
           !capture.normalizedText
       );
 
       if (pendingCaptures.length === 0) {
-        console.log('[TranscriptionModelService] AC6: No pending captures found');
+        console.log('[TranscriptionModelService] No pending captures found');
         return 0;
       }
 
       console.log(
-        `[TranscriptionModelService] AC6: Found ${pendingCaptures.length} pending capture(s), adding to queue...`
+        `[TranscriptionModelService] Found ${pendingCaptures.length} pending capture(s), adding to queue...`
       );
 
       // Dynamically import to avoid circular dependency
@@ -484,18 +485,18 @@ export class TranscriptionModelService {
           queuedCount++;
         } catch (error) {
           console.error(
-            `[TranscriptionModelService] AC6: Failed to enqueue capture ${capture.id}:`,
+            `[TranscriptionModelService] Failed to enqueue capture ${capture.id}:`,
             error
           );
         }
       }
 
       console.log(
-        `[TranscriptionModelService] AC6: ✅ Auto-resumed ${queuedCount}/${pendingCaptures.length} capture(s)`
+        `[TranscriptionModelService] ✅ Auto-resumed ${queuedCount}/${pendingCaptures.length} capture(s)`
       );
       return queuedCount;
     } catch (error) {
-      console.error('[TranscriptionModelService] AC6: Auto-resume failed:', error);
+      console.error('[TranscriptionModelService] Auto-resume failed:', error);
       return 0;
     }
   }

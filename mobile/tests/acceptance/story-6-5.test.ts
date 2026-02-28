@@ -16,6 +16,7 @@ import {
   success,
   networkError,
 } from '../../src/contexts/shared/domain/Result';
+import { CAPTURE_TYPES } from '../../src/contexts/capture/domain/Capture.model';
 
 // ============================================================================
 // Mocks
@@ -212,7 +213,7 @@ defineFeature(feature, (test) => {
       (id, path) => {
         mockDb._captures.push({
           id,
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           raw_content: path,
           file_size: 1024000,
           audio_url: null,

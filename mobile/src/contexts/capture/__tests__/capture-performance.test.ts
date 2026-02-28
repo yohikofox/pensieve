@@ -20,6 +20,7 @@ import { RecordingService } from '../services/RecordingService';
 import { CaptureRepository } from '../data/CaptureRepository';
 import { FileStorageService } from '../services/FileStorageService';
 import { PermissionService } from '../services/PermissionService';
+import { CAPTURE_TYPES } from '../domain/Capture.model';
 
 // Mock dependencies
 jest.mock('../data/CaptureRepository');
@@ -54,7 +55,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'perf-capture-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/perf.m4a',
           createdAt: new Date(),
@@ -97,7 +98,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'batch-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/batch.m4a',
           createdAt: new Date(),
@@ -110,7 +111,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'batch-capture',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/batch.m4a',
           createdAt: new Date(),
@@ -142,7 +143,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'stop-perf-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/stop.m4a',
           createdAt: new Date(),
@@ -155,7 +156,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'stop-perf-1',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/stop.m4a',
           createdAt: new Date(),
@@ -280,7 +281,7 @@ describe('Audio Capture Performance Tests', () => {
       // Mock 100 captures in database
       const mockCaptures = Array.from({ length: 100 }, (_, i) => ({
         id: `capture-${i}`,
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '',
         createdAt: new Date(),
@@ -305,7 +306,7 @@ describe('Audio Capture Performance Tests', () => {
     it('should handle concurrent database operations', async () => {
       repository.findById.mockResolvedValue({
         id: 'concurrent-1',
-        type: 'audio',
+        type: CAPTURE_TYPES.AUDIO,
         state: 'captured',
         rawContent: '',
         createdAt: new Date(),
@@ -335,7 +336,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'memory-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/memory.m4a',
           createdAt: new Date(),
@@ -348,7 +349,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'memory-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/memory.m4a',
           createdAt: new Date(),
@@ -376,7 +377,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'cleanup-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/cleanup.m4a',
           createdAt: new Date(),
@@ -389,7 +390,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'cleanup-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/cleanup.m4a',
           createdAt: new Date(),
@@ -416,7 +417,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'stress-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/stress.m4a',
           createdAt: new Date(),
@@ -429,7 +430,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'stress-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/stress.m4a',
           createdAt: new Date(),
@@ -464,7 +465,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'workflow-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'recording',
           rawContent: '/temp/workflow.m4a',
           createdAt: new Date(),
@@ -477,7 +478,7 @@ describe('Audio Capture Performance Tests', () => {
         type: 'success',
         data: {
           id: 'workflow-test',
-          type: 'audio',
+          type: CAPTURE_TYPES.AUDIO,
           state: 'captured',
           rawContent: '/audio/workflow.m4a',
           createdAt: new Date(),

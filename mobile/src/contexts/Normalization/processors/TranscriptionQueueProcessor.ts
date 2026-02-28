@@ -26,7 +26,8 @@ import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
 import type { Subscription } from 'rxjs';
 import type { EventBus } from '../../shared/events/EventBus';
-import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../Capture/events/CaptureEvents';
+import type { CaptureRecordedEvent, CaptureDeletedEvent } from '../../capture/events/CaptureEvents';
+import { CAPTURE_TYPES } from '../../capture/domain/Capture.model';
 import { TranscriptionQueueService } from '../services/TranscriptionQueueService';
 import { useSettingsStore } from '../../../stores/settingsStore';
 
@@ -107,7 +108,7 @@ export class TranscriptionQueueProcessor {
     const { captureId, captureType, audioPath, audioDuration } = event.payload;
 
     // Only process audio captures
-    if (captureType !== 'audio') {
+    if (captureType !== CAPTURE_TYPES.AUDIO) {
       console.log(
         `[TranscriptionQueueProcessor] ⏭️  Skipping text capture ${captureId} (no transcription needed)`
       );
@@ -166,7 +167,7 @@ export class TranscriptionQueueProcessor {
     const { captureId, captureType } = event.payload;
 
     // Only process audio captures (text captures are never in queue)
-    if (captureType !== 'audio') {
+    if (captureType !== CAPTURE_TYPES.AUDIO) {
       return;
     }
 

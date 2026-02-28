@@ -8,7 +8,7 @@
 
 import { TextCaptureService } from '@/contexts/Capture/services/TextCaptureService';
 import { Database } from '@nozbe/watermelondb';
-import { Capture } from '@/contexts/Capture/domain/Capture.model';
+import { Capture, CAPTURE_TYPES } from '@/contexts/Capture/domain/Capture.model';
 import { createCaptureFactory } from '../../support/factories/capture.factory';
 
 // Mock expo modules
@@ -235,7 +235,7 @@ describe('TextCaptureService Integration Tests', () => {
     it('should integrate with existing Capture factory', async () => {
       // GIVEN: Capture factory from Story 2.1
       const textCapture = await captureFactory.create({
-        type: 'text',
+        type: CAPTURE_TYPES.TEXT,
         rawContent: 'Factory-created text capture',
       });
 
