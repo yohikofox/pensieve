@@ -218,6 +218,12 @@ export interface ILLMModelService {
    */
   getDownloadedModels(): Promise<LLMModelConfig[]>;
 
+  /**
+   * Get IDs of all downloaded models (files present on disk)
+   * Used by getUnusedModels() in settings screens
+   */
+  getDownloadedModelIds(): Promise<string[]>;
+
   // ========================================
   // Model Selection (Task-specific)
   // ========================================

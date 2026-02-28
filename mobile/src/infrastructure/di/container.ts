@@ -73,6 +73,10 @@ import { TranscriptionModelService } from '../../contexts/Normalization/services
 import { ModelDownloadNotificationService } from '../../contexts/Normalization/services/ModelDownloadNotificationService';
 import type { IModelDownloadNotificationService } from '../../contexts/Normalization/domain/IModelDownloadNotificationService';
 
+// Model Usage Tracking (Story 8.8)
+import { ModelUsageTrackingService } from '../../contexts/Normalization/services/ModelUsageTrackingService';
+import type { IModelUsageTrackingService } from '../../contexts/Normalization/domain/IModelUsageTrackingService';
+
 // Post-processing Services (LLM enhancement)
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 import { DeviceCapabilitiesService } from '../../contexts/Normalization/services/DeviceCapabilitiesService';
@@ -251,6 +255,11 @@ export function registerServices() {
   // Note: token 'INormalizationFileSystem' (string) distinct de TOKENS.IFileSystem (Symbol) — deux
   // contextes différents : Normalization (ExpoFileSystem) vs Capture (ExpoFileSystemAdapter hardware)
   container.register('INormalizationFileSystem', { useClass: ExpoFileSystem });
+
+  // TRANSIENT: ModelUsageTrackingService — stateless (lecture/écriture AsyncStorage sans état partagé) (ADR-021, Story 8.8)
+  container.register<IModelUsageTrackingService>(TOKENS.IModelUsageTrackingService, {
+    useClass: ModelUsageTrackingService,
+  });
   container.register(AudioConversionService, { useClass: AudioConversionService });
   container.register(CaptureAnalysisService, { useClass: CaptureAnalysisService });
 

@@ -49,6 +49,9 @@ export const TOKENS = {
   // Model Download Notifications (Story 8.7)
   IModelDownloadNotificationService: Symbol.for('IModelDownloadNotificationService'),
 
+  // Model Usage Tracking (Story 8.8)
+  IModelUsageTrackingService: Symbol.for('IModelUsageTrackingService'),
+
   // Dev Tools — Story 7.3
   IGitHubIssueService: Symbol.for('IGitHubIssueService'),
   ILogsAnalysisService: Symbol.for('ILogsAnalysisService'),

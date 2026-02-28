@@ -36,6 +36,7 @@ import type { IHuggingFaceAuthService } from "../domain/IHuggingFaceAuthService"
 import type { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 import type { ILLMModelService, LLMTask, DownloadProgress } from "../domain/ILLMModelService";
 import type { IModelDownloadNotificationService } from "../domain/IModelDownloadNotificationService";
+import type { IModelUsageTrackingService } from "../domain/IModelUsageTrackingService";
 import { TOKENS } from "../../../infrastructure/di/tokens";
 import {
   MODEL_CONFIGS,
@@ -80,6 +81,8 @@ export class LLMModelService implements ILLMModelService {
     @inject(TOKENS.IHuggingFaceAuthService) private authService: IHuggingFaceAuthService,
     @inject(TOKENS.IModelDownloadNotificationService)
     private notificationService: IModelDownloadNotificationService,
+    @inject(TOKENS.IModelUsageTrackingService)
+    private usageTrackingService: IModelUsageTrackingService,
   ) {}
 
   /**
@@ -340,6 +343,9 @@ export class LLMModelService implements ILLMModelService {
         await this.notificationService.dismissProgressNotification(modelId).catch(() => {});
         await this.notificationService.notifyDownloadSuccess(modelId, config.name, 'llm').catch(() => {});
 
+        // Initialise lastUsed au téléchargement (AC1)
+        await this.usageTrackingService.trackModelUsed(modelId, 'llm').catch(() => {});
+
         // Checksum verification disabled - HuggingFace headers contain incorrect checksums
         resolve(location);
       })
@@ -441,6 +447,8 @@ export class LLMModelService implements ILLMModelService {
         await modelFile.delete();
         console.log("[LLMModelService] Model deleted:", modelId);
       }
+      // Nettoie les clés AsyncStorage de tracking après suppression (AC6)
+      await this.usageTrackingService.clearModelTracking(modelId, 'llm').catch(() => {});
     } catch (error) {
       throw new Error(
         `Failed to delete ${modelId}: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -521,6 +529,8 @@ export class LLMModelService implements ILLMModelService {
       } else {
         await AsyncStorage.setItem(storageKey, modelId);
         console.log(`[LLMModelService] Model for ${task} set to:`, modelId);
+        // Met à jour lastUsed à la sélection (AC1)
+        await this.usageTrackingService.trackModelUsed(modelId, 'llm').catch(() => {});
       }
     } catch (error) {
       console.error(`[LLMModelService] Failed to set model for ${task}:`, error);
@@ -668,6 +678,15 @@ export class LLMModelService implements ILLMModelService {
       }
     }
     return downloaded;
+  }
+
+  /**
+   * Get IDs of all downloaded models (files present on disk)
+   * Used by getUnusedModels() in settings screens (Subtask 2.5)
+   */
+  async getDownloadedModelIds(): Promise<string[]> {
+    const downloaded = await this.getDownloadedModels();
+    return downloaded.map((model) => model.id);
   }
 
   /**
