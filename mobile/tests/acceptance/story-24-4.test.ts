@@ -184,9 +184,9 @@ defineFeature(feature, (test) => {
     });
   });
 
-  // ── Scénario 3: Premier lancement Samsung → aucune configuration ─────────
+  // ── Scénario 3: Premier lancement Samsung → native par défaut, sans Gemma (AC3 story 8.4) ─
 
-  test('Premier lancement sur Samsung — aucune configuration automatique', ({
+  test('Premier lancement sur Samsung — native par défaut, sans auto-transcription ni Gemma', ({
     given,
     and,
     when,
@@ -221,16 +221,18 @@ defineFeature(feature, (test) => {
       await initializer.run();
     });
 
-    then("setSelectedEngineType n'est pas appelé", () => {
-      expect(engineMock.setSelectedEngineType).not.toHaveBeenCalled();
+    then('setSelectedEngineType est appelé avec "native"', () => {
+      // AC3 story 8.4 : native par défaut pour TOUS les nouveaux appareils
+      expect(engineMock.setSelectedEngineType).toHaveBeenCalledWith('native');
     });
 
     and("setAutoTranscription n'est pas appelé", () => {
-      // Vérifier l'état Zustand directement (autoTranscription doit rester false)
+      // auto-transcription uniquement pour Pixel 9+
       expect(useSettingsStore.getState().autoTranscriptionEnabled).toBe(false);
     });
 
     and("downloadModel n'est pas appelé", () => {
+      // Gemma uniquement pour Pixel 9+
       expect(llmMock.downloadModel).not.toHaveBeenCalled();
     });
 

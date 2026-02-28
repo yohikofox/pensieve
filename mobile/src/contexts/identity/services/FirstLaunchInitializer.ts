@@ -62,9 +62,13 @@ export class FirstLaunchInitializer {
     try {
       const npuInfo = await this.npuService.detectNPU();
       if (this.isPixel9Plus(npuInfo)) {
+        // Pixel 9+ : native + auto-transcription + Gemma 3 1B (comportement story 24.4 inchangé)
         await this.engineService.setSelectedEngineType('native');
         useSettingsStore.getState().setAutoTranscription(true);
         await this.downloadGemmaWithFallback(onProgress);
+      } else {
+        // Tous les autres appareils : native par défaut (story 8.4)
+        await this.engineService.setSelectedEngineType('native');
       }
     } catch (error) {
       // Log silencieux — jamais de crash utilisateur sur l'initialisation

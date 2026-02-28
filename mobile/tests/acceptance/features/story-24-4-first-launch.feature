@@ -22,12 +22,12 @@ Feature: First Launch Initializer — Défauts Automatiques sur Pixel 9+
     Then aucun service n'est appelé
     And first_launch_completed reste "true"
 
-  # AC8 : Premier lancement sur appareil non-Pixel → pas de changement
-  Scenario: Premier lancement sur Samsung — aucune configuration automatique
+  # AC8 + AC3 story 8.4 : Premier lancement sur appareil non-Pixel → native par défaut, sans Gemma
+  Scenario: Premier lancement sur Samsung — native par défaut, sans auto-transcription ni Gemma
     Given l'utilisateur se connecte pour la première fois
     And l'appareil est un "Samsung Galaxy S24" avec manufacturer "samsung" et generation "Exynos 2400"
     When FirstLaunchInitializer.run() est appelé
-    Then setSelectedEngineType n'est pas appelé
+    Then setSelectedEngineType est appelé avec "native"
     And setAutoTranscription n'est pas appelé
     And downloadModel n'est pas appelé
     And first_launch_completed est marqué "true"

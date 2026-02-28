@@ -124,7 +124,7 @@ describe('FirstLaunchInitializer', () => {
 
   // ── Cas 3 : Non-Pixel → aucun setting modifié, marqué completed ──────────
 
-  it('premier lancement Samsung → aucun setting modifié, toujours marqué completed (AC8)', async () => {
+  it("premier lancement Samsung → setSelectedEngineType('native') appelé, toujours marqué completed (AC3, AC8)", async () => {
     const npuMock = makeNPUServiceMock(makeSamsungNPU());
     const engineMock = makeEngineServiceMock();
     const llmMock = makeLLMServiceMock(false);
@@ -137,9 +137,11 @@ describe('FirstLaunchInitializer', () => {
 
     await initializer.run();
 
-    expect(engineMock.setSelectedEngineType).not.toHaveBeenCalled();
-    // AC8 : auto-transcription ne doit PAS être modifiée pour non-Pixel
+    // AC3 story 8.4 : native par défaut pour TOUS les nouveaux appareils (y compris Samsung)
+    expect(engineMock.setSelectedEngineType).toHaveBeenCalledWith('native');
+    // Auto-transcription ne doit PAS être activée pour non-Pixel (uniquement Pixel 9+)
     expect(useSettingsStore.getState().autoTranscriptionEnabled).toBe(false);
+    // Gemma ne doit PAS être téléchargé pour non-Pixel
     expect(llmMock.downloadModel).not.toHaveBeenCalled();
     // AC8 : marqué completed même pour non-Pixel
     await expect(AsyncStorage.getItem(FIRST_LAUNCH_KEY)).resolves.toBe('true');

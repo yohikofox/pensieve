@@ -16,6 +16,11 @@ import {
 import { NativeTranscriptionEngine } from './NativeTranscriptionEngine';
 
 const STORAGE_KEY = '@pensieve/transcription_engine';
+// Même valeur que FirstLaunchInitializer — dupliquée intentionnellement pour éviter une dépendance
+// circulaire Normalization → identity (ADR-024)
+const FIRST_LAUNCH_KEY = '@pensieve/first_launch_completed';
+// Marquage one-time de la migration story 8.4 (whisper implicite → explicite pour les utilisateurs existants)
+const MIGRATION_KEY = '@pensieve/transcription_default_migrated';
 
 export interface TranscriptionEngineInfo {
   type: TranscriptionEngineType;
@@ -29,7 +34,6 @@ export interface TranscriptionEngineInfo {
 @injectable()
 export class TranscriptionEngineService {
   private nativeEngine: NativeTranscriptionEngine;
-  private currentEngineType: TranscriptionEngineType = 'whisper';
 
   constructor(
     @inject(NativeTranscriptionEngine) nativeEngine: NativeTranscriptionEngine
@@ -38,19 +42,42 @@ export class TranscriptionEngineService {
   }
 
   /**
-   * Get the currently selected engine type
+   * Get the currently selected engine type.
+   *
+   * Priority order:
+   * 1. Explicit user preference (stored in AsyncStorage) → return as-is (AC4)
+   * 2. No preference, migration not yet run:
+   *    - Existing user (FIRST_LAUNCH_KEY = 'true') → migrate to 'whisper' one-time (AC2)
+   *    - New user (no FIRST_LAUNCH_KEY) → mark migration done; FirstLaunchInitializer sets 'native' (AC1, AC3)
+   * 3. Migration already done, no preference → default to 'native' (AC1)
    */
   async getSelectedEngineType(): Promise<TranscriptionEngineType> {
     try {
+      // Cas 1 : Préférence explicite déjà définie → retourner telle quelle
       const stored = await AsyncStorage.getItem(STORAGE_KEY);
       if (stored === 'native' || stored === 'whisper') {
-        this.currentEngineType = stored;
         return stored;
+      }
+
+      // Cas 2 : Aucune préférence — vérifier si migration est nécessaire
+      const migrated = await AsyncStorage.getItem(MIGRATION_KEY);
+      if (!migrated) {
+        // Première fois après story 8.4 — détecter si utilisateur existant
+        const firstLaunchDone = await AsyncStorage.getItem(FIRST_LAUNCH_KEY);
+        if (firstLaunchDone === 'true') {
+          // Utilisateur existant sans préférence → préserver 'whisper' implicite
+          // Persistence best-effort : retourner 'whisper' même si setItem échoue (AC2)
+          await AsyncStorage.setItem(STORAGE_KEY, 'whisper').catch(() => {});
+          await AsyncStorage.setItem(MIGRATION_KEY, 'done').catch(() => {});
+          return 'whisper';
+        }
+        // Nouvel utilisateur → marquer migration done (FirstLaunchInitializer gère le reste)
+        await AsyncStorage.setItem(MIGRATION_KEY, 'done').catch(() => {});
       }
     } catch (error) {
       console.error('[TranscriptionEngineService] Failed to get preference:', error);
     }
-    return 'whisper'; // Default to Whisper
+    return 'native'; // Nouveau défaut : natif pour les nouveaux utilisateurs (story 8.4)
   }
 
   /**
@@ -59,7 +86,6 @@ export class TranscriptionEngineService {
   async setSelectedEngineType(type: TranscriptionEngineType): Promise<void> {
     try {
       await AsyncStorage.setItem(STORAGE_KEY, type);
-      this.currentEngineType = type;
       console.log('[TranscriptionEngineService] Engine set to:', type);
     } catch (error) {
       console.error('[TranscriptionEngineService] Failed to save preference:', error);
