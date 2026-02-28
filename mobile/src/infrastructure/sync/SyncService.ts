@@ -493,7 +493,13 @@ export class SyncService {
           // Couche de conversion : le backend est la référence, le mobile adapte son schéma local
           const localRecord = entity === 'captures'
             ? this.mapCaptureFromBackend(record)
-            : record;
+            : entity === 'thoughts'
+              ? this.mapThoughtFromBackend(record)
+              : entity === 'ideas'
+                ? this.mapIdeaFromBackend(record)
+                : entity === 'todos'
+                  ? this.mapTodoFromBackend(record)
+                  : record;
 
           // Protection : ne pas écraser les changements locaux en attente de PUSH
           if (this.hasLocalPendingChanges(entity, localRecord.id)) {
@@ -513,9 +519,10 @@ export class SyncService {
       }
 
       // Apply deleted records
+      // deleted est string[] (IDs) côté backend — passer directement l'ID
       if (entityChanges.deleted) {
-        for (const record of entityChanges.deleted) {
-          await this.markRecordDeleted(entity, record.id);
+        for (const recordId of entityChanges.deleted) {
+          await this.markRecordDeleted(entity, recordId as string);
           changesCount++;
         }
       }
@@ -573,6 +580,91 @@ export class SyncService {
     }
 
     return mapped;
+  }
+
+  /**
+   * Convertit un Thought backend (camelCase) vers le schéma SQLite mobile (snake_case).
+   *
+   * Mapping :
+   *   captureId        → capture_id
+   *   ownerId          → user_id
+   *   confidenceScore  → confidence_score
+   *   processingTimeMs → processing_time_ms
+   *   createdAt        → created_at  (Unix ms)
+   *   updatedAt        → updated_at  (Unix ms)
+   *   deletedAt        → _status     ('deleted' | 'active')
+   */
+  private mapThoughtFromBackend(record: any): Record<string, string | number | null> {
+    return {
+      id: record.id,
+      capture_id: record.captureId,
+      user_id: record.ownerId,
+      summary: record.summary,
+      confidence_score: record.confidenceScore ?? null,
+      processing_time_ms: record.processingTimeMs,
+      created_at: record.createdAt instanceof Date ? record.createdAt.getTime() : Number(record.createdAt),
+      updated_at: record.updatedAt instanceof Date ? record.updatedAt.getTime() : Number(record.updatedAt),
+      _status: record.deletedAt ? 'deleted' : 'active',
+    };
+  }
+
+  /**
+   * Convertit une Idea backend (camelCase) vers le schéma SQLite mobile (snake_case).
+   *
+   * Mapping :
+   *   thoughtId   → thought_id
+   *   ownerId     → user_id
+   *   orderIndex  → order_index
+   *   createdAt   → created_at  (Unix ms)
+   *   updatedAt   → updated_at  (Unix ms)
+   *   deletedAt   → _status     ('deleted' | 'active')
+   */
+  private mapIdeaFromBackend(record: any): Record<string, string | number | null> {
+    return {
+      id: record.id,
+      thought_id: record.thoughtId,
+      user_id: record.ownerId,
+      text: record.text,
+      order_index: record.orderIndex ?? null,
+      created_at: record.createdAt instanceof Date ? record.createdAt.getTime() : Number(record.createdAt),
+      updated_at: record.updatedAt instanceof Date ? record.updatedAt.getTime() : Number(record.updatedAt),
+      _status: record.deletedAt ? 'deleted' : 'active',
+    };
+  }
+
+  /**
+   * Convertit un Todo backend (camelCase) vers le schéma SQLite mobile (snake_case).
+   *
+   * Mapping :
+   *   thoughtId   → thought_id
+   *   ideaId      → idea_id
+   *   captureId   → capture_id
+   *   ownerId     → user_id
+   *   deadline    → deadline    (Unix ms)
+   *   completedAt → completed_at (Unix ms)
+   *   createdAt   → created_at  (Unix ms)
+   *   updatedAt   → updated_at  (Unix ms)
+   *   deletedAt   → _status     ('deleted' | 'active')
+   */
+  private mapTodoFromBackend(record: any): Record<string, string | number | null> {
+    const toMs = (v: any): number | null =>
+      v instanceof Date ? v.getTime() : (v ? Number(v) : null);
+
+    return {
+      id: record.id,
+      thought_id: record.thoughtId,
+      idea_id: record.ideaId ?? null,
+      capture_id: record.captureId,
+      user_id: record.ownerId,
+      description: record.description,
+      status: record.status,
+      deadline: toMs(record.deadline),
+      priority: record.priority,
+      completed_at: toMs(record.completedAt),
+      created_at: toMs(record.createdAt) ?? Date.now(),
+      updated_at: toMs(record.updatedAt) ?? Date.now(),
+      _status: record.deletedAt ? 'deleted' : 'active',
+    };
   }
 
   /**

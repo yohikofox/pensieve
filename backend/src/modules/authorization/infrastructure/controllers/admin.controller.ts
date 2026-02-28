@@ -362,17 +362,17 @@ export class AdminController {
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
     const recentThoughts = await this.dataSource.query(
-      'SELECT COUNT(*) as count FROM thoughts WHERE "createdAt" > $1',
+      'SELECT COUNT(*) as count FROM thoughts WHERE created_at > $1',
       [sevenDaysAgo],
     );
 
     const recentIdeas = await this.dataSource.query(
-      'SELECT COUNT(*) as count FROM ideas WHERE "createdAt" > $1',
+      'SELECT COUNT(*) as count FROM ideas WHERE created_at > $1',
       [sevenDaysAgo],
     );
 
     const recentTodos = await this.dataSource.query(
-      'SELECT COUNT(*) as count FROM todos WHERE "createdAt" > $1',
+      'SELECT COUNT(*) as count FROM todos WHERE created_at > $1',
       [sevenDaysAgo],
     );
 

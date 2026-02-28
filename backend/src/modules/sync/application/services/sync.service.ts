@@ -438,8 +438,8 @@ export class SyncService {
     await repository.update(
       { id: recordId, ownerId: userId } as any,
       {
-        _status: 'deleted',
-        last_modified_at: Date.now(),
+        deletedAt: new Date(),
+        lastModifiedAt: Date.now(),
       } as any,
     );
   }
@@ -471,17 +471,20 @@ export class SyncService {
       return { conflict: false };
     }
 
+    // Convertit snake_case mobile → camelCase propriétés TypeORM
+    const mappedRecord = this.mapEntityFromMobile(entity, clientRecord);
+
     // Fetch current server record
     const serverRecord = await repository.findOne({
-      where: { id: clientRecord.id, ownerId: userId } as any,
+      where: { id: mappedRecord.id ?? clientRecord.id, ownerId: userId } as any,
     });
 
     // New record - no conflict
     if (!serverRecord) {
       await repository.save({
-        ...clientRecord,
+        ...mappedRecord,
         ownerId: userId,
-        last_modified_at: Date.now(),
+        lastModifiedAt: Date.now(),
       });
       return { conflict: false };
     }
@@ -512,9 +515,9 @@ export class SyncService {
     } else {
       // No conflict - accept client changes
       await repository.save({
-        ...clientRecord,
+        ...mappedRecord,
         ownerId: userId,
-        last_modified_at: Date.now(),
+        lastModifiedAt: Date.now(),
       });
 
       return { conflict: false };
@@ -719,10 +722,72 @@ export class SyncService {
     await repository.update(
       { id: recordId, ownerId: userId } as any,
       {
-        _status: 'deleted',
-        last_modified_at: Date.now(),
+        deletedAt: new Date(),
+        lastModifiedAt: Date.now(),
       } as any,
     );
+  }
+
+  /**
+   * Dispatche vers le bon mapper mobile→entity selon l'entité.
+   */
+  private mapEntityFromMobile(entity: string, r: any): Record<string, any> {
+    switch (entity) {
+      case 'thought':
+        return this.mapThoughtFromMobile(r);
+      case 'idea':
+        return this.mapIdeaFromMobile(r);
+      case 'todo':
+        return this.mapTodoFromMobile(r);
+      default:
+        return r;
+    }
+  }
+
+  /**
+   * Convertit un Thought mobile (snake_case SQLite) vers les propriétés TypeORM (camelCase).
+   *
+   * Seuls les champs présents dans le record mobile sont mappés (pas de surcharge des champs absents).
+   */
+  private mapThoughtFromMobile(r: any): Record<string, any> {
+    const mapped: Record<string, any> = { id: r.id };
+    if (r.capture_id !== undefined) mapped.captureId = r.capture_id;
+    if (r.user_id !== undefined) mapped.ownerId = r.user_id;
+    if (r.summary !== undefined) mapped.summary = r.summary;
+    if (r.confidence_score !== undefined) mapped.confidenceScore = r.confidence_score;
+    if (r.processing_time_ms !== undefined) mapped.processingTimeMs = r.processing_time_ms;
+    return mapped;
+  }
+
+  /**
+   * Convertit une Idea mobile (snake_case SQLite) vers les propriétés TypeORM (camelCase).
+   */
+  private mapIdeaFromMobile(r: any): Record<string, any> {
+    const mapped: Record<string, any> = { id: r.id };
+    if (r.thought_id !== undefined) mapped.thoughtId = r.thought_id;
+    if (r.user_id !== undefined) mapped.ownerId = r.user_id;
+    if (r.text !== undefined) mapped.text = r.text;
+    if (r.order_index !== undefined) mapped.orderIndex = r.order_index;
+    return mapped;
+  }
+
+  /**
+   * Convertit un Todo mobile (snake_case SQLite) vers les propriétés TypeORM (camelCase).
+   *
+   * Les timestamps Unix ms sont convertis en Date pour deadline et completedAt.
+   */
+  private mapTodoFromMobile(r: any): Record<string, any> {
+    const mapped: Record<string, any> = { id: r.id };
+    if (r.thought_id !== undefined) mapped.thoughtId = r.thought_id;
+    if (r.idea_id !== undefined) mapped.ideaId = r.idea_id;
+    if (r.capture_id !== undefined) mapped.captureId = r.capture_id;
+    if (r.user_id !== undefined) mapped.ownerId = r.user_id;
+    if (r.description !== undefined) mapped.description = r.description;
+    if (r.status !== undefined) mapped.status = r.status;
+    if (r.deadline !== undefined) mapped.deadline = r.deadline ? new Date(r.deadline) : null;
+    if (r.priority !== undefined) mapped.priority = r.priority;
+    if (r.completed_at !== undefined) mapped.completedAt = r.completed_at ? new Date(r.completed_at) : null;
+    return mapped;
   }
 
   /**
