@@ -16,6 +16,7 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
+  Switch,
 } from 'react-native';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 import {
@@ -30,6 +31,7 @@ import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
 import { StandardLayout } from '../../components/layouts';
 import { colors } from '../../design-system/tokens';
+import { useSettingsStore } from '../../stores/settingsStore';
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -54,6 +56,8 @@ const getThemeColors = (isDark: boolean) => ({
 export function WhisperSettingsScreen() {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
+  const audioTrimEnabled = useSettingsStore((state) => state.audioTrimEnabled);
+  const setAudioTrimEnabled = useSettingsStore((state) => state.setAudioTrimEnabled);
   const [selectedModel, setSelectedModel] = useState<WhisperModelSize | null>(null);
   const [vocabularyText, setVocabularyText] = useState<string>('');
   const [isSavingVocabulary, setIsSavingVocabulary] = useState(false);
@@ -309,6 +313,31 @@ export function WhisperSettingsScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Story 8.3: Audio preprocessing options */}
+      <View style={styles.toggleSection}>
+        <Text style={[styles.sectionTitle, { color: themeColors.textTertiary }]}>Options audio avancées</Text>
+        <View style={[styles.toggleRow, { backgroundColor: isDark ? colors.neutral[800] : '#FFFFFF' }]}>
+          <View style={styles.toggleTextContainer}>
+            <Text style={[styles.toggleLabel, { color: themeColors.textPrimary }]}>
+              Supprimer les silences automatiquement
+            </Text>
+            <Text style={[styles.toggleDescription, { color: themeColors.textSecondary }]}>
+              Réduit la taille des fichiers audio. Peut affecter la complétude des transcriptions.
+            </Text>
+          </View>
+          <Switch
+            value={audioTrimEnabled}
+            onValueChange={setAudioTrimEnabled}
+            trackColor={{
+              false: isDark ? colors.neutral[600] : '#767577',
+              true: themeColors.saveButtonBg,
+            }}
+            thumbColor={audioTrimEnabled ? '#ffffff' : (isDark ? colors.neutral[400] : '#f4f3f4')}
+            accessibilityLabel="Supprimer les silences automatiquement"
+          />
+        </View>
+      </View>
+
       <View style={styles.footer}>
         <Text style={[styles.footerText, { color: themeColors.textTertiary }]}>
           Les modèles Whisper sont fournis par OpenAI et exécutés localement sur votre appareil.
@@ -461,6 +490,30 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  toggleSection: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    borderRadius: 12,
+    padding: 16,
+  },
+  toggleTextContainer: {
+    flex: 1,
+    marginRight: 12,
+  },
+  toggleLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    marginBottom: 4,
+  },
+  toggleDescription: {
+    fontSize: 13,
+    lineHeight: 18,
   },
   footer: {
     padding: 16,

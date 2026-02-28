@@ -8,6 +8,7 @@
  * 1. Input: m4a file (from expo-audio recording)
  * 2. Decode + resample to 16kHz using decodeAudioData
  * 3. Mix to mono using OfflineAudioContext
+ * 3.5. [Optional] Trim silence if options.trimSilence=true (Story 8.3)
  * 4. Build WAV file from AudioBuffer
  * 5. Output: Temporary WAV file path for transcription
  *
@@ -44,6 +45,10 @@ const NATIVE_END_PADDING_MS = 800; // 800ms of silence at end for native recogni
 
 @injectable()
 export class AudioConversionService {
+  // Story 8.3: Conservative silence trimming constants (disabled by default)
+  private readonly SILENCE_THRESHOLD = 0.005;    // RMS threshold (< 0.01 ancien — plus permissif)
+  private readonly SILENCE_MARGIN_MS = 200;       // 200ms safety margin at boundaries
+  private readonly SILENCE_MIN_DURATION_MS = 500; // Ignore silences shorter than 500ms
   // Debug: Track last converted WAV file for playback testing
   private lastConvertedWavPath: string | null = null;
 
@@ -98,7 +103,7 @@ export class AudioConversionService {
    * @param inputPath - Path to input audio file (m4a, aac, mp3, etc.)
    * @returns Result with path to converted WAV file (caller must delete after use)
    */
-  async convertToWhisperFormat(inputPath: string): Promise<RepositoryResult<string>> {
+  async convertToWhisperFormat(inputPath: string, options?: { trimSilence?: boolean }): Promise<RepositoryResult<string>> {
     console.log(
       "[AudioConversionService] 🎵 Converting audio to Whisper format:",
       inputPath,
@@ -148,7 +153,10 @@ export class AudioConversionService {
       // Step 2: Mix to mono if stereo using OfflineAudioContext
       const monoBuffer = await this.mixToMono(audioBuffer);
 
-      const trimmedBuffer = monoBuffer;
+      // Story 8.3: Apply silence trimming only when explicitly enabled
+      const trimmedBuffer = options?.trimSilence
+        ? this.trimSilence(monoBuffer)
+        : monoBuffer;
 
       // Step 2.6: Task 7.2 - Check for long audio (>10min)
       this.checkLongAudio(trimmedBuffer);
@@ -185,7 +193,7 @@ export class AudioConversionService {
    * @param inputPath - Path to input audio file (m4a, aac, mp3, etc.)
    * @returns Result with path to converted WAV file (caller must delete after use)
    */
-  async convertToWhisperFormatWithPadding(inputPath: string): Promise<RepositoryResult<string>> {
+  async convertToWhisperFormatWithPadding(inputPath: string, options?: { trimSilence?: boolean }): Promise<RepositoryResult<string>> {
     console.log(
       "[AudioConversionService] 🎵 Converting audio to Whisper format (with end padding):",
       inputPath,
@@ -235,8 +243,13 @@ export class AudioConversionService {
       // Step 2: Mix to mono if stereo using OfflineAudioContext
       const monoBuffer = await this.mixToMono(audioBuffer);
 
+      // Story 8.3: Apply silence trimming only when explicitly enabled (before padding)
+      const trimmedForPadding = options?.trimSilence
+        ? this.trimSilence(monoBuffer)
+        : monoBuffer;
+
       // Step 2.5: Add silence padding at end for native recognition
-      const paddedBuffer = this.addEndPadding(monoBuffer);
+      const paddedBuffer = this.addEndPadding(trimmedForPadding);
 
       // Step 2.6: Check for long audio (>10min)
       this.checkLongAudio(paddedBuffer);
@@ -326,6 +339,84 @@ export class AudioConversionService {
   }
 
   /**
+   * Story 8.3: Calculate Root Mean Square (RMS) energy of audio samples
+   *
+   * Used to detect silence regions for optional trimming.
+   * Returns 0 for empty ranges.
+   *
+   * @param samples - Float32Array of audio samples
+   * @param start - Start index (inclusive)
+   * @param end - End index (exclusive)
+   * @returns RMS value in range [0, 1]
+   */
+  private calculateRMS(samples: Float32Array, start: number, end: number): number {
+    if (end <= start) return 0;
+    let sum = 0;
+    for (let i = start; i < end; i++) {
+      sum += samples[i] * samples[i];
+    }
+    return Math.sqrt(sum / (end - start));
+  }
+
+  /**
+   * Story 8.3: Conservative silence trimming
+   *
+   * Removes leading and trailing silence from audio buffer.
+   * Uses RMS-based detection with generous margins to avoid cutting speech.
+   * Ignores silences shorter than SILENCE_MIN_DURATION_MS.
+   *
+   * Only called when options.trimSilence === true — disabled by default.
+   *
+   * @param buffer - Mono AudioBuffer (16kHz)
+   * @returns Trimmed AudioBuffer (or original if nothing to trim)
+   */
+  private trimSilence(buffer: RNAudioBuffer): RNAudioBuffer {
+    const channelData = buffer.getChannelData(0);
+    const sampleRate = buffer.sampleRate;
+    const windowSize = Math.floor((this.SILENCE_MIN_DURATION_MS / 1000) * sampleRate);
+    const marginSamples = Math.floor((this.SILENCE_MARGIN_MS / 1000) * sampleRate);
+
+    // Find first non-silent window (from start)
+    let startSample = 0;
+    for (let i = 0; i + windowSize <= channelData.length; i += windowSize) {
+      const rms = this.calculateRMS(channelData, i, i + windowSize);
+      if (rms > this.SILENCE_THRESHOLD) {
+        startSample = Math.max(0, i - marginSamples);
+        break;
+      }
+    }
+
+    // Find last non-silent window (from end)
+    let endSample = channelData.length;
+    for (let i = channelData.length; i - windowSize >= 0; i -= windowSize) {
+      const rms = this.calculateRMS(channelData, i - windowSize, i);
+      if (rms > this.SILENCE_THRESHOLD) {
+        endSample = Math.min(channelData.length, i + marginSamples);
+        break;
+      }
+    }
+
+    // Safety: no speech detected or nothing to trim → return original
+    if (startSample >= endSample) return buffer;
+    if (startSample === 0 && endSample === channelData.length) return buffer;
+
+    const newLength = endSample - startSample;
+
+    const trimmedBuf = this.createEmptyBuffer(newLength, sampleRate);
+    const trimmedData = trimmedBuf.getChannelData(0);
+
+    for (let i = 0; i < newLength; i++) {
+      trimmedData[i] = channelData[startSample + i];
+    }
+
+    console.log(
+      `[AudioConversionService] ✂️ Trimmed silence: ${buffer.duration.toFixed(2)}s → ${(newLength / sampleRate).toFixed(2)}s`
+    );
+
+    return trimmedBuf;
+  }
+
+  /**
    * Add silence padding at the end of audio buffer
    *
    * This helps native speech recognition engines finalize the last word
@@ -367,6 +458,28 @@ export class AudioConversionService {
     // No need to explicitly set them
 
     return paddedBuffer;
+  }
+
+  /**
+   * Create an empty (zero-filled) AudioBuffer with the given length and sample rate.
+   *
+   * Note: OfflineAudioContext is used as a factory because react-native-audio-api
+   * does not expose a standalone createBuffer() function. The context is created
+   * without calling startRendering() and becomes eligible for GC after this method
+   * returns — its sole purpose is buffer instantiation.
+   * This is an intentional pattern, consistent with addEndPadding().
+   *
+   * @param length - Number of samples
+   * @param sampleRate - Sample rate in Hz
+   * @returns Zero-initialized mono AudioBuffer
+   */
+  private createEmptyBuffer(length: number, sampleRate: number): RNAudioBuffer {
+    const ctx = new OfflineAudioContext({
+      numberOfChannels: 1,
+      length,
+      sampleRate,
+    });
+    return ctx.createBuffer(1, length, sampleRate);
   }
 
   /**

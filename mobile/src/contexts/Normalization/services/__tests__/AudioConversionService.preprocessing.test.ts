@@ -9,13 +9,18 @@
  */
 
 import 'reflect-metadata';
+import type { IFileSystem } from '../ports/IFileSystem';
 import { AudioConversionService } from '../AudioConversionService';
 
 describe('AudioConversionService - Audio Preprocessing', () => {
   let service: AudioConversionService;
 
   beforeEach(() => {
-    service = new AudioConversionService();
+    // fileSystem is not used by the preprocessing methods under test (calculateRMS,
+    // trimSilence, checkLongAudio). A minimal mock satisfies the constructor contract
+    // without coupling these unit tests to the file system infrastructure.
+    const mockFileSystem = {} as unknown as IFileSystem;
+    service = new AudioConversionService(mockFileSystem);
   });
 
   describe('trimSilence()', () => {
