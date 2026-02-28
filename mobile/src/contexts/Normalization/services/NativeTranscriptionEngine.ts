@@ -67,6 +67,9 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
   private resultSubscription?: { remove: () => void };
   private errorSubscription?: { remove: () => void };
   private endSubscription?: { remove: () => void };
+  private volumeSubscription?: { remove: () => void }; // Story 8.6
+  private volumeCallback?: (value: number) => void; // Story 8.6
+  private endCallback?: () => void; // Story 8.6 fix H1
   private audioConversionService: AudioConversionService;
 
   constructor(audioConversionService: AudioConversionService) {
@@ -274,6 +277,8 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
     config: TranscriptionEngineConfig,
     onPartialResult: (result: TranscriptionEngineResult) => void,
     onFinalResult: (result: TranscriptionEngineResult) => void,
+    onVolumeChange?: (value: number) => void, // Story 8.6
+    onEnd?: () => void, // Story 8.6 fix H1
   ): Promise<void> {
     if (!this.isInitialized) {
       await this.initialize();
@@ -288,6 +293,7 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
 
     this.partialCallback = onPartialResult;
     this.finalCallback = onFinalResult;
+    this.endCallback = onEnd; // Story 8.6 fix H1
     this.accumulatedText = "";
 
     // Set up event listeners
@@ -346,9 +352,23 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
       "end",
       () => {
         console.log("[NativeTranscription] Recognition ended");
-        this.isListening = false;
+        this.endCallback?.(); // Story 8.6 fix H1: notify hook before cleanup
+        this.cleanup(); // H1 fix: always cleanup subscriptions on natural end
       },
     );
+
+    // Story 8.6: Subscribe to volumechange events only when both callback and config flag are set
+    if (onVolumeChange && config.enableVolumeEvents) {
+      this.volumeCallback = onVolumeChange;
+      this.volumeSubscription = ExpoSpeechRecognitionModule.addListener(
+        "volumechange",
+        (event: { value: number }) => {
+          if (this.volumeCallback) {
+            this.volumeCallback(event.value);
+          }
+        },
+      );
+    }
 
     const locale = this.normalizeLocale(config.language);
     console.log("[NativeTranscription] Starting with locale:", locale);
@@ -363,6 +383,9 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
         contextualStrings: config.vocabulary,
         requiresOnDeviceRecognition: false, // Allow cloud fallback for better accuracy
         addsPunctuation: true,
+        ...(config.enableVolumeEvents ? {
+          volumeChangeEventOptions: { enabled: true, intervalMillis: 100 },
+        } : {}),
       });
     } catch (error) {
       this.isListening = false;
@@ -430,14 +453,18 @@ export class NativeTranscriptionEngine implements ITranscriptionEngine {
     this.isListening = false;
     this.partialCallback = undefined;
     this.finalCallback = undefined;
+    this.volumeCallback = undefined; // Story 8.6
+    this.endCallback = undefined; // Story 8.6 fix H1
 
     this.resultSubscription?.remove();
     this.errorSubscription?.remove();
     this.endSubscription?.remove();
+    this.volumeSubscription?.remove(); // Story 8.6
 
     this.resultSubscription = undefined;
     this.errorSubscription = undefined;
     this.endSubscription = undefined;
+    this.volumeSubscription = undefined; // Story 8.6
   }
 
   /**

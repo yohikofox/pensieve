@@ -17,6 +17,7 @@ export interface TranscriptionEngineResult {
 export interface TranscriptionEngineConfig {
   language: string; // e.g., 'fr-FR', 'en-US'
   vocabulary?: string[]; // Custom vocabulary/hints
+  enableVolumeEvents?: boolean; // Story 8.6: Active volumechange events
 }
 
 /**
@@ -79,17 +80,25 @@ export interface ITranscriptionEngine {
    * @param config - Transcription configuration
    * @param onPartialResult - Called with interim results
    * @param onFinalResult - Called with final result
+   * @param onVolumeChange - Called with volume level changes (Story 8.6)
    */
   startRealTime?(
     config: TranscriptionEngineConfig,
     onPartialResult: (result: TranscriptionEngineResult) => void,
-    onFinalResult: (result: TranscriptionEngineResult) => void
+    onFinalResult: (result: TranscriptionEngineResult) => void,
+    onVolumeChange?: (value: number) => void,
+    onEnd?: () => void
   ): Promise<void>;
 
   /**
    * Stop real-time transcription
    */
   stopRealTime?(): Promise<void>;
+
+  /**
+   * Cancel real-time transcription without saving results
+   */
+  cancel?(): Promise<void>;
 
   /**
    * Release resources (unload model, cleanup)

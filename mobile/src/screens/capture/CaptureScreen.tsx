@@ -33,6 +33,8 @@ import {
   type TextCaptureInputRef,
 } from "../../components/capture/TextCaptureInput";
 import { RecordingOverlay } from "../../components/capture/RecordingOverlay";
+import { LiveTranscriptionOverlay } from "../../components/capture/LiveTranscriptionOverlay";
+import { useLiveTranscription } from "../../hooks/useLiveTranscription";
 import { ModelConfigPrompt } from "../../components/modals/ModelConfigPrompt";
 import { colors, shadows } from "../../design-system/tokens";
 import { AlertDialog, useToast } from "../../design-system/components";
@@ -79,6 +81,13 @@ const CAPTURE_TOOLS_ALWAYS: CaptureTool[] = [
     labelKey: "capture.tools.text",
     iconName: "type", // Typography symbol = text input
     color: colors.secondary[500],
+    available: true,
+  },
+  {
+    id: "live",
+    labelKey: "capture.tools.live",
+    iconName: "zap", // Instant / real-time symbol
+    color: colors.warning[500],
     available: true,
   },
 ];
@@ -279,7 +288,18 @@ const CaptureScreenContent = () => {
     : CAPTURE_TOOLS_ALWAYS;
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [showRecordingOverlay, setShowRecordingOverlay] = useState(false);
+  const [showLiveTranscription, setShowLiveTranscription] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
+
+  // Story 8.6: Live transcription hook
+  const {
+    startListening,
+    stopAndSave: stopLiveAndSave,
+    cancel: cancelLive,
+    state: liveState,
+  } = useLiveTranscription({
+    onClose: () => setShowLiveTranscription(false),
+  });
 
   // Toast and dialog states
   const toast = useToast();
@@ -577,6 +597,10 @@ const CaptureScreenContent = () => {
       case "text":
         setShowTextCapture(true);
         break;
+      case "live":
+        setShowLiveTranscription(true);
+        // startListening is called inside the overlay via useEffect after mount
+        break;
       case "photo":
       case "url":
       case "document":
@@ -735,6 +759,26 @@ const CaptureScreenContent = () => {
           onStop={stopRecording}
           onCancel={cancelRecording}
           isStopping={state === "stopping"}
+        />
+      </Modal>
+
+      {/* Live Transcription Overlay — Story 8.6 */}
+      <Modal
+        visible={showLiveTranscription}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={cancelLive}
+        onShow={() => {
+          startListening();
+        }}
+      >
+        <LiveTranscriptionOverlay
+          confirmedText={liveState.confirmedText}
+          partialText={liveState.partialText}
+          volumeLevel={liveState.volumeLevel}
+          isSaving={liveState.isSaving}
+          onStop={stopLiveAndSave}
+          onCancel={cancelLive}
         />
       </Modal>
 

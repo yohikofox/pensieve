@@ -48,6 +48,7 @@ export default {
     tools: {
       voice: 'Voix',
       text: 'Texte',
+      live: 'Live',
       photo: 'Photo/Vidéo',
       url: 'URL',
       document: 'Document',
@@ -56,6 +57,7 @@ export default {
     toolHints: {
       voice: 'Capturer via Voix',
       text: 'Capturer via Texte',
+      live: 'Transcrire en temps réel',
       photo: 'Capturer via Photo/Vidéo',
       url: 'Capturer via URL',
       document: 'Capturer via Document',
@@ -129,6 +131,19 @@ export default {
       transcriptionStarted: 'Transcription lancée',
       transcriptionError: 'Échec du lancement de la transcription',
     },
+  },
+
+  liveTranscription: {
+    title: 'Transcription en direct',
+    nativeRequired: 'La transcription live requiert le moteur natif. Activez-le dans Paramètres > Transcription.',
+    startError: 'Impossible de démarrer la transcription live.',
+    saveError: 'Impossible de sauvegarder la transcription.',
+    noText: "Aucun texte n'a été capturé.",
+    saved: 'Transcription sauvegardée.',
+    placeholder: 'Parlez maintenant...',
+    stop: 'Arrêter',
+    cancel: 'Annuler',
+    saving: 'Sauvegarde...',
   },
 
   captures: {
