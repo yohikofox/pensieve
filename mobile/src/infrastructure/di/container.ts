@@ -69,6 +69,10 @@ import { TranscriptionQueueProcessor } from '../../contexts/Normalization/proces
 import { TranscriptionWorker } from '../../contexts/Normalization/workers/TranscriptionWorker';
 import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
 
+// Model Download Notifications (Story 8.7)
+import { ModelDownloadNotificationService } from '../../contexts/Normalization/services/ModelDownloadNotificationService';
+import type { IModelDownloadNotificationService } from '../../contexts/Normalization/domain/IModelDownloadNotificationService';
+
 // Post-processing Services (LLM enhancement)
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 import { DeviceCapabilitiesService } from '../../contexts/Normalization/services/DeviceCapabilitiesService';
@@ -166,6 +170,9 @@ export function registerServices() {
 
   // SINGLETON: TranscriptionQueueProcessor — processeur lié à la queue singleton (ADR-021)
   container.registerSingleton(TranscriptionQueueProcessor);
+
+  // SINGLETON: ModelDownloadNotificationService — état de debounce partagé entre les téléchargements actifs (ADR-021)
+  container.registerSingleton<IModelDownloadNotificationService>(TOKENS.IModelDownloadNotificationService, ModelDownloadNotificationService);
 
   // SINGLETON: HuggingFaceAuthService — token d'authentification partagé pour la session (ADR-021)
   container.registerSingleton<IHuggingFaceAuthService>(TOKENS.IHuggingFaceAuthService, HuggingFaceAuthService);

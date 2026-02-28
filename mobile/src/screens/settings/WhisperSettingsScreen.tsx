@@ -17,6 +17,7 @@ import {
   TextInput,
   TouchableOpacity,
   Switch,
+  AppState,
 } from 'react-native';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 import {
@@ -68,6 +69,18 @@ export function WhisperSettingsScreen() {
   const toast = useToast();
 
   const modelService = new TranscriptionModelService();
+
+  // Refresh selected model when app comes back to foreground (Story 8.7)
+  // Handles the case where a background Whisper download completed
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextState) => {
+      if (nextState === 'active') {
+        const selected = await modelService.getSelectedModel();
+        setSelectedModel(selected);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
 
   // Load selected model, vocabulary, and suggestions on mount
   useEffect(() => {

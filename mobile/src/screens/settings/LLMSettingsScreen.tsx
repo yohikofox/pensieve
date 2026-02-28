@@ -273,7 +273,7 @@ export function LLMSettingsScreen() {
       if (nextState === 'active') {
         const isAuth = authService.isAuthenticated();
         setHfAuth(isAuth, authService.getUser());
-        if (isAuth) await refreshModels();
+        await refreshModels();
       }
     });
     return () => subscription.remove();

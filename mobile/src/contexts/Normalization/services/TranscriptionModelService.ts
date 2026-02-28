@@ -1,18 +1,32 @@
 import 'reflect-metadata';
 import { injectable, container } from 'tsyringe';
-import { fetch } from 'expo/fetch';
 import { File, Paths } from 'expo-file-system';
-// ASYNC_STORAGE_OK: UI preferences only (Whisper model selection, custom vocabulary) — not critical data (ADR-022)
+// ASYNC_STORAGE_OK: UI preferences only (Whisper model selection, custom vocabulary, download resume) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fileHash } from '@preeternal/react-native-file-hash';
+import {
+  createDownloadTask,
+  getExistingDownloadTasks,
+  type DownloadTask,
+} from '@kesha-antonov/react-native-background-downloader';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
+import type { IModelDownloadNotificationService } from '../domain/IModelDownloadNotificationService';
 import { CAPTURE_TYPES, CAPTURE_STATES } from '../../capture/domain/Capture.model';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
 
 const SELECTED_MODEL_KEY = '@pensieve/selected_whisper_model';
 const CUSTOM_VOCABULARY_KEY = '@pensieve/custom_vocabulary';
+
+/** Display names for Whisper models */
+const WHISPER_MODEL_NAMES: Record<WhisperModelSize, string> = {
+  tiny: 'Whisper Tiny (75 Mo)',
+  base: 'Whisper Base (142 Mo)',
+  small: 'Whisper Small (466 Mo)',
+  medium: 'Whisper Medium (1,5 Go)',
+  'large-v3': 'Whisper Large v3 (3,1 Go)',
+};
 
 export interface DownloadProgress {
   totalBytesWritten: number;
@@ -71,15 +85,20 @@ export class TranscriptionModelService {
     },
   };
 
+  /** Map of active Whisper downloads for pause/resume support */
+  private activeWhisperDownloads: Map<string, DownloadTask> = new Map();
+
   /**
    * Download Whisper model to device storage with progress tracking
    *
-   * Uses expo/fetch with ReadableStream for progress callbacks
+   * Uses react-native-background-downloader for background-compatible downloads:
+   * - Continues downloading when app is backgrounded
+   * - Pause/Resume support with range requests
+   * - Automatic recovery after crash via recoverInterruptedWhisperDownloads()
    *
-   * @param modelSize - 'tiny' or 'base'
+   * @param modelSize - Model size to download
    * @param onProgress - Callback for download progress updates
    * @returns Path to downloaded model file
-   * @throws Error if download fails or model size unsupported
    */
   async downloadModel(
     modelSize: WhisperModelSize,
@@ -88,101 +107,96 @@ export class TranscriptionModelService {
     const config = this.MODEL_CONFIGS[modelSize];
     const modelUrl = `${this.MODEL_BASE_URL}/${config.filename}`;
     const modelFile = this.getModelFile(modelSize);
+    const modelName = WHISPER_MODEL_NAMES[modelSize];
 
-    console.log('[TranscriptionModelService] 📥 Starting download:', {
+    console.log('[TranscriptionModelService] 📥 Starting background download:', {
       modelUrl,
       modelPath: modelFile.uri,
     });
 
-    try {
-      // Fetch with streaming support
-      const response = await fetch(modelUrl, {
-        headers: {
-          'User-Agent': 'Pensieve-App/1.0',
-        },
+    // Lazy resolution — TranscriptionModelService is often instantiated with `new`
+    // so constructor injection is not available here (ADR-017: indented resolve is allowed)
+    const notificationService = container.resolve<IModelDownloadNotificationService>(
+      TOKENS.IModelDownloadNotificationService
+    );
+
+    return new Promise<string>((resolve, reject) => {
+      const task = createDownloadTask({
+        id: `whisper-${modelSize}`,
+        url: modelUrl,
+        destination: modelFile.uri,
+        headers: { 'User-Agent': 'Pensieve-App/1.0' },
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error: ${response.status} ${response.statusText}`);
-      }
+      this.activeWhisperDownloads.set(modelSize, task);
 
-      // Get content length for progress calculation
-      const contentLength = response.headers.get('content-length');
-      const totalBytes = contentLength ? parseInt(contentLength, 10) : config.expectedSize;
-
-      console.log('[TranscriptionModelService] 📊 Content-Length:', totalBytes);
-
-      if (!response.body) {
-        throw new Error('Response body is null');
-      }
-
-      // Read stream with progress tracking
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-      let receivedBytes = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          break;
-        }
-
-        chunks.push(value);
-        receivedBytes += value.length;
-
-        // Report progress
-        if (onProgress) {
-          const progress = receivedBytes / totalBytes;
-          onProgress({
-            totalBytesWritten: receivedBytes,
-            totalBytesExpectedToWrite: totalBytes,
-            progress: Math.min(progress, 1), // Cap at 1 in case content-length was wrong
+      task
+        .begin((expectedBytes) => {
+          console.log('[TranscriptionModelService] 📊 Expected bytes:', expectedBytes);
+        })
+        .progress(({ bytesDownloaded, bytesTotal }) => {
+          const progress = bytesTotal > 0 ? bytesDownloaded / bytesTotal : 0;
+          onProgress?.({
+            totalBytesWritten: bytesDownloaded,
+            totalBytesExpectedToWrite: bytesTotal,
+            progress: Math.min(progress, 1),
           });
+          notificationService
+            .updateProgressNotification(modelSize, modelName, progress)
+            .catch(() => {});
+        })
+        .done(async ({ location }) => {
+          this.activeWhisperDownloads.delete(modelSize);
+          console.log('[TranscriptionModelService] ✅ Download completed:', location);
 
-          // Log progress every ~10%
-          if (Math.floor(progress * 10) !== Math.floor((receivedBytes - value.length) / totalBytes * 10)) {
-            console.log('[TranscriptionModelService] 📊 Progress:', {
-              written: receivedBytes,
-              total: totalBytes,
-              percent: Math.round(progress * 100),
-            });
+          try {
+            // Verify checksum
+            const isValid = await this.verifyChecksum(modelSize);
+            if (!isValid) {
+              await this.deleteModel(modelSize);
+              await notificationService
+                .notifyDownloadError(modelSize, modelName, 'whisper')
+                .catch(() => {});
+              reject(
+                new Error(`Checksum verification failed for ${modelSize} model. File deleted.`)
+              );
+              return;
+            }
+
+            await notificationService.dismissProgressNotification(modelSize).catch(() => {});
+            await notificationService
+              .notifyDownloadSuccess(modelSize, modelName, 'whisper')
+              .catch(() => {});
+
+            // AC6: Auto-resume pending captures now that model is available (Story 2.7)
+            await this.autoResumePendingCaptures();
+
+            resolve(modelFile.uri);
+          } catch (error) {
+            await notificationService
+              .notifyDownloadError(modelSize, modelName, 'whisper')
+              .catch(() => {});
+            reject(
+              new Error(
+                `Failed to process ${modelSize} model: ${error instanceof Error ? error.message : 'Unknown error'}`
+              )
+            );
           }
-        }
-      }
+        })
+        .error(async ({ error }) => {
+          this.activeWhisperDownloads.delete(modelSize);
+          console.error('[TranscriptionModelService] ❌ Download failed:', error);
 
-      // Combine chunks into single Uint8Array
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      const fileData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        fileData.set(chunk, offset);
-        offset += chunk.length;
-      }
+          await notificationService.dismissProgressNotification(modelSize).catch(() => {});
+          await notificationService
+            .notifyDownloadError(modelSize, modelName, 'whisper')
+            .catch(() => {});
 
-      // Write to file using new expo-file-system API
-      await modelFile.write(fileData);
+          reject(new Error(`Failed to download ${modelSize} model: ${error}`));
+        });
 
-      console.log('[TranscriptionModelService] ✅ Download completed:', modelFile.uri);
-
-      // Verify checksum
-      const isValid = await this.verifyChecksum(modelSize);
-      if (!isValid) {
-        // Delete corrupted file
-        await this.deleteModel(modelSize);
-        throw new Error(`Checksum verification failed for ${modelSize} model. File deleted.`);
-      }
-
-      // AC6: Auto-resume pending captures now that model is available (Story 2.7)
-      await this.autoResumePendingCaptures();
-
-      return modelFile.uri;
-    } catch (error) {
-      console.error('[TranscriptionModelService] ❌ Download failed:', error);
-      throw new Error(
-        `Failed to download ${modelSize} model: ${error instanceof Error ? error.message : 'Unknown error'}`
-      );
-    }
+      task.start();
+    });
   }
 
   /**
@@ -436,6 +450,117 @@ export class TranscriptionModelService {
   async getPromptString(): Promise<string> {
     const words = await this.getCustomVocabulary();
     return words.length > 0 ? words.join(', ') : '';
+  }
+
+  /**
+   * Pause an active Whisper download
+   */
+  pauseWhisperDownload(modelSize: WhisperModelSize): void {
+    const task = this.activeWhisperDownloads.get(modelSize);
+    if (!task) {
+      console.warn(`[TranscriptionModelService] No active download to pause: ${modelSize}`);
+      return;
+    }
+    task.pause();
+    console.log('[TranscriptionModelService] ⏸ Download paused:', modelSize);
+  }
+
+  /**
+   * Resume a paused Whisper download
+   */
+  resumeWhisperDownload(modelSize: WhisperModelSize): void {
+    const task = this.activeWhisperDownloads.get(modelSize);
+    if (!task) {
+      console.warn(`[TranscriptionModelService] No paused download to resume: ${modelSize}`);
+      return;
+    }
+    task.resume();
+    console.log('[TranscriptionModelService] ▶ Download resumed:', modelSize);
+  }
+
+  /**
+   * Cancel an active Whisper download and remove partial file
+   */
+  async cancelWhisperDownload(modelSize: WhisperModelSize): Promise<void> {
+    const task = this.activeWhisperDownloads.get(modelSize);
+    if (!task) {
+      console.warn(`[TranscriptionModelService] No active download to cancel: ${modelSize}`);
+      return;
+    }
+
+    try {
+      task.stop();
+      this.activeWhisperDownloads.delete(modelSize);
+
+      // Delete partial file
+      const modelFile = this.getModelFile(modelSize);
+      if (modelFile.exists) {
+        await modelFile.delete();
+      }
+
+      console.log('[TranscriptionModelService] ❌ Download cancelled:', modelSize);
+    } catch (error) {
+      console.error('[TranscriptionModelService] Failed to cancel download:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Recover interrupted Whisper downloads after crash/app restart
+   * Uses getExistingDownloadTasks() from react-native-background-downloader
+   * Call this at app startup (e.g. from WhisperSettingsScreen's AppState listener)
+   */
+  async recoverInterruptedWhisperDownloads(): Promise<WhisperModelSize[]> {
+    const recoveredModels: WhisperModelSize[] = [];
+
+    try {
+      const tasks = await getExistingDownloadTasks();
+
+      for (const task of tasks) {
+        if (!task.id.startsWith('whisper-')) {
+          continue;
+        }
+
+        const modelSize = task.id.replace('whisper-', '') as WhisperModelSize;
+        if (!this.MODEL_CONFIGS[modelSize]) {
+          console.warn(`[TranscriptionModelService] Unknown model from recovery: ${task.id}`);
+          continue;
+        }
+
+        // Reattach minimal callbacks for recovery
+        task
+          .progress(({ bytesDownloaded, bytesTotal }) => {
+            const percent =
+              bytesTotal > 0 ? Math.round((bytesDownloaded / bytesTotal) * 100) : 0;
+            console.log(
+              `[TranscriptionModelService] Recovery progress ${modelSize}: ${percent}%`
+            );
+          })
+          .done(() => {
+            console.log(`[TranscriptionModelService] Recovery completed: ${modelSize}`);
+            this.activeWhisperDownloads.delete(modelSize);
+          })
+          .error(({ error }) => {
+            console.error(`[TranscriptionModelService] Recovery failed: ${modelSize}`, error);
+            this.activeWhisperDownloads.delete(modelSize);
+          });
+
+        this.activeWhisperDownloads.set(modelSize, task);
+        recoveredModels.push(modelSize);
+      }
+
+      if (recoveredModels.length > 0) {
+        console.log(
+          `[TranscriptionModelService] Recovered ${recoveredModels.length} download(s):`,
+          recoveredModels
+        );
+      }
+
+      return recoveredModels;
+    } catch (error) {
+      console.error('[TranscriptionModelService] Recovery failed:', error);
+      return [];
+    }
   }
 
   /**

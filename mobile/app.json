@@ -18,7 +18,8 @@
       "bundleIdentifier": "com.pensine.app",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "Pensieve a besoin d'accéder au microphone pour enregistrer vos pensées vocales.",
-        "NSSpeechRecognitionUsageDescription": "Pensieve utilise la reconnaissance vocale pour transcrire vos enregistrements en texte."
+        "NSSpeechRecognitionUsageDescription": "Pensieve utilise la reconnaissance vocale pour transcrire vos enregistrements en texte.",
+        "UIBackgroundModes": ["fetch", "background-processing"]
       }
     },
     "android": {

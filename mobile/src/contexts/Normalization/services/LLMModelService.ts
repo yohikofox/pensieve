@@ -35,6 +35,7 @@ import { NPUDetectionService } from "./NPUDetectionService";
 import type { IHuggingFaceAuthService } from "../domain/IHuggingFaceAuthService";
 import type { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 import type { ILLMModelService, LLMTask, DownloadProgress } from "../domain/ILLMModelService";
+import type { IModelDownloadNotificationService } from "../domain/IModelDownloadNotificationService";
 import { TOKENS } from "../../../infrastructure/di/tokens";
 import {
   MODEL_CONFIGS,
@@ -77,6 +78,8 @@ export class LLMModelService implements ILLMModelService {
   constructor(
     @inject(NPUDetectionService) private npuDetectionService: NPUDetectionService,
     @inject(TOKENS.IHuggingFaceAuthService) private authService: IHuggingFaceAuthService,
+    @inject(TOKENS.IModelDownloadNotificationService)
+    private notificationService: IModelDownloadNotificationService,
   ) {}
 
   /**
@@ -89,6 +92,10 @@ export class LLMModelService implements ILLMModelService {
     setConfig({
       isLogsEnabled: __DEV__,
     });
+
+    // Set up notification channel (Android) and request permissions on first use
+    await this.notificationService.initialize();
+    await this.notificationService.requestPermissions();
   }
 
   /**
@@ -302,33 +309,48 @@ export class LLMModelService implements ILLMModelService {
         console.log("[LLMModelService] Download started, expected:", expectedBytes);
       })
       .progress(({ bytesDownloaded, bytesTotal }) => {
-        if (onProgress) {
-          const percent = bytesTotal > 0 ? (bytesDownloaded / bytesTotal) * 100 : 0;
+        if (bytesTotal > 0) {
+          const progress = bytesDownloaded / bytesTotal;
+          const percent = progress * 100;
 
-          onProgress({
-            totalBytesWritten: bytesDownloaded,
-            totalBytesExpectedToWrite: bytesTotal,
-            progress: bytesDownloaded / bytesTotal,
-          });
+          if (onProgress) {
+            onProgress({
+              totalBytesWritten: bytesDownloaded,
+              totalBytesExpectedToWrite: bytesTotal,
+              progress,
+            });
 
-          // Log every ~10%
-          if (Math.floor(percent / 10) !== Math.floor(((bytesDownloaded - 1024) / bytesTotal * 100) / 10)) {
-            console.log(`[LLMModelService] Progress: ${Math.round(percent)}%`);
+            // Log every ~10%
+            if (Math.floor(percent / 10) !== Math.floor(((bytesDownloaded - 1024) / bytesTotal * 100) / 10)) {
+              console.log(`[LLMModelService] Progress: ${Math.round(percent)}%`);
+            }
           }
+
+          // Update persistent Android notification (debounced inside the service)
+          this.notificationService.updateProgressNotification(modelId, config.name, progress).catch(() => {});
         }
       })
-      .done(({ location }) => {
+      .done(async ({ location }) => {
         console.log("[LLMModelService] Download completed:", location);
 
         this.activeDownloads.delete(modelId);
         this.clearDownloadState(modelId);
 
+        // Dismiss progress notification then notify success
+        await this.notificationService.dismissProgressNotification(modelId).catch(() => {});
+        await this.notificationService.notifyDownloadSuccess(modelId, config.name, 'llm').catch(() => {});
+
         // Checksum verification disabled - HuggingFace headers contain incorrect checksums
         resolve(location);
       })
-      .error(({ error }) => {
+      .error(async ({ error }) => {
         console.error("[LLMModelService] Download failed:", error);
         this.activeDownloads.delete(modelId);
+
+        // Dismiss progress notification then notify failure
+        await this.notificationService.dismissProgressNotification(modelId).catch(() => {});
+        await this.notificationService.notifyDownloadError(modelId, config.name, 'llm').catch(() => {});
+
         reject(new Error(`Failed to download ${config.name}: ${error}`));
       });
 

@@ -34,6 +34,7 @@ import { useSyncInitialization } from '../hooks/initialization/useSyncInitializa
 import { useSyncStatusBridge } from '../hooks/useSyncStatusBridge';
 import { useLongOfflineReminder } from '../hooks/useLongOfflineReminder';
 import { useFirstLaunchInitialization } from '../hooks/initialization/useFirstLaunchInitialization';
+import { useModelDownloadNotificationHandler } from '../hooks/initialization/useModelDownloadNotificationHandler';
 import { FirstLaunchProgress } from './FirstLaunchProgress';
 
 /**
@@ -95,6 +96,7 @@ function AppContent() {
   useCrashRecovery();
   useLLMDownloadRecovery();
   useNotificationSetup();
+  useModelDownloadNotificationHandler(navigationRef);
   useTranscriptionInitialization();
   useSyncInitialization();
 

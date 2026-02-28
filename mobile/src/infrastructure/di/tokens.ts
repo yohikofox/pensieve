@@ -46,6 +46,9 @@ export const TOKENS = {
   // First Launch (Story 24.4)
   FirstLaunchInitializer: Symbol.for('FirstLaunchInitializer'),
 
+  // Model Download Notifications (Story 8.7)
+  IModelDownloadNotificationService: Symbol.for('IModelDownloadNotificationService'),
+
   // Dev Tools — Story 7.3
   IGitHubIssueService: Symbol.for('IGitHubIssueService'),
   ILogsAnalysisService: Symbol.for('ILogsAnalysisService'),
