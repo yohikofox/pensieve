@@ -12,6 +12,7 @@ import { container } from "tsyringe";
 import { TOKENS } from "../infrastructure/di/tokens";
 import type { ICaptureRepository } from "../contexts/capture/domain/ICaptureRepository";
 import type { ICaptureMetadataRepository } from "../contexts/capture/domain/ICaptureMetadataRepository";
+import type { ILLMModelService } from "../contexts/Normalization/domain/ILLMModelService";
 import { CaptureAnalysisService } from "../contexts/Normalization/services/CaptureAnalysisService";
 import { TranscriptionModelService } from "../contexts/Normalization/services/TranscriptionModelService";
 import { TranscriptionEngineService } from "../contexts/Normalization/services/TranscriptionEngineService";
@@ -65,6 +66,9 @@ export function useCaptureDetailInit(
   );
   const setStoreIsNativeEngine = useCaptureDetailStore(
     (state) => state.setIsNativeEngine,
+  );
+  const setStoreHasLLMModelAvailable = useCaptureDetailStore(
+    (state) => state.setHasLLMModelAvailable,
   );
 
   // Local state for init-specific data that's not in the detail store
@@ -184,6 +188,23 @@ export function useCaptureDetailInit(
   }, [setStoreHasModelAvailable]);
 
   /**
+   * Check if an LLM model is available for digestion/analysis (Story 8.5)
+   */
+  const checkLLMModelAvailability = useCallback(async () => {
+    try {
+      const llmModelService = container.resolve<ILLMModelService>(TOKENS.ILLMModelService);
+      const bestModel = await llmModelService.getBestAvailableModel();
+      setStoreHasLLMModelAvailable(bestModel !== null);
+    } catch (err) {
+      console.error(
+        "[useCaptureDetailInit] Failed to check LLM model availability:",
+        err,
+      );
+      setStoreHasLLMModelAvailable(null); // Unknown state — guide non affiché
+    }
+  }, [setStoreHasLLMModelAvailable]);
+
+  /**
    * Check transcription engine type (native vs Whisper)
    */
   const checkEngineType = useCallback(async () => {
@@ -217,7 +238,12 @@ export function useCaptureDetailInit(
     checkEngineType();
   }, [checkEngineType]);
 
-  // Effect 5: Expose captureId and refreshCapture in store for useCaptureDetailListener
+  // Effect 5: Check LLM model availability (for AnalysisCard guide — Story 8.5)
+  useEffect(() => {
+    checkLLMModelAvailability();
+  }, [checkLLMModelAvailability]);
+
+  // Effect 6: Expose captureId and refreshCapture in store for useCaptureDetailListener
   // Uses refreshCapture (not loadCapture) so event-driven reloads don't reset the store
   useEffect(() => {
     setCaptureId(captureId);

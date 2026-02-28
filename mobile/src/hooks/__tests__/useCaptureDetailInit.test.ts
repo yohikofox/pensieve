@@ -10,6 +10,7 @@
  */
 
 import "reflect-metadata";
+import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 
 // Mock dependencies BEFORE imports
 jest.mock("tsyringe");
@@ -22,6 +23,8 @@ jest.mock("../../contexts/Normalization/services/TranscriptionModelService", () 
 jest.mock("../../contexts/Normalization/services/TranscriptionEngineService", () => ({
   TranscriptionEngineService: jest.fn(),
 }));
+// Story 8.5: ILLMModelService token is resolved via container (no class import needed)
+// mock is set up in beforeEach via container.resolve
 
 import { renderHook, waitFor } from "@testing-library/react-native";
 import { useCaptureDetailInit } from "../useCaptureDetailInit";
@@ -42,6 +45,10 @@ const mockAnalysisService = {
 };
 
 const mockModelService = {
+  getBestAvailableModel: jest.fn(),
+};
+
+const mockLLMModelService = {
   getBestAvailableModel: jest.fn(),
 };
 
@@ -80,6 +87,7 @@ describe("useCaptureDetailInit", () => {
     (container.resolve as jest.Mock).mockImplementation((token) => {
       if (token === TOKENS.ICaptureRepository) return mockCaptureRepository;
       if (token === TOKENS.ICaptureMetadataRepository) return mockMetadataRepository;
+      if (token === TOKENS.ILLMModelService) return mockLLMModelService;
       if (token.name === "CaptureAnalysisService") return mockAnalysisService;
       if (token.name === "TranscriptionModelService") return mockModelService;
       if (token.name === "TranscriptionEngineService") return mockEngineService;
@@ -314,6 +322,94 @@ describe("useCaptureDetailInit", () => {
       // Verify it reloads capture and metadata
       expect(mockCaptureRepository.findById).toHaveBeenCalledWith("test-capture-id");
       expect(mockMetadataRepository.getAllAsMap).toHaveBeenCalledWith("test-capture-id");
+    });
+  });
+});
+
+// ============================================================================
+// Story 8.5 — Tests unitaires pour checkLLMModelAvailability
+// Utilise l'API actuelle basée sur Zustand (captureId: string)
+// ============================================================================
+
+describe("useCaptureDetailInit — checkLLMModelAvailability (Story 8.5)", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+
+    // Reset Zustand store
+    useCaptureDetailStore.getState().reset();
+
+    // Setup container.resolve mock
+    (container.resolve as jest.Mock).mockImplementation((token) => {
+      if (token === TOKENS.ICaptureRepository) return mockCaptureRepository;
+      if (token === TOKENS.ICaptureMetadataRepository) return mockMetadataRepository;
+      if (token === TOKENS.ILLMModelService) return mockLLMModelService;
+      if (token.name === "CaptureAnalysisService") return mockAnalysisService;
+      if (token.name === "TranscriptionEngineService") return mockEngineService;
+      return null;
+    });
+
+    // Default base responses
+    mockCaptureRepository.findById.mockResolvedValue({
+      id: "test-capture-id",
+      type: "audio",
+      state: "ready",
+      normalizedText: "Test transcription",
+    });
+    mockMetadataRepository.getAllAsMap.mockResolvedValue({});
+    mockAnalysisService.getAnalyses.mockResolvedValue({});
+    mockEngineService.isNativeEngineSelected.mockResolvedValue(false);
+  });
+
+  it("Cas 1 — getBestAvailableModel retourne un id → hasLLMModelAvailable = true", async () => {
+    mockLLMModelService.getBestAvailableModel.mockResolvedValue("smollm2-135m");
+
+    renderHook(() => useCaptureDetailInit("test-capture-id"));
+
+    await waitFor(() => {
+      expect(useCaptureDetailStore.getState().hasLLMModelAvailable).toBe(true);
+    });
+
+    expect(mockLLMModelService.getBestAvailableModel).toHaveBeenCalled();
+  });
+
+  it("Cas 2 — getBestAvailableModel retourne null → hasLLMModelAvailable = false", async () => {
+    mockLLMModelService.getBestAvailableModel.mockResolvedValue(null);
+
+    renderHook(() => useCaptureDetailInit("test-capture-id"));
+
+    await waitFor(() => {
+      expect(useCaptureDetailStore.getState().hasLLMModelAvailable).toBe(false);
+    });
+
+    expect(mockLLMModelService.getBestAvailableModel).toHaveBeenCalled();
+  });
+
+  it("Cas 3 — getBestAvailableModel lève une erreur → hasLLMModelAvailable = null", async () => {
+    mockLLMModelService.getBestAvailableModel.mockRejectedValue(
+      new Error("Service unavailable")
+    );
+
+    renderHook(() => useCaptureDetailInit("test-capture-id"));
+
+    await waitFor(() => {
+      // null car état inconnu — pas de guide affiché
+      expect(useCaptureDetailStore.getState().hasLLMModelAvailable).toBeNull();
+    });
+
+    expect(mockLLMModelService.getBestAvailableModel).toHaveBeenCalled();
+  });
+
+  it("hasLLMModelAvailable est indépendant de hasModelAvailable (Whisper)", async () => {
+    // Whisper model: absent → hasModelAvailable = false
+    mockEngineService.isNativeEngineSelected.mockResolvedValue(false);
+    // LLM model: présent → hasLLMModelAvailable = true
+    mockLLMModelService.getBestAvailableModel.mockResolvedValue("smollm2-135m");
+
+    renderHook(() => useCaptureDetailInit("test-capture-id"));
+
+    await waitFor(() => {
+      const state = useCaptureDetailStore.getState();
+      expect(state.hasLLMModelAvailable).toBe(true);
     });
   });
 });

@@ -6,7 +6,7 @@
  * Story 5.4 - Unified store: reads directly from captureDetailStore
  */
 
-import React, { useEffect } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { colors } from "../../design-system/tokens";
 import { NavigationIcons } from "../../design-system/icons";
@@ -49,6 +50,7 @@ export function AnalysisCard({
   const actionItemsHook = useActionItems();
   const ideasHook = useIdeas();
   const toast = useToast();
+  const navigation = useNavigation();
 
   // Direct store access - no more wrapper hooks
   const isReady = useCaptureDetailStore((state) => state.isReady);
@@ -63,6 +65,17 @@ export function AnalysisCard({
   const setShowCalendarDialog = useCaptureDetailStore(
     (state) => state.setShowCalendarDialog,
   );
+
+  // Story 8.5: LLM model availability guide
+  const hasLLMModelAvailable = useCaptureDetailStore(
+    (state) => state.hasLLMModelAvailable,
+  );
+  const isLLMEnabled = useSettingsStore((state) => state.llm.isEnabled);
+  const showLLMGuide = hasLLMModelAvailable === false && isLLMEnabled;
+
+  const handleConfigureLLM = useCallback(() => {
+    navigation.navigate("LLMSettings" as never);
+  }, [navigation]);
 
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
@@ -130,8 +143,48 @@ export function AnalysisCard({
             },
           ]}
         >
+          {/* Story 8.5: LLM guide when enabled but no model downloaded */}
+          {showLLMGuide && (
+            <View
+              style={[
+                styles.llmGuideContainer,
+                {
+                  backgroundColor: themeColors.cardBg,
+                  borderColor: themeColors.borderDefault,
+                },
+              ]}
+            >
+              <Feather name="cpu" size={24} color={colors.warning[500]} />
+              <Text
+                style={[styles.llmGuideTitle, { color: themeColors.textPrimary }]}
+              >
+                Modèle LLM requis
+              </Text>
+              <Text
+                style={[
+                  styles.llmGuideDescription,
+                  { color: themeColors.textSecondary },
+                ]}
+              >
+                Téléchargez un modèle LLM pour activer l'analyse automatique de vos captures.
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.llmGuideButton,
+                  { backgroundColor: colors.primary[500] },
+                ]}
+                onPress={handleConfigureLLM}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.llmGuideButtonText}>
+                  Configurer un modèle
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Show message if no text to analyze */}
-          {!editedText ? (
+          {!showLLMGuide && !editedText ? (
             <View style={styles.noTextMessage}>
               <Feather
                 name="file-text"
@@ -156,7 +209,7 @@ export function AnalysisCard({
                 enregistrement plus long ou plus clair.
               </Text>
             </View>
-          ) : (
+          ) : !showLLMGuide && (
             <>
               {/* Analyze All Button */}
               {(() => {
@@ -452,5 +505,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: "center",
     paddingHorizontal: 20,
+  },
+  // Story 8.5: LLM guide styles
+  llmGuideContainer: {
+    alignItems: "center",
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderRadius: 8,
+    marginVertical: 8,
+  },
+  llmGuideTitle: {
+    marginTop: 10,
+    fontSize: 16,
+    fontWeight: "600",
+    marginBottom: 6,
+  },
+  llmGuideDescription: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+  llmGuideButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  llmGuideButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "600",
   },
 });

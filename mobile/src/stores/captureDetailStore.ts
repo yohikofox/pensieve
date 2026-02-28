@@ -56,6 +56,9 @@ const initialState = {
   hasModelAvailable: null as boolean | null,
   isNativeEngine: false,
 
+  // LLM model availability (Story 8.5)
+  hasLLMModelAvailable: null as boolean | null,
+
   // ──────────────────────────────────────────────────────────────────────────
   // UI States
   // ──────────────────────────────────────────────────────────────────────────
@@ -124,6 +127,7 @@ type CaptureDetailState = typeof initialState & {
   setIsInQueue: (inQueue: boolean) => void;
   setHasModelAvailable: (available: boolean | null) => void;
   setIsNativeEngine: (isNative: boolean) => void;
+  setHasLLMModelAvailable: (available: boolean | null) => void;
 
   // ──────────────────────────────────────────────────────────────────────────
   // UI Actions
@@ -200,6 +204,7 @@ export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
   setIsInQueue: (inQueue) => set({ isInQueue: inQueue }),
   setHasModelAvailable: (available) => set({ hasModelAvailable: available }),
   setIsNativeEngine: (isNative) => set({ isNativeEngine: isNative }),
+  setHasLLMModelAvailable: (available) => set({ hasLLMModelAvailable: available }),
 
   // ──────────────────────────────────────────────────────────────────────────
   // UI Actions

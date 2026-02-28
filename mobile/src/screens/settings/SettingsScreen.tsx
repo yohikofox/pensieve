@@ -173,11 +173,18 @@ export const SettingsScreen = () => {
   }, [navigation, t]);
 
   // Load LLM status on mount and when returning to screen
+  // Story 8.5: distinguishes "Désactivé" / "Aucun modèle" / model name
   useEffect(() => {
     const loadLlmStatus = async () => {
       const enabled = await llmModelService.isPostProcessingEnabled();
       if (!enabled) {
         setLlmStatusLabel(t('common.disabled'));
+        return;
+      }
+
+      const bestModel = await llmModelService.getBestAvailableModel();
+      if (!bestModel) {
+        setLlmStatusLabel(t('settings.llm.noModel', 'Aucun modèle'));
         return;
       }
 
