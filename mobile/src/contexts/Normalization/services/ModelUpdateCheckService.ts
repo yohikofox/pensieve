@@ -178,6 +178,18 @@ export class ModelUpdateCheckService implements IModelUpdateCheckService {
       // 4. Persister statut + date check
       await AsyncStorage.setItem(KEY_UPDATE_STATUS(modelType, modelId), status);
       await this.saveCheckDate(modelId, modelType);
+
+      // 5. Migration : backfiller downloadDate/updateDate pour modèles pré-existants
+      //    (téléchargés avant story 8.9 ou après wipe d'AsyncStorage)
+      const existingDownloadDate = await AsyncStorage.getItem(KEY_DOWNLOAD_DATE(modelType, modelId));
+      if (!existingDownloadDate) {
+        const now = new Date().toISOString();
+        await AsyncStorage.multiSet([
+          [KEY_DOWNLOAD_DATE(modelType, modelId), now],
+          [KEY_UPDATE_DATE(modelType, modelId), now],
+        ]);
+      }
+
       return success(status);
     } catch (error) {
       return unknownError<ModelUpdateStatus>(

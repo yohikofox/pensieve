@@ -16,6 +16,7 @@ import { TOKENS } from '../infrastructure/di/tokens';
 import type { IModelUpdateCheckService } from '../contexts/Normalization/domain/IModelUpdateCheckService';
 import type { ModelUpdateInfo, ModelType } from '../contexts/Normalization/domain/IModelUpdateCheckService';
 import type { IModelDownloadNotificationService } from '../contexts/Normalization/domain/IModelDownloadNotificationService';
+import { RepositoryResultType } from '../contexts/shared/domain/Result';
 
 export type { ModelUpdateInfo, ModelType };
 
@@ -44,7 +45,7 @@ export function useModelUpdateCheck(
     const entries = await Promise.all(
       models.map(async ({ modelId }) => {
         const result = await service.getUpdateInfo(modelId, modelType);
-        return [modelId, result.type === 'SUCCESS' ? result.data : null] as const;
+        return [modelId, result.type === RepositoryResultType.SUCCESS ? result.data : null] as const;
       }),
     );
     setUpdateInfoMap(Object.fromEntries(entries.filter(([, v]) => v !== null)));
@@ -56,28 +57,31 @@ export function useModelUpdateCheck(
     const notifService = getNotifService();
     for (const { modelId, modelName, downloadUrl } of models) {
       const needed = await service.isCheckNeeded(modelId, modelType);
-      if (needed.type !== 'SUCCESS' || !needed.data) continue;
+      if (needed.type !== RepositoryResultType.SUCCESS || !needed.data) continue;
 
       const result = await service.checkForUpdate(modelId, downloadUrl, modelType);
-      if (result.type === 'SUCCESS') {
+      if (result.type === RepositoryResultType.SUCCESS) {
         if (result.data === 'update-available') {
           await notifService.notifyUpdateAvailable(modelId, modelName, modelType === 'llm' ? 'llm' : 'whisper');
         }
         // Refresh info pour UI
         const info = await service.getUpdateInfo(modelId, modelType);
-        if (info.type === 'SUCCESS') {
+        if (info.type === RepositoryResultType.SUCCESS) {
           setUpdateInfoMap(prev => ({ ...prev, [modelId]: info.data }));
         }
       }
     }
   }, [models, modelType]);
 
+  // Clé stable dérivée des IDs — ne change que quand le set de modèles change
+  const modelsKey = models.map(m => m.modelId).join(',');
+
   useEffect(() => {
     if (models.length === 0) return;
     loadStoredInfo().then(() => {
       autoCheckAll();
     });
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [modelsKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Check manuel (force, ignore throttle)
   const checkAll = useCallback(async () => {
@@ -87,11 +91,11 @@ export function useModelUpdateCheck(
     try {
       for (const { modelId, modelName, downloadUrl } of models) {
         const result = await service.checkForUpdate(modelId, downloadUrl, modelType, true);
-        if (result.type === 'SUCCESS' && result.data === 'update-available') {
+        if (result.type === RepositoryResultType.SUCCESS && result.data === 'update-available') {
           await notifService.notifyUpdateAvailable(modelId, modelName, modelType === 'llm' ? 'llm' : 'whisper');
         }
         const info = await service.getUpdateInfo(modelId, modelType);
-        if (info.type === 'SUCCESS') {
+        if (info.type === RepositoryResultType.SUCCESS) {
           setUpdateInfoMap(prev => ({ ...prev, [modelId]: info.data }));
         }
       }
