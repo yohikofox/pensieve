@@ -111,8 +111,8 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
         if (lastUsedResult.type !== RepositoryResultType.SUCCESS) return;
 
         const lastUsed = lastUsedResult.data;
-        if (lastUsed === null) {
-          // Pas de clé lastUsed → comportement prudent : ne pas inclure (AC3)
+        if (lastUsed == null) {
+          // Pas de clé lastUsed (null ou undefined) → comportement prudent : ne pas inclure (AC3)
           return;
         }
 
