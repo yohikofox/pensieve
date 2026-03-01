@@ -275,12 +275,20 @@ export function LLMSettingsScreen() {
 
   /**
    * Story 8.8 — Vérifier les modèles LLM inutilisés (AC4)
+   * Passe les chemins de fichiers pour le fallback FileSystem.getInfoAsync (AC3)
    */
   const checkUnusedModels = useCallback(async () => {
     const downloadedIds = await modelService.getDownloadedModelIds();
-    const result = await usageTrackingService.getUnusedModels(downloadedIds, [], MODEL_INACTIVITY_THRESHOLD_DAYS);
+    // Construire la map paths pour le fallback FileSystem (AC3 — modèles sans lastUsed)
+    const paths = new Map<string, string>();
+    for (const id of downloadedIds) {
+      paths.set(id, modelService.getModelPath(id as LLMModelId));
+    }
+    const result = await usageTrackingService.getUnusedModels(downloadedIds, [], MODEL_INACTIVITY_THRESHOLD_DAYS, paths);
     if (result.type === RepositoryResultType.SUCCESS && result.data) {
       setUnusedLLMModels(result.data);
+    } else if (result.type !== RepositoryResultType.SUCCESS) {
+      console.warn('[LLMSettings] checkUnusedModels failed:', result);
     }
   }, [modelService, usageTrackingService]);
 

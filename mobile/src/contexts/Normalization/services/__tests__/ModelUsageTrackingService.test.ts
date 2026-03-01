@@ -1,10 +1,11 @@
 /**
  * ModelUsageTrackingService Unit Tests
  *
- * 11 test cases covering:
+ * 13 test cases covering:
  * - trackModelUsed() : persistance timestamp ISO
  * - getLastUsedDate() : lecture et parsing de clé AsyncStorage
  * - getUnusedModels() : seuil 15 jours + comportement prudent sans clé
+ * - getUnusedModels() : fallback FileSystem.getInfoAsync (AC3)
  * - dismissSuggestion() : création de la clé de dismissal
  * - hasDismissedSuggestion() : logique temporelle dismiss vs reuse
  * - clearModelTracking() : suppression des deux clés
@@ -16,6 +17,7 @@
 
 import 'reflect-metadata';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File } from 'expo-file-system';
 import { ModelUsageTrackingService } from '../ModelUsageTrackingService';
 import { RepositoryResultType } from '../../../shared/domain/Result';
 
@@ -233,5 +235,45 @@ describe('ModelUsageTrackingService', () => {
     );
     expect(lastUsed).toBeNull();
     expect(dismissed).toBeNull();
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Cas 12 — getUnusedModels : fallback File.info() — stat J-20 → DANS la liste
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('Cas 12 — getUnusedModels : fallback File.info() (modificationTime J-20, sans lastUsed) → DANS la liste', async () => {
+    // Pas de clé lastUsed en AsyncStorage
+    // Simuler un fichier avec modificationTime il y a 20 jours
+    const modificationTimeMs = FIXED_NOW - 20 * DAY_MS;
+    jest.spyOn(File.prototype, 'info').mockReturnValue({
+      exists: true,
+      size: 2_000_000_000,
+      modificationTime: modificationTimeMs,
+    });
+    jest.spyOn(File.prototype, 'exists', 'get').mockReturnValue(true);
+
+    const paths = new Map([['qwen2.5-3b', '/mock/path/qwen2.5-3b.gguf']]);
+    const result = await service.getUnusedModels(['qwen2.5-3b'], [], 15, paths);
+
+    expect(result.type).toBe(RepositoryResultType.SUCCESS);
+    expect(result.data).toHaveLength(1);
+    expect(result.data![0].modelId).toBe('qwen2.5-3b');
+    expect(result.data![0].daysSinceLastUse).toBe(20);
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // Cas 13 — getUnusedModels : fallback File.info() — fichier absent → PAS dans la liste
+  // ──────────────────────────────────────────────────────────────────────────
+
+  it('Cas 13 — getUnusedModels : fallback File.info() (fichier absent) → PAS dans la liste', async () => {
+    // Pas de clé lastUsed, fichier absent sur le disque
+    jest.spyOn(File.prototype, 'exists', 'get').mockReturnValue(false);
+
+    const paths = new Map([['qwen2.5-3b', '/mock/path/qwen2.5-3b.gguf']]);
+    const result = await service.getUnusedModels(['qwen2.5-3b'], [], 15, paths);
+
+    expect(result.type).toBe(RepositoryResultType.SUCCESS);
+    // Comportement prudent : fichier absent → modèle NON inclus
+    expect(result.data).toHaveLength(0);
   });
 });

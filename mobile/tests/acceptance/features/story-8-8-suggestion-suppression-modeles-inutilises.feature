@@ -28,6 +28,23 @@ Fonctionnalité: Suggestion de suppression des modèles inutilisés
     Et le modèle n'apparaît plus dans la liste des modèles inutilisés
 
   # ============================================================================
+  # AC2 : Tracking de la date de dernière utilisation — Whisper
+  # ============================================================================
+
+  @AC2 @tracking-whisper
+  Scénario: Date de dernière utilisation initialisée au téléchargement Whisper
+    Étant donné que le modèle Whisper "tiny" n'est pas téléchargé
+    Quand le téléchargement du modèle Whisper se termine avec succès
+    Alors la date de dernière utilisation Whisper est enregistrée avec la date actuelle
+    Et la clé "@pensieve/model_last_used_whisper_tiny" existe en AsyncStorage
+
+  @AC2 @tracking-whisper-selection
+  Scénario: Date de dernière utilisation Whisper mise à jour à la sélection
+    Étant donné que le modèle Whisper "tiny" a une lastUsed date de il y a 10 jours
+    Quand l'utilisateur sélectionne le modèle Whisper "tiny"
+    Alors la date de dernière utilisation Whisper est mise à jour à la date actuelle
+
+  # ============================================================================
   # AC3 : Détection des modèles inutilisés après 15 jours
   # ============================================================================
 

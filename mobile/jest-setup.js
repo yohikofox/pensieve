@@ -209,6 +209,17 @@ jest.mock('expo-file-system', () => {
     }
   }
 
+  // Define `exists` as a configurable getter on MockFile.prototype so that
+  // jest.spyOn(File.prototype, 'exists', 'get') works in tests (Babel legacy
+  // mode compiles class getters as instance assignments, not prototype descriptors)
+  Object.defineProperty(MockFile.prototype, 'exists', {
+    get() {
+      return mockFiles.has(this.path);
+    },
+    enumerable: true,
+    configurable: true,
+  });
+
   // Mock Directory class
   class MockDirectory {
     constructor(path) {

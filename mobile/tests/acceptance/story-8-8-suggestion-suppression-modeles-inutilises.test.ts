@@ -298,9 +298,12 @@ defineFeature(feature, (test) => {
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
     });
 
-    then('le fichier du modèle est supprimé du disque', () => {
-      // Physical file deletion is handled by LLMModelService.deleteModel()
-      // Tested at the LLMModelService unit test level — out of scope here
+    then('le fichier du modèle est supprimé du disque', async () => {
+      // At service layer: clearModelTracking has already run (when step above)
+      // Verify the lastUsed key is gone — this is the observable effect of "model deleted"
+      // Physical file deletion is LLMModelService's responsibility (tested at unit level)
+      const lastUsed = await AsyncStorage.getItem('@pensieve/model_last_used_llm_qwen2.5-3b');
+      expect(lastUsed).toBeNull();
     });
 
     and('les clés AsyncStorage du modèle sont supprimées', async () => {
@@ -361,5 +364,73 @@ defineFeature(feature, (test) => {
         expect(found).toBeUndefined();
       },
     );
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // AC2 — Tracking Whisper : téléchargement
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('Date de dernière utilisation initialisée au téléchargement Whisper', ({
+    given,
+    and,
+    when,
+    then,
+  }) => {
+    defineBackgroundSteps(given, and);
+
+    given("le modèle Whisper \"tiny\" n'est pas téléchargé", async () => {
+      const value = await AsyncStorage.getItem('@pensieve/model_last_used_whisper_tiny');
+      expect(value).toBeNull();
+    });
+
+    when('le téléchargement du modèle Whisper se termine avec succès', async () => {
+      const result = await service.trackModelUsed('tiny', 'whisper');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+    });
+
+    then('la date de dernière utilisation Whisper est enregistrée avec la date actuelle', async () => {
+      const result = await service.getLastUsedDate('tiny', 'whisper');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      const date = result.data as Date;
+      expect(date.toISOString()).toBe(FIXED_NOW.toISOString());
+    });
+
+    and(
+      'la clé "@pensieve/model_last_used_whisper_tiny" existe en AsyncStorage',
+      async () => {
+        const value = await AsyncStorage.getItem('@pensieve/model_last_used_whisper_tiny');
+        expect(value).not.toBeNull();
+        expect(value).toBe(FIXED_NOW.toISOString());
+      },
+    );
+  });
+
+  // ──────────────────────────────────────────────────────────────────────────
+  // AC2 — Tracking Whisper : sélection du modèle
+  // ──────────────────────────────────────────────────────────────────────────
+
+  test('Date de dernière utilisation Whisper mise à jour à la sélection', ({
+    given,
+    and,
+    when,
+    then,
+  }) => {
+    defineBackgroundSteps(given, and);
+
+    given('le modèle Whisper "tiny" a une lastUsed date de il y a 10 jours', async () => {
+      await AsyncStorage.setItem('@pensieve/model_last_used_whisper_tiny', daysAgo(10));
+    });
+
+    when("l'utilisateur sélectionne le modèle Whisper \"tiny\"", async () => {
+      const result = await service.trackModelUsed('tiny', 'whisper');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+    });
+
+    then('la date de dernière utilisation Whisper est mise à jour à la date actuelle', async () => {
+      const result = await service.getLastUsedDate('tiny', 'whisper');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      const date = result.data as Date;
+      expect(date.toISOString()).toBe(FIXED_NOW.toISOString());
+    });
   });
 });

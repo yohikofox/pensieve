@@ -18,8 +18,6 @@ export interface UnusedModel {
   modelType: ModelType;
   /** Nombre de jours écoulés depuis la dernière utilisation */
   daysSinceLastUse: number;
-  /** Taille en octets si connue (pour affichage "Supprimer (2.0 Go)") */
-  sizeBytes?: number;
 }
 
 export interface IModelUsageTrackingService {
@@ -43,18 +41,21 @@ export interface IModelUsageTrackingService {
    * Retourne la liste des modèles téléchargés qui n'ont pas été utilisés
    * depuis au moins thresholdDays jours et dont l'alerte n'a pas été ignorée.
    *
-   * Comportement prudent : si aucune clé lastUsed n'existe pour un modèle,
-   * il n'est PAS inclus dans la liste (évite les faux positifs pour les modèles
-   * téléchargés avant cette fonctionnalité).
+   * Comportement AC3 :
+   * - Si lastUsed connue → calculer daysSince et comparer au seuil
+   * - Si lastUsed absente ET modelPaths fourni → fallback FileSystem.getInfoAsync (modificationTime)
+   * - Si lastUsed absente ET aucun stat disponible → modèle NON inclus (évite faux positifs)
    *
    * @param downloadedLLMIds       - IDs des modèles LLM présents sur le disque
    * @param downloadedWhisperSizes - Tailles des modèles Whisper présents sur le disque
    * @param thresholdDays          - Seuil d'inactivité en jours (défaut: 15)
+   * @param modelPaths             - Map modelId/size → chemin absolu du fichier (pour fallback FileSystem)
    */
   getUnusedModels(
     downloadedLLMIds: string[],
     downloadedWhisperSizes: string[],
     thresholdDays?: number,
+    modelPaths?: Map<string, string>,
   ): Promise<Result<UnusedModel[]>>;
 
   /**

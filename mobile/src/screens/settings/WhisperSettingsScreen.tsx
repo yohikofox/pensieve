@@ -37,6 +37,15 @@ import { StandardLayout } from '../../components/layouts';
 import { colors } from '../../design-system/tokens';
 import { useSettingsStore } from '../../stores/settingsStore';
 
+// Libellés des modèles Whisper — constante partagée par handleUseModel et la dialog de suppression
+const WHISPER_MODEL_LABELS: Record<WhisperModelSize, string> = {
+  tiny: 'Tiny (~75 MB)',
+  base: 'Base (~142 MB)',
+  small: 'Small (~466 MB)',
+  medium: 'Medium (~1.5 GB)',
+  'large-v3': 'Large V3 (~3.1 GB)',
+};
+
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
   screenBg: isDark ? colors.neutral[900] : '#F2F2F7',
@@ -81,12 +90,20 @@ export function WhisperSettingsScreen() {
 
   /**
    * Story 8.8 — Vérifier les modèles Whisper inutilisés (AC5 — Subtask 6.5)
+   * Passe les chemins de fichiers pour le fallback FileSystem.getInfoAsync (AC3)
    */
   const checkUnusedWhisperModels = useCallback(async () => {
     const downloadedSizes = await modelService.getDownloadedModelSizes();
-    const result = await usageTrackingService.getUnusedModels([], downloadedSizes, MODEL_INACTIVITY_THRESHOLD_DAYS);
+    // Construire la map paths pour le fallback FileSystem (AC3 — modèles sans lastUsed)
+    const paths = new Map<string, string>();
+    for (const size of downloadedSizes) {
+      paths.set(size, modelService.getModelPath(size as WhisperModelSize));
+    }
+    const result = await usageTrackingService.getUnusedModels([], downloadedSizes, MODEL_INACTIVITY_THRESHOLD_DAYS, paths);
     if (result.type === RepositoryResultType.SUCCESS && result.data) {
       setUnusedWhisperModels(result.data);
+    } else if (result.type !== RepositoryResultType.SUCCESS) {
+      console.warn('[WhisperSettings] checkUnusedWhisperModels failed:', result);
     }
   }, [modelService, usageTrackingService]);
 
@@ -123,17 +140,6 @@ export function WhisperSettingsScreen() {
     };
     loadSettings();
   }, []);
-
-  /**
-   * Story 8.8 — Libellés des modèles Whisper pour la dialog de suppression (AC6)
-   */
-  const whisperModelLabels: Record<WhisperModelSize, string> = {
-    tiny: 'Tiny (~75 MB)',
-    base: 'Base (~142 MB)',
-    small: 'Small (~466 MB)',
-    medium: 'Medium (~1.5 GB)',
-    'large-v3': 'Large V3 (~3.1 GB)',
-  };
 
   /**
    * Story 8.8 — Afficher la confirmation de suppression depuis l'alerte d'inactivité (AC6)
@@ -190,15 +196,7 @@ export function WhisperSettingsScreen() {
     }
 
     if (downloadedOthers.length > 0) {
-      const modelLabels: Record<WhisperModelSize, string> = {
-        tiny: 'Tiny (~75 MB)',
-        base: 'Base (~142 MB)',
-        small: 'Small (~466 MB)',
-        medium: 'Medium (~1.5 GB)',
-        'large-v3': 'Large V3 (~3.1 GB)',
-      };
-
-      const otherLabels = downloadedOthers.map(m => modelLabels[m]).join(', ');
+      const otherLabels = downloadedOthers.map(m => WHISPER_MODEL_LABELS[m]).join(', ');
       const totalSize = downloadedOthers.reduce((acc, m) => {
         const sizes: Record<WhisperModelSize, number> = { tiny: 75, base: 142, small: 466, medium: 1500, 'large-v3': 3100 };
         return acc + sizes[m];
@@ -476,7 +474,7 @@ export function WhisperSettingsScreen() {
         title="Supprimer le modèle ?"
         message={
           pendingDeleteSize
-            ? `Supprimer ${whisperModelLabels[pendingDeleteSize]} et libérer l'espace disque ?`
+            ? `Supprimer ${WHISPER_MODEL_LABELS[pendingDeleteSize]} et libérer l'espace disque ?`
             : ''
         }
         icon="trash-2"

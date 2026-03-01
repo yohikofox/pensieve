@@ -17,6 +17,7 @@
 import 'reflect-metadata';
 import { injectable } from 'tsyringe';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { File } from 'expo-file-system';
 import type { IModelUsageTrackingService, ModelType, UnusedModel } from '../domain/IModelUsageTrackingService';
 import {
   type Result,
@@ -95,13 +96,16 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
   /**
    * Retourne les modèles téléchargés inactifs depuis thresholdDays jours (AC3).
    *
-   * Comportement prudent : si aucune clé lastUsed → modèle NON inclus dans la liste
-   * (évite les faux positifs pour modèles téléchargés avant cette fonctionnalité).
+   * Stratégie de détection (par ordre de priorité) :
+   * 1. Clé lastUsed en AsyncStorage → calculer daysSince et comparer au seuil
+   * 2. Pas de lastUsed + modelPaths fourni → fallback FileSystem.getInfoAsync (modificationTime)
+   * 3. Aucune info disponible → comportement prudent : ne pas inclure (évite les faux positifs)
    */
   async getUnusedModels(
     downloadedLLMIds: string[],
     downloadedWhisperSizes: string[],
     thresholdDays: number = MODEL_INACTIVITY_THRESHOLD_DAYS,
+    modelPaths?: Map<string, string>,
   ): Promise<Result<UnusedModel[]>> {
     try {
       const unused: UnusedModel[] = [];
@@ -110,10 +114,18 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
         const lastUsedResult = await this.getLastUsedDate(modelId, modelType);
         if (lastUsedResult.type !== RepositoryResultType.SUCCESS) return;
 
-        const lastUsed = lastUsedResult.data;
+        let lastUsed = lastUsedResult.data;
+
         if (lastUsed == null) {
-          // Pas de clé lastUsed (null ou undefined) → comportement prudent : ne pas inclure (AC3)
-          return;
+          // Pas de clé lastUsed → tenter le fallback FileSystem.getInfoAsync (AC3)
+          const modelPath = modelPaths?.get(modelId);
+          if (modelPath) {
+            lastUsed = this.getFallbackDateFromFileStat(modelPath);
+          }
+          if (lastUsed == null) {
+            // Aucun stat disponible → comportement prudent : ne pas inclure (AC3)
+            return;
+          }
         }
 
         const days = daysSince(lastUsed);
@@ -141,6 +153,27 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
       return unknownError<UnusedModel[]>(
         `getUnusedModels failed: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+  }
+
+  /**
+   * Retourne la date de modification du fichier via la classe File d'expo-file-system (AC3 — fallback).
+   * Utilise l'API moderne Expo SDK 54 (File.info().modificationTime).
+   * Retourne null si le fichier n'existe pas, si le stat est indisponible, ou en cas d'erreur.
+   */
+  private getFallbackDateFromFileStat(modelPath: string): Date | null {
+    try {
+      const modelFile = new File(modelPath);
+      if (!modelFile.exists) {
+        return null;
+      }
+      const info = modelFile.info();
+      if (info.modificationTime) {
+        return new Date(info.modificationTime);
+      }
+      return null;
+    } catch {
+      return null;
     }
   }
 
@@ -178,6 +211,12 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
       }
 
       const dismissedDate = new Date(dismissedStr);
+      // Valider la date parsée — new Date() sur une chaîne corrompue retourne Invalid Date
+      if (isNaN(dismissedDate.getTime())) {
+        // Données corrompues → traiter comme non-dismissé (comportement prudent)
+        return success(false);
+      }
+
       const lastUsedStr = await AsyncStorage.getItem(KEY_LAST_USED(modelType, modelId));
 
       if (lastUsedStr === null) {
@@ -186,6 +225,11 @@ export class ModelUsageTrackingService implements IModelUsageTrackingService {
       }
 
       const lastUsedDate = new Date(lastUsedStr);
+      if (isNaN(lastUsedDate.getTime())) {
+        // lastUsed corrompu → on ne peut pas déterminer l'ordre → traiter comme dismissé
+        return success(true);
+      }
+
       // Si réutilisé APRÈS le dismiss → la suggestion peut réapparaître
       const isStillDismissed = dismissedDate > lastUsedDate;
       return success(isStillDismissed);
