@@ -31,7 +31,8 @@ export function useModelDownloadNotificationHandler(navigationRef: NavigationRef
       const isModelDownloadNotification =
         data?.type === 'model_download_success' ||
         data?.type === 'model_download_error' ||
-        data?.type === 'model_update_available';
+        data?.type === 'model_update_available' ||
+        data?.type === 'model_update_success';
 
       if (!isModelDownloadNotification) return;
 

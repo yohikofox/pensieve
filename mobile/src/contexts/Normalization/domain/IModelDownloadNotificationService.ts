@@ -85,4 +85,18 @@ export interface IModelDownloadNotificationService {
     modelName: string,
     screen: ModelDownloadScreen,
   ): Promise<void>;
+
+  /**
+   * Send a notification when a model update download completes.
+   * Title: "Modèle mis à jour" (AC6 — Story 8.9).
+   * Called from screen handleUpdate() after recordUpdate().
+   * @param modelId   - Unique identifier of the model
+   * @param modelName - Display name of the model
+   * @param screen    - Target screen for notification tap navigation
+   */
+  notifyUpdateSuccess(
+    modelId: string,
+    modelName: string,
+    screen: ModelDownloadScreen,
+  ): Promise<void>;
 }

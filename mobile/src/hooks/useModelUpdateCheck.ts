@@ -90,8 +90,19 @@ export function useModelUpdateCheck(
     const notifService = getNotifService();
     try {
       for (const { modelId, modelName, downloadUrl } of models) {
+        // Lire le statut AVANT le check pour éviter le spam de notifications (AC5 : une seule notif par détection)
+        const prevInfo = await service.getUpdateInfo(modelId, modelType);
+        const wasAlreadyUpdateAvailable =
+          prevInfo.type === RepositoryResultType.SUCCESS &&
+          prevInfo.data?.status === 'update-available';
+
         const result = await service.checkForUpdate(modelId, downloadUrl, modelType, true);
-        if (result.type === RepositoryResultType.SUCCESS && result.data === 'update-available') {
+        // N'envoyer la notification que si le statut CHANGE vers 'update-available' (pas déjà notifié)
+        if (
+          result.type === RepositoryResultType.SUCCESS &&
+          result.data === 'update-available' &&
+          !wasAlreadyUpdateAvailable
+        ) {
           await notifService.notifyUpdateAvailable(modelId, modelName, modelType === 'llm' ? 'llm' : 'whisper');
         }
         const info = await service.getUpdateInfo(modelId, modelType);

@@ -23,8 +23,10 @@ import type {
   WhisperModelSize,
   DownloadProgress,
 } from '../../contexts/Normalization/services/TranscriptionModelService';
-import type { ModelUpdateInfo } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
+import type { ModelUpdateInfo, IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
 import { useTranscriptionModel } from '../../hooks/useServices';
+import { container } from 'tsyringe';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
@@ -167,6 +169,10 @@ export function WhisperModelCard({
     try {
       await modelService.deleteModel(modelSize);
       setStatus('not_downloaded');
+      // Nettoyer les métadonnées de tracking MAJ (fire-and-forget — non-bloquant)
+      container.resolve<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService)
+        .clearModelTracking(modelSize, 'whisper')
+        .catch(() => {});
     } catch (err) {
       toast.error('Impossible de supprimer le modèle');
     }

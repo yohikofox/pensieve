@@ -40,6 +40,7 @@ import { colors } from '../../design-system/tokens';
 import { useSettingsStore } from '../../stores/settingsStore';
 import { useModelUpdateCheck } from '../../hooks/useModelUpdateCheck';
 import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
+import type { IModelDownloadNotificationService } from '../../contexts/Normalization/domain/IModelDownloadNotificationService';
 
 // Libellés des modèles Whisper — constante partagée par handleUseModel et la dialog de suppression
 const WHISPER_MODEL_LABELS: Record<WhisperModelSize, string> = {
@@ -214,6 +215,10 @@ export function WhisperSettingsScreen() {
       const getUpdateCheckSvc = () =>
         container.resolve<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService);
       await getUpdateCheckSvc().recordUpdate(modelSize, 'whisper', downloadUrl);
+      // AC6: notifier "Modèle mis à jour" après la mise à jour
+      const getNotifSvc = () =>
+        container.resolve<IModelDownloadNotificationService>(TOKENS.IModelDownloadNotificationService);
+      await getNotifSvc().notifyUpdateSuccess(modelSize, WHISPER_MODEL_LABELS[modelSize], 'whisper').catch(() => {});
       await checkAll();
       await loadDownloadedWhisperForCheck();
       toast.success(`${WHISPER_MODEL_LABELS[modelSize]} mis à jour`);

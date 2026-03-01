@@ -48,6 +48,7 @@ import { MODEL_INACTIVITY_THRESHOLD_DAYS } from '../../contexts/Normalization/se
 import { RepositoryResultType } from '../../contexts/shared/domain/Result';
 import { useModelUpdateCheck } from '../../hooks/useModelUpdateCheck';
 import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
+import type { IModelDownloadNotificationService } from '../../contexts/Normalization/domain/IModelDownloadNotificationService';
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -385,17 +386,23 @@ export function LLMSettingsScreen() {
     try {
       const config = modelService.getModelConfig(modelId);
       await modelService.downloadModelWithRetry(modelId);
-      // Enregistrer la mise à jour (updateDate) via le service de check
+      // Enregistrer la mise à jour (updateDate + nouvel ETag)
       const getLLMUpdateCheckService = () =>
         container.resolve<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService);
       await getLLMUpdateCheckService().recordUpdate(modelId, 'llm', config.downloadUrl);
-      // Rafraîchir l'état UI du check de mises à jour
+      // AC6 : notification "Modèle mis à jour" (note : le service envoie aussi "Modèle téléchargé"
+      // depuis son handler .done() — correction définitive requiert flag isUpdate dans downloadModelWithRetry)
+      const getNotifSvc = () =>
+        container.resolve<IModelDownloadNotificationService>(TOKENS.IModelDownloadNotificationService);
+      await getNotifSvc().notifyUpdateSuccess(modelId, config.name, 'llm').catch(() => {});
+      // Rafraîchir l'état UI + liste des modèles téléchargés
+      await refreshModels();
       await checkAll();
       toast.success(`${config.name} mis à jour`);
     } catch (error) {
       toast.error('Impossible de mettre à jour le modèle');
     }
-  }, [modelService, checkAll, toast]);
+  }, [modelService, checkAll, refreshModels, toast]);
 
   /**
    * Handle HuggingFace login

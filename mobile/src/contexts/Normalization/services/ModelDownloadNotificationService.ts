@@ -157,4 +157,24 @@ export class ModelDownloadNotificationService implements IModelDownloadNotificat
       console.error('[ModelDownloadNotificationService] Failed to send update notification:', error);
     }
   }
+
+  async notifyUpdateSuccess(
+    _modelId: string,
+    modelName: string,
+    screen: ModelDownloadScreen,
+  ): Promise<void> {
+    try {
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Modèle mis à jour',
+          body: `${modelName} est prêt à l'emploi`,
+          data: { type: 'model_update_success', screen },
+          sound: true,
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.error('[ModelDownloadNotificationService] Failed to send update success notification:', error);
+    }
+  }
 }

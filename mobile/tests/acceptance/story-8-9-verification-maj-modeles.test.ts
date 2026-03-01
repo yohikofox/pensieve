@@ -34,6 +34,7 @@ jest.mock('expo-notifications', () => ({
 // Import après les mocks
 import { ModelUpdateCheckService } from '../../src/contexts/Normalization/services/ModelUpdateCheckService';
 import { ModelDownloadNotificationService } from '../../src/contexts/Normalization/services/ModelDownloadNotificationService';
+import { RepositoryResultType } from '../../src/contexts/shared/domain/Result';
 import 'reflect-metadata';
 
 // ============================================================================
@@ -131,7 +132,7 @@ defineFeature(feature, (test) => {
       // Simuler le comportement de useModelUpdateCheck.autoCheckAll :
       // 1. isCheckNeeded → true (jamais vérifié)
       const checkNeeded = await service.isCheckNeeded(MODEL_ID, MODEL_TYPE);
-      expect(checkNeeded.type).toBe('success');
+      expect(checkNeeded.type).toBe(RepositoryResultType.SUCCESS);
       expect((checkNeeded as { type: 'success'; data: boolean }).data).toBe(true);
 
       // 2. checkForUpdate → mock fetch retourne ETag
@@ -190,7 +191,7 @@ defineFeature(feature, (test) => {
 
     then('isCheckNeeded retourne false', async () => {
       const checkNeeded = await service.isCheckNeeded(MODEL_ID, MODEL_TYPE);
-      expect(checkNeeded.type).toBe('success');
+      expect(checkNeeded.type).toBe(RepositoryResultType.SUCCESS);
       expect((checkNeeded as { type: 'success'; data: boolean }).data).toBe(false);
     });
 
@@ -241,7 +242,7 @@ defineFeature(feature, (test) => {
 
     and('le badge "Update" s\'affiche sur la carte du modèle', async () => {
       const info = await service.getUpdateInfo(MODEL_ID, MODEL_TYPE);
-      expect(info.type).toBe('success');
+      expect(info.type).toBe(RepositoryResultType.SUCCESS);
       const data = (info as { type: 'success'; data: { status: string } }).data;
       expect(data.status).toBe('update-available');
     });

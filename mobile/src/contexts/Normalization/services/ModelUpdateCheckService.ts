@@ -21,7 +21,7 @@ import type {
   ModelUpdateInfo,
   ModelUpdateStatus,
 } from '../domain/IModelUpdateCheckService';
-import { type Result, success, unknownError } from '../../shared/domain/Result';
+import { type Result, success, unknownError, RepositoryResultType } from '../../shared/domain/Result';
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Clés AsyncStorage
@@ -127,7 +127,7 @@ export class ModelUpdateCheckService implements IModelUpdateCheckService {
       // 1. Throttle : si vérifiée aujourd'hui ET pas de force → retourner statut stocké
       if (!ignoreThrottle) {
         const checkNeeded = await this.isCheckNeeded(modelId, modelType);
-        if (checkNeeded.type === 'success' && !checkNeeded.data) {
+        if (checkNeeded.type === RepositoryResultType.SUCCESS && !checkNeeded.data) {
           const stored = await AsyncStorage.getItem(KEY_UPDATE_STATUS(modelType, modelId));
           return success((stored as ModelUpdateStatus | null) ?? 'up-to-date');
         }
