@@ -77,6 +77,10 @@ import type { IModelDownloadNotificationService } from '../../contexts/Normaliza
 import { ModelUsageTrackingService } from '../../contexts/Normalization/services/ModelUsageTrackingService';
 import type { IModelUsageTrackingService } from '../../contexts/Normalization/domain/IModelUsageTrackingService';
 
+// Model Update Check (Story 8.9)
+import { ModelUpdateCheckService } from '../../contexts/Normalization/services/ModelUpdateCheckService';
+import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
+
 // Post-processing Services (LLM enhancement)
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 import { DeviceCapabilitiesService } from '../../contexts/Normalization/services/DeviceCapabilitiesService';
@@ -259,6 +263,11 @@ export function registerServices() {
   // TRANSIENT: ModelUsageTrackingService — stateless (lecture/écriture AsyncStorage sans état partagé) (ADR-021, Story 8.8)
   container.register<IModelUsageTrackingService>(TOKENS.IModelUsageTrackingService, {
     useClass: ModelUsageTrackingService,
+  });
+
+  // TRANSIENT: ModelUpdateCheckService — stateless (lecture/écriture AsyncStorage + HTTP HEAD sans état partagé) (ADR-021, Story 8.9)
+  container.register<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService, {
+    useClass: ModelUpdateCheckService,
   });
   container.register(AudioConversionService, { useClass: AudioConversionService });
   container.register(CaptureAnalysisService, { useClass: CaptureAnalysisService });
