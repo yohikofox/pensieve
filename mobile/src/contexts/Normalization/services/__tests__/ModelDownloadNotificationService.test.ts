@@ -2,10 +2,11 @@
  * ModelDownloadNotificationService Unit Tests
  *
  * Tests notification logic: progress debouncing, permission flow,
- * success/error notifications, channel setup, and silent error handling.
+ * success/error/update notifications, channel setup, and silent error handling.
  *
  * @see ModelDownloadNotificationService.ts
  * @see Story 8.7 - Téléchargement de Modèles en Arrière-Plan
+ * @see Story 8.9 - Vérification Automatique des Mises à Jour des Modèles
  */
 
 import 'reflect-metadata';
@@ -239,6 +240,52 @@ describe('ModelDownloadNotificationService', () => {
       mockSchedule.mockRejectedValueOnce(new Error('Schedule failed'));
       await expect(
         service.notifyDownloadError('model-a', 'Model A', 'llm')
+      ).resolves.not.toThrow();
+    });
+  });
+
+  // ──────────────────────────────────────────────────────────────────────
+  // notifyUpdateAvailable() — Story 8.9
+  // ──────────────────────────────────────────────────────────────────────
+
+  describe('notifyUpdateAvailable()', () => {
+    it('should schedule update notification when permissions are granted', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'granted' });
+      await service.notifyUpdateAvailable('qwen-3b', 'Qwen2.5 3B', 'llm');
+      expect(mockSchedule).toHaveBeenCalledTimes(1);
+      const { content } = mockSchedule.mock.calls[0][0];
+      expect(content.title).toBe('Mise à jour disponible');
+      expect(content.body).toContain('Qwen2.5 3B');
+    });
+
+    it('should NOT schedule notification when permissions are NOT granted', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'denied' });
+      await service.notifyUpdateAvailable('qwen-3b', 'Qwen2.5 3B', 'llm');
+      expect(mockSchedule).not.toHaveBeenCalled();
+    });
+
+    it('should embed correct type, screen, action, and modelId in data', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'granted' });
+      await service.notifyUpdateAvailable('whisper-tiny', 'Whisper Tiny', 'whisper');
+      const { data } = mockSchedule.mock.calls[0][0].content;
+      expect(data.type).toBe('model_update_available');
+      expect(data.screen).toBe('whisper');
+      expect(data.action).toBe('update');
+      expect(data.modelId).toBe('whisper-tiny');
+    });
+
+    it('should not throw when expo-notifications throws', async () => {
+      mockGetPerms.mockResolvedValue({ status: 'granted' });
+      mockSchedule.mockRejectedValueOnce(new Error('Schedule failed'));
+      await expect(
+        service.notifyUpdateAvailable('model-a', 'Model A', 'llm')
+      ).resolves.not.toThrow();
+    });
+
+    it('should not throw when getPermissionsAsync throws', async () => {
+      mockGetPerms.mockRejectedValueOnce(new Error('Permissions unavailable'));
+      await expect(
+        service.notifyUpdateAvailable('model-a', 'Model A', 'llm')
       ).resolves.not.toThrow();
     });
   });

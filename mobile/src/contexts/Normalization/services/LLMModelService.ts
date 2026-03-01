@@ -37,6 +37,7 @@ import type { HuggingFaceAuthService } from "./HuggingFaceAuthService";
 import type { ILLMModelService, LLMTask, DownloadProgress } from "../domain/ILLMModelService";
 import type { IModelDownloadNotificationService } from "../domain/IModelDownloadNotificationService";
 import type { IModelUsageTrackingService } from "../domain/IModelUsageTrackingService";
+import type { IModelUpdateCheckService } from "../domain/IModelUpdateCheckService";
 import { TOKENS } from "../../../infrastructure/di/tokens";
 import {
   MODEL_CONFIGS,
@@ -83,6 +84,8 @@ export class LLMModelService implements ILLMModelService {
     private notificationService: IModelDownloadNotificationService,
     @inject(TOKENS.IModelUsageTrackingService)
     private usageTrackingService: IModelUsageTrackingService,
+    @inject(TOKENS.IModelUpdateCheckService)
+    private modelUpdateCheckService: IModelUpdateCheckService,
   ) {}
 
   /**
@@ -345,6 +348,10 @@ export class LLMModelService implements ILLMModelService {
 
         // Initialise lastUsed au téléchargement (AC1)
         await this.usageTrackingService.trackModelUsed(modelId, 'llm').catch(() => {});
+
+        // Enregistrer download date + ETag initial (AC4 — Story 8.9, fire-and-forget)
+        this.modelUpdateCheckService.recordDownload(modelId, 'llm', config.downloadUrl)
+          .catch(() => { /* fail silently — non-bloquant */ });
 
         // Checksum verification disabled - HuggingFace headers contain incorrect checksums
         resolve(location);

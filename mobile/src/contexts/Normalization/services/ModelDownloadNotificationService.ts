@@ -134,4 +134,27 @@ export class ModelDownloadNotificationService implements IModelDownloadNotificat
       );
     }
   }
+
+  async notifyUpdateAvailable(
+    modelId: string,
+    modelName: string,
+    screen: ModelDownloadScreen,
+  ): Promise<void> {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      if (status !== 'granted') return;
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Mise à jour disponible',
+          body: `${modelName} — Appuyer pour mettre à jour`,
+          data: { type: 'model_update_available', screen, action: 'update', modelId },
+          sound: true,
+        },
+        trigger: null,
+      });
+    } catch (error) {
+      console.error('[ModelDownloadNotificationService] Failed to send update notification:', error);
+    }
+  }
 }

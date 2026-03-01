@@ -1,11 +1,12 @@
 /**
  * useModelDownloadNotificationHandler
  *
- * Handles notification taps for model download events (success + error).
+ * Handles notification taps for model download events (success, error, update available).
  * On tap, navigates to the relevant settings screen (LLMSettings or WhisperSettings)
- * so the user can monitor the result or retry.
+ * so the user can monitor the result, retry, or apply an update.
  *
  * Story: 8.7 - Téléchargement de Modèles en Arrière-Plan
+ * Story: 8.9 - Vérification Automatique des Mises à Jour des Modèles
  * AC7: Tapping a notification navigates to the correct settings screen
  */
 
@@ -28,7 +29,9 @@ export function useModelDownloadNotificationHandler(navigationRef: NavigationRef
       const data = response.notification.request.content.data;
 
       const isModelDownloadNotification =
-        data?.type === 'model_download_success' || data?.type === 'model_download_error';
+        data?.type === 'model_download_success' ||
+        data?.type === 'model_download_error' ||
+        data?.type === 'model_update_available';
 
       if (!isModelDownloadNotification) return;
 

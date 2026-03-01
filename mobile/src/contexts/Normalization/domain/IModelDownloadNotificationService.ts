@@ -4,10 +4,12 @@
  * Handles local push notifications for LLM and Whisper model downloads.
  * Supports:
  * - Completion notifications (success / failure)
+ * - Update available notifications (Story 8.9)
  * - Android persistent progress notifications
  * - Navigation data in notification payloads
  *
  * Story: 8.7 - Téléchargement de Modèles en Arrière-Plan
+ * Story: 8.9 - Vérification Automatique des Mises à Jour des Modèles
  * Architecture: ADR-024 (SRP), ADR-023 (void acceptable pour fire-and-forget)
  */
 
@@ -69,4 +71,18 @@ export interface IModelDownloadNotificationService {
    * @param modelId - Unique identifier of the model
    */
   dismissProgressNotification(modelId: string): Promise<void>;
+
+  /**
+   * Send a notification when a model update is available.
+   * Only sent if notification permissions are granted.
+   * Not sent again if the user has already been notified (caller's responsibility).
+   * @param modelId   - Unique identifier of the model
+   * @param modelName - Display name of the model
+   * @param screen    - Target screen for notification tap navigation
+   */
+  notifyUpdateAvailable(
+    modelId: string,
+    modelName: string,
+    screen: ModelDownloadScreen,
+  ): Promise<void>;
 }
