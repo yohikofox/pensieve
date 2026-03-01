@@ -29,6 +29,7 @@ import type {
   LLMModelConfig,
   DownloadProgress,
 } from '../../contexts/Normalization/domain/ILLMModelService';
+import type { ModelUpdateInfo } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
 import { colors } from '../../design-system/tokens';
 import { AlertDialog, useToast } from '../../design-system/components';
 import { useTheme } from '../../hooks/useTheme';
@@ -90,6 +91,14 @@ interface LLMModelCardProps {
   onDeleteUnused?: () => void;
   /** Called when user taps "Ignorer" in the inactivity alert */
   onDismissUnused?: () => void;
+  /** Update info from ModelUpdateCheckService (AC4, AC5 — Story 8.9) */
+  updateInfo?: ModelUpdateInfo;
+  /** Called when user taps "Mettre à jour" button (AC5 — Story 8.9) */
+  onUpdate?: (modelId: LLMModelId) => void;
+}
+
+function formatDate(date: Date): string {
+  return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
 
 export function LLMModelCard({
@@ -102,6 +111,8 @@ export function LLMModelCard({
   unusedDays,
   onDeleteUnused,
   onDismissUnused,
+  updateInfo,
+  onUpdate,
 }: LLMModelCardProps) {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
@@ -542,6 +553,27 @@ export function LLMModelCard({
             </TouchableOpacity>
           </View>
 
+          {/* Update info — date de téléchargement et badge mise à jour (AC4, AC5 — Story 8.9) */}
+          {updateInfo?.updateDate && (
+            <Text style={[styles.updateDateText, { color: themeColors.textTertiary }]}>
+              {updateInfo.downloadDate?.getTime() === updateInfo.updateDate.getTime()
+                ? `Téléchargé le ${formatDate(updateInfo.downloadDate)}`
+                : `Mis à jour le ${formatDate(updateInfo.updateDate)}`
+              }
+            </Text>
+          )}
+          {updateInfo?.status === 'update-available' && (
+            <View style={styles.updateAvailableRow}>
+              <Text style={[styles.updateAvailableText, { color: themeColors.warningText }]}>Mise à jour disponible</Text>
+              <TouchableOpacity
+                style={styles.updateButton}
+                onPress={() => onUpdate?.(modelId)}
+              >
+                <Text style={styles.updateButtonText}>Mettre à jour</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* Inactivity Alert — visible only when unusedDays >= 15 (AC4, AC6, AC7) */}
           {unusedDays !== undefined && unusedDays >= 15 && (
             <View style={[
@@ -906,5 +938,30 @@ const styles = StyleSheet.create({
   inactivityDismissButtonText: {
     fontSize: 13,
     fontWeight: '500',
+  },
+  updateDateText: {
+    fontSize: 12,
+    marginTop: 6,
+  },
+  updateAvailableRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  updateAvailableText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  updateButton: {
+    backgroundColor: '#FF9500',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  updateButtonText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

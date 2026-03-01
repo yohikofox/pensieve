@@ -1,5 +1,6 @@
 import { TranscriptionModelService } from '../TranscriptionModelService';
 import type { IModelUsageTrackingService } from '../../domain/IModelUsageTrackingService';
+import type { IModelUpdateCheckService } from '../../domain/IModelUpdateCheckService';
 import { fetch } from 'expo/fetch';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system';
@@ -69,11 +70,20 @@ const mockUsageTrackingService: IModelUsageTrackingService = {
   clearModelTracking: jest.fn().mockResolvedValue({ type: 'success', data: undefined }),
 };
 
+const mockModelUpdateCheckService: IModelUpdateCheckService = {
+  recordDownload: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+  isCheckNeeded: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: false }),
+  checkForUpdate: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: 'up-to-date' }),
+  recordUpdate: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+  getUpdateInfo: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: null }),
+  clearModelTracking: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+};
+
 describe('TranscriptionModelService', () => {
   let service: TranscriptionModelService;
 
   beforeEach(() => {
-    service = new TranscriptionModelService(mockUsageTrackingService);
+    service = new TranscriptionModelService(mockUsageTrackingService, mockModelUpdateCheckService);
     jest.clearAllMocks();
     // Clear mock files between tests
     (FileSystem as any).__clearMockFiles?.();

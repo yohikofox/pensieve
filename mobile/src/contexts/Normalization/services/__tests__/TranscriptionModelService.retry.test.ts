@@ -1,5 +1,6 @@
 import { TranscriptionModelService } from '../TranscriptionModelService';
 import type { IModelUsageTrackingService } from '../../domain/IModelUsageTrackingService';
+import type { IModelUpdateCheckService } from '../../domain/IModelUpdateCheckService';
 import { fetch } from 'expo/fetch';
 
 // Mocks are set up in jest-setup.js
@@ -48,12 +49,21 @@ const mockUsageTrackingService: IModelUsageTrackingService = {
   clearModelTracking: jest.fn().mockResolvedValue({ type: 'success', data: undefined }),
 };
 
+const mockModelUpdateCheckService: IModelUpdateCheckService = {
+  recordDownload: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+  isCheckNeeded: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: false }),
+  checkForUpdate: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: 'up-to-date' }),
+  recordUpdate: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+  getUpdateInfo: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: null }),
+  clearModelTracking: jest.fn().mockResolvedValue({ type: 'SUCCESS', data: undefined }),
+};
+
 describe('TranscriptionModelService - Retry Logic', () => {
   let service: TranscriptionModelService;
   let originalSetTimeout: typeof setTimeout;
 
   beforeEach(() => {
-    service = new TranscriptionModelService(mockUsageTrackingService);
+    service = new TranscriptionModelService(mockUsageTrackingService, mockModelUpdateCheckService);
     jest.clearAllMocks();
     originalSetTimeout = global.setTimeout;
   });

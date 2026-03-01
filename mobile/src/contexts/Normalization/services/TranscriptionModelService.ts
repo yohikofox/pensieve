@@ -13,6 +13,7 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { IModelDownloadNotificationService } from '../domain/IModelDownloadNotificationService';
 import type { IModelUsageTrackingService } from '../domain/IModelUsageTrackingService';
+import type { IModelUpdateCheckService } from '../domain/IModelUpdateCheckService';
 import { CAPTURE_TYPES, CAPTURE_STATES } from '../../capture/domain/Capture.model';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
@@ -90,7 +91,8 @@ export class TranscriptionModelService {
   private activeWhisperDownloads: Map<string, DownloadTask> = new Map();
 
   constructor(
-    @inject(TOKENS.IModelUsageTrackingService) private usageTrackingService: IModelUsageTrackingService
+    @inject(TOKENS.IModelUsageTrackingService) private usageTrackingService: IModelUsageTrackingService,
+    @inject(TOKENS.IModelUpdateCheckService) private modelUpdateCheckService: IModelUpdateCheckService,
   ) {}
 
   /**
@@ -175,6 +177,10 @@ export class TranscriptionModelService {
 
             // Initialise lastUsed au téléchargement (AC2 — Story 8.8)
             await this.usageTrackingService.trackModelUsed(modelSize, 'whisper').catch(() => {});
+
+            // Enregistrer download date + ETag initial (AC4 — Story 8.9, fire-and-forget)
+            this.modelUpdateCheckService.recordDownload(modelSize, 'whisper', modelUrl)
+              .catch(() => { /* fail silently */ });
 
             // AC6: Auto-resume pending captures now that model is available (Story 2.7)
             await this.autoResumePendingCaptures();
