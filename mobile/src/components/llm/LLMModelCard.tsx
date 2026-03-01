@@ -66,6 +66,8 @@ const getThemeColors = (isDark: boolean) => ({
   progressFillBg: isDark ? colors.primary[500] : '#007AFF',
   progressText: isDark ? colors.primary[400] : '#007AFF',
   warningText: isDark ? colors.warning[400] : '#FF9800',
+  inactivityAlertBg: isDark ? colors.warning[900] : '#FFF3E0',
+  inactivityAlertBorderColor: isDark ? colors.warning[600] : colors.warning[400],
   downloadButtonBg: isDark ? colors.neutral[700] : '#F2F2F7',
   downloadButtonText: isDark ? colors.primary[400] : '#007AFF',
   useButtonBg: isDark ? colors.success[700] : '#34C759',
@@ -82,6 +84,12 @@ interface LLMModelCardProps {
   isHfAuthenticated?: boolean;
   /** Called after model deletion to refresh parent state */
   onModelDeleted?: (modelId: LLMModelId) => void;
+  /** Number of days since last use. If >= 15, shows inactivity alert. */
+  unusedDays?: number;
+  /** Called when user taps "Supprimer" in the inactivity alert (confirmation handled by Screen) */
+  onDeleteUnused?: () => void;
+  /** Called when user taps "Ignorer" in the inactivity alert */
+  onDismissUnused?: () => void;
 }
 
 export function LLMModelCard({
@@ -91,6 +99,9 @@ export function LLMModelCard({
   onUseModel,
   isHfAuthenticated,
   onModelDeleted,
+  unusedDays,
+  onDeleteUnused,
+  onDismissUnused,
 }: LLMModelCardProps) {
   const { isDark } = useTheme();
   const themeColors = getThemeColors(isDark);
@@ -531,6 +542,41 @@ export function LLMModelCard({
             </TouchableOpacity>
           </View>
 
+          {/* Inactivity Alert — visible only when unusedDays >= 15 (AC4, AC6, AC7) */}
+          {unusedDays !== undefined && unusedDays >= 15 && (
+            <View style={[
+              styles.inactivityAlert,
+              {
+                backgroundColor: themeColors.inactivityAlertBg,
+                borderColor: themeColors.inactivityAlertBorderColor,
+              }
+            ]}>
+              <View style={styles.inactivityAlertHeader}>
+                <Feather name="alert-triangle" size={16} color={themeColors.warningText} />
+                <Text style={[styles.inactivityAlertTitle, { color: themeColors.textPrimary }]}>
+                  Non utilisé depuis {unusedDays} jours
+                </Text>
+              </View>
+              <View style={styles.inactivityAlertButtons}>
+                <TouchableOpacity
+                  style={[styles.inactivityDeleteButton, { backgroundColor: themeColors.deleteButtonBg }]}
+                  onPress={onDeleteUnused}
+                >
+                  <Text style={[styles.inactivityDeleteButtonText, { color: themeColors.deleteButtonText }]}>
+                    Supprimer ({config ? formatBytes(config.expectedSize) : '—'})
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.inactivityDismissButton, { borderColor: themeColors.textTertiary }]}
+                  onPress={onDismissUnused}
+                >
+                  <Text style={[styles.inactivityDismissButtonText, { color: themeColors.textTertiary }]}>
+                    Ignorer
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
@@ -817,5 +863,48 @@ const styles = StyleSheet.create({
   licenseButtonText: {
     fontSize: 13,
     fontWeight: '600',
+  },
+  inactivityAlert: {
+    marginTop: 12,
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  inactivityAlertHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+  },
+  inactivityAlertTitle: {
+    fontSize: 14,
+    fontWeight: '600',
+    flex: 1,
+  },
+  inactivityAlertButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  inactivityDeleteButton: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  inactivityDeleteButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  inactivityDismissButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+  },
+  inactivityDismissButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
 });
