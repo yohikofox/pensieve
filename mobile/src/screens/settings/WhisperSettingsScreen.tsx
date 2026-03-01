@@ -18,7 +18,9 @@ import {
   TouchableOpacity,
   Switch,
   AppState,
+  ActivityIndicator,
 } from 'react-native';
+import { Feather } from '@expo/vector-icons';
 import { container } from 'tsyringe';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 import type { WhisperModelSize } from '../../contexts/Normalization/services/TranscriptionModelService';
@@ -36,6 +38,8 @@ import { useTheme } from '../../hooks/useTheme';
 import { StandardLayout } from '../../components/layouts';
 import { colors } from '../../design-system/tokens';
 import { useSettingsStore } from '../../stores/settingsStore';
+import { useModelUpdateCheck } from '../../hooks/useModelUpdateCheck';
+import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
 
 // Libellés des modèles Whisper — constante partagée par handleUseModel et la dialog de suppression
 const WHISPER_MODEL_LABELS: Record<WhisperModelSize, string> = {
@@ -88,6 +92,26 @@ export function WhisperSettingsScreen() {
   const modelService = useTranscriptionModel();
   const usageTrackingService = useMemo(() => container.resolve<IModelUsageTrackingService>(TOKENS.IModelUsageTrackingService), []);
 
+  // Story 8.9 — Modèles Whisper téléchargés pour la vérification de mises à jour (AC1, AC2)
+  const [downloadedWhisperForCheck, setDownloadedWhisperForCheck] = useState<
+    Array<{ modelId: string; modelName: string; downloadUrl: string }>
+  >([]);
+  const { updateInfoMap, isChecking, checkAll } = useModelUpdateCheck(downloadedWhisperForCheck, 'whisper');
+
+  /**
+   * Story 8.9 — Charger les modèles Whisper téléchargés pour le check de mises à jour (AC1)
+   */
+  const loadDownloadedWhisperForCheck = useCallback(async () => {
+    const downloadedSizes = await modelService.getDownloadedModelSizes() as WhisperModelSize[];
+    setDownloadedWhisperForCheck(
+      downloadedSizes.map((size) => ({
+        modelId: size,
+        modelName: WHISPER_MODEL_LABELS[size],
+        downloadUrl: modelService.getModelUrl(size),
+      }))
+    );
+  }, [modelService]);
+
   /**
    * Story 8.8 — Vérifier les modèles Whisper inutilisés (AC5 — Subtask 6.5)
    * Passe les chemins de fichiers pour le fallback FileSystem.getInfoAsync (AC3)
@@ -112,6 +136,11 @@ export function WhisperSettingsScreen() {
     checkUnusedWhisperModels();
   }, [checkUnusedWhisperModels]);
 
+  // Story 8.9 — Charger les modèles téléchargés pour le check de mises à jour (AC1)
+  useEffect(() => {
+    loadDownloadedWhisperForCheck();
+  }, [loadDownloadedWhisperForCheck]);
+
   // Refresh selected model when app comes back to foreground (Story 8.7)
   // Handles the case where a background Whisper download completed
   useEffect(() => {
@@ -120,10 +149,11 @@ export function WhisperSettingsScreen() {
         const selected = await modelService.getSelectedModel();
         setSelectedModel(selected);
         await checkUnusedWhisperModels();
+        await loadDownloadedWhisperForCheck();
       }
     });
     return () => subscription.remove();
-  }, [checkUnusedWhisperModels]);
+  }, [checkUnusedWhisperModels, loadDownloadedWhisperForCheck]);
 
   // Load selected model, vocabulary, and suggestions on mount
   useEffect(() => {
@@ -173,6 +203,24 @@ export function WhisperSettingsScreen() {
     await usageTrackingService.dismissSuggestion(modelSize, 'whisper');
     setUnusedWhisperModels(prev => prev.filter(m => m.modelId !== modelSize));
   }, [usageTrackingService]);
+
+  /**
+   * Story 8.9 — Déclencher la mise à jour d'un modèle Whisper (AC5, AC6)
+   */
+  const handleUpdate = useCallback(async (modelSize: WhisperModelSize) => {
+    try {
+      const downloadUrl = modelService.getModelUrl(modelSize);
+      await modelService.downloadModelWithRetry(modelSize);
+      const getUpdateCheckSvc = () =>
+        container.resolve<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService);
+      await getUpdateCheckSvc().recordUpdate(modelSize, 'whisper', downloadUrl);
+      await checkAll();
+      await loadDownloadedWhisperForCheck();
+      toast.success(`${WHISPER_MODEL_LABELS[modelSize]} mis à jour`);
+    } catch (error) {
+      toast.error('Impossible de mettre à jour le modèle');
+    }
+  }, [modelService, checkAll, loadDownloadedWhisperForCheck, toast]);
 
   /**
    * Handle model selection
@@ -294,6 +342,23 @@ export function WhisperSettingsScreen() {
           Choisissez le modèle Whisper pour convertir vos enregistrements audio en texte.
           Un modèle plus gros offre une meilleure qualité mais nécessite plus d'espace de stockage.
         </Text>
+        {/* Story 8.9 — Bouton vérification manuelle des mises à jour (AC2) */}
+        {downloadedWhisperForCheck.length > 0 && (
+          <TouchableOpacity
+            style={[styles.checkUpdateButton, { backgroundColor: isDark ? colors.neutral[800] : '#FFFFFF', borderColor: isDark ? colors.neutral[700] : '#E5E5EA' }]}
+            onPress={checkAll}
+            disabled={isChecking}
+          >
+            {isChecking ? (
+              <ActivityIndicator size="small" color={isDark ? colors.primary[400] : colors.primary[600]} />
+            ) : (
+              <Feather name="refresh-cw" size={14} color={isDark ? colors.primary[400] : colors.primary[600]} />
+            )}
+            <Text style={[styles.checkUpdateButtonText, { color: isDark ? colors.primary[400] : colors.primary[600] }]}>
+              {isChecking ? 'Vérification...' : 'Vérifier les mises à jour'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <WhisperModelCard
@@ -303,6 +368,8 @@ export function WhisperSettingsScreen() {
         unusedDays={unusedWhisperModels.find(m => m.modelId === 'tiny')?.daysSinceLastUse}
         onDeleteUnused={() => handleDeleteUnused('tiny')}
         onDismissUnused={() => handleDismissUnused('tiny')}
+        updateInfo={updateInfoMap['tiny']}
+        onUpdate={handleUpdate}
       />
       <WhisperModelCard
         modelSize="base"
@@ -311,6 +378,8 @@ export function WhisperSettingsScreen() {
         unusedDays={unusedWhisperModels.find(m => m.modelId === 'base')?.daysSinceLastUse}
         onDeleteUnused={() => handleDeleteUnused('base')}
         onDismissUnused={() => handleDismissUnused('base')}
+        updateInfo={updateInfoMap['base']}
+        onUpdate={handleUpdate}
       />
       <WhisperModelCard
         modelSize="small"
@@ -319,6 +388,8 @@ export function WhisperSettingsScreen() {
         unusedDays={unusedWhisperModels.find(m => m.modelId === 'small')?.daysSinceLastUse}
         onDeleteUnused={() => handleDeleteUnused('small')}
         onDismissUnused={() => handleDismissUnused('small')}
+        updateInfo={updateInfoMap['small']}
+        onUpdate={handleUpdate}
       />
       <WhisperModelCard
         modelSize="medium"
@@ -327,6 +398,8 @@ export function WhisperSettingsScreen() {
         unusedDays={unusedWhisperModels.find(m => m.modelId === 'medium')?.daysSinceLastUse}
         onDeleteUnused={() => handleDeleteUnused('medium')}
         onDismissUnused={() => handleDismissUnused('medium')}
+        updateInfo={updateInfoMap['medium']}
+        onUpdate={handleUpdate}
       />
       <WhisperModelCard
         modelSize="large-v3"
@@ -335,6 +408,8 @@ export function WhisperSettingsScreen() {
         unusedDays={unusedWhisperModels.find(m => m.modelId === 'large-v3')?.daysSinceLastUse}
         onDeleteUnused={() => handleDeleteUnused('large-v3')}
         onDismissUnused={() => handleDismissUnused('large-v3')}
+        updateInfo={updateInfoMap['large-v3']}
+        onUpdate={handleUpdate}
       />
 
       {/* Suggestions from correction learning */}
@@ -516,6 +591,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  checkUpdateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  checkUpdateButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   suggestionsSection: {
     marginTop: 24,

@@ -46,6 +46,8 @@ import { StandardLayout } from '../../components/layouts';
 import type { IModelUsageTrackingService, UnusedModel } from '../../contexts/Normalization/domain/IModelUsageTrackingService';
 import { MODEL_INACTIVITY_THRESHOLD_DAYS } from '../../contexts/Normalization/services/ModelUsageTrackingService';
 import { RepositoryResultType } from '../../contexts/shared/domain/Result';
+import { useModelUpdateCheck } from '../../hooks/useModelUpdateCheck';
+import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -146,6 +148,12 @@ export function LLMSettingsScreen() {
   const [unusedLLMModels, setUnusedLLMModels] = useState<UnusedModel[]>([]);
   const [showDeleteUnusedDialog, setShowDeleteUnusedDialog] = useState(false);
   const [pendingDeleteModelId, setPendingDeleteModelId] = useState<LLMModelId | null>(null);
+
+  // Story 8.9 — Modèles téléchargés pour la vérification de mises à jour (AC1, AC2)
+  const [downloadedModelsForCheck, setDownloadedModelsForCheck] = useState<
+    Array<{ modelId: string; modelName: string; downloadUrl: string }>
+  >([]);
+  const { updateInfoMap, isChecking, checkAll } = useModelUpdateCheck(downloadedModelsForCheck, 'llm');
 
   // Get services from DI container (singleton instances)
   const modelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
@@ -250,6 +258,12 @@ export function LLMSettingsScreen() {
       // Get llamarn models filtered for current device (Apple->Llama, Google->Gemma, Others->generic)
       const standard = await modelService.getModelsForBackendAndDevice('llamarn');
       setModels(tpu, standard);
+
+      // Story 8.9 — Charger la liste des modèles téléchargés pour la vérification de mises à jour (AC1)
+      const downloaded = await modelService.getDownloadedModels();
+      setDownloadedModelsForCheck(
+        downloaded.map((m) => ({ modelId: m.id, modelName: m.name, downloadUrl: m.downloadUrl }))
+      );
     };
 
     loadSettings();
@@ -271,6 +285,12 @@ export function LLMSettingsScreen() {
     const tpu = [...tpuMediapipe, ...tpuLitert];
     const standard = await modelService.getModelsForBackendAndDevice('llamarn');
     setModels(tpu, standard);
+
+    // Story 8.9 — Rafraîchir la liste des modèles téléchargés pour le check de mises à jour
+    const downloaded = await modelService.getDownloadedModels();
+    setDownloadedModelsForCheck(
+      downloaded.map((m) => ({ modelId: m.id, modelName: m.name, downloadUrl: m.downloadUrl }))
+    );
   }, [npuInfo, modelService, setModels]);
 
   /**
@@ -356,6 +376,26 @@ export function LLMSettingsScreen() {
     await usageTrackingService.dismissSuggestion(modelId, 'llm');
     setUnusedLLMModels(prev => prev.filter(m => m.modelId !== modelId));
   }, [usageTrackingService]);
+
+  /**
+   * Story 8.9 — Déclencher la mise à jour d'un modèle LLM (AC5, AC6)
+   * Télécharge le modèle puis enregistre la mise à jour via recordUpdate()
+   */
+  const handleUpdate = useCallback(async (modelId: LLMModelId) => {
+    try {
+      const config = modelService.getModelConfig(modelId);
+      await modelService.downloadModelWithRetry(modelId);
+      // Enregistrer la mise à jour (updateDate) via le service de check
+      const getLLMUpdateCheckService = () =>
+        container.resolve<IModelUpdateCheckService>(TOKENS.IModelUpdateCheckService);
+      await getLLMUpdateCheckService().recordUpdate(modelId, 'llm', config.downloadUrl);
+      // Rafraîchir l'état UI du check de mises à jour
+      await checkAll();
+      toast.success(`${config.name} mis à jour`);
+    } catch (error) {
+      toast.error('Impossible de mettre à jour le modèle');
+    }
+  }, [modelService, checkAll, toast]);
 
   /**
    * Handle HuggingFace login
@@ -511,6 +551,23 @@ export function LLMSettingsScreen() {
           Utilisez un modèle d'intelligence artificielle local pour améliorer automatiquement
           la qualité des transcriptions (ponctuation, grammaire, capitalisation).
         </Text>
+        {/* Story 8.9 — Bouton vérification manuelle des mises à jour (AC2) */}
+        {downloadedModelsForCheck.length > 0 && (
+          <TouchableOpacity
+            style={[styles.checkUpdateButton, { backgroundColor: themeColors.cardBg, borderColor: themeColors.borderDefault }]}
+            onPress={checkAll}
+            disabled={isChecking}
+          >
+            {isChecking ? (
+              <ActivityIndicator size="small" color={themeColors.iconPrimary} />
+            ) : (
+              <Feather name="refresh-cw" size={14} color={themeColors.iconPrimary} />
+            )}
+            <Text style={[styles.checkUpdateButtonText, { color: themeColors.iconPrimary }]}>
+              {isChecking ? 'Vérification...' : 'Vérifier les mises à jour'}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Enable Toggle */}
@@ -706,6 +763,8 @@ export function LLMSettingsScreen() {
               unusedDays={unusedLLMModels.find(m => m.modelId === model.id)?.daysSinceLastUse}
               onDeleteUnused={() => handleDeleteUnused(model.id)}
               onDismissUnused={() => handleDismissUnused(model.id)}
+              updateInfo={updateInfoMap[model.id]}
+              onUpdate={handleUpdate}
             />
           ))}
         </View>
@@ -730,6 +789,8 @@ export function LLMSettingsScreen() {
             unusedDays={unusedLLMModels.find(m => m.modelId === model.id)?.daysSinceLastUse}
             onDeleteUnused={() => handleDeleteUnused(model.id)}
             onDismissUnused={() => handleDismissUnused(model.id)}
+            updateInfo={updateInfoMap[model.id]}
+            onUpdate={handleUpdate}
           />
         ))}
       </View>
@@ -936,6 +997,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     lineHeight: 20,
+  },
+  checkUpdateButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginTop: 12,
+    gap: 6,
+  },
+  checkUpdateButtonText: {
+    fontSize: 13,
+    fontWeight: '500',
   },
   toggleSection: {
     backgroundColor: '#FFFFFF',
