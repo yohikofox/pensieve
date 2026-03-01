@@ -8,7 +8,7 @@
  * - Offer to delete unused models to save space
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   ScrollView,
@@ -19,9 +19,14 @@ import {
   Switch,
   AppState,
 } from 'react-native';
+import { container } from 'tsyringe';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
 import type { WhisperModelSize } from '../../contexts/Normalization/services/TranscriptionModelService';
 import { useTranscriptionModel } from '../../hooks/useServices';
+import type { IModelUsageTrackingService, UnusedModel } from '../../contexts/Normalization/domain/IModelUsageTrackingService';
+import { MODEL_INACTIVITY_THRESHOLD_DAYS } from '../../contexts/Normalization/services/ModelUsageTrackingService';
+import { RepositoryResultType } from '../../contexts/shared/domain/Result';
+import { TOKENS } from '../../infrastructure/di/tokens';
 import {
   CorrectionLearningService,
   type CorrectionEntry,
@@ -66,7 +71,29 @@ export function WhisperSettingsScreen() {
   const [deleteDialogMessage, setDeleteDialogMessage] = useState('');
   const toast = useToast();
 
+  // Unused models (Story 8.8 — AC5)
+  const [unusedWhisperModels, setUnusedWhisperModels] = useState<UnusedModel[]>([]);
+  const [showDeleteUnusedDialog, setShowDeleteUnusedDialog] = useState(false);
+  const [pendingDeleteSize, setPendingDeleteSize] = useState<WhisperModelSize | null>(null);
+
   const modelService = useTranscriptionModel();
+  const usageTrackingService = useMemo(() => container.resolve<IModelUsageTrackingService>(TOKENS.IModelUsageTrackingService), []);
+
+  /**
+   * Story 8.8 — Vérifier les modèles Whisper inutilisés (AC5 — Subtask 6.5)
+   */
+  const checkUnusedWhisperModels = useCallback(async () => {
+    const downloadedSizes = await modelService.getDownloadedModelSizes();
+    const result = await usageTrackingService.getUnusedModels([], downloadedSizes, MODEL_INACTIVITY_THRESHOLD_DAYS);
+    if (result.type === RepositoryResultType.SUCCESS && result.data) {
+      setUnusedWhisperModels(result.data);
+    }
+  }, [modelService, usageTrackingService]);
+
+  // Vérifier les modèles inutilisés au montage (Story 8.8 — Subtask 6.5)
+  useEffect(() => {
+    checkUnusedWhisperModels();
+  }, [checkUnusedWhisperModels]);
 
   // Refresh selected model when app comes back to foreground (Story 8.7)
   // Handles the case where a background Whisper download completed
@@ -75,10 +102,11 @@ export function WhisperSettingsScreen() {
       if (nextState === 'active') {
         const selected = await modelService.getSelectedModel();
         setSelectedModel(selected);
+        await checkUnusedWhisperModels();
       }
     });
     return () => subscription.remove();
-  }, []);
+  }, [checkUnusedWhisperModels]);
 
   // Load selected model, vocabulary, and suggestions on mount
   useEffect(() => {
@@ -95,6 +123,50 @@ export function WhisperSettingsScreen() {
     };
     loadSettings();
   }, []);
+
+  /**
+   * Story 8.8 — Libellés des modèles Whisper pour la dialog de suppression (AC6)
+   */
+  const whisperModelLabels: Record<WhisperModelSize, string> = {
+    tiny: 'Tiny (~75 MB)',
+    base: 'Base (~142 MB)',
+    small: 'Small (~466 MB)',
+    medium: 'Medium (~1.5 GB)',
+    'large-v3': 'Large V3 (~3.1 GB)',
+  };
+
+  /**
+   * Story 8.8 — Afficher la confirmation de suppression depuis l'alerte d'inactivité (AC6)
+   */
+  const handleDeleteUnused = useCallback((modelSize: WhisperModelSize) => {
+    setPendingDeleteSize(modelSize);
+    setShowDeleteUnusedDialog(true);
+  }, []);
+
+  /**
+   * Story 8.8 — Confirmer la suppression du modèle Whisper inutilisé (AC6)
+   */
+  const confirmDeleteUnused = useCallback(async () => {
+    if (!pendingDeleteSize) return;
+    setShowDeleteUnusedDialog(false);
+    try {
+      await modelService.deleteModel(pendingDeleteSize);
+      await checkUnusedWhisperModels();
+      toast.success('Modèle supprimé');
+    } catch (error) {
+      toast.error('Impossible de supprimer le modèle');
+    } finally {
+      setPendingDeleteSize(null);
+    }
+  }, [pendingDeleteSize, modelService, checkUnusedWhisperModels, toast]);
+
+  /**
+   * Story 8.8 — Ignorer l'alerte d'inactivité pour un modèle Whisper (AC7)
+   */
+  const handleDismissUnused = useCallback(async (modelSize: WhisperModelSize) => {
+    await usageTrackingService.dismissSuggestion(modelSize, 'whisper');
+    setUnusedWhisperModels(prev => prev.filter(m => m.modelId !== modelSize));
+  }, [usageTrackingService]);
 
   /**
    * Handle model selection
@@ -230,26 +302,41 @@ export function WhisperSettingsScreen() {
         modelSize="tiny"
         isSelected={selectedModel === 'tiny'}
         onUseModel={handleUseModel}
+        unusedDays={unusedWhisperModels.find(m => m.modelId === 'tiny')?.daysSinceLastUse}
+        onDeleteUnused={() => handleDeleteUnused('tiny')}
+        onDismissUnused={() => handleDismissUnused('tiny')}
       />
       <WhisperModelCard
         modelSize="base"
         isSelected={selectedModel === 'base'}
         onUseModel={handleUseModel}
+        unusedDays={unusedWhisperModels.find(m => m.modelId === 'base')?.daysSinceLastUse}
+        onDeleteUnused={() => handleDeleteUnused('base')}
+        onDismissUnused={() => handleDismissUnused('base')}
       />
       <WhisperModelCard
         modelSize="small"
         isSelected={selectedModel === 'small'}
         onUseModel={handleUseModel}
+        unusedDays={unusedWhisperModels.find(m => m.modelId === 'small')?.daysSinceLastUse}
+        onDeleteUnused={() => handleDeleteUnused('small')}
+        onDismissUnused={() => handleDismissUnused('small')}
       />
       <WhisperModelCard
         modelSize="medium"
         isSelected={selectedModel === 'medium'}
         onUseModel={handleUseModel}
+        unusedDays={unusedWhisperModels.find(m => m.modelId === 'medium')?.daysSinceLastUse}
+        onDeleteUnused={() => handleDeleteUnused('medium')}
+        onDismissUnused={() => handleDismissUnused('medium')}
       />
       <WhisperModelCard
         modelSize="large-v3"
         isSelected={selectedModel === 'large-v3'}
         onUseModel={handleUseModel}
+        unusedDays={unusedWhisperModels.find(m => m.modelId === 'large-v3')?.daysSinceLastUse}
+        onDeleteUnused={() => handleDeleteUnused('large-v3')}
+        onDismissUnused={() => handleDismissUnused('large-v3')}
       />
 
       {/* Suggestions from correction learning */}
@@ -375,6 +462,34 @@ export function WhisperSettingsScreen() {
           onPress: () => {
             setShowDeleteOthersDialog(false);
             setPendingDeleteModels([]);
+          },
+        }}
+      />
+
+      {/* Story 8.8 — Confirmation suppression modèle Whisper inutilisé (AC6) */}
+      <AlertDialog
+        visible={showDeleteUnusedDialog}
+        onClose={() => {
+          setShowDeleteUnusedDialog(false);
+          setPendingDeleteSize(null);
+        }}
+        title="Supprimer le modèle ?"
+        message={
+          pendingDeleteSize
+            ? `Supprimer ${whisperModelLabels[pendingDeleteSize]} et libérer l'espace disque ?`
+            : ''
+        }
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDeleteUnused,
+        }}
+        cancelAction={{
+          label: 'Annuler',
+          onPress: () => {
+            setShowDeleteUnusedDialog(false);
+            setPendingDeleteSize(null);
           },
         }}
       />

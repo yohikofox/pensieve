@@ -43,6 +43,9 @@ import { useSettingsStore } from '../../stores/settingsStore';
 import { useLLMSettingsScreenStore, hasDownloadedModels } from '../../stores/llmSettingsScreenStore';
 import { useTheme } from '../../hooks/useTheme';
 import { StandardLayout } from '../../components/layouts';
+import type { IModelUsageTrackingService, UnusedModel } from '../../contexts/Normalization/domain/IModelUsageTrackingService';
+import { MODEL_INACTIVITY_THRESHOLD_DAYS } from '../../contexts/Normalization/services/ModelUsageTrackingService';
+import { RepositoryResultType } from '../../contexts/shared/domain/Result';
 
 // Theme-aware colors
 const getThemeColors = (isDark: boolean) => ({
@@ -139,10 +142,16 @@ export function LLMSettingsScreen() {
   const [selectedModelForTask, setSelectedModelForTask] = useState<LLMModelId | null>(null);
   const toast = useToast();
 
+  // Unused models (Story 8.8 — AC4)
+  const [unusedLLMModels, setUnusedLLMModels] = useState<UnusedModel[]>([]);
+  const [showDeleteUnusedDialog, setShowDeleteUnusedDialog] = useState(false);
+  const [pendingDeleteModelId, setPendingDeleteModelId] = useState<LLMModelId | null>(null);
+
   // Get services from DI container (singleton instances)
   const modelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
   const npuDetection = useMemo(() => container.resolve(NPUDetectionService), []);
   const authService = modelService.getAuthService();
+  const usageTrackingService = useMemo(() => container.resolve<IModelUsageTrackingService>(TOKENS.IModelUsageTrackingService), []);
 
   /**
    * Get NPU title for display
@@ -264,6 +273,22 @@ export function LLMSettingsScreen() {
     setModels(tpu, standard);
   }, [npuInfo, modelService, setModels]);
 
+  /**
+   * Story 8.8 — Vérifier les modèles LLM inutilisés (AC4)
+   */
+  const checkUnusedModels = useCallback(async () => {
+    const downloadedIds = await modelService.getDownloadedModelIds();
+    const result = await usageTrackingService.getUnusedModels(downloadedIds, [], MODEL_INACTIVITY_THRESHOLD_DAYS);
+    if (result.type === RepositoryResultType.SUCCESS && result.data) {
+      setUnusedLLMModels(result.data);
+    }
+  }, [modelService, usageTrackingService]);
+
+  // Vérifier les modèles inutilisés au montage (Story 8.8 — Subtask 6.1)
+  useEffect(() => {
+    checkUnusedModels();
+  }, [checkUnusedModels]);
+
   // Re-sync HuggingFace auth state when app comes back to foreground.
   // Handles the case where openAuthSessionAsync returns 'dismiss' (iOS production)
   // and useDeepLinkAuth has already stored the token via handleDeepLinkToken,
@@ -274,10 +299,11 @@ export function LLMSettingsScreen() {
         const isAuth = authService.isAuthenticated();
         setHfAuth(isAuth, authService.getUser());
         await refreshModels();
+        await checkUnusedModels();
       }
     });
     return () => subscription.remove();
-  }, [authService, setHfAuth, refreshModels]);
+  }, [authService, setHfAuth, refreshModels, checkUnusedModels]);
 
   /**
    * Handle model deletion - refresh list and check if we need to disable post-processing
@@ -286,7 +312,42 @@ export function LLMSettingsScreen() {
     console.log('[LLMSettings] Model deleted:', modelId);
     // Refresh models list to update UI
     await refreshModels();
-  }, [refreshModels]);
+    await checkUnusedModels();
+  }, [refreshModels, checkUnusedModels]);
+
+  /**
+   * Story 8.8 — Afficher la confirmation de suppression depuis l'alerte d'inactivité (AC6)
+   */
+  const handleDeleteUnused = useCallback((modelId: LLMModelId) => {
+    setPendingDeleteModelId(modelId);
+    setShowDeleteUnusedDialog(true);
+  }, []);
+
+  /**
+   * Story 8.8 — Confirmer la suppression du modèle inutilisé (AC6)
+   */
+  const confirmDeleteUnused = useCallback(async () => {
+    if (!pendingDeleteModelId) return;
+    setShowDeleteUnusedDialog(false);
+    try {
+      await modelService.deleteModel(pendingDeleteModelId);
+      await refreshModels();
+      await checkUnusedModels();
+      toast.success('Modèle supprimé');
+    } catch (error) {
+      toast.error('Impossible de supprimer le modèle');
+    } finally {
+      setPendingDeleteModelId(null);
+    }
+  }, [pendingDeleteModelId, modelService, refreshModels, checkUnusedModels, toast]);
+
+  /**
+   * Story 8.8 — Ignorer l'alerte d'inactivité pour un modèle (AC7)
+   */
+  const handleDismissUnused = useCallback(async (modelId: LLMModelId) => {
+    await usageTrackingService.dismissSuggestion(modelId, 'llm');
+    setUnusedLLMModels(prev => prev.filter(m => m.modelId !== modelId));
+  }, [usageTrackingService]);
 
   /**
    * Handle HuggingFace login
@@ -634,6 +695,9 @@ export function LLMSettingsScreen() {
               onUseModel={handleUseModel}
               isHfAuthenticated={isHfAuthenticated}
               onModelDeleted={handleModelDeleted}
+              unusedDays={unusedLLMModels.find(m => m.modelId === model.id)?.daysSinceLastUse}
+              onDeleteUnused={() => handleDeleteUnused(model.id)}
+              onDismissUnused={() => handleDismissUnused(model.id)}
             />
           ))}
         </View>
@@ -655,6 +719,9 @@ export function LLMSettingsScreen() {
             onUseModel={handleUseModel}
             isHfAuthenticated={isHfAuthenticated}
             onModelDeleted={handleModelDeleted}
+            unusedDays={unusedLLMModels.find(m => m.modelId === model.id)?.daysSinceLastUse}
+            onDeleteUnused={() => handleDeleteUnused(model.id)}
+            onDismissUnused={() => handleDismissUnused(model.id)}
           />
         ))}
       </View>
@@ -743,6 +810,34 @@ export function LLMSettingsScreen() {
           label: 'Déconnecter',
           variant: 'danger',
           onPress: confirmHfLogout,
+        }}
+      />
+
+      {/* Story 8.8 — Confirmation suppression modèle inutilisé (AC6) */}
+      <AlertDialog
+        visible={showDeleteUnusedDialog}
+        onClose={() => {
+          setShowDeleteUnusedDialog(false);
+          setPendingDeleteModelId(null);
+        }}
+        title="Supprimer le modèle ?"
+        message={
+          pendingDeleteModelId
+            ? `Supprimer ${modelService.getModelConfig(pendingDeleteModelId).name} et libérer l'espace disque ?`
+            : ''
+        }
+        icon="trash-2"
+        variant="danger"
+        confirmAction={{
+          label: 'Supprimer',
+          onPress: confirmDeleteUnused,
+        }}
+        cancelAction={{
+          label: 'Annuler',
+          onPress: () => {
+            setShowDeleteUnusedDialog(false);
+            setPendingDeleteModelId(null);
+          },
         }}
       />
 
