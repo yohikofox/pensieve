@@ -20,10 +20,8 @@ import {
   AppState,
 } from 'react-native';
 import { WhisperModelCard } from '../../components/whisper/WhisperModelCard';
-import {
-  TranscriptionModelService,
-  type WhisperModelSize,
-} from '../../contexts/Normalization/services/TranscriptionModelService';
+import type { WhisperModelSize } from '../../contexts/Normalization/services/TranscriptionModelService';
+import { useTranscriptionModel } from '../../hooks/useServices';
 import {
   CorrectionLearningService,
   type CorrectionEntry,
@@ -68,7 +66,7 @@ export function WhisperSettingsScreen() {
   const [deleteDialogMessage, setDeleteDialogMessage] = useState('');
   const toast = useToast();
 
-  const modelService = new TranscriptionModelService();
+  const modelService = useTranscriptionModel();
 
   // Refresh selected model when app comes back to foreground (Story 8.7)
   // Handles the case where a background Whisper download completed

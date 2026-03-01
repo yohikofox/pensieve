@@ -63,7 +63,6 @@ type WorkerState = 'stopped' | 'running' | 'paused';
 export class TranscriptionWorker {
   private state: WorkerState = 'stopped';
   private isProcessing: boolean = false; // True when actively processing queue
-  private whisperModelService: TranscriptionModelService;
   private postProcessingService: PostProcessingService;
   private engineService: TranscriptionEngineService;
   private nativeEngine: NativeTranscriptionEngine;
@@ -84,9 +83,9 @@ export class TranscriptionWorker {
     postProcessingService: PostProcessingService,
     engineService: TranscriptionEngineService,
     nativeEngine: NativeTranscriptionEngine,
-    private deviceCapabilities: DeviceCapabilitiesService // Task 7.3
+    private deviceCapabilities: DeviceCapabilitiesService, // Task 7.3
+    private whisperModelService: TranscriptionModelService,
   ) {
-    this.whisperModelService = new TranscriptionModelService();
     this.postProcessingService = postProcessingService;
     this.engineService = engineService;
     this.nativeEngine = nativeEngine;

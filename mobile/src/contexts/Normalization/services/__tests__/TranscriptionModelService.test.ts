@@ -1,4 +1,5 @@
 import { TranscriptionModelService } from '../TranscriptionModelService';
+import type { IModelUsageTrackingService } from '../../domain/IModelUsageTrackingService';
 import { fetch } from 'expo/fetch';
 import { Paths } from 'expo-file-system';
 import * as FileSystem from 'expo-file-system';
@@ -59,11 +60,20 @@ function createMockResponse(options: {
   } as unknown as Response;
 }
 
+const mockUsageTrackingService: IModelUsageTrackingService = {
+  trackModelUsed: jest.fn().mockResolvedValue({ type: 'success', data: undefined }),
+  getLastUsedDate: jest.fn().mockResolvedValue({ type: 'success', data: null }),
+  getUnusedModels: jest.fn().mockResolvedValue({ type: 'success', data: [] }),
+  dismissSuggestion: jest.fn().mockResolvedValue({ type: 'success', data: undefined }),
+  hasDismissedSuggestion: jest.fn().mockResolvedValue({ type: 'success', data: false }),
+  clearModelTracking: jest.fn().mockResolvedValue({ type: 'success', data: undefined }),
+};
+
 describe('TranscriptionModelService', () => {
   let service: TranscriptionModelService;
 
   beforeEach(() => {
-    service = new TranscriptionModelService();
+    service = new TranscriptionModelService(mockUsageTrackingService);
     jest.clearAllMocks();
     // Clear mock files between tests
     (FileSystem as any).__clearMockFiles?.();

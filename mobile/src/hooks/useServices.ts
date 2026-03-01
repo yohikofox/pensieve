@@ -2,7 +2,6 @@
  * Specialized hooks for commonly used services
  * Provides convenient access to frequently used dependencies
  */
-import { useMemo } from 'react';
 import { TOKENS } from '../infrastructure/di/tokens';
 import { useDI, useOptionalDI } from './useDI';
 import type { ICaptureRepository } from '../contexts/capture/domain/ICaptureRepository';
@@ -40,7 +39,7 @@ export function useTranscriptionQueue(): TranscriptionQueueService {
  * const bestModel = await modelService.getBestAvailableModel();
  */
 export function useTranscriptionModel(): TranscriptionModelService {
-  return useMemo(() => new TranscriptionModelService(), []);
+  return useDI(TranscriptionModelService);
 }
 
 /**

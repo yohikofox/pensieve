@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { injectable, container } from 'tsyringe';
+import { injectable, inject, container } from 'tsyringe';
 import { File, Paths } from 'expo-file-system';
 // ASYNC_STORAGE_OK: UI preferences only (Whisper model selection, custom vocabulary, download resume) — not critical data (ADR-022)
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,7 @@ import {
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { IModelDownloadNotificationService } from '../domain/IModelDownloadNotificationService';
+import type { IModelUsageTrackingService } from '../domain/IModelUsageTrackingService';
 import { CAPTURE_TYPES, CAPTURE_STATES } from '../../capture/domain/Capture.model';
 
 export type WhisperModelSize = 'tiny' | 'base' | 'small' | 'medium' | 'large-v3';
@@ -88,6 +89,10 @@ export class TranscriptionModelService {
   /** Map of active Whisper downloads for pause/resume support */
   private activeWhisperDownloads: Map<string, DownloadTask> = new Map();
 
+  constructor(
+    @inject(TOKENS.IModelUsageTrackingService) private usageTrackingService: IModelUsageTrackingService
+  ) {}
+
   /**
    * Download Whisper model to device storage with progress tracking
    *
@@ -114,8 +119,8 @@ export class TranscriptionModelService {
       modelPath: modelFile.uri,
     });
 
-    // Lazy resolution — TranscriptionModelService is often instantiated with `new`
-    // so constructor injection is not available here (ADR-017: indented resolve is allowed)
+    // Lazy resolution dans le callback Promise — IModelDownloadNotificationService n'est pas
+    // injecté en constructeur car il n'est utilisé que dans un callback asynchrone (ADR-017)
     const notificationService = container.resolve<IModelDownloadNotificationService>(
       TOKENS.IModelDownloadNotificationService
     );
@@ -167,6 +172,9 @@ export class TranscriptionModelService {
             await notificationService
               .notifyDownloadSuccess(modelSize, modelName, 'whisper')
               .catch(() => {});
+
+            // Initialise lastUsed au téléchargement (AC2 — Story 8.8)
+            await this.usageTrackingService.trackModelUsed(modelSize, 'whisper').catch(() => {});
 
             // AC6: Auto-resume pending captures now that model is available (Story 2.7)
             await this.autoResumePendingCaptures();
@@ -244,6 +252,8 @@ export class TranscriptionModelService {
       if (modelFile.exists) {
         await modelFile.delete();
       }
+      // Nettoie les clés AsyncStorage de tracking après suppression (AC6 — Story 8.8)
+      await this.usageTrackingService.clearModelTracking(modelSize, 'whisper').catch(() => {});
     } catch (error) {
       throw new Error(
         `Failed to delete ${modelSize} model: ${error instanceof Error ? error.message : 'Unknown error'}`
@@ -377,6 +387,8 @@ export class TranscriptionModelService {
     try {
       await AsyncStorage.setItem(SELECTED_MODEL_KEY, modelSize);
       console.log('[TranscriptionModelService] ✅ Selected model set to:', modelSize);
+      // Met à jour lastUsed à la sélection (AC2 — Story 8.8)
+      await this.usageTrackingService.trackModelUsed(modelSize, 'whisper').catch(() => {});
     } catch (error) {
       console.error('[TranscriptionModelService] Failed to set selected model:', error);
       throw error;
@@ -561,6 +573,21 @@ export class TranscriptionModelService {
       console.error('[TranscriptionModelService] Recovery failed:', error);
       return [];
     }
+  }
+
+  /**
+   * Get sizes of all downloaded Whisper models (files present on disk)
+   * Used by getUnusedModels() in settings screens (Subtask 3.5 — Story 8.8)
+   */
+  async getDownloadedModelSizes(): Promise<string[]> {
+    const allSizes = Object.keys(this.MODEL_CONFIGS) as WhisperModelSize[];
+    const results: string[] = [];
+    for (const size of allSizes) {
+      if (await this.isModelDownloaded(size)) {
+        results.push(size);
+      }
+    }
+    return results;
   }
 
   /**

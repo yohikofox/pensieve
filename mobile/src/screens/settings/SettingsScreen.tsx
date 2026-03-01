@@ -21,7 +21,7 @@ import * as Sharing from 'expo-sharing';
 import { apiConfig } from '../../config/api';
 import { container } from 'tsyringe';
 import type { IAuthService } from '../../contexts/identity/domain/IAuthService';
-import { TranscriptionModelService } from '../../contexts/Normalization/services/TranscriptionModelService';
+import { useTranscriptionModel } from '../../hooks/useServices';
 import type { ILLMModelService } from '../../contexts/Normalization/domain/ILLMModelService';
 import { TOKENS } from '../../infrastructure/di/tokens';
 import { TranscriptionEngineService } from '../../contexts/Normalization/services/TranscriptionEngineService';
@@ -118,7 +118,7 @@ export const SettingsScreen = () => {
   const toast = useToast();
 
   const queryClient = useQueryClient();
-  const modelService = new TranscriptionModelService();
+  const modelService = useTranscriptionModel();
   const llmModelService = useMemo(() => container.resolve<ILLMModelService>(TOKENS.ILLMModelService), []);
   const engineService = container.resolve(TranscriptionEngineService);
 
