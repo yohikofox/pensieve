@@ -27,6 +27,7 @@ interface QueryResult {
   rowsAffected?: number;
 }
 
+
 export const SqlConsole: React.FC = () => {
   const [sql, setSql] = useState('SELECT * FROM captures LIMIT 10');
   const [result, setResult] = useState<QueryResult | null>(null);
@@ -51,60 +52,53 @@ export const SqlConsole: React.FC = () => {
     }
   };
 
-  const columns = result?.rows && result.rows.length > 0
-    ? Object.keys(result.rows[0])
-    : [];
-
   const renderResultContent = () => {
     if (!result) return null;
 
     if (result.rows && result.rows.length > 0) {
       return (
-        <ScrollView horizontal showsHorizontalScrollIndicator>
-          <View>
-            {/* Header row */}
-            <View className="flex-row border-b border-border-default bg-bg-secondary">
-              {columns.map((col) => (
-                <Text
-                  key={col}
-                  className="text-xs font-bold text-text-primary px-2 py-1.5 min-w-[80px]"
-                  numberOfLines={1}
-                >
-                  {col}
+        <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
+          <Text className="text-xs text-text-tertiary mb-2">
+            {result.rows.length} ligne(s)
+          </Text>
+          {result.rows.map((row, rowIndex) => (
+            <View
+              key={rowIndex}
+              className="mb-3 rounded-lg border border-border-default bg-bg-primary overflow-hidden"
+            >
+              {/* Card header */}
+              <View className="px-3 py-1.5 bg-bg-secondary border-b border-border-default">
+                <Text className="text-xs font-bold text-text-tertiary uppercase">
+                  Ligne {rowIndex + 1}
                 </Text>
-              ))}
+              </View>
+              {/* Key/value pairs */}
+              {Object.entries(row).map(([key, val], i) => {
+                const isNull = val === null || val === undefined;
+                const display = isNull
+                  ? 'NULL'
+                  : typeof val === 'object'
+                  ? JSON.stringify(val)
+                  : String(val);
+                return (
+                  <View
+                    key={key}
+                    className={`flex-row px-3 py-2 ${i % 2 === 0 ? 'bg-bg-primary' : 'bg-bg-secondary'}`}
+                  >
+                    <Text className="text-xs font-semibold text-text-primary w-32 shrink-0 mr-2" numberOfLines={1}>
+                      {key}
+                    </Text>
+                    <Text
+                      className={`text-xs flex-1 font-mono ${isNull ? 'italic text-text-tertiary' : 'text-text-secondary'}`}
+                      selectable
+                    >
+                      {display}
+                    </Text>
+                  </View>
+                );
+              })}
             </View>
-            {/* Data rows */}
-            <ScrollView nestedScrollEnabled showsVerticalScrollIndicator>
-              {result.rows!.map((row, rowIndex) => (
-                <View
-                  key={rowIndex}
-                  className={`flex-row border-b border-border-subtle ${rowIndex % 2 === 0 ? 'bg-bg-primary' : 'bg-bg-secondary'}`}
-                >
-                  {columns.map((col) => {
-                    const val = row[col];
-                    const display = val === null || val === undefined
-                      ? 'NULL'
-                      : typeof val === 'object'
-                      ? JSON.stringify(val)
-                      : String(val);
-                    return (
-                      <Text
-                        key={col}
-                        className="text-xs text-text-secondary px-2 py-1 min-w-[80px]"
-                        numberOfLines={2}
-                      >
-                        {display}
-                      </Text>
-                    );
-                  })}
-                </View>
-              ))}
-            </ScrollView>
-            <Text className="text-xs text-text-tertiary mt-1">
-              {result.rows!.length} ligne(s)
-            </Text>
-          </View>
+          ))}
         </ScrollView>
       );
     }
