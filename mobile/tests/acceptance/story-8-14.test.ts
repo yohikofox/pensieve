@@ -20,7 +20,9 @@ import 'reflect-metadata';
 import { loadFeature, defineFeature } from 'jest-cucumber';
 import { TodoRepository } from '../../src/contexts/action/data/TodoRepository';
 import type { ITodoRepository } from '../../src/contexts/action/domain/ITodoRepository';
-import type { Todo } from '../../src/contexts/action/domain/Todo.model';
+import { Todo } from '../../src/contexts/action/domain/Todo.model';
+import type { TodoSnapshot } from '../../src/contexts/action/domain/Todo.model';
+import { RepositoryResultType } from '../../src/contexts/shared/domain/Result';
 import { database } from '../../src/database';
 import { filterTodos } from '../../src/contexts/action/utils/filterTodos';
 
@@ -38,8 +40,8 @@ const mockSyncTrigger = {
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────────
-function makeTodo(overrides: Partial<Todo> = {}): Todo {
-  return {
+function makeTodo(overrides: Partial<TodoSnapshot> = {}): Todo {
+  return Todo.fromSnapshot({
     id: `todo-test-${Date.now()}-${Math.random().toString(36).slice(2)}`,
     thoughtId: 'thought-test',
     ideaId: 'idea-test',
@@ -47,11 +49,14 @@ function makeTodo(overrides: Partial<Todo> = {}): Todo {
     userId: 'user-test',
     description: 'Appeler le client',
     status: 'todo',
+    deadline: null,
+    contact: null,
     priority: 'medium',
+    completedAt: null,
     createdAt: Date.now(),
     updatedAt: Date.now(),
     ...overrides,
-  };
+  });
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -111,12 +116,14 @@ defineFeature(feature, (test) => {
     });
 
     when("l'utilisateur abandonne la tâche depuis la vue détail", async () => {
-      // Simule l'appel de useAbandonTodo.mutate → todoRepository.update(id, { status: 'abandoned' })
-      const result = await todoRepository.update(testTodo.id, {
-        status: 'abandoned',
-        updatedAt: Date.now(),
-      });
-      expect(result).toBe(true);
+      // Simule le nouveau chemin : useAbandonTodo → useTodoDetailStore.abandon()
+      // → entity.abandon() → repository.save(entity) (ADR-031 + ADR-038)
+      const todo = await todoRepository.findById(testTodo.id);
+      expect(todo).not.toBeNull();
+      const transitionResult = todo!.abandon();
+      expect(transitionResult.type).toBe(RepositoryResultType.SUCCESS);
+      const saveResult = await todoRepository.save(todo!);
+      expect(saveResult.type).toBe(RepositoryResultType.SUCCESS);
     });
 
     then('la tâche "Appeler le client" a le statut "abandoned" dans la base de données', async () => {
@@ -144,21 +151,23 @@ defineFeature(feature, (test) => {
     defineBackground(given, and);
 
     given('la tâche "Appeler le client" a le statut "abandoned"', async () => {
-      await todoRepository.update(testTodo.id, {
-        status: 'abandoned',
-        updatedAt: Date.now(),
-      });
+      const todo = await todoRepository.findById(testTodo.id);
+      expect(todo).not.toBeNull();
+      todo!.abandon();
+      await todoRepository.save(todo!);
       const found = await todoRepository.findById(testTodo.id);
       expect(found!.status).toBe('abandoned');
     });
 
     when("l'utilisateur réactive la tâche depuis la vue détail", async () => {
-      // Simule l'appel de useReactivateTodo.mutate → todoRepository.update(id, { status: 'todo' })
-      const result = await todoRepository.update(testTodo.id, {
-        status: 'todo',
-        updatedAt: Date.now(),
-      });
-      expect(result).toBe(true);
+      // Simule le nouveau chemin : useReactivateTodo → useTodoDetailStore.reactivate()
+      // → entity.reactivate() → repository.save(entity) (ADR-031 + ADR-038)
+      const todo = await todoRepository.findById(testTodo.id);
+      expect(todo).not.toBeNull();
+      const transitionResult = todo!.reactivate();
+      expect(transitionResult.type).toBe(RepositoryResultType.SUCCESS);
+      const saveResult = await todoRepository.save(todo!);
+      expect(saveResult.type).toBe(RepositoryResultType.SUCCESS);
     });
 
     then('la tâche "Appeler le client" a le statut "todo" dans la base de données', async () => {
@@ -185,12 +194,14 @@ defineFeature(feature, (test) => {
     });
 
     when('l\'utilisateur effectue un swipe gauche et tape "Abandonner"', async () => {
-      // Simule le onPress du bouton Abandonner dans renderRightActions
-      const result = await todoRepository.update(testTodo.id, {
-        status: 'abandoned',
-        updatedAt: Date.now(),
-      });
-      expect(result).toBe(true);
+      // Simule le nouveau chemin : swipe → useAbandonTodo → useTodoDetailStore.abandon()
+      // → entity.abandon() → repository.save(entity) (ADR-031 + ADR-038)
+      const todo = await todoRepository.findById(testTodo.id);
+      expect(todo).not.toBeNull();
+      const transitionResult = todo!.abandon();
+      expect(transitionResult.type).toBe(RepositoryResultType.SUCCESS);
+      const saveResult = await todoRepository.save(todo!);
+      expect(saveResult.type).toBe(RepositoryResultType.SUCCESS);
     });
 
     then('la tâche "Appeler le client" a le statut "abandoned" dans la base de données', async () => {

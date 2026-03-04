@@ -15,11 +15,14 @@ import { RepositoryResult } from "../../shared/domain/Result";
 /**
  * Todo with source context (Thought + Idea)
  * Story 5.2 - AC6: Source preview in Actions tab
+ *
+ * Type intersection — compatible avec Todo classe riche (ADR-031)
+ * Utiliser Object.assign(todoInstance, { thought, idea }) dans le repository
  */
-export interface TodoWithSource extends Todo {
+export type TodoWithSource = Todo & {
   thought?: Thought;
   idea?: Idea;
-}
+};
 
 export interface ITodoRepository {
   /**
@@ -55,8 +58,16 @@ export interface ITodoRepository {
    * @param id - Todo UUID
    * @param changes - Partial todo fields to update
    * @returns true if update was applied, false if no changes detected
+   * @deprecated Préférer save(entity) — ADR-031 : les mutations passent par l'entité
    */
   update(id: string, changes: Partial<Todo>): Promise<boolean>;
+
+  /**
+   * Persist a Todo entity after domain mutations (ADR-031 R8)
+   * Appelé après entity.abandon() / entity.reactivate() / entity.complete()
+   * @param entity - Todo instance avec état muté
+   */
+  save(entity: Todo): Promise<RepositoryResult<void>>;
 
   /**
    * Delete a todo

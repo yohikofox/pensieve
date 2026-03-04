@@ -8,7 +8,7 @@
 
 import { injectable, inject } from "tsyringe";
 import { database } from "../../../database";
-import { Todo, TodoStatus } from "../domain/Todo.model";
+import { Todo, TodoSnapshot, TodoStatus } from "../domain/Todo.model";
 import { ITodoRepository, TodoWithSource } from "../domain/ITodoRepository";
 import { Thought } from "../../knowledge/domain/Thought.model";
 import { Idea } from "../../knowledge/domain/Idea.model";
@@ -512,8 +512,9 @@ export class TodoRepository implements ITodoRepository {
   }
 
   /**
-   * Map SQLite row to TodoWithSource model
-   * Handles joined Thought and Idea data
+   * Map SQLite row to TodoWithSource (Todo instance + Thought + Idea)
+   * Utilise Object.assign pour préserver l'instance Todo (ADR-031)
+   * Le spread ({ ...todo }) ne fonctionnerait pas sur une instance de classe
    */
   private mapRowToTodoWithSource(row: any): TodoWithSource {
     const todo = this.mapRowToTodo(row);
@@ -545,32 +546,60 @@ export class TodoRepository implements ITodoRepository {
         }
       : undefined;
 
-    return {
-      ...todo,
-      thought,
-      idea,
-    };
+    // Object.assign préserve l'instance Todo et ajoute thought/idea comme own properties
+    return Object.assign(todo, { thought, idea }) as TodoWithSource;
   }
 
   /**
-   * Map SQLite row to Todo model
-   * Handles snake_case to camelCase conversion and type mapping
+   * Map SQLite row to Todo entity (ADR-031)
+   * Gère la conversion snake_case → camelCase et le mapping de types
+   * Le repository gère : DB row → Snapshot ; l'entité gère : Snapshot → Entity
    */
   private mapRowToTodo(row: any): Todo {
-    return {
+    const snapshot: TodoSnapshot = {
       id: row.id,
       thoughtId: row.thought_id,
-      ideaId: row.idea_id ?? undefined,
+      ideaId: row.idea_id ?? null,
       captureId: row.capture_id,
       userId: row.user_id,
       description: row.description,
       status: row.status as TodoStatus,
-      deadline: row.deadline ?? undefined,
-      contact: row.contact ?? undefined,
+      deadline: row.deadline ?? null,
+      contact: row.contact ?? null,
       priority: row.priority,
-      completedAt: row.completed_at ?? undefined,
+      completedAt: row.completed_at ?? null,
       createdAt: row.created_at,
       updatedAt: row.updated_at,
     };
+    return Todo.fromSnapshot(snapshot);
+  }
+
+  /**
+   * Persist a Todo entity after domain mutations (ADR-031 R8)
+   * Story 8.23 — délégué par les stores après entity.abandon() / reactivate() / complete()
+   */
+  async save(entity: Todo): Promise<RepositoryResult<void>> {
+    const s = entity.toSnapshot();
+
+    const result = database.execute(
+      `UPDATE todos SET
+        status = ?, description = ?, deadline = ?, contact = ?,
+        completed_at = ?, updated_at = ?, _changed = 1
+       WHERE id = ?`,
+      [s.status, s.description, s.deadline, s.contact, s.completedAt, s.updatedAt, s.id],
+    );
+
+    // Vérifier que le todo existe bien en DB — évite un succès silencieux (fix H3)
+    if (!result.rowsAffected || result.rowsAffected === 0) {
+      return notFound(`Todo introuvable lors du save: ${s.id}`);
+    }
+
+    // Story 6.2 Task 3.3: Trigger real-time sync after save (AC3)
+    const syncResult = this.syncTrigger.queueSync({ entity: 'todos' });
+    if (syncResult.type !== RepositoryResultType.SUCCESS) {
+      console.error("[TodoRepository] Failed to trigger sync:", syncResult.error);
+    }
+
+    return success(undefined);
   }
 }

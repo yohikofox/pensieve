@@ -1,51 +1,57 @@
 /**
  * useAbandonTodo Hook
  * Story 8.14 — AC1, AC3: Abandon a todo (soft state, preserves history)
+ * Story 8.23 — Refactored: delegate to useTodoDetailStore (ADR-038 + ADR-031)
  */
 
-import { useMutation, useQueryClient, UseMutationResult } from '@tanstack/react-query';
+import { useCallback } from 'react';
 import { Alert } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { container } from 'tsyringe';
-import { ITodoRepository } from '../domain/ITodoRepository';
-import { TOKENS } from '../../../infrastructure/di/tokens';
+import { RepositoryResultType } from '../../../contexts/shared/domain/Result';
+import { useTodoDetailStore } from '../../../stores/useTodoDetailStore';
+import { useTodosListStore } from '../../../stores/useTodosListStore';
 import { useSettingsStore } from '../../../stores/settingsStore';
 
 /**
  * Abandon a single todo (transition to status = 'abandoned')
  * No confirmation dialog — abandon is reversible (unlike delete)
  *
- * @returns React Query mutation
+ * Délègue à useTodoDetailStore.abandon() qui appelle :
+ *   entity.abandon() → repo.save(entity) → onMutationCallback
+ *
+ * @returns mutate function (todoId: string) → Promise<void>
  */
-export const useAbandonTodo = (): UseMutationResult<void, Error, string> => {
-  const queryClient = useQueryClient();
+export const useAbandonTodo = () => {
   const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
-  const todoRepository = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
 
-  return useMutation({
-    mutationFn: async (todoId: string) => {
-      const result = await todoRepository.update(todoId, {
-        status: 'abandoned',
-      });
-      if (result === false) {
-        throw new Error('Update returned false — no changes or todo not found');
-      }
-    },
+  const mutate = useCallback(async (todoId: string): Promise<void> => {
+    const detailStore = useTodoDetailStore.getState();
+    const listStore = useTodosListStore.getState();
 
-    onSuccess: async () => {
-      queryClient.invalidateQueries({ queryKey: ['todos'] });
+    // Charger le todo si nécessaire
+    if (detailStore.todoId !== todoId) {
+      await detailStore.load(todoId);
+    }
+
+    // Enregistrer le callback vers le List Store
+    detailStore.setOnMutationCallback((id) => listStore.onMutation(id));
+
+    // Déléguer la mutation au store (ADR-031 : règle métier sur l'entité)
+    const result = await detailStore.abandon();
+
+    if (result.type === RepositoryResultType.SUCCESS) {
       if (hapticFeedbackEnabled) {
         await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
       }
-    },
-
-    onError: (err) => {
-      console.error('[useAbandonTodo] Error abandoning todo:', err);
+    } else {
+      console.error('[useAbandonTodo] Error abandoning todo:', result.error);
       Alert.alert(
         'Erreur',
         'Impossible d\'abandonner la tâche. Veuillez réessayer.',
         [{ text: 'OK', style: 'default' }],
       );
-    },
-  });
+    }
+  }, [hapticFeedbackEnabled]);
+
+  return { mutate };
 };
