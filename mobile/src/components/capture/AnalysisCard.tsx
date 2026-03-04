@@ -6,19 +6,17 @@
  * Story 5.4 - Unified store: reads directly from captureDetailStore
  */
 
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
-  Pressable,
   TouchableOpacity,
   ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Feather } from "@expo/vector-icons";
 import { colors } from "../../design-system/tokens";
-import { NavigationIcons } from "../../design-system/icons";
 import { AlertDialog, useToast } from "../../design-system/components";
 import { ANALYSIS_TYPES } from "../../contexts/capture/domain/CaptureAnalysis.model";
 import { ANALYSIS_LABELS, ANALYSIS_ICONS } from "../../contexts/Normalization/services/analysisPrompts";
@@ -54,10 +52,6 @@ export function AnalysisCard({
 
   // Direct store access - no more wrapper hooks
   const isReady = useCaptureDetailStore((state) => state.isReady);
-  const showAnalysis = useCaptureDetailStore((state) => state.showAnalysis);
-  const setShowAnalysis = useCaptureDetailStore(
-    (state) => state.setShowAnalysis,
-  );
   const editedText = useCaptureDetailStore((state) => state.editedText);
   const showCalendarDialog = useCaptureDetailStore(
     (state) => state.showCalendarDialog,
@@ -83,21 +77,11 @@ export function AnalysisCard({
   const {
     analyses,
     analysisLoading,
-    isAnyAnalysisLoading,
     handleGenerateAnalysis,
-    handleAnalyzeAll,
   } = analysesHook;
-
-  useEffect(() => {
-    if ((startAnalysis || highlightIdeaId || highlightTodoId) && isReady) {
-      setShowAnalysis(true);
-    }
-  }, [startAnalysis, highlightIdeaId, highlightTodoId, isReady]);
 
   // Only show for ready captures
   if (!isReady) return null;
-
-  const handleToggleAnalysis = () => setShowAnalysis(!showAnalysis);
 
   return (
     <View
@@ -109,40 +93,9 @@ export function AnalysisCard({
         },
       ]}
     >
-      <Pressable style={styles.analysisHeader} onPress={handleToggleAnalysis}>
-        <View style={styles.analysisTitleRow}>
-          <Feather
-            name="cpu"
-            size={16}
-            color={isDark ? colors.primary[400] : colors.primary[700]}
-          />
-          <Text
-            style={[
-              styles.analysisTitle,
-              {
-                color: isDark ? colors.primary[300] : colors.primary[700],
-              },
-            ]}
-          >
-            Analyse IA
-          </Text>
-        </View>
-        <Feather
-          name={showAnalysis ? NavigationIcons.down : NavigationIcons.forward}
-          size={16}
-          color={isDark ? colors.primary[400] : colors.primary[600]}
-        />
-      </Pressable>
-      {showAnalysis && (
-        <View
-          style={[
-            styles.analysisContent,
-            {
-              backgroundColor: themeColors.analysisContentBg,
-              borderTopColor: themeColors.analysisBorder,
-            },
-          ]}
-        >
+      <View
+        style={[styles.analysisContent, { backgroundColor: themeColors.analysisContentBg }]}
+      >
           {/* Story 8.5: LLM guide when enabled but no model downloaded */}
           {showLLMGuide && (
             <View
@@ -211,40 +164,6 @@ export function AnalysisCard({
             </View>
           ) : !showLLMGuide && (
             <>
-              {/* Analyze All Button */}
-              {(() => {
-                const allGenerated =
-                  analyses[ANALYSIS_TYPES.SUMMARY] &&
-                  analyses[ANALYSIS_TYPES.HIGHLIGHTS] &&
-                  analyses[ANALYSIS_TYPES.ACTION_ITEMS] &&
-                  analyses[ANALYSIS_TYPES.IDEAS];
-                if (!allGenerated || debugMode) {
-                  return (
-                    <TouchableOpacity
-                      style={styles.analyzeAllButton}
-                      onPress={handleAnalyzeAll}
-                      disabled={isAnyAnalysisLoading}
-                    >
-                      {isAnyAnalysisLoading ? (
-                        <ActivityIndicator size="small" color="#FFFFFF" />
-                      ) : (
-                        <View style={styles.analyzeAllContent}>
-                          <Feather
-                            name="zap"
-                            size={16}
-                            color={colors.neutral[0]}
-                          />
-                          <Text style={styles.analyzeAllButtonText}>
-                            {allGenerated ? "Tout réanalyser" : "Analyser"}
-                          </Text>
-                        </View>
-                      )}
-                    </TouchableOpacity>
-                  );
-                }
-                return null;
-              })()}
-
               {/* Summary */}
               <AnalysisSection
                 analysisType={ANALYSIS_TYPES.SUMMARY}
@@ -363,7 +282,6 @@ export function AnalysisCard({
             </>
           )}
         </View>
-      )}
 
       {/* Google Calendar connection dialog */}
       <AlertDialog
@@ -416,23 +334,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: "hidden",
   },
-  analysisHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    padding: 12,
-  },
-  analysisTitleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  analysisTitle: {
-    fontSize: 14,
-    fontWeight: "600",
-    marginLeft: 8,
-  },
   analysisContent: {
-    borderTopWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -473,23 +375,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
     marginTop: 4,
-  },
-  analyzeAllButton: {
-    backgroundColor: "#9C27B0",
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  analyzeAllContent: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  analyzeAllButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "600",
-    marginLeft: 8,
   },
   noTextMessage: {
     alignItems: "center",

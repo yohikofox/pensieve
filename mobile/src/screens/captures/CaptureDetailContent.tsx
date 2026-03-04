@@ -1,24 +1,31 @@
 /**
  * CaptureDetailContent - Main content component for capture detail view
  *
- * Features:
- * - Full transcription text display
- * - Copy to clipboard
- * - Share functionality
- * - Audio playback
- * - Delete capture
- * - AI analysis
+ * Structure UX :
+ * - CaptureHeader (compact, 1 ligne)
+ * - CaptureAudioPlayerSection (sticky sous le header)
+ * - CaptureDetailTabs (Analyse par défaut / Transcription)
+ * - ActionBar (fixe en bas)
+ * - DeleteCaptureDialog
+ * - Modal ⋮ : sections satellites (métadonnées, transcription brute, debug)
  *
  * This is the content component in the Wrapper + Content pattern.
  * The wrapper (CaptureDetailScreen) handles route params extraction.
  */
 
-import React from "react";
-import { View, ScrollView } from "react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  View,
+  Modal,
+  ScrollView,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+} from "react-native";
+import { Feather } from "@expo/vector-icons";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";
-import { styles } from "../../styles/CaptureDetailScreen.styles";
-import { useSettingsStore } from "../../stores/settingsStore";
 import { useNavigation } from "@react-navigation/native";
 import { useCaptureDetailListener } from "../../hooks/useCaptureDetailListener";
 import {
@@ -27,16 +34,16 @@ import {
   CaptureHeader,
   MetadataSection,
   RawTranscriptSection,
-  ActionsSection,
   ActionBar,
-  AnalysisCard,
   CaptureDetailLoading,
   CaptureDetailError,
   CaptureAudioPlayerSection,
-  ContentSection,
   DeleteCaptureDialog,
+  CaptureDetailTabs,
 } from "../../components/capture";
 import { useCaptureDetailStore } from "../../stores/captureDetailStore";
+import { colors } from "../../design-system/tokens";
+import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 
 export interface CaptureDetailContentProps {
   captureId: string;
@@ -52,18 +59,42 @@ export function CaptureDetailContent({
   highlightTodoId,
 }: CaptureDetailContentProps) {
   const navigation = useNavigation();
+  const [showSatelliteModal, setShowSatelliteModal] = useState(false);
+  const { themeColors, isDark } = useCaptureTheme();
 
   // Zustand store for capture detail state
   const loading = useCaptureDetailStore((state) => state.loading);
 
   // Initialization hook - autonomous, reads and writes to stores
-  // Also exposes captureId and reloadCapture in store for useCaptureDetailListener
   useCaptureDetailInit(captureId);
 
   // Event-driven updates - autonomous, reads from store
   useCaptureDetailListener();
 
-  // Note: Delete dialog managed by DeleteCaptureDialog component (autonomous)
+  const openSatelliteModal = useCallback(() => {
+    setShowSatelliteModal(true);
+  }, []);
+
+  // Ajoute le bouton ⋮ dans le header de navigation
+  useEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <TouchableOpacity
+          onPress={openSatelliteModal}
+          style={styles.menuButton}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityLabel="Plus d'options"
+          accessibilityRole="button"
+        >
+          <Feather
+            name="more-vertical"
+            size={22}
+            color={isDark ? colors.neutral[100] : colors.neutral[700]}
+          />
+        </TouchableOpacity>
+      ),
+    });
+  }, [navigation, openSatelliteModal, isDark]);
 
   if (loading) {
     return <CaptureDetailLoading />;
@@ -73,51 +104,113 @@ export function CaptureDetailContent({
     <CaptureDetailError onGoBack={() => navigation.goBack()}>
       <StandardLayout>
         <View style={styles.container}>
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.content}
-          >
-            <View style={styles.contentStack}>
-              {/* Header Info */}
-              <CaptureHeader />
+          {/* Header compact */}
+          <CaptureHeader />
 
-              {/* Audio Player (Story 3.2b - AC2) - Handles its own business logic */}
-              <CaptureAudioPlayerSection />
+          {/* Player audio sticky sous le header */}
+          <CaptureAudioPlayerSection />
 
-              {/* Content */}
-              <ContentSection />
+          {/* Tabs : Analyse (défaut) / Transcription */}
+          <CaptureDetailTabs
+            startAnalysis={startAnalysis}
+            highlightIdeaId={highlightIdeaId}
+            highlightTodoId={highlightTodoId}
+          />
 
-              {/* Raw Transcript (before LLM) - Show when different from final text */}
-              <RawTranscriptSection />
-
-              {/* Metadata Section */}
-              <MetadataSection />
-
-              {/* Actions Section - Quick actions for captures - Autonomous */}
-              <ActionsSection />
-
-              {/* Analysis Section - Autonomous, calls hooks directly */}
-              <AnalysisCard
-                startAnalysis={startAnalysis}
-                highlightIdeaId={highlightIdeaId}
-                highlightTodoId={highlightTodoId}
-              />
-
-              {/* Reprocess Section - Debug tools (manages own visibility) */}
-              <ReprocessingCard />
-
-              {/* Native Recognition Debug - Shows all alternatives (manages own visibility) */}
-              <NativeRecognitionDebugCard />
-            </View>
-          </ScrollView>
-
-          {/* Action Bar - Autonomous */}
+          {/* Action Bar fixe */}
           <ActionBar />
 
           {/* Delete confirmation dialog - Autonomous */}
           <DeleteCaptureDialog />
         </View>
       </StandardLayout>
+
+      {/* Modal satellite : métadonnées, transcription brute, reprocessing, debug */}
+      <Modal
+        visible={showSatelliteModal}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowSatelliteModal(false)}
+      >
+        <SafeAreaView
+          style={[
+            styles.modalContainer,
+            { backgroundColor: themeColors.screenBg },
+          ]}
+        >
+          {/* Modal Header */}
+          <View
+            style={[
+              styles.modalHeader,
+              { borderBottomColor: themeColors.borderDefault },
+            ]}
+          >
+            <Text
+              style={[styles.modalTitle, { color: themeColors.textPrimary }]}
+            >
+              Détails techniques
+            </Text>
+            <TouchableOpacity
+              onPress={() => setShowSatelliteModal(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Feather
+                name="x"
+                size={22}
+                color={isDark ? colors.neutral[300] : colors.neutral[600]}
+              />
+            </TouchableOpacity>
+          </View>
+
+          {/* Modal Content */}
+          <ScrollView
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalScrollContent}
+          >
+            <MetadataSection />
+            <View style={styles.modalSeparator} />
+            <RawTranscriptSection />
+            <View style={styles.modalSeparator} />
+            <ReprocessingCard />
+            <View style={styles.modalSeparator} />
+            <NativeRecognitionDebugCard />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </CaptureDetailError>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  menuButton: {
+    padding: 4,
+  },
+  modalContainer: {
+    flex: 1,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: "600",
+  },
+  modalScroll: {
+    flex: 1,
+  },
+  modalScrollContent: {
+    padding: 16,
+    gap: 16,
+  },
+  modalSeparator: {
+    height: 8,
+  },
+});

@@ -79,8 +79,14 @@ export function CustomStackHeader({
         {options.title || route.name}
       </Text>
 
-      {/* Sync Status Indicator (Story 6.2 - Task 9.7) */}
-      <SyncStatusIndicator compact />
+      {/* Right actions: sync indicator + optional headerRight */}
+      <View style={styles.rightActions}>
+        <SyncStatusIndicator compact />
+        {options.headerRight &&
+          options.headerRight({
+            tintColor: primaryPalette[isDark ? 400 : 500],
+          })}
+      </View>
     </View>
   );
 }
@@ -107,5 +113,10 @@ const styles = StyleSheet.create({
   },
   rightSpacer: {
     width: 36,
+  },
+  rightActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
   },
 });

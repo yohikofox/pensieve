@@ -62,203 +62,110 @@ export function CaptureHeader() {
     }
   };
 
+  // Determine compact status label and colors
+  const getStatusBadge = () => {
+    if (!isAudio) return null;
+
+    if (isReady) {
+      return {
+        icon: StatusIcons.success,
+        color: isDark ? colors.success[400] : colors.success[700],
+        bg: themeColors.statusReadyBg,
+        label: t("capture.header.transcriptionComplete"),
+      };
+    }
+    if (capture.state === "processing") {
+      return {
+        icon: null as null,
+        color: isDark ? colors.info[400] : colors.info[700],
+        bg: themeColors.statusProcessingBg,
+        label: t("capture.header.transcribing"),
+      };
+    }
+    if (capture.state === "failed") {
+      return {
+        icon: StatusIcons.error,
+        color: isDark ? colors.error[400] : colors.error[700],
+        bg: themeColors.statusFailedBg,
+        label: t("capture.header.transcriptionFailed"),
+      };
+    }
+    if (capture.state === "captured" && hasModelAvailable === false && !capture.normalizedText) {
+      return {
+        icon: StatusIcons.error,
+        color: isDark ? colors.error[400] : colors.error[700],
+        bg: isDark ? colors.error[900] : colors.error[50],
+        label: t("capture.header.modelRequired"),
+      };
+    }
+    if (capture.state === "captured") {
+      return {
+        icon: StatusIcons.pending,
+        color: isDark ? colors.warning[400] : colors.warning[700],
+        bg: themeColors.statusPendingBg,
+        label: autoTranscriptionEnabled
+          ? t("capture.header.awaitingTranscription")
+          : t("capture.header.manualTranscription"),
+      };
+    }
+    return null;
+  };
+
+  const statusBadge = getStatusBadge();
+
   return (
-    <View
-      style={[
-        styles.card,
-        {
-          backgroundColor: themeColors.cardBg,
-          borderColor: themeColors.borderDefault,
-        },
-      ]}
-    >
-      <View style={styles.header}>
-        {/* Type Row */}
-        <View style={styles.typeRow}>
-          <View
-            style={[
-              styles.typeIconContainer,
-              {
-                backgroundColor: isDark
-                  ? isAudio
-                    ? colors.primary[900]
-                    : colors.secondary[900]
-                  : isAudio
-                    ? colors.primary[100]
-                    : colors.secondary[100],
-              },
-            ]}
-          >
-            <Feather
-              name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
-              size={20}
-              color={isAudio ? colors.primary[500] : colors.secondary[500]}
-            />
-          </View>
-          <Text style={[styles.typeLabel, { color: themeColors.textPrimary }]}>
-            {isAudio ? t("capture.header.audioRecording") : t("capture.header.textNote")}
-          </Text>
+    <View style={styles.container}>
+      {/* Compact info row: icon · type · date · duration · status */}
+      <View style={styles.compactRow}>
+        {/* Type icon */}
+        <View
+          style={[
+            styles.typeIconContainer,
+            {
+              backgroundColor: isDark
+                ? isAudio
+                  ? colors.primary[900]
+                  : colors.secondary[900]
+                : isAudio
+                  ? colors.primary[100]
+                  : colors.secondary[100],
+            },
+          ]}
+        >
+          <Feather
+            name={isAudio ? CaptureIcons.voice : ActionIcons.edit}
+            size={16}
+            color={isAudio ? colors.primary[500] : colors.secondary[500]}
+          />
         </View>
 
-        {/* Date */}
-        <Text style={[styles.date, { color: themeColors.textMuted }]}>
+        {/* Info text */}
+        <Text
+          style={[styles.infoText, { color: themeColors.textPrimary }]}
+          numberOfLines={1}
+        >
+          {isAudio ? t("capture.header.audioRecording") : t("capture.header.textNote")}
+          {" · "}
           {formatDate(capture.createdAt)}
+          {isAudio && capture.duration
+            ? ` · ${formatDuration(capture.duration)}`
+            : ""}
         </Text>
 
-        {/* Duration (audio only) */}
-        {isAudio && !!capture.duration && (
-          <Text style={[styles.duration, { color: themeColors.textMuted }]}>
-            {t("capture.header.duration")}: {formatDuration(capture.duration)}
-          </Text>
-        )}
-
-        {/* Status Badges (audio only) */}
-        {isAudio && (
-          <View style={styles.statusRow}>
-            {/* Model required badge */}
-            {capture.state === "captured" &&
-              hasModelAvailable === false &&
-              !capture.normalizedText && (
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor: isDark
-                        ? colors.error[900]
-                        : colors.error[50],
-                    },
-                  ]}
-                >
-                  <Feather
-                    name="alert-circle"
-                    size={14}
-                    color={isDark ? colors.error[400] : colors.error[700]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {
-                        marginLeft: 6,
-                        color: isDark ? colors.error[300] : colors.error[700],
-                      },
-                    ]}
-                  >
-                    {t("capture.header.modelRequired")}
-                  </Text>
-                </View>
-              )}
-
-            {/* Waiting for transcription */}
-            {capture.state === "captured" &&
-              (hasModelAvailable === true ||
-                hasModelAvailable === null ||
-                capture.normalizedText) && (
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: themeColors.statusPendingBg },
-                  ]}
-                >
-                  <Feather
-                    name={StatusIcons.pending}
-                    size={14}
-                    color={isDark ? colors.warning[400] : colors.warning[700]}
-                  />
-                  <Text
-                    style={[
-                      styles.statusText,
-                      {
-                        marginLeft: 6,
-                        color: isDark ? colors.warning[300] : colors.warning[700],
-                      },
-                    ]}
-                  >
-                    {autoTranscriptionEnabled
-                      ? t("capture.header.awaitingTranscription")
-                      : t("capture.header.manualTranscription")}
-                  </Text>
-                </View>
-              )}
-
-            {/* Processing */}
-            {capture.state === "processing" && (
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: themeColors.statusProcessingBg },
-                ]}
-              >
-                <ActivityIndicator
-                  size="small"
-                  color={isDark ? colors.info[400] : colors.info[600]}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      marginLeft: 8,
-                      color: isDark ? colors.info[300] : colors.info[700],
-                    },
-                  ]}
-                >
-                  {t("capture.header.transcribing")}
-                </Text>
-              </View>
-            )}
-
-            {/* Ready */}
-            {isReady && (
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: themeColors.statusReadyBg },
-                ]}
-              >
-                <Feather
-                  name={StatusIcons.success}
-                  size={14}
-                  color={isDark ? colors.success[400] : colors.success[700]}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      marginLeft: 6,
-                      color: isDark ? colors.success[300] : colors.success[700],
-                    },
-                  ]}
-                >
-                  {t("capture.header.transcriptionComplete")}
-                </Text>
-              </View>
-            )}
-
-            {/* Failed */}
-            {capture.state === "failed" && (
-              <View
-                style={[
-                  styles.statusBadge,
-                  { backgroundColor: themeColors.statusFailedBg },
-                ]}
-              >
-                <Feather
-                  name={StatusIcons.error}
-                  size={14}
-                  color={isDark ? colors.error[400] : colors.error[700]}
-                />
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      marginLeft: 6,
-                      color: isDark ? colors.error[300] : colors.error[700],
-                    },
-                  ]}
-                >
-                  {t("capture.header.transcriptionFailed")}
-                </Text>
-              </View>
-            )}
+        {/* Compact status badge */}
+        {statusBadge && (
+          <View
+            style={[styles.compactBadge, { backgroundColor: statusBadge.bg }]}
+          >
+            {capture.state === "processing" ? (
+              <ActivityIndicator size="small" color={statusBadge.color} />
+            ) : statusBadge.icon ? (
+              <Feather
+                name={statusBadge.icon}
+                size={12}
+                color={statusBadge.color}
+              />
+            ) : null}
           </View>
         )}
       </View>
@@ -315,58 +222,37 @@ export function CaptureHeader() {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    borderWidth: 1,
-    borderRadius: 8,
-    overflow: "hidden",
+  container: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
   },
-  header: {
-    padding: 12,
-  },
-  typeRow: {
+  compactRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    marginBottom: 4,
+    gap: 8,
   },
   typeIconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: "center",
     alignItems: "center",
+    flexShrink: 0,
   },
-  typeLabel: {
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  date: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  duration: {
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  statusRow: {
-    marginTop: 8,
-  },
-  statusBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 8,
-    gap: 6,
-  },
-  statusText: {
-    fontSize: 14,
+  infoText: {
+    flex: 1,
+    fontSize: 13,
     fontWeight: "500",
   },
+  compactBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
+  },
   actionContainer: {
-    borderTopWidth: 1,
-    borderTopColor: "#E0E0E0",
-    padding: 12,
+    marginTop: 8,
   },
 });
