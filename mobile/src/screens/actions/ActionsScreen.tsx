@@ -62,8 +62,8 @@ const DATE_COLUMN_WIDTH = 72;
 // Animation constants (Story 5.3 - Code Review Fix #8)
 const FADE_IN_DURATION = 300;
 const FADE_OUT_DURATION = 200;
-const TRANSITION_DAMPING = 15;
-const TRANSITION_STIFFNESS = 150;
+const TRANSITION_DAMPING = 50;
+const TRANSITION_STIFFNESS = 400;
 
 interface EnrichedTodo extends TodoWithSource {
   sourcePreview?: string;

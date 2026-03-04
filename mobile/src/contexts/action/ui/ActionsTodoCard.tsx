@@ -250,7 +250,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
             >
               <CompletionAnimation isCompleted={todo.status === 'completed'}>
                 <View
-                  className={`w-6 h-6 rounded border-2 items-center justify-center ${
+                  className={`w-6 h-6 rounded-lg border-2 items-center justify-center ${
                     todo.status === 'completed'
                       ? 'bg-primary-action border-primary-action'
                       : 'border-border-default'
