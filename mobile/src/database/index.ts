@@ -108,7 +108,7 @@ class DatabaseConnection {
    */
   async transaction<T>(callback: (tx: any) => Promise<T>): Promise<T> {
     const db = this.getDatabase();
-    return db.transaction(callback);
+    return db.transaction(callback as any) as Promise<T>;
   }
 
   /**

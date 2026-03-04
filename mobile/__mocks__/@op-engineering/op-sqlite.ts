@@ -111,5 +111,4 @@ export function __resetDatabase() {
   }
 }
 
-// Export type for compatibility
-export type { DB };
+// DB is already exported above as `export interface DB`

@@ -9,7 +9,8 @@ module.exports = {
       tsconfig: {
         esModuleInterop: true,
         allowSyntheticDefaultImports: true,
-      }
+      },
+      diagnostics: false,
     }]
   },
   moduleNameMapper: {

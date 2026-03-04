@@ -12,8 +12,9 @@
  * Code Review Fix #7: Haptic feedback respects user preferences
  */
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, Pressable, Alert } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, Pressable, Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Feather } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import { CompletionAnimation } from './CompletionAnimation';
 import { GardenCelebrationAnimation } from './GardenCelebrationAnimation';
 import { TodoDetailPopover } from './TodoDetailPopover';
 import { useSettingsStore } from '../../../stores/settingsStore';
+import { useDeleteTodo } from '../hooks/useDeleteTodo';
 
 interface ActionsTodoCardProps {
   todo: Todo;
@@ -42,6 +44,57 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   const [showGardenCelebration, setShowGardenCelebration] = useState(false);
   const toggleStatus = useToggleTodoStatus();
   const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
+  const swipeableRef = useRef<Swipeable>(null);
+  const deleteTodo = useDeleteTodo();
+
+  // Subtask 2.4 + 2.5 + 2.6: Confirmation dialog pour le swipe-to-delete (AC2, AC3)
+  const handleDeleteWithConfirmation = () => {
+    Alert.alert(
+      'Supprimer cette tâche ?',
+      'Cette action est irréversible.',
+      [
+        {
+          text: 'Annuler',
+          style: 'cancel',
+          onPress: () => swipeableRef.current?.close(),
+        },
+        {
+          text: 'Supprimer',
+          style: 'destructive',
+          onPress: async () => {
+            if (hapticFeedbackEnabled) {
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            deleteTodo.mutate(todo.id);
+          },
+        },
+      ]
+    );
+  };
+
+  // Subtask 2.3: Render de la zone d'action rouge (AC1)
+  const renderRightActions = (
+    _progress: RNAnimated.AnimatedInterpolation<number>,
+    dragX: RNAnimated.AnimatedInterpolation<number>,
+  ) => {
+    const translateX = dragX.interpolate({
+      inputRange: [-90, 0],
+      outputRange: [0, 90],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <RNAnimated.View style={[swipeStyles.deleteAction, { transform: [{ translateX }] }]}>
+        <TouchableOpacity
+          style={swipeStyles.deleteActionButton}
+          onPress={handleDeleteWithConfirmation}
+        >
+          <Text style={swipeStyles.deleteActionEmoji}>🗑️</Text>
+          <Text style={swipeStyles.deleteActionLabel}>Supprimer</Text>
+        </TouchableOpacity>
+      </RNAnimated.View>
+    );
+  };
 
   // Task 3: Strikethrough animation with Reanimated
   const opacity = useSharedValue(todo.status === 'completed' ? 0.5 : 1.0);
@@ -121,6 +174,15 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
 
   return (
     <>
+      {/* Subtask 2.3 + 2.8: Swipeable désactivé en mode readonly (corbeille) */}
+      <Swipeable
+        ref={swipeableRef}
+        enabled={!readonly}
+        friction={2}
+        overshootRight={false}
+        failOffsetY={[-15, 15]}
+        renderRightActions={renderRightActions}
+      >
       <Pressable
         onPress={handleCardPress}
         className="bg-bg-card p-4 mb-2 rounded-lg active:opacity-80"
@@ -219,6 +281,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
           />
         )}
       </Pressable>
+      </Swipeable>
 
       {/* Detail Popover */}
       <TodoDetailPopover
@@ -229,3 +292,30 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     </>
   );
 };
+
+const swipeStyles = StyleSheet.create({
+  deleteAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 90,
+    backgroundColor: '#ef4444',
+    marginBottom: 8,
+    borderRadius: 8,
+  },
+  deleteActionButton: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 90,
+  },
+  deleteActionEmoji: {
+    fontSize: 20,
+    color: '#ffffff',
+  },
+  deleteActionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#ffffff',
+    marginTop: 4,
+  },
+});

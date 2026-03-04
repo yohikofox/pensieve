@@ -69,7 +69,7 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 }) => {
   const { isDark, colorSchemePreference } = useTheme();
   const navigation = useNavigation<NavigationProp>();
-  const debugMode = useSettingsStore((state) => state.debugMode);
+  const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
   const updateTodo = useUpdateTodo();
   const toggleStatus = useToggleTodoStatus();
   const deleteTodo = useDeleteTodo();
@@ -220,8 +220,8 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
 
   const handleDelete = () => {
     Alert.alert(
-      'Supprimer cette action ?',
-      'Cette action sera définitivement supprimée.',
+      'Supprimer cette tâche ?',
+      'Cette action est irréversible.',
       [
         { text: 'Annuler', style: 'cancel' },
         {
@@ -229,7 +229,9 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
           style: 'destructive',
           onPress: async () => {
             deleteTodo.mutate(todo.id);
-            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            if (hapticFeedbackEnabled) {
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
             onClose();
           },
         },
@@ -395,17 +397,15 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
               </TouchableOpacity>
             </View>
 
-            {/* Delete button - debug mode only */}
-            {debugMode && (
-              <View style={styles.section}>
-                <TouchableOpacity
-                  style={styles.deleteButton}
-                  onPress={handleDelete}
-                >
-                  <Text style={styles.deleteButtonText}>🗑️ Supprimer</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {/* Delete button (AC4) */}
+            <View style={styles.section}>
+              <TouchableOpacity
+                style={styles.deleteButton}
+                onPress={handleDelete}
+              >
+                <Text style={styles.deleteButtonText}>🗑️ Supprimer</Text>
+              </TouchableOpacity>
+            </View>
           </ScrollView>
 
           {/* Footer with Save/Cancel buttons */}
