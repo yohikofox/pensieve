@@ -41,7 +41,8 @@ export class LazyAudioDownloader {
       [captureId]
     );
 
-    const rows = (result.rows as any)?._array || [];
+    // OP-SQLite : result.rows est un tableau direct (pas de _array contrairement à WatermelonDB)
+    const rows: any[] = (result.rows as any)?._array ?? result.rows ?? [];
 
     // Task 2.4: Return null if capture not found
     if (rows.length === 0) {
@@ -142,6 +143,154 @@ export class LazyAudioDownloader {
 
     this.processing = false;
     console.log('[LazyAudio] ✅ Queue processing complete');
+  }
+
+  /**
+   * Sync audio path for a capture after PULL.
+   *
+   * Priority order:
+   * 1. raw_content already a valid local file → nothing to do
+   * 2. audio_local_path points to an existing file → sync raw_content ← audio_local_path
+   * 3. audio_url available → download → update raw_content AND audio_local_path
+   * 4. No option → return null (do not block)
+   */
+  async syncAudioForCapture(captureId: string): Promise<string | null> {
+    const result = this.db.executeSync(
+      'SELECT id, raw_content, audio_url, audio_local_path FROM captures WHERE id = ?',
+      [captureId]
+    );
+    // OP-SQLite : result.rows est un tableau direct (pas de _array contrairement à WatermelonDB)
+    const rows: any[] = (result.rows as any)?._array ?? result.rows ?? [];
+    if (rows.length === 0) {
+      console.error(`[LazyAudio] ❌ Capture introuvable en base: ${captureId}`);
+      return null;
+    }
+
+    const capture = rows[0];
+
+    console.log(`[LazyAudio] 🔍 Diagnostic ${captureId}:`, {
+      raw_content: capture.raw_content ?? '(null)',
+      audio_local_path: capture.audio_local_path ?? '(null)',
+      audio_url: capture.audio_url ? '(présent)' : '(null)',
+    });
+
+    // Cas 1 : raw_content est déjà un path local valide → rien à faire
+    if (capture.raw_content && (capture.raw_content.startsWith('file://') || capture.raw_content.startsWith('/'))) {
+      const file = new ExpoFile(capture.raw_content);
+      if (file.exists) {
+        console.log(`[LazyAudio] ✅ raw_content already local: ${capture.raw_content}`);
+        return capture.raw_content;
+      }
+      console.warn(`[LazyAudio] ⚠️ raw_content local mais fichier absent: ${capture.raw_content}`);
+    }
+
+    // Cas 1.5 : scanner le dossier audio/ pour un fichier correspondant au captureId
+    // Le format enregistré par FileStorageService est capture_{captureId}_{timestamp}.m4a
+    const foundLocal = this.findLocalAudioFile(captureId);
+    if (foundLocal) {
+      console.log(
+        `[LazyAudio] 📂 Fichier local trouvé par scan:\n` +
+        `  path: ${foundLocal}\n` +
+        `  raw_content actuel: ${capture.raw_content ?? '(null)'}\n` +
+        `  → UPDATE raw_content + audio_local_path avec ce path`
+      );
+      this.db.executeSync(
+        'UPDATE captures SET audio_local_path = ?, raw_content = ? WHERE id = ?',
+        [foundLocal, foundLocal, captureId]
+      );
+      return foundLocal;
+    }
+
+    // Cas 2 : audio_local_path pointe vers un fichier existant → resync raw_content
+    if (capture.audio_local_path) {
+      const file = new ExpoFile(capture.audio_local_path);
+      if (file.exists) {
+        this.db.executeSync(
+          'UPDATE captures SET raw_content = ? WHERE id = ?',
+          [capture.audio_local_path, captureId]
+        );
+        if (capture.raw_content && capture.raw_content !== capture.audio_local_path) {
+          console.warn(
+            `[LazyAudio] ⚠️ raw_content path divergence for ${captureId}:\n` +
+            `  original: ${capture.raw_content}\n` +
+            `  resolved: ${capture.audio_local_path}`
+          );
+        }
+        console.log(`[LazyAudio] ✅ Synced raw_content from audio_local_path: ${capture.audio_local_path}`);
+        return capture.audio_local_path;
+      }
+      console.warn(`[LazyAudio] ⚠️ audio_local_path défini mais fichier absent: ${capture.audio_local_path}`);
+    }
+
+    // Cas 3 : télécharger depuis audio_url
+    if (!capture.audio_url) {
+      console.error(
+        `[LazyAudio] ❌ Impossible de résoudre l'audio pour ${captureId}: aucun audio_url en base, aucun fichier local trouvé.`
+      );
+      return null;
+    }
+
+    this.ensureAudioDirectoryExists();
+    const localFile = new ExpoFile(this.AUDIO_CACHE_DIR, `${captureId}.m4a`);
+
+    try {
+      await ExpoFile.downloadFileAsync(capture.audio_url, localFile);
+    } catch (error) {
+      console.error(`[LazyAudio] ❌ Download failed:`, error);
+      return null;
+    }
+
+    const localPath = localFile.uri;
+    this.db.executeSync(
+      'UPDATE captures SET audio_local_path = ?, raw_content = ? WHERE id = ?',
+      [localPath, localPath, captureId]
+    );
+
+    if (capture.raw_content && capture.raw_content !== localPath) {
+      console.warn(
+        `[LazyAudio] ⚠️ raw_content path divergence for ${captureId}:\n` +
+        `  original: ${capture.raw_content}\n` +
+        `  resolved: ${localPath}`
+      );
+    }
+
+    console.log(`[LazyAudio] ✅ Downloaded and synced: ${localPath}`);
+    return localPath;
+  }
+
+  /**
+   * Recherche un fichier audio local correspondant au captureId dans le dossier audio/.
+   *
+   * Cherche dans l'ordre :
+   * 1. capture_{captureId}_{timestamp}.m4a  (format FileStorageService)
+   * 2. {captureId}.m4a                      (format LazyAudioDownloader download)
+   *
+   * Retourne l'URI du fichier trouvé, ou null.
+   */
+  private findLocalAudioFile(captureId: string): string | null {
+    if (!this.AUDIO_CACHE_DIR.exists) return null;
+
+    try {
+      const entries = this.AUDIO_CACHE_DIR.list();
+      for (const entry of entries) {
+        const name = entry.uri.split('/').pop() ?? '';
+        const isCanonical = name === `${captureId}.m4a`;
+        const isRecorded = name.startsWith(`capture_${captureId}_`) && name.endsWith('.m4a');
+        if (isCanonical || isRecorded) {
+          const file = new ExpoFile(entry.uri);
+          if (file.exists) {
+            console.log(
+              `[LazyAudio] 🔎 Scan audio/ → trouvé (${isCanonical ? 'canonical' : 'recorded'}): ${name}`
+            );
+            return entry.uri;
+          }
+        }
+      }
+    } catch (error) {
+      console.warn(`[LazyAudio] ⚠️ Échec scan dossier audio pour ${captureId}:`, error);
+    }
+
+    return null;
   }
 
   /**
