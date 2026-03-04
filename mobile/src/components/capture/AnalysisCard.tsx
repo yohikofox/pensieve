@@ -77,6 +77,7 @@ export function AnalysisCard({
   const {
     analyses,
     analysisLoading,
+    analysisQueueStatus,
     handleGenerateAnalysis,
   } = analysesHook;
 
@@ -169,6 +170,7 @@ export function AnalysisCard({
                 analysisType={ANALYSIS_TYPES.SUMMARY}
                 analysis={analyses[ANALYSIS_TYPES.SUMMARY]}
                 analysisLoading={analysisLoading[ANALYSIS_TYPES.SUMMARY]}
+                queueStatus={analysisQueueStatus[ANALYSIS_TYPES.SUMMARY]}
                 debugMode={debugMode}
                 isDark={isDark}
                 themeColors={themeColors}
@@ -182,6 +184,7 @@ export function AnalysisCard({
                 analysisType={ANALYSIS_TYPES.HIGHLIGHTS}
                 analysis={analyses[ANALYSIS_TYPES.HIGHLIGHTS]}
                 analysisLoading={analysisLoading[ANALYSIS_TYPES.HIGHLIGHTS]}
+                queueStatus={analysisQueueStatus[ANALYSIS_TYPES.HIGHLIGHTS]}
                 debugMode={debugMode}
                 isDark={isDark}
                 themeColors={themeColors}
@@ -223,7 +226,14 @@ export function AnalysisCard({
                       onPress={() => handleGenerateAnalysis(ANALYSIS_TYPES.ACTION_ITEMS)}
                       disabled={analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS]}
                     >
-                      {analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
+                      {analysisQueueStatus[ANALYSIS_TYPES.ACTION_ITEMS] === 'queued' ? (
+                        <View style={styles.queueStatusRow}>
+                          <ActivityIndicator size="small" color={colors.neutral[400]} />
+                          <Text style={[styles.queueStatusText, { color: colors.neutral[500] }]}>
+                            En attente...
+                          </Text>
+                        </View>
+                      ) : analysisQueueStatus[ANALYSIS_TYPES.ACTION_ITEMS] === 'processing' || analysisLoading[ANALYSIS_TYPES.ACTION_ITEMS] ? (
                         <ActivityIndicator size="small" color={colors.primary[500]} />
                       ) : analyses[ANALYSIS_TYPES.ACTION_ITEMS] ? (
                         <Feather name="refresh-cw" size={16} color={isDark ? colors.primary[400] : colors.primary[600]} />
@@ -272,6 +282,7 @@ export function AnalysisCard({
                 ideasLoading={ideasHook.ideasLoading}
                 analysis={analyses[ANALYSIS_TYPES.IDEAS]}
                 analysisLoading={analysisLoading[ANALYSIS_TYPES.IDEAS]}
+                queueStatus={analysisQueueStatus[ANALYSIS_TYPES.IDEAS]}
                 debugMode={debugMode}
                 isDark={isDark}
                 themeColors={themeColors}
@@ -368,6 +379,15 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  queueStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  queueStatusText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   analysisResult: {

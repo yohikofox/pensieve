@@ -82,6 +82,7 @@ import { ModelUpdateCheckService } from '../../contexts/Normalization/services/M
 import type { IModelUpdateCheckService } from '../../contexts/Normalization/domain/IModelUpdateCheckService';
 
 // Post-processing Services (LLM enhancement)
+import { AnalysisQueueService } from '../../contexts/Normalization/services/AnalysisQueueService';
 import { NPUDetectionService } from '../../contexts/Normalization/services/NPUDetectionService';
 import { DeviceCapabilitiesService } from '../../contexts/Normalization/services/DeviceCapabilitiesService';
 import { LLMModelService } from '../../contexts/Normalization/services/LLMModelService';
@@ -270,7 +271,13 @@ export function registerServices() {
     useClass: ModelUpdateCheckService,
   });
   container.register(AudioConversionService, { useClass: AudioConversionService });
-  container.register(CaptureAnalysisService, { useClass: CaptureAnalysisService });
+
+  // SINGLETON: CaptureAnalysisService — maintient l'état du backend LLM (isInitialized, backend, currentModelId)
+  // Transient interdit : plusieurs instances = plusieurs backends LLM en parallèle → crash LiteRT-LM (ADR-021, Story 16.3 review)
+  container.registerSingleton(CaptureAnalysisService);
+
+  // SINGLETON: AnalysisQueueService — queue d'analyses in-memory, état partagé requis (AC3 inter-captures) (ADR-021, Story 16.3)
+  container.registerSingleton(AnalysisQueueService);
 
   // Identity Services — stateless (ADR-021 Transient First)
   container.register(UserFeaturesService, { useClass: UserFeaturesService });

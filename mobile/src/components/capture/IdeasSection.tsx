@@ -24,12 +24,15 @@ import {
 } from "../../contexts/Normalization/services/analysisPrompts";
 import type { Idea } from "../../contexts/knowledge/domain/Idea.model";
 import type { CaptureAnalysis } from "../../contexts/capture/domain/CaptureAnalysis.model";
+import type { AnalysisQueueStatus } from "../../contexts/Normalization/services/AnalysisQueueService";
 
 interface IdeasSectionProps {
   ideas: Idea[];
   ideasLoading: boolean;
   analysis: CaptureAnalysis | null;
   analysisLoading: boolean;
+  /** Story 16.3 — État de la queue pour différencier "en attente" vs "en cours" */
+  queueStatus?: AnalysisQueueStatus;
   debugMode: boolean;
   isDark: boolean;
   themeColors: {
@@ -49,6 +52,7 @@ export function IdeasSection({
   ideasLoading,
   analysis,
   analysisLoading,
+  queueStatus = 'idle',
   debugMode,
   isDark,
   themeColors,
@@ -56,6 +60,7 @@ export function IdeasSection({
   highlightIdeaId,
   highlightTodoId,
 }: IdeasSectionProps) {
+  const isQueued = queueStatus === 'queued';
   return (
     <View
       style={[
@@ -90,7 +95,14 @@ export function IdeasSection({
             onPress={onGenerate}
             disabled={analysisLoading}
           >
-            {analysisLoading ? (
+            {isQueued ? (
+              <View style={styles.queueStatusRow}>
+                <ActivityIndicator size="small" color={colors.neutral[400]} />
+                <Text style={[styles.queueStatusText, { color: colors.neutral[500] }]}>
+                  En attente...
+                </Text>
+              </View>
+            ) : analysisLoading ? (
               <ActivityIndicator
                 size="small"
                 color={colors.primary[500]}
@@ -194,6 +206,15 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  queueStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  queueStatusText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   loadingContainer: {

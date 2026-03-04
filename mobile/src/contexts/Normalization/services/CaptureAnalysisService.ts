@@ -15,6 +15,8 @@ import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
 import type { ICaptureAnalysisRepository } from '../../capture/domain/ICaptureAnalysisRepository';
 import type { ILLMModelService } from '../domain/ILLMModelService';
+import type { EventBus } from '../../shared/events/EventBus';
+import type { AnalysisCompletedEvent } from '../events/AnalysisEvents';
 import {
   type CaptureAnalysis,
   type AnalysisType,
@@ -48,7 +50,8 @@ export class CaptureAnalysisService {
   constructor(
     @inject(TOKENS.ILLMModelService) private modelService: ILLMModelService,
     @inject(TOKENS.ICaptureRepository) private captureRepository: ICaptureRepository,
-    @inject(TOKENS.ICaptureAnalysisRepository) private analysisRepository: ICaptureAnalysisRepository
+    @inject(TOKENS.ICaptureAnalysisRepository) private analysisRepository: ICaptureAnalysisRepository,
+    @inject('EventBus') private eventBus: EventBus,
   ) {}
 
   /**
@@ -230,6 +233,14 @@ export class CaptureAnalysisService {
           }
 
           summaryContent = summaryResult.analysis;
+
+          // Notify UI of the implicitly generated summary (bypasses the queue)
+          const implicitSummaryEvent: AnalysisCompletedEvent = {
+            type: 'AnalysisCompleted',
+            timestamp: Date.now(),
+            payload: { captureId, analysisType: 'summary', result: summaryResult },
+          };
+          this.eventBus.publish(implicitSummaryEvent);
         }
 
         // Use the summary as input for highlights/action_items

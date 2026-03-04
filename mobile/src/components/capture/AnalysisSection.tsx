@@ -21,11 +21,14 @@ import {
   ANALYSIS_LABELS,
   ANALYSIS_ICONS,
 } from "../../contexts/Normalization/services/analysisPrompts";
+import type { AnalysisQueueStatus } from "../../contexts/Normalization/services/AnalysisQueueService";
 
 interface AnalysisSectionProps {
   analysisType: AnalysisType;
   analysis: CaptureAnalysis | null;
   analysisLoading: boolean;
+  /** Story 16.3 — État de la queue pour différencier "en attente" vs "en cours" */
+  queueStatus?: AnalysisQueueStatus;
   debugMode: boolean;
   isDark: boolean;
   themeColors: {
@@ -42,11 +45,17 @@ export function AnalysisSection({
   analysisType,
   analysis,
   analysisLoading,
+  queueStatus = 'idle',
   debugMode,
   isDark,
   themeColors,
   onGenerate,
 }: AnalysisSectionProps) {
+  // Story 16.3: "En attente" = queued but not yet processing
+  const isQueued = queueStatus === 'queued';
+  // "En cours" = actively processing by the worker
+  const isProcessingNow = queueStatus === 'processing';
+
   return (
     <View
       style={[
@@ -81,7 +90,16 @@ export function AnalysisSection({
             onPress={onGenerate}
             disabled={analysisLoading}
           >
-            {analysisLoading ? (
+            {isQueued ? (
+              /* En attente dans la queue — spinner gris + label */
+              <View style={styles.queueStatusRow}>
+                <ActivityIndicator size="small" color={colors.neutral[400]} />
+                <Text style={[styles.queueStatusText, { color: colors.neutral[500] }]}>
+                  En attente...
+                </Text>
+              </View>
+            ) : isProcessingNow || (analysisLoading && queueStatus === 'idle') ? (
+              /* En cours de traitement — spinner bleu */
               <ActivityIndicator
                 size="small"
                 color={colors.primary[500]}
@@ -161,6 +179,15 @@ const styles = StyleSheet.create({
   },
   generateButtonText: {
     fontSize: 14,
+    fontWeight: "500",
+  },
+  queueStatusRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  queueStatusText: {
+    fontSize: 12,
     fontWeight: "500",
   },
   analysisText: {
