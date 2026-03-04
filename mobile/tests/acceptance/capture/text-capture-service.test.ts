@@ -27,14 +27,24 @@ jest.mock('reflect-metadata');
 
 // ============================================================
 // Mock ICaptureRepository (OP-SQLite backed in production)
+// Only methods required by TextCaptureService are implemented;
+// unused interface methods use jest.fn() as no-ops.
 // ============================================================
 const mockRepository: jest.Mocked<ICaptureRepository> = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  findById: jest.fn(),
   findByState: jest.fn(),
-  findBySyncStatus: jest.fn(),
   findAll: jest.fn(),
+  findAllPaginated: jest.fn(),
+  count: jest.fn(),
+  findPendingSync: jest.fn(),
+  findSynced: jest.fn(),
+  findConflicts: jest.fn(),
+  isPendingSync: jest.fn(),
+  hasConflict: jest.fn(),
+  observeById: jest.fn(),
 };
 
 describe('TextCaptureService — Acceptance Tests (AC6)', () => {
@@ -57,7 +67,6 @@ describe('TextCaptureService — Acceptance Tests (AC6)', () => {
         rawContent: 'This is my brilliant idea',
         normalizedText: 'This is my brilliant idea',
         capturedAt: new Date(),
-        syncStatus: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -84,7 +93,6 @@ describe('TextCaptureService — Acceptance Tests (AC6)', () => {
         rawContent: textContent,
         normalizedText: textContent,
         capturedAt: new Date(),
-        syncStatus: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -109,7 +117,6 @@ describe('TextCaptureService — Acceptance Tests (AC6)', () => {
         rawContent: textContent,
         normalizedText: textContent,
         capturedAt: new Date(),
-        syncStatus: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
       };

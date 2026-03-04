@@ -69,6 +69,17 @@ interface TextCaptureCreated {
   createdAt: Date;
 }
 
+/**
+ * ARCHITECTURE NOTE: Ce handler est un stub préparatoire pour une future
+ * intégration event-driven (@nestjs/cqrs EventBus).
+ * Il n'est PAS enregistré dans KnowledgeModule.providers.
+ *
+ * Chemin production actuel (Story 16.2) :
+ *   SyncService.processPush() → DigestionJobPublisher.publishJobForTextCapture()
+ *
+ * TODO : Enregistrer dans KnowledgeModule.providers quand le bus d'événements
+ * NestJS sera mis en place (remplacera l'appel direct dans SyncService).
+ */
 @Injectable()
 export class CaptureEventsHandler {
   private readonly logger = new Logger(CaptureEventsHandler.name);

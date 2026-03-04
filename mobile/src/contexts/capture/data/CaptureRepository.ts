@@ -129,6 +129,7 @@ export class CaptureRepository implements ICaptureRepository {
           type: capture.type,
           state: capture.state,
           rawContent: capture.rawContent,
+          normalizedText: capture.normalizedText ?? undefined,
           duration: capture.duration,
           fileSize: capture.fileSize,
         });

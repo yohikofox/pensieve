@@ -621,7 +621,7 @@ export class SyncService {
         clientId,
         ownerId: userId,
         syncStatusId: activeSyncStatus.id,
-        last_modified_at: Date.now(),
+        lastModifiedAt: Date.now(),
       });
       // AC1 (Story 16.2): signal pour déclencher la digestion IA après la transaction
       if (clientRecord.type === 'text') {
@@ -655,7 +655,7 @@ export class SyncService {
         id: serverRecord.id,
         clientId: serverRecord.clientId,
         ownerId: userId,
-        last_modified_at: Date.now(),
+        lastModifiedAt: Date.now(),
       });
       return { conflict: false };
     }

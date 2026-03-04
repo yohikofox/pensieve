@@ -7,6 +7,7 @@
  * - Metadata generation
  *
  * Story: 2.2 - Capture Texte Rapide
+ * Updated: Story 16.2 — state=READY, normalizedText=rawContent
  */
 
 import { TextCaptureService } from '../TextCaptureService';
@@ -14,14 +15,22 @@ import { ICaptureRepository } from '../../domain/ICaptureRepository';
 import { RepositoryResultType } from '../../domain/Result';
 import { Capture, CAPTURE_TYPES, CAPTURE_STATES } from '../../domain/Capture.model';
 
-// Mock repository
+// Mock repository — aligned with ICaptureRepository interface
 const mockRepository: jest.Mocked<ICaptureRepository> = {
   create: jest.fn(),
   update: jest.fn(),
   delete: jest.fn(),
+  findById: jest.fn(),
   findByState: jest.fn(),
-  findBySyncStatus: jest.fn(),
   findAll: jest.fn(),
+  findAllPaginated: jest.fn(),
+  count: jest.fn(),
+  findPendingSync: jest.fn(),
+  findSynced: jest.fn(),
+  findConflicts: jest.fn(),
+  isPendingSync: jest.fn(),
+  hasConflict: jest.fn(),
+  observeById: jest.fn(),
 };
 
 describe('TextCaptureService', () => {
@@ -53,10 +62,10 @@ describe('TextCaptureService', () => {
       const mockCapture: Capture = {
         id: 'test-id',
         type: CAPTURE_TYPES.TEXT,
-        state: CAPTURE_STATES.CAPTURED,
+        state: CAPTURE_STATES.READY,
         rawContent: 'Ma pensée',
+        normalizedText: 'Ma pensée',
         capturedAt: new Date(),
-        syncStatus: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -69,23 +78,23 @@ describe('TextCaptureService', () => {
       const result = await service.createTextCapture('  Ma pensée  ');
 
       expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      // Story 16.2: state=READY, normalizedText=rawContent — syncStatus géré en interne
       expect(mockRepository.create).toHaveBeenCalledWith({
         type: CAPTURE_TYPES.TEXT,
-        state: CAPTURE_STATES.CAPTURED,
+        state: CAPTURE_STATES.READY,
         rawContent: 'Ma pensée',
         normalizedText: 'Ma pensée',
-        syncStatus: 'pending',
       });
     });
 
-    it('should create Capture entity with type=text', async () => {
+    it('should create Capture entity with type=text and state=READY', async () => {
       const mockCapture: Capture = {
         id: 'test-id',
         type: CAPTURE_TYPES.TEXT,
-        state: CAPTURE_STATES.CAPTURED,
+        state: CAPTURE_STATES.READY,
         rawContent: 'Ma pensée importante',
+        normalizedText: 'Ma pensée importante',
         capturedAt: new Date(),
-        syncStatus: 'pending',
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -116,29 +125,18 @@ describe('TextCaptureService', () => {
       expect(result.error).toBe('Database error');
     });
 
-    it('should set syncStatus to pending for offline support', async () => {
-      const mockCapture: Capture = {
-        id: 'test-id',
-        type: CAPTURE_TYPES.TEXT,
-        state: CAPTURE_STATES.CAPTURED,
-        rawContent: 'Offline text',
-        capturedAt: new Date(),
-        syncStatus: 'pending',
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
+    it('should pass normalizedText equal to rawContent for offline-first support', async () => {
       mockRepository.create.mockResolvedValue({
         type: RepositoryResultType.SUCCESS,
-        data: mockCapture,
+        data: { id: 'test-id' } as Capture,
       });
 
-      const result = await service.createTextCapture('Offline text');
+      await service.createTextCapture('Offline text');
 
-      expect(result.type).toBe(RepositoryResultType.SUCCESS);
       expect(mockRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          syncStatus: 'pending',
+          normalizedText: 'Offline text',
+          rawContent: 'Offline text',
         })
       );
     });

@@ -19,7 +19,9 @@ export interface ICaptureRepository {
     type: CaptureType;
     state: CaptureState;
     rawContent: string;
+    normalizedText?: string;
     duration?: number;
+    fileSize?: number;
   }): Promise<RepositoryResult<Capture>>;
 
   /**

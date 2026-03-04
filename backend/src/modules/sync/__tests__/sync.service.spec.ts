@@ -799,16 +799,19 @@ describe('SyncService', () => {
       expect(
         mockDigestionJobPublisher.publishJobForTextCapture,
       ).toHaveBeenCalledTimes(1);
-      expect(
-        mockDigestionJobPublisher.publishJobForTextCapture,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId,
-          type: 'TEXT',
-          state: 'ready',
-          userInitiated: false,
-        }),
+
+      const callArgs =
+        mockDigestionJobPublisher.publishJobForTextCapture.mock.calls[0][0];
+      // captureId doit être l'UUID backend généré (uuidv7), pas l'ID mobile
+      expect(callArgs.captureId).toBeDefined();
+      expect(callArgs.captureId).not.toBe('mobile-uuid-text');
+      expect(callArgs.captureId).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
       );
+      expect(callArgs.userId).toBe(userId);
+      expect(callArgs.type).toBe('TEXT');
+      expect(callArgs.state).toBe('ready');
+      expect(callArgs.userInitiated).toBe(false);
     });
 
     it('should warn but not throw when state is unknown (no DB match)', async () => {
