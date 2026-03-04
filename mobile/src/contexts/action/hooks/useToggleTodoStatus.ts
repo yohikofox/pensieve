@@ -53,7 +53,7 @@ export const useToggleTodoStatus = (): UseMutationResult<
 
       // Optimistically update all 'todos' queries
       queryClient.setQueriesData<Todo[]>({ queryKey: ["todos"] }, (old) => {
-        if (!old) return old;
+        if (!old || !Array.isArray(old)) return old;
 
         return old.map((todo) =>
           todo.id === todoId

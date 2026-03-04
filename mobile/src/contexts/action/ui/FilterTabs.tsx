@@ -12,7 +12,7 @@ import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { FilterType } from '../hooks/useFilterState';
-import { settingsStore } from '../../../stores/settingsStore';
+import { useSettingsStore } from '../../../stores/settingsStore';
 import { useTheme } from '../../../hooks/useTheme';
 import {
   colors,
@@ -39,10 +39,11 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
 }) => {
   const { isDark, colorSchemePreference } = useTheme();
   const styles = useMemo(() => createStyles(isDark, colorSchemePreference), [isDark, colorSchemePreference]);
+  const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
 
   const handleTabPress = async (filter: FilterType) => {
     // Haptic feedback (check user preference)
-    if (settingsStore.hapticFeedbackEnabled) {
+    if (hapticFeedbackEnabled) {
       await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 

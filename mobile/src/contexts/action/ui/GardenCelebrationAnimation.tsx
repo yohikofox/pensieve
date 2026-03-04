@@ -18,6 +18,7 @@ import Animated, {
   withTiming,
   withDelay,
   Easing,
+  runOnJS,
 } from 'react-native-reanimated';
 
 interface GardenCelebrationAnimationProps {
@@ -93,7 +94,7 @@ export const GardenCelebrationAnimation: React.FC<GardenCelebrationAnimationProp
           },
           (finished) => {
             if (finished && onComplete) {
-              onComplete();
+              runOnJS(onComplete)();
             }
           }
         )

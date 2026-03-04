@@ -47,6 +47,12 @@ const EMPTY_STATE_CONTENT: Record<FilterType, EmptyStateContent> = {
     title: 'Corbeille vide',
     message: 'Aucune action supprimée.\nLes actions retirées par la synchronisation apparaîtront ici.',
   },
+  abandoned: {
+    title: 'Aucune tâche abandonnée',
+    message: 'Les tâches que vous avez abandonnées apparaissent ici.\nGlissez vers la gauche pour les réactiver.',
+    actionLabel: 'Voir les tâches à faire',
+    actionFilter: 'active',
+  },
 };
 
 export const FilteredEmptyState: React.FC<FilteredEmptyStateProps> = ({
