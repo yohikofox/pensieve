@@ -61,11 +61,14 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
-            if (hapticFeedbackEnabled) {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            deleteTodo.mutate(todo.id);
+          onPress: () => {
+            deleteTodo.mutate(todo.id, {
+              onSuccess: async () => {
+                if (hapticFeedbackEnabled) {
+                  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
+              },
+            });
           },
         },
       ]
@@ -181,6 +184,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
         friction={2}
         overshootRight={false}
         failOffsetY={[-15, 15]}
+        rightThreshold={40}
         renderRightActions={renderRightActions}
       >
       <Pressable

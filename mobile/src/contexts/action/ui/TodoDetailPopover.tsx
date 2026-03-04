@@ -227,12 +227,15 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: async () => {
-            deleteTodo.mutate(todo.id);
-            if (hapticFeedbackEnabled) {
-              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            }
-            onClose();
+          onPress: () => {
+            deleteTodo.mutate(todo.id, {
+              onSuccess: async () => {
+                if (hapticFeedbackEnabled) {
+                  await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }
+                onClose();
+              },
+            });
           },
         },
       ]

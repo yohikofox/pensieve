@@ -1,8 +1,6 @@
 /**
  * useDeleteTodo Hook
- * Delete a single todo by ID
- *
- * Debug mode feature: allows deleting individual todos
+ * Delete a single todo by ID (hard delete)
  */
 
 import {
@@ -10,6 +8,7 @@ import {
   useQueryClient,
   UseMutationResult,
 } from "@tanstack/react-query";
+import { Alert } from "react-native";
 import { container } from "tsyringe";
 import { ITodoRepository } from "../domain/ITodoRepository";
 import { TOKENS } from "../../../infrastructure/di/tokens";
@@ -34,6 +33,11 @@ export const useDeleteTodo = (): UseMutationResult<void, Error, string> => {
 
     onError: (err) => {
       console.error("[useDeleteTodo] Error deleting todo:", err);
+      Alert.alert(
+        'Erreur',
+        'Impossible de supprimer la tâche. Veuillez réessayer.',
+        [{ text: 'OK', style: 'default' }],
+      );
     },
   });
 };
