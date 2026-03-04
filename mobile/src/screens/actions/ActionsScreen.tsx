@@ -17,6 +17,8 @@
  * - AC4: Efficient rendering (virtualized list)
  * - AC7: Pull-to-refresh functionality
  * - AC8: Scroll position persistence
+ *
+ * Migrated to Zustand (ADR-038) — Story 8.23 extension
  */
 
 import React, { useCallback, useMemo, useRef, useState } from 'react';
@@ -34,12 +36,7 @@ import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanim
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { useAllTodosWithSource } from '../../contexts/action/hooks/useAllTodosWithSource';
-import { useFilterState } from '../../contexts/action/hooks/useFilterState';
-import { useFilteredTodoCounts } from '../../contexts/action/hooks/useFilteredTodoCounts';
-import { useBulkDeleteCompleted } from '../../contexts/action/hooks/useBulkDeleteCompleted';
-import { useDeletedTodosWithSource } from '../../contexts/action/hooks/useDeletedTodosWithSource';
-import { useEmptyTrash } from '../../contexts/action/hooks/useEmptyTrash';
+import { useTodosListStore } from '../../stores/useTodosListStore';
 import { filterTodos } from '../../contexts/action/utils/filterTodos';
 import { sortTodos, isSectionData } from '../../contexts/action/utils/sortTodos';
 import { FilterTabs } from '../../contexts/action/ui/FilterTabs';
@@ -82,26 +79,29 @@ interface FlatTodoItem {
 
 export const ActionsScreen = () => {
   const { isDark, colorSchemePreference } = useTheme();
-  const { data: todos, isLoading, refetch, isRefetching } = useAllTodosWithSource();
   const { triggerManualSync, isManualSyncing } = useManualSync();
 
-  // Story 5.3: Filter and sort state (AC1, AC8)
-  const { filter, sort, setFilter, setSort, isLoading: isFilterLoading } = useFilterState();
-  const counts = useFilteredTodoCounts();
+  const {
+    todos,
+    deletedTodos,
+    isLoading,
+    hasHydrated,
+    filter,
+    sort,
+    setFilter,
+    setSort,
+    counts,
+    hydrate,
+    bulkDeleteCompleted: doBulkDeleteCompleted,
+    emptyTrash: doEmptyTrash,
+  } = useTodosListStore();
 
-  // Story 5.4: Bulk delete completed todos (AC10, Task 11)
-  const bulkDeleteCompleted = useBulkDeleteCompleted();
-
-  // Corbeille: todos soft-deletés par le sync PULL
-  const { data: deletedTodos } = useDeletedTodosWithSource();
-  const emptyTrash = useEmptyTrash();
-
-  // Auto-retour sur 'active' si le filtre 'trash' est restauré mais la corbeille est vide
-  React.useEffect(() => {
-    if (filter === 'trash' && counts.deleted === 0 && !counts.isLoading) {
-      setFilter('active');
-    }
-  }, [filter, counts.deleted, counts.isLoading]);
+  // Hydrate à chaque visite de l'écran (ADR-038)
+  useFocusEffect(
+    React.useCallback(() => {
+      hydrate();
+    }, [hydrate])
+  );
 
   // Sort menu visibility
   const [isSortMenuVisible, setSortMenuVisible] = useState(false);
@@ -110,7 +110,7 @@ export const ActionsScreen = () => {
   // Story 5.3 - Fix #9: Track previous list type to reset scroll on switch
   const flatListRef = useRef<FlatList>(null);
   const [scrollOffset, setScrollOffset] = useState(0);
-  const previousIsSections = useRef<boolean>(isSections);
+  const previousIsSections = useRef<boolean>(false);
 
   // Planning view: sticky section tracking
   const [currentStickySection, setCurrentStickySection] = useState('');
@@ -130,8 +130,15 @@ export const ActionsScreen = () => {
     }, [scrollOffset])
   );
 
+  // Auto-retour sur 'active' si le filtre 'trash' est restauré mais la corbeille est vide
+  React.useEffect(() => {
+    if (filter === 'trash' && counts.deleted === 0 && hasHydrated && !isLoading) {
+      setFilter('active');
+    }
+  }, [filter, counts.deleted, hasHydrated, isLoading]);
+
   // Source de données conditionnelle: corbeille ou todos actifs
-  const sourceData = filter === 'trash' ? (deletedTodos ?? []) : (todos ?? []);
+  const sourceData = filter === 'trash' ? deletedTodos : todos;
 
   // Pre-compute todos with preview and timestamp (Story 5.2 - Performance)
   const enrichedTodos = useMemo(() => {
@@ -152,11 +159,8 @@ export const ActionsScreen = () => {
           })
         : undefined;
 
-      return {
-        ...todo,
-        sourcePreview,
-        sourceTimestamp,
-      };
+      // Object.assign préserve le prototype Todo et ses getters (status, description, etc.)
+      return Object.assign(todo, { sourcePreview, sourceTimestamp }) as EnrichedTodo;
     });
   }, [sourceData]);
 
@@ -185,7 +189,7 @@ export const ActionsScreen = () => {
     (sortedData as TodoSection[]).forEach((section) => {
       section.data.forEach((todo, idx) => {
         flat.push({
-          todo,
+          todo: todo as EnrichedTodo,
           sectionTitle: section.title,
           isFirstInSection: idx === 0,
           isLastInSection: idx === section.data.length - 1,
@@ -257,26 +261,24 @@ export const ActionsScreen = () => {
         {
           text: 'Vider',
           style: 'destructive',
-          onPress: () => {
-            emptyTrash.mutate(undefined, {
-              onSuccess: (actualDeletedCount) => {
-                setFilter('active');
-                setTimeout(() => {
-                  Alert.alert(
-                    'Corbeille vidée',
-                    `${actualDeletedCount} action${actualDeletedCount > 1 ? 's' : ''} supprimée${actualDeletedCount > 1 ? 's' : ''} définitivement`
-                  );
-                }, 300);
-              },
-              onError: (error) => {
-                console.error('[ActionsScreen] Empty trash failed:', error);
+          onPress: async () => {
+            try {
+              const actualDeletedCount = await doEmptyTrash();
+              setFilter('active');
+              setTimeout(() => {
                 Alert.alert(
-                  'Erreur',
-                  'Impossible de vider la corbeille. Veuillez réessayer.',
-                  [{ text: 'OK', style: 'default' }]
+                  'Corbeille vidée',
+                  `${actualDeletedCount} action${actualDeletedCount > 1 ? 's' : ''} supprimée${actualDeletedCount > 1 ? 's' : ''} définitivement`
                 );
-              },
-            });
+              }, 300);
+            } catch (error) {
+              console.error('[ActionsScreen] Empty trash failed:', error);
+              Alert.alert(
+                'Erreur',
+                'Impossible de vider la corbeille. Veuillez réessayer.',
+                [{ text: 'OK', style: 'default' }]
+              );
+            }
           },
         },
       ]
@@ -302,34 +304,33 @@ export const ActionsScreen = () => {
         {
           text: 'Supprimer',
           style: 'destructive',
-          onPress: () => {
-            // CODE REVIEW FIX #6: Show success alert only on successful mutation
-            bulkDeleteCompleted.mutate(undefined, {
-              onSuccess: (actualDeletedCount) => {
+          onPress: async () => {
+            try {
+              const actualDeletedCount = await doBulkDeleteCompleted();
+              if (actualDeletedCount > 0) {
                 setTimeout(() => {
                   Alert.alert(
                     'Actions supprimées',
                     `${actualDeletedCount} action${actualDeletedCount > 1 ? 's' : ''} supprimée${actualDeletedCount > 1 ? 's' : ''}`
                   );
                 }, 300);
-              },
-              onError: (error) => {
-                console.error('[ActionsScreen] Bulk delete failed:', error);
-                Alert.alert(
-                  'Erreur',
-                  'Impossible de supprimer les actions. Veuillez réessayer.',
-                  [{ text: 'OK', style: 'default' }]
-                );
-              },
-            });
+              }
+            } catch (error) {
+              console.error('[ActionsScreen] Bulk delete failed:', error);
+              Alert.alert(
+                'Erreur',
+                'Impossible de supprimer les actions. Veuillez réessayer.',
+                [{ text: 'OK', style: 'default' }]
+              );
+            }
           },
         },
       ]
     );
   };
 
-  // Loading state (Story 5.3 - Fix #6: Wait for filter preferences to load)
-  if (isLoading || isFilterLoading) {
+  // Loading state — premier hydrate pas encore terminé
+  if (!hasHydrated) {
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.loadingText}>Chargement...</Text>
@@ -469,8 +470,8 @@ export const ActionsScreen = () => {
               contentContainerStyle={styles.calendarListContent}
               refreshControl={
                 <RefreshControl
-                  refreshing={isRefetching || isManualSyncing}
-                  onRefresh={() => { refetch(); triggerManualSync(); }}
+                  refreshing={isLoading && hasHydrated}
+                  onRefresh={() => { hydrate(); triggerManualSync(); }}
                 />
               }
               windowSize={10}
@@ -514,8 +515,8 @@ export const ActionsScreen = () => {
         refreshControl={
           // Story 6.4 - AC7: trigger manual sync on pull-to-refresh (all sort modes)
           <RefreshControl
-            refreshing={isRefetching || isManualSyncing}
-            onRefresh={() => { refetch(); triggerManualSync(); }}
+            refreshing={isLoading && hasHydrated}
+            onRefresh={() => { hydrate(); triggerManualSync(); }}
           />
         }
         windowSize={10}

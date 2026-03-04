@@ -1,43 +1,47 @@
 /**
  * useDeleteTodo Hook
  * Delete a single todo by ID (hard delete)
+ * Migrated from React Query to Zustand (ADR-038) — ActionsScreen migration
  */
 
-import {
-  useMutation,
-  useQueryClient,
-  UseMutationResult,
-} from "@tanstack/react-query";
-import { Alert } from "react-native";
-import { container } from "tsyringe";
-import { ITodoRepository } from "../domain/ITodoRepository";
-import { TOKENS } from "../../../infrastructure/di/tokens";
+import { useCallback } from 'react';
+import { Alert } from 'react-native';
+import { container } from 'tsyringe';
+import { ITodoRepository } from '../domain/ITodoRepository';
+import { TOKENS } from '../../../infrastructure/di/tokens';
+import { useTodosListStore } from '../../../stores/useTodosListStore';
+
+type DeleteCallbacks = {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+};
 
 /**
- * Delete a single todo
- *
- * @returns React Query mutation
+ * Delete a single todo — notifie le Zustand List Store après succès
  */
-export const useDeleteTodo = (): UseMutationResult<void, Error, string> => {
-  const queryClient = useQueryClient();
-  const todoRepository = container.resolve<ITodoRepository>(
-    TOKENS.ITodoRepository,
-  );
+export const useDeleteTodo = () => {
+  const onMutation = useTodosListStore((s) => s.onMutation);
 
-  return useMutation({
-    mutationFn: (todoId: string) => todoRepository.delete(todoId),
+  const mutate = useCallback(async (todoId: string, callbacks?: DeleteCallbacks): Promise<void> => {
+    try {
+      const repo = container.resolve<ITodoRepository>(TOKENS.ITodoRepository);
+      await repo.delete(todoId);
 
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
-    },
+      // onMutation détecte que le todo est introuvable → le retire de la liste
+      await onMutation(todoId);
 
-    onError: (err) => {
-      console.error("[useDeleteTodo] Error deleting todo:", err);
+      callbacks?.onSuccess?.();
+    } catch (e) {
+      const err = e instanceof Error ? e : new Error('Delete failed');
+      console.error('[useDeleteTodo] Error deleting todo:', err);
       Alert.alert(
         'Erreur',
         'Impossible de supprimer la tâche. Veuillez réessayer.',
         [{ text: 'OK', style: 'default' }],
       );
-    },
-  });
+      callbacks?.onError?.(err);
+    }
+  }, [onMutation]);
+
+  return { mutate };
 };
