@@ -43,7 +43,7 @@ import { CaptureRepositoryStub } from './infrastructure/stubs/capture-repository
 import { CaptureContentRepositoryStub } from './infrastructure/stubs/capture-content-repository.stub';
 import { InMemoryProgressStore } from './infrastructure/stores/in-memory-progress.store';
 import { RedisProgressStore } from './infrastructure/stores/redis-progress.store';
-import { getRabbitMQOptions } from './infrastructure/rabbitmq/rabbitmq.config';
+import { getRabbitMQClientOptions } from './infrastructure/rabbitmq/rabbitmq.config';
 import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-events.gateway';
 
 @Module({
@@ -60,7 +60,7 @@ import { KnowledgeEventsGateway } from './infrastructure/websocket/knowledge-eve
     ClientsModule.register([
       {
         name: 'DIGESTION_QUEUE',
-        ...getRabbitMQOptions(),
+        ...getRabbitMQClientOptions(),
       },
     ]),
     // Event emitter for domain events

@@ -61,9 +61,8 @@ export const digestionQueueConfig: RabbitMQConfig = {
 };
 
 /**
- * NestJS Microservices RabbitMQ options
- * Uses centralized DIGESTION_QUEUE_OPTIONS to ensure consistency
- * with RabbitMQSetupService configuration
+ * NestJS Microservices RabbitMQ options — used by connectMicroservice() (consumer)
+ * noAck: false → manual acknowledgement required (explicit channel.ack())
  */
 export function getRabbitMQOptions(): RmqOptions {
   return {
@@ -75,6 +74,28 @@ export function getRabbitMQOptions(): RmqOptions {
       prefetchCount: 3, // Max 3 concurrent workers (AC3)
       noAck: false, // Ensure message acknowledgment
       // Connection pooling and heartbeat settings (Subtask 1.5)
+      socketOptions: {
+        heartbeatIntervalInSeconds: 30,
+        reconnectTimeInSeconds: 5,
+      },
+    },
+  };
+}
+
+/**
+ * NestJS ClientProxy RabbitMQ options — used by ClientsModule.register() (publisher)
+ * noAck: true is required: the internal reply queue (amq.rabbitmq.reply-to) used by
+ * ClientProxy does not support acknowledgements. Setting noAck: false causes a
+ * PRECONDITION_FAILED (406) error when RabbitMQ rejects BasicConsume on that queue.
+ */
+export function getRabbitMQClientOptions(): RmqOptions {
+  return {
+    transport: Transport.RMQ,
+    options: {
+      urls: [getRabbitMQUrl()],
+      queue: QueueNames.DIGESTION_JOBS,
+      queueOptions: DIGESTION_QUEUE_OPTIONS,
+      noAck: true,
       socketOptions: {
         heartbeatIntervalInSeconds: 30,
         reconnectTimeInSeconds: 5,
