@@ -19,6 +19,7 @@ import { ThemeSettingsScreen } from '../screens/settings/ThemeSettingsScreen';
 import { NotificationSettingsScreen } from '../screens/settings/NotificationSettingsScreen';
 import { LottieGalleryScreen } from '../screens/settings/LottieGalleryScreen';
 import { TodoDetailPopoverTestScreen } from '../screens/__dev__/TodoDetailPopoverTestScreen';
+import { ZustandPersistenceTestScreen } from '../screens/__dev__/ZustandPersistenceTestScreen';
 import { SqlConsoleScreen } from '../screens/__dev__/SqlConsoleScreen';
 import { DataMiningScreen } from '../screens/__dev__/DataMiningScreen';
 import { QueryBuilderScreen } from '../screens/__dev__/QueryBuilderScreen';
@@ -133,6 +134,15 @@ export function SettingsStackNavigator() {
         component={QueryBuilderScreen}
         options={{
           title: 'Query Builder',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="ZustandPersistenceTest"
+        component={ZustandPersistenceTestScreen}
+        options={{
+          title: 'Zustand Persistence Test',
           headerShown: true,
           header: (props) => <CustomStackHeader {...props} />,
         }}

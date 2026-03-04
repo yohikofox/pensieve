@@ -17,6 +17,8 @@ le snippet correspondant explicitement dans le prompt.
 | `06-di-token.ts` | Définition de token DI | Nouveau service avec interface |
 | `07-http-client.ts` | HTTP Client (ADR-025) | Tout appel HTTP sortant vers l'API |
 | `08-domain-entity.ts` | Rich Domain Entity (ADR-031) | Toute entité de domaine (classe, pas interface) |
+| `09-zustand-list-store.ts` | Zustand List Store (ADR-038) | Store pour un écran de liste (hydrate + onMutation) |
+| `10-zustand-detail-store.ts` | Zustand Detail Store (ADR-038) | Store pour un écran de détail (mutations via entité) |
 
 ## Règles d'utilisation
 

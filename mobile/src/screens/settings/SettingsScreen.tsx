@@ -848,6 +848,24 @@ export const SettingsScreen = () => {
             </TouchableOpacity>
           )}
 
+          {/* Zustand Persistence Test - only visible when debug mode is enabled */}
+          {debugMode && (
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4 border-t border-border-subtle"
+              onPress={() => navigation.navigate('ZustandPersistenceTest')}
+            >
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">
+                  🧪 Zustand Persistence Test
+                </Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Vérifier si create() conserve l'état entre unmount/remount
+                </Text>
+              </View>
+              <Text className="text-xl text-text-tertiary font-semibold">›</Text>
+            </TouchableOpacity>
+          )}
+
           {/* TodoDetailPopover Test - only visible when debug mode is enabled */}
           {debugMode && (
             <TouchableOpacity

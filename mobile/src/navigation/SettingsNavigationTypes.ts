@@ -17,4 +17,5 @@ export type SettingsStackParamList = {
   SqlConsole: undefined;
   DataMining: undefined;
   QueryBuilder: { queryId?: string };
+  ZustandPersistenceTest: undefined;
 };

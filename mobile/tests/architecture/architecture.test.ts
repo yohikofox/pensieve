@@ -223,4 +223,107 @@ describe('Architecture constraints', () => {
     expect(violations).toHaveLength(0);
   });
 
+  // ───────────────────────────────────────────────────────────────────────────
+  // ADR-038 : Zustand Stores — Pattern List/Detail
+  // ───────────────────────────────────────────────────────────────────────────
+
+  it('ADR-038 D2 : les stores Zustand (src/stores/) ne doivent pas importer @tanstack/react-query', () => {
+    const storeFiles = glob.sync(`${SRC}/stores/**/*.ts`, {
+      ignore: [`${SRC}/stores/__dev__/**`],
+    });
+
+    const violations = storeFiles.filter((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      return content.includes('@tanstack/react-query');
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-038 D2 (queryClient interdit dans les stores — utiliser repository direct):');
+      violations.forEach((f: string) => console.error(' -', path.relative(SRC, f)));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
+  it('ADR-038 D2 : les stores Zustand (src/stores/) ne doivent pas référencer queryClient', () => {
+    const storeFiles = glob.sync(`${SRC}/stores/**/*.ts`, {
+      ignore: [`${SRC}/stores/__dev__/**`],
+    });
+
+    const violations: string[] = [];
+
+    storeFiles.forEach((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+      lines.forEach((line: string, idx: number) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        if (/queryClient|invalidateQueries|useQueryClient/.test(line)) {
+          violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`);
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-038 D2 (queryClient dans un store):');
+      violations.forEach((v: string) => console.error(' -', v));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
+  it('ADR-038 + ADR-031 : les stores ne doivent pas appeler repository.update() avec des champs bruts (utiliser repository.save(entity))', () => {
+    const storeFiles = glob.sync(`${SRC}/stores/**/*.ts`, {
+      ignore: [`${SRC}/stores/__dev__/**`],
+    });
+
+    const violations: string[] = [];
+
+    storeFiles.forEach((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+      lines.forEach((line: string, idx: number) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        // Détecte repository.update(id, { ... }) — mutation brute sans entité
+        if (/\brepository\b.*\.update\s*\(/.test(line) && /,\s*\{/.test(line)) {
+          violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`);
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-038+ADR-031 (utiliser repository.save(entity), pas repository.update(id, rawFields)):');
+      violations.forEach((v: string) => console.error(' -', v));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
+  it('ADR-038 : les hooks dans contexts/**/hooks/ ne doivent pas accéder directement au repository pour des mutations (passer par un store)', () => {
+    const hookFiles = glob.sync(`${SRC}/contexts/**/hooks/**/*.ts`);
+
+    const violations: string[] = [];
+
+    hookFiles.forEach((file: string) => {
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+      lines.forEach((line: string, idx: number) => {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*')) return;
+        // Détecte repository.update() ou repository.save() appelés directement dans un hook
+        // Les hooks doivent déléguer au store, pas appeler le repository directement
+        if (
+          /\brepository\b.*\.(update|save|delete)\s*\(/.test(line) &&
+          !line.includes('// arch-ignore')
+        ) {
+          violations.push(`${path.relative(SRC, file)}:${idx + 1} — "${trimmed}"`);
+        }
+      });
+    });
+
+    if (violations.length > 0) {
+      console.error('Violations ADR-038 (mutation repository directe dans un hook — déléguer au store):');
+      violations.forEach((v: string) => console.error(' -', v));
+    }
+    expect(violations).toHaveLength(0);
+  });
+
 });
