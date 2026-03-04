@@ -15,6 +15,7 @@ import { SyncConflictResolver } from '../../infrastructure/sync-conflict-resolve
 import { PullRequestDto } from '../dto/pull-request.dto';
 import { PushRequestDto } from '../dto/push-request.dto';
 import { SyncResponseDto } from '../dto/sync-response.dto';
+import { DigestionJobPublisher } from '../../../knowledge/application/publishers/digestion-job-publisher.service';
 
 /**
  * Sync Service (AC1, AC4 - Tasks 1.3-1.6)
@@ -46,6 +47,7 @@ export class SyncService {
     private readonly conflictResolver: SyncConflictResolver,
     private readonly dataSource: DataSource,
     private readonly configService: ConfigService,
+    private readonly digestionJobPublisher: DigestionJobPublisher,
   ) {}
 
   /**
@@ -139,6 +141,8 @@ export class SyncService {
     try {
       const conflicts: SyncResponseDto['conflicts'] = [];
       const serverChanges: SyncResponseDto['changes'] = {};
+      // Collect new text capture IDs to publish to RabbitMQ after the transaction commits (AC1 — Story 16.2)
+      const newTextCaptureIds: string[] = [];
 
       // Wrap all PUSH operations in a transaction for atomicity
       await this.dataSource.transaction(async (manager) => {
@@ -163,6 +167,10 @@ export class SyncService {
                 transactionalRepos,
               );
 
+              if (result.newTextCaptureId) {
+                newTextCaptureIds.push(result.newTextCaptureId);
+              }
+
               if (result.conflict) {
                 conflicts.push({
                   entity,
@@ -186,6 +194,28 @@ export class SyncService {
           }
         }
       });
+
+      // AC1 (Story 16.2): Publish digestion jobs for new text captures — after transaction commits
+      for (const captureId of newTextCaptureIds) {
+        try {
+          await this.digestionJobPublisher.publishJobForTextCapture({
+            captureId,
+            userId,
+            type: 'TEXT',
+            state: 'ready',
+            userInitiated: false,
+          });
+          this.logger.log(
+            `Digestion job published for text capture ${captureId}`,
+          );
+        } catch (publishError) {
+          this.logger.error(
+            `Failed to publish digestion job for text capture ${captureId}:`,
+            publishError,
+          );
+          // Non-blocking: sync response succeeds even if RabbitMQ publish fails
+        }
+      }
 
       // After push, fetch any server changes client needs to know about
       const pullResult = await this.processPull(userId, {
@@ -299,12 +329,20 @@ export class SyncService {
       : [];
 
     // Résolution batch des UUIDs type/état via cache (ADR-027) — 0 requête si déjà en cache
-    const typeIds = [...new Set(rawUpdated.map((c) => c.typeId).filter(Boolean))] as string[];
-    const stateIds = [...new Set(rawUpdated.map((c) => c.stateId).filter(Boolean))] as string[];
+    const typeIds = [
+      ...new Set(rawUpdated.map((c) => c.typeId).filter(Boolean)),
+    ] as string[];
+    const stateIds = [
+      ...new Set(rawUpdated.map((c) => c.stateId).filter(Boolean)),
+    ] as string[];
 
     const [types, states] = await Promise.all([
-      typeIds.length > 0 ? this.captureTypeRepository.findByIds(typeIds) : Promise.resolve([]),
-      stateIds.length > 0 ? this.captureStateRepository.findByIds(stateIds) : Promise.resolve([]),
+      typeIds.length > 0
+        ? this.captureTypeRepository.findByIds(typeIds)
+        : Promise.resolve([]),
+      stateIds.length > 0
+        ? this.captureStateRepository.findByIds(stateIds)
+        : Promise.resolve([]),
     ]);
 
     const typeMap = new Map(types.map((t) => [t.id, t.name]));
@@ -334,7 +372,10 @@ export class SyncService {
         duration: c.duration ?? null,
         fileSize: c.fileSize ?? null,
         lastModifiedAt: Number(c.lastModifiedAt),
-        createdAt: c.createdAt instanceof Date ? c.createdAt.getTime() : Number(c.createdAt),
+        createdAt:
+          c.createdAt instanceof Date
+            ? c.createdAt.getTime()
+            : Number(c.createdAt),
         ...(audioUrl ? { audioUrl } : {}),
       };
     });
@@ -453,7 +494,11 @@ export class SyncService {
     clientRecord: any,
     lastPulledAt: number,
     transactionalRepos: Record<string, Repository<any>>,
-  ): Promise<{ conflict: boolean; strategy?: string }> {
+  ): Promise<{
+    conflict: boolean;
+    strategy?: string;
+    newTextCaptureId?: string;
+  }> {
     // Capture nécessite un traitement spécifique (clientId ≠ id backend)
     if (entity === 'captures') {
       return this.applyCapturePushInTransaction(
@@ -539,7 +584,11 @@ export class SyncService {
     clientRecord: any,
     lastPulledAt: number,
     repository: Repository<any>,
-  ): Promise<{ conflict: boolean; strategy?: string }> {
+  ): Promise<{
+    conflict: boolean;
+    strategy?: string;
+    newTextCaptureId?: string;
+  }> {
     if (!repository) {
       this.logger.warn('Skipping PUSH for captures: repository not available');
       return { conflict: false };
@@ -558,18 +607,26 @@ export class SyncService {
     if (!serverRecord) {
       // Nouvelle capture : génère un nouvel UUID backend, stocke clientId
       // syncStatusId n'est pas fourni par le mobile — résolution via cache referentiel
-      const activeSyncStatus = await this.captureSyncStatusRepository.findByNaturalKey('active');
+      const activeSyncStatus =
+        await this.captureSyncStatusRepository.findByNaturalKey('active');
       if (!activeSyncStatus) {
-        throw new Error('capture_sync_statuses: statut "active" introuvable en base');
+        throw new Error(
+          'capture_sync_statuses: statut "active" introuvable en base',
+        );
       }
+      const newId = uuidv7();
       await repository.save({
         ...mappedData,
-        id: uuidv7(),
+        id: newId,
         clientId,
         ownerId: userId,
         syncStatusId: activeSyncStatus.id,
         last_modified_at: Date.now(),
       });
+      // AC1 (Story 16.2): signal pour déclencher la digestion IA après la transaction
+      if (clientRecord.type === 'text') {
+        return { conflict: false, newTextCaptureId: newId };
+      }
       return { conflict: false };
     }
 
@@ -754,8 +811,10 @@ export class SyncService {
     if (r.capture_id !== undefined) mapped.captureId = r.capture_id;
     if (r.user_id !== undefined) mapped.ownerId = r.user_id;
     if (r.summary !== undefined) mapped.summary = r.summary;
-    if (r.confidence_score !== undefined) mapped.confidenceScore = r.confidence_score;
-    if (r.processing_time_ms !== undefined) mapped.processingTimeMs = r.processing_time_ms;
+    if (r.confidence_score !== undefined)
+      mapped.confidenceScore = r.confidence_score;
+    if (r.processing_time_ms !== undefined)
+      mapped.processingTimeMs = r.processing_time_ms;
     return mapped;
   }
 
@@ -784,9 +843,11 @@ export class SyncService {
     if (r.user_id !== undefined) mapped.ownerId = r.user_id;
     if (r.description !== undefined) mapped.description = r.description;
     if (r.status !== undefined) mapped.status = r.status;
-    if (r.deadline !== undefined) mapped.deadline = r.deadline ? new Date(r.deadline) : null;
+    if (r.deadline !== undefined)
+      mapped.deadline = r.deadline ? new Date(r.deadline) : null;
     if (r.priority !== undefined) mapped.priority = r.priority;
-    if (r.completed_at !== undefined) mapped.completedAt = r.completed_at ? new Date(r.completed_at) : null;
+    if (r.completed_at !== undefined)
+      mapped.completedAt = r.completed_at ? new Date(r.completed_at) : null;
     return mapped;
   }
 

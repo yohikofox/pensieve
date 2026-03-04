@@ -85,16 +85,19 @@ export class CaptureRepository implements ICaptureRepository {
     try {
       // Execute INSERT directly (SQLite has implicit transactions per statement)
       // Story 6.2 Task 4.2: SET _changed = 1 for sync tracking
+      // Story 16.2: Include normalized_text when provided (text captures have normalizedText = rawContent)
+      const hasNormalizedText = data.normalizedText !== undefined && data.normalizedText !== null;
       database.execute(
         `INSERT INTO captures (
-          id, type, state, raw_content, duration, file_size,
+          id, type, state, raw_content, ${hasNormalizedText ? 'normalized_text, ' : ''}duration, file_size,
           created_at, updated_at, sync_version, _changed
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+        ) VALUES (?, ?, ?, ?, ${hasNormalizedText ? '?, ' : ''}?, ?, ?, ?, ?, 1)`,
         [
           id,
           data.type,
           data.state,
           data.rawContent,
+          ...(hasNormalizedText ? [data.normalizedText] : []),
           data.duration ?? null,
           data.fileSize ?? null,
           now,

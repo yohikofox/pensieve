@@ -13,6 +13,7 @@ import { SyncLog } from '../domain/entities/sync-log.entity';
 import { SyncConflictResolver } from '../infrastructure/sync-conflict-resolver';
 import { PushRequestDto } from '../application/dto/push-request.dto';
 import { ConfigService } from '@nestjs/config';
+import { DigestionJobPublisher } from '../../knowledge/application/publishers/digestion-job-publisher.service';
 
 // UUIDs déterministes (reference-data.constants.ts)
 const CAPTURE_STATE_UUID_CAPTURED = 'b0000000-0000-7000-8000-000000000002';
@@ -78,6 +79,10 @@ describe('SyncService', () => {
   const mockSyncLogRepository = {
     create: jest.fn().mockReturnValue({}),
     save: jest.fn().mockResolvedValue({ id: 1 }),
+  };
+
+  const mockDigestionJobPublisher = {
+    publishJobForTextCapture: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockConflictResolver = {
@@ -160,6 +165,7 @@ describe('SyncService', () => {
         { provide: SyncConflictResolver, useValue: mockConflictResolver },
         { provide: DataSource, useValue: mockDataSource },
         { provide: ConfigService, useValue: mockConfigService },
+        { provide: DigestionJobPublisher, useValue: mockDigestionJobPublisher },
       ],
     }).compile();
 
@@ -178,10 +184,12 @@ describe('SyncService', () => {
       });
       mockSyncLogRepository.create.mockReturnValue({});
       mockSyncLogRepository.save.mockResolvedValue({ id: 1 });
-      mockConfigService.get.mockImplementation((key: string, defaultValue = '') => {
-        if (key === 'BETTER_AUTH_URL') return BACKEND_URL;
-        return defaultValue;
-      });
+      mockConfigService.get.mockImplementation(
+        (key: string, defaultValue = '') => {
+          if (key === 'BETTER_AUTH_URL') return BACKEND_URL;
+          return defaultValue;
+        },
+      );
     });
 
     it('should include backend proxy audioUrl in PULL for audio captures with rawContent', async () => {
@@ -200,19 +208,21 @@ describe('SyncService', () => {
 
       mockCaptureRepository.find
         .mockResolvedValueOnce([audioCapture]) // active captures
-        .mockResolvedValueOnce([]);            // deleted captures
+        .mockResolvedValueOnce([]); // deleted captures
 
-      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' },
-      ]);
-      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
-      ]);
+      mockCaptureTypeRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([{ id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' }]);
+      mockCaptureStateRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([
+          { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+        ]);
 
       const result = await service.processPull(userId, { lastPulledAt: 0 });
 
       expect(result.changes['captures']?.updated).toBeDefined();
-      const pulledCapture = result.changes['captures']!.updated[0];
+      const pulledCapture = result.changes['captures'].updated[0];
       // URL must point to backend (not MinIO directly)
       expect(pulledCapture.audioUrl).toBe(
         `${BACKEND_URL}/api/uploads/audio/mobile-uuid`,
@@ -239,12 +249,14 @@ describe('SyncService', () => {
         .mockResolvedValueOnce([textCapture])
         .mockResolvedValueOnce([]);
 
-      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_TYPE_UUID_TEXT, name: 'text' },
-      ]);
-      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
-      ]);
+      mockCaptureTypeRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([{ id: CAPTURE_TYPE_UUID_TEXT, name: 'text' }]);
+      mockCaptureStateRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([
+          { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+        ]);
 
       const result = await service.processPull(userId, { lastPulledAt: 0 });
 
@@ -270,12 +282,14 @@ describe('SyncService', () => {
         .mockResolvedValueOnce([audioCapture])
         .mockResolvedValueOnce([]);
 
-      mockCaptureTypeRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' },
-      ]);
-      mockCaptureStateRepository.findByIds = jest.fn().mockResolvedValue([
-        { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
-      ]);
+      mockCaptureTypeRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([{ id: CAPTURE_TYPE_UUID_AUDIO, name: 'audio' }]);
+      mockCaptureStateRepository.findByIds = jest
+        .fn()
+        .mockResolvedValue([
+          { id: CAPTURE_STATE_UUID_CAPTURED, name: 'captured' },
+        ]);
 
       const result = await service.processPull(userId, { lastPulledAt: 0 });
 
@@ -554,7 +568,9 @@ describe('SyncService', () => {
 
       await service.processPush(userId, dto);
 
-      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith('ready');
+      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith(
+        'ready',
+      );
       const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
       expect(savedRecord.stateId).toBe(CAPTURE_STATE_UUID_READY);
     });
@@ -578,7 +594,9 @@ describe('SyncService', () => {
 
       await service.processPush(userId, dto);
 
-      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith('processing');
+      expect(mockCaptureStateRepository.findByNaturalKey).toHaveBeenCalledWith(
+        'processing',
+      );
       const savedRecord = mockCaptureRepository.save.mock.calls[0][0];
       expect(savedRecord.stateId).toBe(CAPTURE_STATE_UUID_PROCESSING);
     });
@@ -693,6 +711,104 @@ describe('SyncService', () => {
       expect(savedRecord.normalizedText).toBe('Texte transcrit');
       // ID backend préservé
       expect(savedRecord.id).toBe('backend-uuid');
+    });
+
+    it('should NOT call publishJobForTextCapture when pushing an audio capture', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                type: 'audio',
+                state: 'captured',
+                raw_content: '/minio/audio.m4a',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      expect(
+        mockDigestionJobPublisher.publishJobForTextCapture,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should NOT call publishJobForTextCapture when updating an existing text capture', async () => {
+      const existingCapture = {
+        id: 'backend-uuid',
+        clientId: 'mobile-uuid',
+        ownerId: userId,
+        lastModifiedAt: 999000,
+        syncStatusId: CAPTURE_SYNC_STATUS_UUID_ACTIVE,
+      };
+      mockCaptureRepository.findOne.mockResolvedValueOnce(existingCapture);
+      mockCaptureRepository.save.mockResolvedValueOnce(existingCapture);
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid',
+                type: 'text',
+                state: 'captured',
+                raw_content: 'Updated text',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      expect(
+        mockDigestionJobPublisher.publishJobForTextCapture,
+      ).not.toHaveBeenCalled();
+    });
+
+    it('should call publishJobForTextCapture after transaction when a NEW text capture is pushed (AC1)', async () => {
+      mockCaptureRepository.findOne.mockResolvedValueOnce(null);
+      mockCaptureRepository.save.mockResolvedValueOnce({});
+
+      const dto: PushRequestDto = {
+        lastPulledAt: 1000000,
+        changes: {
+          captures: {
+            updated: [
+              {
+                id: 'mobile-uuid-text',
+                type: 'text',
+                state: 'captured',
+                raw_content: 'Ma pensée importante',
+              },
+            ],
+          },
+        },
+      };
+
+      await service.processPush(userId, dto);
+
+      expect(
+        mockDigestionJobPublisher.publishJobForTextCapture,
+      ).toHaveBeenCalledTimes(1);
+      expect(
+        mockDigestionJobPublisher.publishJobForTextCapture,
+      ).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId,
+          type: 'TEXT',
+          state: 'ready',
+          userInitiated: false,
+        }),
+      );
     });
 
     it('should warn but not throw when state is unknown (no DB match)', async () => {

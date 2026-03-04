@@ -195,7 +195,11 @@ export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
     set({
       capture,
       isAudio: capture?.type === "audio",
-      isReady: capture?.state === "ready",
+      // Story 16.2: Text captures are ready as soon as they exist (no transcription step).
+      // Handles both new captures (state='ready') and existing ones (state='captured', backward compat).
+      isReady:
+        capture?.state === "ready" ||
+        (capture?.type === "text" && capture?.state === "captured"),
     }),
 
   setMetadata: (metadata) => set({ metadata }),

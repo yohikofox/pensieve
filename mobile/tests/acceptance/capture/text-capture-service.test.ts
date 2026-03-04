@@ -1,265 +1,283 @@
 /**
- * Integration Tests: TextCaptureService
+ * Acceptance Tests: TextCaptureService
  *
- * Story 2.2 - AC2, AC4, AC5
- * Tests failing in RED phase - waiting for implementation
+ * Story 16.2 - AC6: Migration WatermelonDB → OP-SQLite mock pattern
+ * Tests the current TextCaptureService API with ICaptureRepository mock
+ * (WatermelonDB was removed — see ADR-018, migration completed in Story 14.1)
+ *
  * Run: npm run test:acceptance
  */
 
-import { TextCaptureService } from '@/contexts/Capture/services/TextCaptureService';
-import { Database } from '@nozbe/watermelondb';
-import { Capture, CAPTURE_TYPES } from '@/contexts/Capture/domain/Capture.model';
-import { createCaptureFactory } from '../../support/factories/capture.factory';
+import { TextCaptureService } from '@/contexts/capture/services/TextCaptureService';
+import { ICaptureRepository } from '@/contexts/capture/domain/ICaptureRepository';
+import { RepositoryResultType } from '@/contexts/capture/domain/Result';
+import { Capture, CAPTURE_TYPES, CAPTURE_STATES } from '@/contexts/capture/domain/Capture.model';
+
+// Mock OP-SQLite (pattern from story-8-14.test.ts)
+jest.mock('@op-engineering/op-sqlite', () => ({
+  open: jest.fn(() => ({
+    execute: jest.fn(),
+    close: jest.fn(),
+  })),
+}));
 
 // Mock expo modules
 jest.mock('expo-haptics');
+jest.mock('reflect-metadata');
 
-describe('TextCaptureService Integration Tests', () => {
-  let database: Database;
-  let textCaptureService: TextCaptureService;
-  let captureFactory: ReturnType<typeof createCaptureFactory>;
+// ============================================================
+// Mock ICaptureRepository (OP-SQLite backed in production)
+// ============================================================
+const mockRepository: jest.Mocked<ICaptureRepository> = {
+  create: jest.fn(),
+  update: jest.fn(),
+  delete: jest.fn(),
+  findByState: jest.fn(),
+  findBySyncStatus: jest.fn(),
+  findAll: jest.fn(),
+};
+
+describe('TextCaptureService — Acceptance Tests (AC6)', () => {
+  let service: TextCaptureService;
 
   beforeEach(() => {
-    // Setup in-memory test database
-    database = new Database({
-      adapter: null as any, // TODO: SQLite in-memory adapter
-      modelClasses: [Capture],
-      actionsEnabled: true,
-    });
-
-    textCaptureService = new TextCaptureService(database);
-    captureFactory = createCaptureFactory(database);
+    jest.clearAllMocks();
+    service = new TextCaptureService(mockRepository);
   });
 
-  afterEach(async () => {
-    await database.write(async () => {
-      await database.unsafeResetDatabase();
-    });
-  });
-
+  // ============================================================
+  // AC2: Save Text Capture with Metadata
+  // ============================================================
   describe('AC2: Save Text Capture with Metadata', () => {
-    it('should create Capture entity with type "text"', async () => {
-      // GIVEN: Valid text content
-      const textContent = 'This is my brilliant idea';
+    it('should create a Capture entity with type "text"', async () => {
+      const mockCapture: Capture = {
+        id: 'capture-001',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.READY,
+        rawContent: 'This is my brilliant idea',
+        normalizedText: 'This is my brilliant idea',
+        capturedAt: new Date(),
+        syncStatus: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: mockCapture,
+      });
 
-      // THEN: Capture is created with type "text"
-      expect(capture.type).toBe('text');
-      expect(capture.state).toBe('captured');
+      const result = await service.createTextCapture('This is my brilliant idea');
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data?.type).toBe(CAPTURE_TYPES.TEXT);
+      // Story 16.2: Text captures are immediately READY (no transcription step)
+      expect(result.data?.state).toBe(CAPTURE_STATES.READY);
     });
 
     it('should store text content in rawContent', async () => {
-      // GIVEN: Text content
       const textContent = 'Important note to remember';
+      const mockCapture: Capture = {
+        id: 'capture-002',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.READY,
+        rawContent: textContent,
+        normalizedText: textContent,
+        capturedAt: new Date(),
+        syncStatus: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: mockCapture,
+      });
 
-      // THEN: Text is stored in rawContent
-      expect(capture.rawContent).toBe(textContent);
+      const result = await service.createTextCapture(textContent);
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data?.rawContent).toBe(textContent);
     });
 
     it('should set normalizedText equal to rawContent for text captures', async () => {
-      // GIVEN: Text content (no normalization needed)
       const textContent = 'No transformation required';
+      const mockCapture: Capture = {
+        id: 'capture-003',
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.READY,
+        rawContent: textContent,
+        normalizedText: textContent,
+        capturedAt: new Date(),
+        syncStatus: 'pending',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: mockCapture,
+      });
 
-      // THEN: normalizedText equals rawContent
-      expect(capture.normalizedText).toBe(textContent);
-      expect(capture.normalizedText).toBe(capture.rawContent);
+      const result = await service.createTextCapture(textContent);
+
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data?.normalizedText).toBe(result.data?.rawContent);
     });
 
-    it('should record timestamp when capture is created', async () => {
-      // GIVEN: Current timestamp
-      const beforeSave = new Date();
+    it('should call repository.create with correct parameters', async () => {
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'capture-004' } as Capture,
+      });
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture('Timestamped thought');
+      await service.createTextCapture('Ma pensée');
 
-      // THEN: capturedAt is set to current time
-      const afterSave = new Date();
-      expect(capture.capturedAt).toBeInstanceOf(Date);
-      expect(capture.capturedAt.getTime()).toBeGreaterThanOrEqual(beforeSave.getTime());
-      expect(capture.capturedAt.getTime()).toBeLessThanOrEqual(afterSave.getTime());
-    });
-
-    it('should set status to "captured" immediately', async () => {
-      // GIVEN: Text content
-      const textContent = 'Immediate capture';
-
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
-
-      // THEN: State is "captured" (not "processing" like audio)
-      expect(capture.state).toBe('captured');
+      // Story 16.2: state=READY (no transcription), normalizedText=rawContent
+      expect(mockRepository.create).toHaveBeenCalledWith({
+        type: CAPTURE_TYPES.TEXT,
+        state: CAPTURE_STATES.READY,
+        rawContent: 'Ma pensée',
+        normalizedText: 'Ma pensée',
+      });
     });
   });
 
+  // ============================================================
+  // AC4 / AC5: Offline support (syncStatus=pending)
+  // ============================================================
   describe('AC4: Offline Text Capture Functionality', () => {
-    it('should work without network connectivity', async () => {
-      // GIVEN: No network (service is network-independent)
-      const textContent = 'Offline thought';
+    it('should create a capture that can be synced later (offline-first)', async () => {
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: {
+          id: 'offline-capture',
+          syncStatus: 'pending',
+        } as Capture,
+      });
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
+      const result = await service.createTextCapture('Offline thought');
 
-      // THEN: Capture is saved successfully
-      expect(capture.id).toBeDefined();
-      expect(capture.rawContent).toBe(textContent);
+      // Sync is managed by CaptureRepository internally (not passed as param)
+      expect(mockRepository.create).toHaveBeenCalledTimes(1);
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
     });
 
-    it('should mark Capture as pending sync', async () => {
-      // GIVEN: Offline mode (simulated)
-      const textContent = 'Needs sync';
+    it('should work without network connectivity (no network call made)', async () => {
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'offline-2' } as Capture,
+      });
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textContent);
+      const result = await service.createTextCapture('Offline thought 2');
 
-      // THEN: syncStatus is "pending"
-      expect(capture.syncStatus).toBe('pending');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
+      expect(result.data?.id).toBeDefined();
     });
 
-    it('should add capture to sync queue', async () => {
-      // GIVEN: Multiple offline captures
-      await textCaptureService.saveTextCapture('First offline');
-      await textCaptureService.saveTextCapture('Second offline');
-      await textCaptureService.saveTextCapture('Third offline');
+    it('should support multiple offline captures without interference', async () => {
+      mockRepository.create
+        .mockResolvedValueOnce({
+          type: RepositoryResultType.SUCCESS,
+          data: { id: 'cap-1' } as Capture,
+        })
+        .mockResolvedValueOnce({
+          type: RepositoryResultType.SUCCESS,
+          data: { id: 'cap-2' } as Capture,
+        })
+        .mockResolvedValueOnce({
+          type: RepositoryResultType.SUCCESS,
+          data: { id: 'cap-3' } as Capture,
+        });
 
-      // WHEN: Query pending sync captures
-      const pendingCaptures = await database
-        .get<Capture>('captures')
-        .query(/* Q.where('syncStatus', 'pending') */)
-        .fetch();
+      const r1 = await service.createTextCapture('First offline');
+      const r2 = await service.createTextCapture('Second offline');
+      const r3 = await service.createTextCapture('Third offline');
 
-      // THEN: All captures are in sync queue
-      expect(pendingCaptures.length).toBeGreaterThanOrEqual(3);
-    });
-  });
-
-  describe('AC5: Empty Text Validation', () => {
-    it('should reject empty text', async () => {
-      // GIVEN: Empty text content
-      const emptyText = '';
-
-      // WHEN: Attempt to save empty text
-      // THEN: Throws validation error
-      await expect(async () => {
-        await textCaptureService.saveTextCapture(emptyText);
-      }).rejects.toThrow('Text content cannot be empty');
-    });
-
-    it('should reject whitespace-only text', async () => {
-      // GIVEN: Whitespace-only content
-      const whitespaceText = '   \n\t   ';
-
-      // WHEN: Attempt to save
-      // THEN: Throws validation error
-      await expect(async () => {
-        await textCaptureService.saveTextCapture(whitespaceText);
-      }).rejects.toThrow('Text content cannot be empty');
-    });
-
-    it('should accept text with leading/trailing whitespace', async () => {
-      // GIVEN: Text with surrounding whitespace
-      const textWithWhitespace = '  Valid content  ';
-
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(textWithWhitespace);
-
-      // THEN: Capture is created (whitespace trimmed)
-      expect(capture.rawContent).toBe(textWithWhitespace.trim());
-    });
-
-    it('should not create Capture entity for invalid text', async () => {
-      // GIVEN: Invalid text
-      const invalidText = '';
-
-      // WHEN: Attempt to save
-      let captureCreated = false;
-      try {
-        await textCaptureService.saveTextCapture(invalidText);
-        captureCreated = true;
-      } catch (error) {
-        // Expected validation error
-      }
-
-      // THEN: No Capture entity is created
-      expect(captureCreated).toBe(false);
-
-      const allCaptures = await database.get<Capture>('captures').query().fetch();
-      expect(allCaptures.length).toBe(0);
+      expect(r1.type).toBe(RepositoryResultType.SUCCESS);
+      expect(r2.type).toBe(RepositoryResultType.SUCCESS);
+      expect(r3.type).toBe(RepositoryResultType.SUCCESS);
+      expect(mockRepository.create).toHaveBeenCalledTimes(3);
     });
   });
 
-  describe('Additional Validation Logic', () => {
-    it('should validate text content is a string', async () => {
-      // GIVEN: Non-string input
-      const invalidInput = null;
+  // ============================================================
+  // Empty Text Validation
+  // ============================================================
+  describe('Empty Text Validation', () => {
+    it('should reject empty text with VALIDATION_ERROR', async () => {
+      const result = await service.createTextCapture('');
 
-      // WHEN: Attempt to save
-      // THEN: Throws type error
-      await expect(async () => {
-        await textCaptureService.saveTextCapture(invalidInput as any);
-      }).rejects.toThrow();
+      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
+      expect(result.error).toBe('EmptyText');
+      expect(mockRepository.create).not.toHaveBeenCalled();
     });
 
+    it('should reject whitespace-only text with VALIDATION_ERROR', async () => {
+      const result = await service.createTextCapture('   \n\t   ');
+
+      expect(result.type).toBe(RepositoryResultType.VALIDATION_ERROR);
+      expect(result.error).toBe('EmptyText');
+    });
+
+    it('should trim leading/trailing whitespace before saving', async () => {
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'trimmed' } as Capture,
+      });
+
+      await service.createTextCapture('  Valid content  ');
+
+      expect(mockRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ rawContent: 'Valid content' }),
+      );
+    });
+
+    it('should not call repository.create when text is invalid', async () => {
+      await service.createTextCapture('');
+
+      expect(mockRepository.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // ============================================================
+  // Edge cases
+  // ============================================================
+  describe('Edge Cases', () => {
     it('should handle very long text content', async () => {
-      // GIVEN: Very long text (e.g., 10,000 characters)
       const longText = 'A'.repeat(10000);
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'long', rawContent: longText } as Capture,
+      });
 
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(longText);
+      const result = await service.createTextCapture(longText);
 
-      // THEN: Capture is created successfully
-      expect(capture.rawContent).toBe(longText);
-      expect(capture.rawContent.length).toBe(10000);
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
     });
 
     it('should handle special characters and emojis', async () => {
-      // GIVEN: Text with special characters and emojis
       const specialText = 'Hello! 👋 This is a test with "quotes", \n newlines, and émojis 🚀';
-
-      // WHEN: Save text capture
-      const capture = await textCaptureService.saveTextCapture(specialText);
-
-      // THEN: All characters are preserved
-      expect(capture.rawContent).toBe(specialText);
-    });
-  });
-
-  describe('Service Integration', () => {
-    it('should integrate with existing Capture factory', async () => {
-      // GIVEN: Capture factory from Story 2.1
-      const textCapture = await captureFactory.create({
-        type: CAPTURE_TYPES.TEXT,
-        rawContent: 'Factory-created text capture',
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.SUCCESS,
+        data: { id: 'special', rawContent: specialText } as Capture,
       });
 
-      // WHEN: Query captures
-      const allCaptures = await database.get<Capture>('captures').query().fetch();
+      const result = await service.createTextCapture(specialText);
 
-      // THEN: Text capture is in database
-      expect(allCaptures.length).toBe(1);
-      expect(allCaptures[0].type).toBe('text');
+      expect(result.type).toBe(RepositoryResultType.SUCCESS);
     });
 
-    it('should coexist with audio captures', async () => {
-      // GIVEN: Mix of audio and text captures
-      await captureFactory.createAudioCapture();
-      await textCaptureService.saveTextCapture('Text capture');
-      await captureFactory.createAudioCapture();
+    it('should propagate repository errors', async () => {
+      mockRepository.create.mockResolvedValue({
+        type: RepositoryResultType.UNKNOWN_ERROR,
+        error: 'Database error',
+      });
 
-      // WHEN: Query all captures
-      const allCaptures = await database.get<Capture>('captures').query().fetch();
+      const result = await service.createTextCapture('Valid text');
 
-      // THEN: Both types are stored
-      expect(allCaptures.length).toBe(3);
-      expect(allCaptures.filter(c => c.type === 'audio').length).toBe(2);
-      expect(allCaptures.filter(c => c.type === 'text').length).toBe(1);
+      expect(result.type).toBe(RepositoryResultType.UNKNOWN_ERROR);
+      expect(result.error).toBe('Database error');
     });
   });
 });

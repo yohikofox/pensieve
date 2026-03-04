@@ -12,6 +12,7 @@ import { Capture } from '../capture/domain/entities/capture.entity';
 import { CaptureType } from '../capture/domain/entities/capture-type.entity';
 import { CaptureState } from '../capture/domain/entities/capture-state.entity';
 import { CaptureModule } from '../capture/capture.module';
+import { KnowledgeModule } from '../knowledge/knowledge.module';
 
 /**
  * Sync Module (AC1 - Task 1.1)
@@ -41,6 +42,7 @@ import { CaptureModule } from '../capture/capture.module';
       CaptureState,
     ]),
     CaptureModule,
+    KnowledgeModule, // Story 16.2: Expose DigestionJobPublisher pour SyncService (AC1)
     // Note: BetterAuthGuard is provided by AuthModule (ADR-029)
   ],
   controllers: [SyncController],

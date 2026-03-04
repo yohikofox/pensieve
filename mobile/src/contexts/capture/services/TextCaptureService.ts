@@ -58,13 +58,13 @@ export class TextCaptureService {
 
     // AC2: Create Capture entity with type='text'
     // AC4: Set syncStatus='pending' for offline support
-    // For text captures, normalizedText = rawContent (no transcription/processing needed)
+    // Story 16.2: Text captures are immediately ready — no transcription step needed.
+    // normalizedText = rawContent (text is already the final content for AI analysis).
     const result = await this.repository.create({
       type: CAPTURE_TYPES.TEXT,
-      state: CAPTURE_STATES.CAPTURED,
+      state: CAPTURE_STATES.READY,
       rawContent: trimmedText,
       normalizedText: trimmedText,
-      syncStatus: 'pending',
     });
 
     return result;
