@@ -6,7 +6,7 @@
  * Subtask 4.2-4.9: Render checkbox, description, deadline, priority, styling
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
@@ -15,6 +15,8 @@ import { useTheme } from '../../../hooks/useTheme';
 import { colors } from '../../../design-system/tokens';
 import { CompletionAnimation } from './CompletionAnimation';
 import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
+import { getUrgencyLevel } from '../utils/getUrgencyLevel';
+import { getUrgencyBorderColor } from '../utils/getUrgencyBorderColor';
 
 interface TodoItemProps {
   todo: Todo;
@@ -82,11 +84,27 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap, isHig
   const priorityColor = getPriorityColor(todo.priority);
   const deadlineColor = getDeadlineColor(deadlineFormat, isDark);
 
+  // Story 8.15 — AC7: Cohérence visuelle dans le Feed inline
+  const urgencyBorderColor = useMemo(
+    () => getUrgencyBorderColor(getUrgencyLevel(todo)),
+    [todo.deadline, todo.priority, todo.status],
+  );
+
   return (
+    // Story 8.15: Wrapper avec barre gauche colorée (même pattern que ActionsTodoCard)
+    <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+      <View
+        style={{
+          width: 4,
+          borderTopLeftRadius: 8,
+          borderBottomLeftRadius: 8,
+          backgroundColor: urgencyBorderColor,
+        }}
+      />
     <TouchableOpacity
       style={[
         styles.container,
-        { backgroundColor: bgColor },
+        { backgroundColor: bgColor, flex: 1, marginBottom: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
         isCompleted && styles.completedContainer,
         isHighlighted && styles.highlightedContainer,
         isHighlighted && {
@@ -172,6 +190,7 @@ export const TodoItem: React.FC<TodoItemProps> = ({ todo, onToggle, onTap, isHig
         </View>
       </View>
     </TouchableOpacity>
+    </View>
   );
 };
 

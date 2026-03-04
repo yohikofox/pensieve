@@ -12,7 +12,7 @@
  * Code Review Fix #7: Haptic feedback respects user preferences
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { View, Text, Pressable, Alert, Animated as RNAnimated, StyleSheet, TouchableOpacity } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
@@ -28,6 +28,9 @@ import { useSettingsStore } from '../../../stores/settingsStore';
 import { useDeleteTodo } from '../hooks/useDeleteTodo';
 import { useAbandonTodo } from '../hooks/useAbandonTodo';
 import { useReactivateTodo } from '../hooks/useReactivateTodo';
+import { useTogglePriority } from '../hooks/useTogglePriority';
+import { getUrgencyLevel } from '../utils/getUrgencyLevel';
+import { getUrgencyBorderColor } from '../utils/getUrgencyBorderColor';
 
 interface ActionsTodoCardProps {
   todo: Todo;
@@ -50,6 +53,7 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   const deleteTodo = useDeleteTodo();
   const abandonTodo = useAbandonTodo();
   const reactivateTodo = useReactivateTodo();
+  const togglePriority = useTogglePriority();
 
   // Subtask 2.4 + 2.5 + 2.6: Confirmation dialog pour le swipe-to-delete (AC2, AC3)
   const handleDeleteWithConfirmation = () => {
@@ -193,6 +197,24 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     setIsDetailVisible(true);
   };
 
+  // Story 8.15 — AC5: Toggle prioritaire (high ↔ medium)
+  const handleTogglePriority = () => {
+    if (readonly) return;
+    togglePriority.mutate(
+      { todoId: todo.id, currentPriority: todo.priority },
+      {
+        onSuccess: async () => {
+          if (hapticFeedbackEnabled) {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          }
+        },
+        onError: (error) => {
+          console.error('[ActionsTodoCard] Failed to toggle priority:', error);
+        },
+      },
+    );
+  };
+
   const getPriorityColor = () => {
     switch (todo.priority) {
       case 'high':
@@ -215,22 +237,41 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     }
   };
 
+  // Story 8.15: Calcul du niveau d'urgence pour la barre gauche colorée
+  const urgencyBorderColor = useMemo(
+    () => getUrgencyBorderColor(getUrgencyLevel(todo)),
+    [todo.deadline, todo.priority, todo.status],
+  );
+
   return (
     <>
-      {/* Subtask 2.3 + 2.8: Swipeable désactivé en mode readonly (corbeille) */}
-      <Swipeable
-        ref={swipeableRef}
-        enabled={!readonly}
-        friction={2}
-        overshootRight={false}
-        failOffsetY={[-15, 15]}
-        rightThreshold={40}
-        renderRightActions={renderRightActions}
-      >
-      <Pressable
-        onPress={handleCardPress}
-        className="bg-bg-card p-4 mb-2 rounded-lg active:opacity-80"
-      >
+      {/* Story 8.15: Wrapper outer avec barre gauche colorée (Option B — style Notion) */}
+      <View style={{ flexDirection: 'row', marginBottom: 8 }}>
+        {/* Left border urgency indicator */}
+        <View
+          style={{
+            width: 4,
+            borderTopLeftRadius: 8,
+            borderBottomLeftRadius: 8,
+            backgroundColor: urgencyBorderColor,
+          }}
+        />
+        {/* Story 8.14 + 8.15: Swipeable désactivé en mode readonly (corbeille) */}
+        <Swipeable
+          ref={swipeableRef}
+          enabled={!readonly}
+          friction={2}
+          overshootRight={false}
+          failOffsetY={[-15, 15]}
+          rightThreshold={40}
+          renderRightActions={renderRightActions}
+          containerStyle={{ flex: 1 }}
+        >
+          <Pressable
+            onPress={handleCardPress}
+            className="bg-bg-card p-4 rounded-r-lg active:opacity-80"
+            style={{ flex: 1, paddingRight: 40 }}
+          >
         <View className="flex-row items-start">
           {/* Checkbox ou icône corbeille (readonly = supprimé par sync) */}
           {readonly ? (
@@ -325,6 +366,21 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
           </View>
         </View>
 
+        {/* Story 8.15 — AC5: Bouton star toggle "Prioritaire" */}
+        {!readonly && (
+          <Pressable
+            onPress={handleTogglePriority}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            style={{ position: 'absolute', top: 12, right: 12 }}
+          >
+            <Feather
+              name="star"
+              size={16}
+              color={todo.priority === 'high' ? '#F97316' : '#9ca3af'}
+            />
+          </Pressable>
+        )}
+
         {/* Task 4: Garden Celebration Animation (AC9 - Jardin d'idées) */}
         {showGardenCelebration && (
           <GardenCelebrationAnimation
@@ -332,8 +388,9 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
             onComplete={() => setShowGardenCelebration(false)}
           />
         )}
-      </Pressable>
-      </Swipeable>
+          </Pressable>
+        </Swipeable>
+      </View>
 
       {/* Detail Popover */}
       <TodoDetailPopover

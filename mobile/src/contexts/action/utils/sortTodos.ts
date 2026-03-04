@@ -1,5 +1,6 @@
 import { Todo } from "../domain/Todo.model";
 import { groupTodosByDeadline, TodoSection } from "./groupTodosByDeadline";
+import { getUrgencyLevel, UrgencyLevel } from "./getUrgencyLevel";
 
 export type SortType = "default" | "priority" | "createdDate" | "alphabetical";
 
@@ -21,27 +22,29 @@ export const sortTodos = (
       // Returns sections: Overdue → Today → This Week → Later → No Deadline
       return groupTodosByDeadline(todos);
 
-    case "priority":
-      // AC6: Sort by priority (High → Medium → Low), secondary by deadline
+    case "priority": {
+      // Story 8.15 AC6: Sort by urgency level (En retard → Prioritaires → Approchantes → Normales)
+      // Pre-compute urgency map to avoid O(N log N) calls to getUrgencyLevel/formatDeadline
+      const URGENCY_ORDER: Record<UrgencyLevel, number> = {
+        overdue:     0,
+        prioritaire: 1,
+        approaching: 2,
+        normal:      3,
+      };
+      const urgencyMap = new Map(todos.map((t) => [t.id, URGENCY_ORDER[getUrgencyLevel(t)]]));
       return [...todos].sort((a, b) => {
-        const priorityOrder: Record<string, number> = {
-          high: 0,
-          medium: 1,
-          low: 2,
-        };
+        const urgencyDiff = urgencyMap.get(a.id)! - urgencyMap.get(b.id)!;
+        if (urgencyDiff !== 0) return urgencyDiff;
 
-        // Primary sort: priority
-        const priorityDiff =
-          priorityOrder[a.priority] - priorityOrder[b.priority];
-        if (priorityDiff !== 0) {
-          return priorityDiff;
-        }
+        // Secondary: deadline (nulls last)
+        if (a.deadline && b.deadline) return a.deadline - b.deadline;
+        if (a.deadline) return -1;
+        if (b.deadline) return 1;
 
-        // Secondary sort: deadline (nulls last)
-        const aDeadline = a.deadline ?? Infinity;
-        const bDeadline = b.deadline ?? Infinity;
-        return aDeadline - bDeadline;
+        // Tertiary: createdAt
+        return a.createdAt - b.createdAt;
       });
+    }
 
     case "createdDate":
       // AC7: Sort by createdAt DESC (newest first)
