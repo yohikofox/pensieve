@@ -27,6 +27,7 @@ export interface FilterTabsProps {
     all: number;
     active: number;
     completed: number;
+    abandoned: number;
     deleted: number;
   };
 }
@@ -148,6 +149,42 @@ export const FilterTabs: React.FC<FilterTabsProps> = ({
           </Text>
         </View>
       </TouchableOpacity>
+
+      {/* Tab: Abandonnées (Story 8.14 - AC4, visible seulement si count > 0) */}
+      {counts.abandoned > 0 && (
+        <TouchableOpacity
+          testID="filter-tab-abandoned"
+          style={[styles.tab, activeFilter === 'abandoned' && styles.tabActive]}
+          onPress={() => handleTabPress('abandoned')}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: activeFilter === 'abandoned' }}
+          accessibilityLabel={`Abandonnées (${counts.abandoned})`}
+        >
+          <Text
+            style={[
+              styles.tabText,
+              activeFilter === 'abandoned' && styles.tabTextActive,
+            ]}
+          >
+            🚫 Abandonnées
+          </Text>
+          <View
+            style={[
+              styles.badge,
+              activeFilter === 'abandoned' && styles.badgeActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.badgeText,
+                activeFilter === 'abandoned' && styles.badgeTextActive,
+              ]}
+            >
+              {counts.abandoned}
+            </Text>
+          </View>
+        </TouchableOpacity>
+      )}
 
       {/* Tab: Corbeille (visible uniquement si des todos sont soft-deletés) */}
       {counts.deleted > 0 && (

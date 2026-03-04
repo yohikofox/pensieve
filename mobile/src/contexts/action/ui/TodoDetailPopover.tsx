@@ -29,6 +29,8 @@ import type { Todo, TodoPriority } from '../domain/Todo.model';
 import { useUpdateTodo } from '../hooks/useUpdateTodo';
 import { useToggleTodoStatus } from '../hooks/useToggleTodoStatus';
 import { useDeleteTodo } from '../hooks/useDeleteTodo';
+import { useAbandonTodo } from '../hooks/useAbandonTodo';
+import { useReactivateTodo } from '../hooks/useReactivateTodo';
 import { formatDeadline, getDeadlineColor } from '../utils/formatDeadline';
 import { TOKENS } from '../../../infrastructure/di/tokens';
 import type { ICaptureRepository } from '../../capture/domain/ICaptureRepository';
@@ -73,6 +75,8 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
   const updateTodo = useUpdateTodo();
   const toggleStatus = useToggleTodoStatus();
   const deleteTodo = useDeleteTodo();
+  const abandonTodo = useAbandonTodo();
+  const reactivateTodo = useReactivateTodo();
 
   // Local state for editing
   const [description, setDescription] = useState(todo.description);
@@ -216,6 +220,24 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
         ]
       );
     }
+  };
+
+  // Story 8.14 AC3: Abandon todo (no confirmation — reversible)
+  const handleAbandon = () => {
+    abandonTodo.mutate(todo.id, {
+      onSuccess: () => {
+        // Stay in popover, UI updates via React Query invalidation
+      },
+    });
+  };
+
+  // Story 8.14 AC5: Reactivate an abandoned todo
+  const handleReactivate = () => {
+    reactivateTodo.mutate(todo.id, {
+      onSuccess: () => {
+        // Stay in popover, UI updates via React Query invalidation
+      },
+    });
   };
 
   const handleDelete = () => {
@@ -374,21 +396,23 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
               </View>
             </View>
 
-            {/* Subtask 6.6: Complete/incomplete toggle */}
-            <View style={styles.section}>
-              <View style={styles.toggleRow}>
-                <Text style={styles.label}>Mark as completed</Text>
-                <Switch
-                  value={isCompleted}
-                  onValueChange={handleToggleComplete}
-                  trackColor={{
-                    false: isDark ? colors.neutral[700] : colors.neutral[300],
-                    true: colors.success[isDark ? 500 : 600],
-                  }}
-                  thumbColor={isCompleted ? colors.neutral[0] : colors.neutral[100]}
-                />
+            {/* Subtask 6.6: Complete/incomplete toggle — hidden if abandoned (Story 8.14 AC3) */}
+            {todo.status !== 'abandoned' && (
+              <View style={styles.section}>
+                <View style={styles.toggleRow}>
+                  <Text style={styles.label}>Mark as completed</Text>
+                  <Switch
+                    value={isCompleted}
+                    onValueChange={handleToggleComplete}
+                    trackColor={{
+                      false: isDark ? colors.neutral[700] : colors.neutral[300],
+                      true: colors.success[isDark ? 500 : 600],
+                    }}
+                    thumbColor={isCompleted ? colors.neutral[0] : colors.neutral[100]}
+                  />
+                </View>
               </View>
-            </View>
+            )}
 
             {/* Subtask 6.7: View Origin button (FR20) */}
             <View style={styles.section}>
@@ -398,6 +422,32 @@ export const TodoDetailPopover: React.FC<TodoDetailPopoverProps> = ({
               >
                 <Text style={styles.viewOriginText}>📍 View Origin Capture</Text>
               </TouchableOpacity>
+            </View>
+
+            {/* Story 8.14 AC3/AC5: Abandon or Reactivate button */}
+            <View style={styles.section}>
+              {todo.status === 'abandoned' ? (
+                <>
+                  <View style={styles.abandonedBadge}>
+                    <Text style={styles.abandonedBadgeText}>🚫 Tâche abandonnée</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={[styles.reactivateButton, reactivateTodo.isPending && { opacity: 0.5 }]}
+                    onPress={handleReactivate}
+                    disabled={reactivateTodo.isPending}
+                  >
+                    <Text style={styles.reactivateButtonText}>↩️ Reprendre cette tâche</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity
+                  style={[styles.abandonButton, abandonTodo.isPending && { opacity: 0.5 }]}
+                  onPress={handleAbandon}
+                  disabled={abandonTodo.isPending}
+                >
+                  <Text style={styles.abandonButtonText}>🚫 Abandonner cette tâche</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* Delete button (AC4) */}
@@ -606,6 +656,46 @@ const createStyles = (isDark: boolean, colorScheme: ColorScheme) => {
       fontSize: 16,
       fontWeight: '600',
       color: colors.neutral[0],
+    },
+    // Story 8.14: Abandon / Reactivate styles
+    abandonButton: {
+      backgroundColor: isDark ? '#431407' : '#fff7ed',
+      borderRadius: 8,
+      padding: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#f97316',
+      marginBottom: 8,
+    },
+    abandonButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#f97316',
+    },
+    abandonedBadge: {
+      backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100],
+      borderRadius: 8,
+      padding: 12,
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    abandonedBadgeText: {
+      fontSize: 14,
+      fontWeight: '500',
+      color: isDark ? colors.neutral[400] : colors.neutral[500],
+    },
+    reactivateButton: {
+      backgroundColor: isDark ? '#052e16' : '#f0fdf4',
+      borderRadius: 8,
+      padding: 14,
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: '#22c55e',
+    },
+    reactivateButtonText: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#22c55e',
     },
     deleteButton: {
       backgroundColor: isDark ? colors.error[900] : colors.error[50],

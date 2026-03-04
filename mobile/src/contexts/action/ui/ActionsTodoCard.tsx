@@ -26,6 +26,8 @@ import { GardenCelebrationAnimation } from './GardenCelebrationAnimation';
 import { TodoDetailPopover } from './TodoDetailPopover';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import { useDeleteTodo } from '../hooks/useDeleteTodo';
+import { useAbandonTodo } from '../hooks/useAbandonTodo';
+import { useReactivateTodo } from '../hooks/useReactivateTodo';
 
 interface ActionsTodoCardProps {
   todo: Todo;
@@ -46,6 +48,8 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   const hapticFeedbackEnabled = useSettingsStore((state) => state.hapticFeedbackEnabled);
   const swipeableRef = useRef<Swipeable>(null);
   const deleteTodo = useDeleteTodo();
+  const abandonTodo = useAbandonTodo();
+  const reactivateTodo = useReactivateTodo();
 
   // Subtask 2.4 + 2.5 + 2.6: Confirmation dialog pour le swipe-to-delete (AC2, AC3)
   const handleDeleteWithConfirmation = () => {
@@ -75,36 +79,72 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
     );
   };
 
-  // Subtask 2.3: Render de la zone d'action rouge (AC1)
+  // Story 8.14: Render swipe actions (abandon/reactivate + delete)
   const renderRightActions = (
     _progress: RNAnimated.AnimatedInterpolation<number>,
     dragX: RNAnimated.AnimatedInterpolation<number>,
   ) => {
+    const totalWidth = 2 * 90;
+
     const translateX = dragX.interpolate({
-      inputRange: [-90, 0],
-      outputRange: [0, 90],
+      inputRange: [-totalWidth, 0],
+      outputRange: [0, totalWidth],
       extrapolate: 'clamp',
     });
 
+    if (todo.status === 'abandoned') {
+      // Show: [Réactiver (green)] [Supprimer (red)]
+      return (
+        <RNAnimated.View style={[swipeStyles.swipeActionsContainer, { width: totalWidth, transform: [{ translateX }] }]}>
+          <TouchableOpacity
+            style={[swipeStyles.swipeActionButton, swipeStyles.reactivateAction]}
+            onPress={() => reactivateTodo.mutate(todo.id)}
+          >
+            <Text style={swipeStyles.swipeActionEmoji}>↩️</Text>
+            <Text style={swipeStyles.swipeActionLabel}>Réactiver</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[swipeStyles.swipeActionButton, swipeStyles.deleteActionCompact]}
+            onPress={handleDeleteWithConfirmation}
+          >
+            <Text style={swipeStyles.swipeActionEmoji}>🗑️</Text>
+            <Text style={swipeStyles.swipeActionLabel}>Supprimer</Text>
+          </TouchableOpacity>
+        </RNAnimated.View>
+      );
+    }
+
+    // Show: [Abandonner (orange)] [Supprimer (red)]
     return (
-      <RNAnimated.View style={[swipeStyles.deleteAction, { transform: [{ translateX }] }]}>
+      <RNAnimated.View style={[swipeStyles.swipeActionsContainer, { width: totalWidth, transform: [{ translateX }] }]}>
         <TouchableOpacity
-          style={swipeStyles.deleteActionButton}
+          style={[swipeStyles.swipeActionButton, swipeStyles.abandonAction]}
+          onPress={() => abandonTodo.mutate(todo.id)}
+        >
+          <Text style={swipeStyles.swipeActionEmoji}>🚫</Text>
+          <Text style={swipeStyles.swipeActionLabel}>Abandonner</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[swipeStyles.swipeActionButton, swipeStyles.deleteActionCompact]}
           onPress={handleDeleteWithConfirmation}
         >
-          <Text style={swipeStyles.deleteActionEmoji}>🗑️</Text>
-          <Text style={swipeStyles.deleteActionLabel}>Supprimer</Text>
+          <Text style={swipeStyles.swipeActionEmoji}>🗑️</Text>
+          <Text style={swipeStyles.swipeActionLabel}>Supprimer</Text>
         </TouchableOpacity>
       </RNAnimated.View>
     );
   };
 
-  // Task 3: Strikethrough animation with Reanimated
-  const opacity = useSharedValue(todo.status === 'completed' ? 0.5 : 1.0);
+  // Task 3 + Story 8.14 Task 5: Opacity animation for completed/abandoned states
+  const getOpacityForStatus = () => {
+    if (todo.status === 'completed') return 0.5;
+    if (todo.status === 'abandoned') return 0.6;
+    return 1.0;
+  };
+  const opacity = useSharedValue(getOpacityForStatus());
 
   useEffect(() => {
-    // Animate opacity when status changes
-    opacity.value = withTiming(todo.status === 'completed' ? 0.5 : 1.0, {
+    opacity.value = withTiming(getOpacityForStatus(), {
       duration: 200,
     });
   }, [todo.status]);
@@ -197,6 +237,11 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
             <View className="mr-3 mt-0.5 w-6 h-6 items-center justify-center">
               <Feather name="trash-2" size={18} color="#9ca3af" />
             </View>
+          ) : todo.status === 'abandoned' ? (
+            // Story 8.14 Task 5: Abandoned icon (not a checkbox, not tappable)
+            <View className="mr-3 mt-0.5 w-6 h-6 items-center justify-center">
+              <Text style={swipeStyles.abandonedIcon}>🚫</Text>
+            </View>
           ) : (
             <Pressable
               onPress={handleToggle}
@@ -221,9 +266,12 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
 
           {/* Content */}
           <View className="flex-1">
-            {/* Description with animated strikethrough */}
+            {/* Description with animated strikethrough / abandoned muted style */}
             <Animated.Text
-              style={animatedTextStyle}
+              style={[
+                animatedTextStyle,
+                todo.status === 'abandoned' && swipeStyles.abandonedText,
+              ]}
               className={`text-text-primary text-base mb-1 ${
                 todo.status === 'completed' ? 'line-through' : ''
               }`}
@@ -297,29 +345,48 @@ export const ActionsTodoCard: React.FC<ActionsTodoCardProps> = ({
   );
 };
 
+// Story 8.14: Color constants for abandoned state
+const ABANDONED_ORANGE = '#F97316'; // Orange-500
+const REACTIVATE_GREEN = '#22c55e'; // Green-500
+const DELETE_RED = '#ef4444'; // Red-500
+
 const swipeStyles = StyleSheet.create({
-  deleteAction: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: 90,
-    backgroundColor: '#ef4444',
+  // Story 8.14: Multi-button swipe container
+  swipeActionsContainer: {
+    flexDirection: 'row',
     marginBottom: 8,
     borderRadius: 8,
+    overflow: 'hidden',
   },
-  deleteActionButton: {
+  swipeActionButton: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    width: 90,
   },
-  deleteActionEmoji: {
-    fontSize: 20,
+  abandonAction: {
+    backgroundColor: ABANDONED_ORANGE,
+  },
+  reactivateAction: {
+    backgroundColor: REACTIVATE_GREEN,
+  },
+  deleteActionCompact: {
+    backgroundColor: DELETE_RED,
+  },
+  swipeActionEmoji: {
+    fontSize: 18,
     color: '#ffffff',
   },
-  deleteActionLabel: {
-    fontSize: 12,
+  swipeActionLabel: {
+    fontSize: 11,
     fontWeight: '600',
     color: '#ffffff',
-    marginTop: 4,
+    marginTop: 3,
+  },
+  // Story 8.14 Task 5: Abandoned visual state
+  abandonedIcon: {
+    fontSize: 16,
+  },
+  abandonedText: {
+    color: '#9ca3af', // neutral-400: muted, no strikethrough
   },
 });

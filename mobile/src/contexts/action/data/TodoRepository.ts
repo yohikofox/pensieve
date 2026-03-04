@@ -368,20 +368,22 @@ export class TodoRepository implements ITodoRepository {
     all: number;
     active: number;
     completed: number;
+    abandoned: number;
     deleted: number;
   }> {
     const result = database.execute(
       `SELECT
-        SUM(CASE WHEN _status = 'active' THEN 1 ELSE 0 END) as all_count,
+        SUM(CASE WHEN _status = 'active' AND status != 'abandoned' THEN 1 ELSE 0 END) as all_count,
         SUM(CASE WHEN status = 'todo' AND _status = 'active' THEN 1 ELSE 0 END) as active_count,
         SUM(CASE WHEN status = 'completed' AND _status = 'active' THEN 1 ELSE 0 END) as completed_count,
+        SUM(CASE WHEN status = 'abandoned' AND _status = 'active' THEN 1 ELSE 0 END) as abandoned_count,
         SUM(CASE WHEN _status = 'deleted' THEN 1 ELSE 0 END) as deleted_count
        FROM todos`,
     );
 
     const rows = result.rows || [];
     if (rows.length === 0) {
-      return { all: 0, active: 0, completed: 0, deleted: 0 };
+      return { all: 0, active: 0, completed: 0, abandoned: 0, deleted: 0 };
     }
 
     const row = rows[0];
@@ -389,6 +391,7 @@ export class TodoRepository implements ITodoRepository {
       all: (row.all_count as number) || 0,
       active: (row.active_count as number) || 0,
       completed: (row.completed_count as number) || 0,
+      abandoned: (row.abandoned_count as number) || 0,
       deleted: (row.deleted_count as number) || 0,
     };
   }

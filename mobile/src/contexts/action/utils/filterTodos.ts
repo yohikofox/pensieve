@@ -1,6 +1,6 @@
 import { Todo } from "../domain/Todo.model";
 
-export type FilterType = "all" | "active" | "completed" | "trash";
+export type FilterType = "all" | "active" | "completed" | "trash" | "abandoned";
 
 /**
  * Filter todos by status
@@ -12,11 +12,12 @@ export type FilterType = "all" | "active" | "completed" | "trash";
  */
 export const filterTodos = (todos: Todo[], filter: FilterType): Todo[] => {
   switch (filter) {
-    case "all":
+    case "all": {
       // AC4: Show active first, then completed
       const active = todos.filter((t) => t.status === "todo");
       const completed = todos.filter((t) => t.status === "completed");
       return [...active, ...completed];
+    }
 
     case "active":
       // AC2: Only incomplete todos (status='todo')
@@ -31,6 +32,10 @@ export const filterTodos = (todos: Todo[], filter: FilterType): Todo[] => {
           const bTime = b.completedAt ?? 0;
           return bTime - aTime; // DESC: most recent first
         });
+
+    case "abandoned":
+      // Story 8.14 - AC4: Only abandoned todos
+      return todos.filter((t) => t.status === "abandoned");
 
     case "trash":
       // Pre-filtered from DB (_status = 'deleted'), passthrough

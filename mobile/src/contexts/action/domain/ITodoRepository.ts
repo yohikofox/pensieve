@@ -116,6 +116,7 @@ export interface ITodoRepository {
     all: number;
     active: number;
     completed: number;
+    abandoned: number;
     deleted: number;
   }>;
 
