@@ -8,9 +8,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  *    (AppBaseEntity uses @PrimaryColumn, not @PrimaryGeneratedColumn)
  * 2. Add "deletedAt" column (TIMESTAMPTZ, nullable) for soft delete support
  */
-export class AddNotificationSoftDelete1771900000001
-  implements MigrationInterface
-{
+export class AddNotificationSoftDelete1771900000001 implements MigrationInterface {
   name = 'AddNotificationSoftDelete1771900000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

@@ -26,20 +26,25 @@ export class UserFeatureAssignmentRepository {
   ) {}
 
   async findByUserId(userId: string): Promise<AssignmentResult[]> {
-    const rows: Array<{ featureKey: string; value: boolean }> = await this.repo.query(
-      `SELECT f.key AS "featureKey", ufa.value
+    const rows: Array<{ featureKey: string; value: boolean }> =
+      await this.repo.query(
+        `SELECT f.key AS "featureKey", ufa.value
        FROM user_feature_assignments ufa
        INNER JOIN features f ON f.id = ufa.feature_id AND f.deleted_at IS NULL
        WHERE ufa.user_id = $1`,
-      [userId],
-    );
+        [userId],
+      );
     return rows;
   }
 
   /**
    * Upsert une assignation directe user → feature (Story 24.2 AC2)
    */
-  async upsert(userId: string, featureId: string, value: boolean): Promise<void> {
+  async upsert(
+    userId: string,
+    featureId: string,
+    value: boolean,
+  ): Promise<void> {
     await this.repo.query(
       `INSERT INTO user_feature_assignments (id, user_id, feature_id, value, created_at)
        VALUES ($1, $2, $3, $4, NOW())

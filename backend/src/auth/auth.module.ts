@@ -34,14 +34,19 @@ export class AuthModule implements OnModuleInit {
 
   onModuleInit(): void {
     // Validate required env vars at startup — fail fast rather than silently at runtime
-    if (!process.env.BETTER_AUTH_SECRET || process.env.BETTER_AUTH_SECRET.length < 32) {
+    if (
+      !process.env.BETTER_AUTH_SECRET ||
+      process.env.BETTER_AUTH_SECRET.length < 32
+    ) {
       throw new Error(
         'BETTER_AUTH_SECRET is missing or too short (minimum 32 chars). ' +
           'Generate one with: openssl rand -hex 32',
       );
     }
     if (!process.env.BETTER_AUTH_URL) {
-      this.logger.warn('BETTER_AUTH_URL is not set — email verification links may be invalid');
+      this.logger.warn(
+        'BETTER_AUTH_URL is not set — email verification links may be invalid',
+      );
     }
 
     setEmailService(this.emailService);

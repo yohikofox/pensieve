@@ -90,7 +90,8 @@ export class NotificationRepository implements INotificationRepository {
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - olderThanDays);
 
-    const result = await this.repository.delete({ // ADR-026 exception: purge opérationnelle RGPD — suppression physique intentionnelle des vieilles notifications (archivage > X jours, pas de valeur audit)
+    const result = await this.repository.delete({
+      // ADR-026 exception: purge opérationnelle RGPD — suppression physique intentionnelle des vieilles notifications (archivage > X jours, pas de valeur audit)
       createdAt: LessThan(cutoffDate),
     });
 

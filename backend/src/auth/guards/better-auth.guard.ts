@@ -33,7 +33,7 @@ export class BetterAuthGuard implements CanActivate {
     }>();
 
     const session = await this.authApi.getSession({
-      headers: new Headers(request.headers as Record<string, string>),
+      headers: new Headers(request.headers),
     });
 
     if (!session) {
@@ -43,7 +43,9 @@ export class BetterAuthGuard implements CanActivate {
     request.user = {
       id: session.user.id,
       email: session.user.email,
-      role: (session.user as { id: string; email: string; role?: string }).role ?? 'user',
+      role:
+        (session.user as { id: string; email: string; role?: string }).role ??
+        'user',
     };
 
     return true;

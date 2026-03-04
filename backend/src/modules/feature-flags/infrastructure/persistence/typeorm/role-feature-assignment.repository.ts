@@ -22,8 +22,9 @@ export class RoleFeatureAssignmentRepository {
   ) {}
 
   async findByUserId(userId: string): Promise<AssignmentResult[]> {
-    const rows: Array<{ featureKey: string; value: boolean }> = await this.dataSource.query(
-      `SELECT f.key AS "featureKey", rfa.value
+    const rows: Array<{ featureKey: string; value: boolean }> =
+      await this.dataSource.query(
+        `SELECT f.key AS "featureKey", rfa.value
        FROM role_feature_assignments rfa
        INNER JOIN features f ON f.id = rfa.feature_id AND f.deleted_at IS NULL
        WHERE rfa.role_id IN (
@@ -32,8 +33,8 @@ export class RoleFeatureAssignmentRepository {
          WHERE user_id = $1
            AND (expires_at IS NULL OR expires_at > NOW())
        )`,
-      [userId],
-    );
+        [userId],
+      );
     return rows;
   }
 
@@ -41,20 +42,25 @@ export class RoleFeatureAssignmentRepository {
    * Retourne toutes les assignations features d'un rôle (Story 24.2 AC3)
    */
   async findByRoleId(roleId: string): Promise<AssignmentResult[]> {
-    const rows: Array<{ featureKey: string; value: boolean }> = await this.dataSource.query(
-      `SELECT f.key AS "featureKey", rfa.value
+    const rows: Array<{ featureKey: string; value: boolean }> =
+      await this.dataSource.query(
+        `SELECT f.key AS "featureKey", rfa.value
        FROM role_feature_assignments rfa
        INNER JOIN features f ON f.id = rfa.feature_id AND f.deleted_at IS NULL
        WHERE rfa.role_id = $1`,
-      [roleId],
-    );
+        [roleId],
+      );
     return rows;
   }
 
   /**
    * Upsert une assignation role → feature (Story 24.2 AC3)
    */
-  async upsert(roleId: string, featureId: string, value: boolean): Promise<void> {
+  async upsert(
+    roleId: string,
+    featureId: string,
+    value: boolean,
+  ): Promise<void> {
     await this.dataSource.query(
       `INSERT INTO role_feature_assignments (id, role_id, feature_id, value, created_at)
        VALUES ($1, $2, $3, $4, NOW())

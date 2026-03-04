@@ -32,7 +32,12 @@ export class BetterAuthAdminService {
       throw new Error(`User not found: ${userId}`);
     }
 
-    return result[0] as { id: string; email: string; createdAt: Date; role: string };
+    return result[0] as {
+      id: string;
+      email: string;
+      createdAt: Date;
+      role: string;
+    };
   }
 
   /**
@@ -79,10 +84,7 @@ export class BetterAuthAdminService {
    * Reset a user's password via direct database update.
    * Uses better-auth/crypto hashPassword (scrypt) — compatible with Better Auth login.
    */
-  async resetUserPassword(
-    userId: string,
-    newPassword: string,
-  ): Promise<void> {
+  async resetUserPassword(userId: string, newPassword: string): Promise<void> {
     const hashed = await hashPassword(newPassword);
 
     await this.dataSource.query(

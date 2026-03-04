@@ -27,7 +27,11 @@ import { UserRole } from '../../implementations/postgresql/entities/user-role.en
 import { Permission } from '../../implementations/postgresql/entities/permission.entity';
 import { UserPermission } from '../../implementations/postgresql/entities/user-permission.entity';
 import { SubscriptionTier } from '../../implementations/postgresql/entities/subscription-tier.entity';
-import { PaginationQueryDto, AssignRoleDto, GrantPermissionDto } from '../../core/dtos/admin.dto';
+import {
+  PaginationQueryDto,
+  AssignRoleDto,
+  GrantPermissionDto,
+} from '../../core/dtos/admin.dto';
 
 @Controller('api/admin')
 @UseGuards(AdminJwtGuard)

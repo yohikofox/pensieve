@@ -198,7 +198,9 @@ export class AppController {
       console.error(
         '[HuggingFace] Missing HF_CLIENT_ID, HF_CLIENT_SECRET, or HF_REDIRECT_URI',
       );
-      return res.redirect(`${getAppScheme()}://auth/huggingface?error=server_config`);
+      return res.redirect(
+        `${getAppScheme()}://auth/huggingface?error=server_config`,
+      );
     }
 
     try {
@@ -234,7 +236,9 @@ export class AppController {
 
       if (!accessToken) {
         console.error('[HuggingFace] No access_token in response:', tokenData);
-        return res.redirect(`${getAppScheme()}://auth/huggingface?error=no_token`);
+        return res.redirect(
+          `${getAppScheme()}://auth/huggingface?error=no_token`,
+        );
       }
 
       console.log('[HuggingFace] OAuth successful, redirecting to app');
@@ -245,7 +249,9 @@ export class AppController {
       return res.redirect(deepLink);
     } catch (err) {
       console.error('[HuggingFace] Callback error:', err);
-      return res.redirect(`${getAppScheme()}://auth/huggingface?error=server_error`);
+      return res.redirect(
+        `${getAppScheme()}://auth/huggingface?error=server_error`,
+      );
     }
   }
 
@@ -285,7 +291,9 @@ export class AppController {
       console.error(
         '[Google] Missing GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, or GOOGLE_REDIRECT_URI',
       );
-      return res.redirect(`${getAppScheme()}://auth/google?error=server_config`);
+      return res.redirect(
+        `${getAppScheme()}://auth/google?error=server_config`,
+      );
     }
 
     try {

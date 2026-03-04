@@ -137,8 +137,8 @@ export class UploadsController {
 
     this.logger.log(
       `[UploadsController] Receiving upload: captureId=${body.captureId} ` +
-      `file.size=${file.size} buffer.length=${file.buffer?.length ?? 'NO_BUFFER'} ` +
-      `mimetype=${file.mimetype} key=${key}`,
+        `file.size=${file.size} buffer.length=${file.buffer?.length ?? 'NO_BUFFER'} ` +
+        `mimetype=${file.mimetype} key=${key}`,
     );
 
     try {

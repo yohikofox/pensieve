@@ -12,7 +12,12 @@
  */
 
 import { Injectable, Logger } from '@nestjs/common';
-import { DataSource, Repository, EntityManager, FindOptionsWhere } from 'typeorm';
+import {
+  DataSource,
+  Repository,
+  EntityManager,
+  FindOptionsWhere,
+} from 'typeorm';
 import { v7 as uuidv7 } from 'uuid';
 import { Todo } from '../../domain/entities/todo.entity';
 

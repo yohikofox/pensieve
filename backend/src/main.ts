@@ -14,14 +14,34 @@ async function bootstrap() {
 
   // Re-enable body parsing for all routes except /api/auth/* (handled by Better Auth)
   // Note: /api/auth/admin/* routes are NestJS controllers and DO need body parsing
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.path.startsWith('/api/auth') && !req.path.startsWith('/api/auth/admin')) return next();
-    express.json()(req, res, next);
-  });
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.path.startsWith('/api/auth') && !req.path.startsWith('/api/auth/admin')) return next();
-    express.urlencoded({ extended: true })(req, res, next);
-  });
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (
+        req.path.startsWith('/api/auth') &&
+        !req.path.startsWith('/api/auth/admin')
+      )
+        return next();
+      express.json()(req, res, next);
+    },
+  );
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (
+        req.path.startsWith('/api/auth') &&
+        !req.path.startsWith('/api/auth/admin')
+      )
+        return next();
+      express.urlencoded({ extended: true })(req, res, next);
+    },
+  );
   app.useLogger(app.get(Logger));
 
   // Enable CORS for admin frontend and mobile app

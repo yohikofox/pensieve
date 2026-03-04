@@ -120,7 +120,10 @@ describe('auth.config', () => {
       const tokenExpiresIn = getTokenExpiresInForToday();
       const endOfToday = new Date();
       endOfToday.setUTCHours(23, 59, 59, 999);
-      const expectedSeconds = Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
+      const expectedSeconds = Math.max(
+        60,
+        Math.floor((endOfToday.getTime() - Date.now()) / 1000),
+      );
 
       // Tolérance de 2 secondes pour l'exécution du test
       expect(Math.abs(tokenExpiresIn - expectedSeconds)).toBeLessThanOrEqual(2);

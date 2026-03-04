@@ -46,8 +46,10 @@ export class FeatureRepository {
     patch: { description?: string; defaultValue?: boolean },
   ): Promise<Feature | null> {
     const toUpdate: Partial<Feature> = {};
-    if (patch.description !== undefined) toUpdate.description = patch.description;
-    if (patch.defaultValue !== undefined) toUpdate.defaultValue = patch.defaultValue;
+    if (patch.description !== undefined)
+      toUpdate.description = patch.description;
+    if (patch.defaultValue !== undefined)
+      toUpdate.defaultValue = patch.defaultValue;
     await this.repo.update(id, toUpdate);
     return this.findById(id);
   }

@@ -67,7 +67,10 @@ export class AdminUsersController {
     @Body() dto: ResetUserPasswordDto,
   ): Promise<{ message: string }> {
     this.logger.log(`Admin resetting password for user ${userId}`);
-    await this.betterAuthAdminService.resetUserPassword(userId, dto.newPassword);
+    await this.betterAuthAdminService.resetUserPassword(
+      userId,
+      dto.newPassword,
+    );
     this.logger.log(`Password reset successfully for user ${userId}`);
     return { message: 'Password reset successfully' };
   }

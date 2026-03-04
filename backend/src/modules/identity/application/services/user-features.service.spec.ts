@@ -67,7 +67,9 @@ describe('UserFeaturesService', () => {
       const result = await service.getUserFeatures('test-user-id');
 
       expect(result).toEqual({ ...MOCK_FEATURES, debug_mode: true });
-      expect(mockFeatureResolutionService.resolveFeatures).toHaveBeenCalledWith('test-user-id');
+      expect(mockFeatureResolutionService.resolveFeatures).toHaveBeenCalledWith(
+        'test-user-id',
+      );
     });
 
     it('should throw NotFoundException when user does not exist', async () => {
@@ -80,12 +82,16 @@ describe('UserFeaturesService', () => {
 
     it('should return all features as false for user without assignments', async () => {
       mockUserRepository.existsBy.mockResolvedValue(true);
-      mockFeatureResolutionService.resolveFeatures.mockResolvedValue(MOCK_FEATURES);
+      mockFeatureResolutionService.resolveFeatures.mockResolvedValue(
+        MOCK_FEATURES,
+      );
 
       const result = await service.getUserFeatures('test-user-id');
 
       expect(Object.values(result)).toEqual(expect.arrayContaining([false]));
-      expect(Object.keys(result)).toEqual(expect.arrayContaining(['debug_mode', 'data_mining']));
+      expect(Object.keys(result)).toEqual(
+        expect.arrayContaining(['debug_mode', 'data_mining']),
+      );
     });
   });
 
@@ -118,7 +124,9 @@ describe('UserFeaturesService', () => {
         data_mining: true,
       });
 
-      await service.updateFeatures('test-user-id', { data_mining_access: true });
+      await service.updateFeatures('test-user-id', {
+        data_mining_access: true,
+      });
 
       expect(mockDataSource.query).toHaveBeenCalledWith(
         expect.stringContaining('user_feature_assignments'),
@@ -136,7 +144,9 @@ describe('UserFeaturesService', () => {
 
     it('should not call query when no patch fields provided', async () => {
       mockUserRepository.existsBy.mockResolvedValue(true);
-      mockFeatureResolutionService.resolveFeatures.mockResolvedValue(MOCK_FEATURES);
+      mockFeatureResolutionService.resolveFeatures.mockResolvedValue(
+        MOCK_FEATURES,
+      );
 
       await service.updateFeatures('test-user-id', {});
 

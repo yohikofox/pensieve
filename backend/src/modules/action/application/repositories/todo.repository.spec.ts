@@ -341,7 +341,11 @@ describe('TodoRepository', () => {
   describe('delete', () => {
     it('should soft-delete Todo', async () => {
       const todoId = 'todo-123';
-      mockTodoRepo.softDelete.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] } as any);
+      mockTodoRepo.softDelete.mockResolvedValue({
+        affected: 1,
+        raw: [],
+        generatedMaps: [],
+      } as any);
 
       await repository.delete(todoId);
 

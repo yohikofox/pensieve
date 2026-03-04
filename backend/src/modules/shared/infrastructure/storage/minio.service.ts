@@ -127,9 +127,7 @@ export class MinioService implements OnModuleInit {
    * @param objectName The name/path of the object in the bucket
    * @returns Readable stream of the object content
    */
-  async getObjectStream(
-    objectName: string,
-  ): Promise<NodeJS.ReadableStream> {
+  async getObjectStream(objectName: string): Promise<NodeJS.ReadableStream> {
     try {
       return await this.client.getObject(this.bucket, objectName);
     } catch (error) {

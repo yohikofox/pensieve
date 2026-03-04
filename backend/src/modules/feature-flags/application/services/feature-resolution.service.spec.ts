@@ -2,11 +2,51 @@ import { FeatureResolutionService } from './feature-resolution.service';
 import { Feature } from '../../domain/entities/feature.entity';
 
 const FEATURES: Feature[] = [
-  { id: 'f1', key: 'debug_mode', defaultValue: false, description: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
-  { id: 'f2', key: 'data_mining', defaultValue: false, description: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
-  { id: 'f3', key: 'news_tab', defaultValue: false, description: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
-  { id: 'f4', key: 'projects_tab', defaultValue: false, description: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
-  { id: 'f5', key: 'capture_media_buttons', defaultValue: false, description: null, createdAt: new Date(), updatedAt: new Date(), deletedAt: null },
+  {
+    id: 'f1',
+    key: 'debug_mode',
+    defaultValue: false,
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  },
+  {
+    id: 'f2',
+    key: 'data_mining',
+    defaultValue: false,
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  },
+  {
+    id: 'f3',
+    key: 'news_tab',
+    defaultValue: false,
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  },
+  {
+    id: 'f4',
+    key: 'projects_tab',
+    defaultValue: false,
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  },
+  {
+    id: 'f5',
+    key: 'capture_media_buttons',
+    defaultValue: false,
+    description: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    deletedAt: null,
+  },
 ];
 
 const USER_ID = 'user-123';
@@ -17,10 +57,21 @@ function makeService(
   permissionAssignments: Array<{ featureKey: string; value: boolean }>,
 ): FeatureResolutionService {
   const featureRepo = { findAll: jest.fn().mockResolvedValue(FEATURES) } as any;
-  const userRepo = { findByUserId: jest.fn().mockResolvedValue(userAssignments) } as any;
-  const roleRepo = { findByUserId: jest.fn().mockResolvedValue(roleAssignments) } as any;
-  const permissionRepo = { findByUserId: jest.fn().mockResolvedValue(permissionAssignments) } as any;
-  return new FeatureResolutionService(featureRepo, userRepo, roleRepo, permissionRepo);
+  const userRepo = {
+    findByUserId: jest.fn().mockResolvedValue(userAssignments),
+  } as any;
+  const roleRepo = {
+    findByUserId: jest.fn().mockResolvedValue(roleAssignments),
+  } as any;
+  const permissionRepo = {
+    findByUserId: jest.fn().mockResolvedValue(permissionAssignments),
+  } as any;
+  return new FeatureResolutionService(
+    featureRepo,
+    userRepo,
+    roleRepo,
+    permissionRepo,
+  );
 }
 
 describe('FeatureResolutionService.resolveFeatures', () => {
@@ -134,7 +185,13 @@ describe('FeatureResolutionService.resolveFeatures', () => {
 
     expect(Object.keys(result)).toHaveLength(FEATURES.length);
     expect(Object.keys(result)).toEqual(
-      expect.arrayContaining(['debug_mode', 'data_mining', 'news_tab', 'projects_tab', 'capture_media_buttons']),
+      expect.arrayContaining([
+        'debug_mode',
+        'data_mining',
+        'news_tab',
+        'projects_tab',
+        'capture_media_buttons',
+      ]),
     );
   });
 });

@@ -84,7 +84,9 @@ export class CreateFeatureFlagTables1780100000000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "permission_feature_assignments"`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "permission_feature_assignments"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "role_feature_assignments"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "user_feature_assignments"`);
     await queryRunner.query(`DROP TABLE IF EXISTS "features"`);

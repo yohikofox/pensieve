@@ -25,13 +25,17 @@ export class FeatureResolutionService {
   ) {}
 
   async resolveFeatures(userId: string): Promise<Record<string, boolean>> {
-    const [allFeatures, userAssignments, roleAssignments, permissionAssignments] =
-      await Promise.all([
-        this.featureRepository.findAll(),
-        this.userAssignmentRepo.findByUserId(userId),
-        this.roleAssignmentRepo.findByUserId(userId),
-        this.permissionAssignmentRepo.findByUserId(userId),
-      ]);
+    const [
+      allFeatures,
+      userAssignments,
+      roleAssignments,
+      permissionAssignments,
+    ] = await Promise.all([
+      this.featureRepository.findAll(),
+      this.userAssignmentRepo.findByUserId(userId),
+      this.roleAssignmentRepo.findByUserId(userId),
+      this.permissionAssignmentRepo.findByUserId(userId),
+    ]);
 
     // Indexer toutes les assignations par feature key
     const assignmentMap = new Map<string, boolean[]>();
@@ -39,7 +43,11 @@ export class FeatureResolutionService {
       assignmentMap.set(feature.key, []);
     }
 
-    for (const a of [...userAssignments, ...roleAssignments, ...permissionAssignments]) {
+    for (const a of [
+      ...userAssignments,
+      ...roleAssignments,
+      ...permissionAssignments,
+    ]) {
       assignmentMap.get(a.featureKey)?.push(a.value);
     }
 

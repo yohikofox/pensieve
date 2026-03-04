@@ -67,6 +67,9 @@ export class AdminPermissionFeaturesController {
     this.logger.log(
       `Admin deleting feature assignment '${featureKey}' for permission ${permissionId}`,
     );
-    return this.adminService.deletePermissionAssignment(permissionId, featureKey);
+    return this.adminService.deletePermissionAssignment(
+      permissionId,
+      featureKey,
+    );
   }
 }

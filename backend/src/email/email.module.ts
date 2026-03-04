@@ -18,7 +18,9 @@ import { EmailService } from './email.service';
         const apiKey = config.get<string>('RESEND_API_KEY');
         if (!apiKey) {
           // No-op client when Resend is not configured
-          return { emails: { send: async () => ({ data: null, error: null }) } };
+          return {
+            emails: { send: async () => ({ data: null, error: null }) },
+          };
         }
         return new Resend(apiKey);
       },

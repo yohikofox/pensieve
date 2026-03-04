@@ -35,7 +35,12 @@ export class AdminUserFeaturesController {
   @Get(':userId/features')
   getUserFeatures(
     @Param('userId') userId: string,
-  ): Promise<Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }>> {
+  ): Promise<
+    Record<
+      string,
+      { resolved: boolean; sources: Array<{ type: string; value: boolean }> }
+    >
+  > {
     this.logger.log(`Admin getting features for user ${userId}`);
     return this.adminService.getUserFeatures(userId);
   }
@@ -50,7 +55,11 @@ export class AdminUserFeaturesController {
     this.logger.log(
       `Admin upserting feature '${featureKey}' for user ${userId}: ${dto.value}`,
     );
-    return this.adminService.upsertUserAssignment(userId, featureKey, dto.value);
+    return this.adminService.upsertUserAssignment(
+      userId,
+      featureKey,
+      dto.value,
+    );
   }
 
   @Delete(':userId/features/:featureKey')

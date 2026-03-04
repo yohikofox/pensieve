@@ -28,7 +28,9 @@ describe('AdminRoleFeaturesController', () => {
       .useValue(mockGuard)
       .compile();
 
-    controller = module.get<AdminRoleFeaturesController>(AdminRoleFeaturesController);
+    controller = module.get<AdminRoleFeaturesController>(
+      AdminRoleFeaturesController,
+    );
     jest.clearAllMocks();
   });
 
@@ -39,7 +41,9 @@ describe('AdminRoleFeaturesController', () => {
   describe('getRoleAssignments', () => {
     it('should return feature assignments for a role', async () => {
       const assignments = [{ featureKey: 'news_tab', value: true }];
-      (mockService.getRoleAssignments as jest.Mock).mockResolvedValue(assignments);
+      (mockService.getRoleAssignments as jest.Mock).mockResolvedValue(
+        assignments,
+      );
 
       const result = await controller.getRoleAssignments('role-beta');
 
@@ -52,9 +56,15 @@ describe('AdminRoleFeaturesController', () => {
     it('should upsert and return the assignment', async () => {
       const dto: UpsertFeatureAssignmentDto = { value: false };
       const expected = { key: 'debug_mode', value: false, source: 'role' };
-      (mockService.upsertRoleAssignment as jest.Mock).mockResolvedValue(expected);
+      (mockService.upsertRoleAssignment as jest.Mock).mockResolvedValue(
+        expected,
+      );
 
-      const result = await controller.upsertAssignment('role-beta', 'debug_mode', dto);
+      const result = await controller.upsertAssignment(
+        'role-beta',
+        'debug_mode',
+        dto,
+      );
 
       expect(result).toEqual(expected);
       expect(mockService.upsertRoleAssignment).toHaveBeenCalledWith(
@@ -77,7 +87,9 @@ describe('AdminRoleFeaturesController', () => {
 
   describe('deleteAssignment', () => {
     it('should delete the assignment', async () => {
-      (mockService.deleteRoleAssignment as jest.Mock).mockResolvedValue(undefined);
+      (mockService.deleteRoleAssignment as jest.Mock).mockResolvedValue(
+        undefined,
+      );
 
       await controller.deleteAssignment('role-beta', 'debug_mode');
 

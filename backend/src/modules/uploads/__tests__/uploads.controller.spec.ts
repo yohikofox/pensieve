@@ -133,7 +133,9 @@ describe('UploadsController', () => {
     it('should still return audioUrl even when capture not found in DB (no throw)', async () => {
       const captureId = 'orphan-capture';
 
-      minioService.putObject.mockResolvedValue('audio/user-123/orphan-capture.m4a');
+      minioService.putObject.mockResolvedValue(
+        'audio/user-123/orphan-capture.m4a',
+      );
       captureRepository.update.mockResolvedValue({ affected: 0 });
 
       const result = await controller.uploadAudio(

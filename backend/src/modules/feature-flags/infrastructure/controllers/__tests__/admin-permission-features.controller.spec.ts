@@ -41,22 +41,36 @@ describe('AdminPermissionFeaturesController', () => {
   describe('getPermissionAssignments', () => {
     it('should return feature assignments for a permission', async () => {
       const assignments = [{ featureKey: 'data_mining', value: true }];
-      (mockService.getPermissionAssignments as jest.Mock).mockResolvedValue(assignments);
+      (mockService.getPermissionAssignments as jest.Mock).mockResolvedValue(
+        assignments,
+      );
 
       const result = await controller.getPermissionAssignments('perm-001');
 
       expect(result).toEqual(assignments);
-      expect(mockService.getPermissionAssignments).toHaveBeenCalledWith('perm-001');
+      expect(mockService.getPermissionAssignments).toHaveBeenCalledWith(
+        'perm-001',
+      );
     });
   });
 
   describe('upsertAssignment', () => {
     it('should upsert and return the assignment', async () => {
       const dto: UpsertFeatureAssignmentDto = { value: true };
-      const expected = { key: 'data_mining', value: true, source: 'permission' };
-      (mockService.upsertPermissionAssignment as jest.Mock).mockResolvedValue(expected);
+      const expected = {
+        key: 'data_mining',
+        value: true,
+        source: 'permission',
+      };
+      (mockService.upsertPermissionAssignment as jest.Mock).mockResolvedValue(
+        expected,
+      );
 
-      const result = await controller.upsertAssignment('perm-001', 'data_mining', dto);
+      const result = await controller.upsertAssignment(
+        'perm-001',
+        'data_mining',
+        dto,
+      );
 
       expect(result).toEqual(expected);
       expect(mockService.upsertPermissionAssignment).toHaveBeenCalledWith(
@@ -79,7 +93,9 @@ describe('AdminPermissionFeaturesController', () => {
 
   describe('deleteAssignment', () => {
     it('should delete the assignment', async () => {
-      (mockService.deletePermissionAssignment as jest.Mock).mockResolvedValue(undefined);
+      (mockService.deletePermissionAssignment as jest.Mock).mockResolvedValue(
+        undefined,
+      );
 
       await controller.deleteAssignment('perm-001', 'data_mining');
 

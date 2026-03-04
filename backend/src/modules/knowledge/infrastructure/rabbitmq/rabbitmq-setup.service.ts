@@ -97,7 +97,9 @@ export class RabbitMQSetupService implements OnModuleInit {
       await channel.close();
       // @ts-expect-error - amqplib types issue with close
       await connection.close();
-      this.logger.log('RabbitMQ setup connection closed (infrastructure persists)');
+      this.logger.log(
+        'RabbitMQ setup connection closed (infrastructure persists)',
+      );
     } catch (error) {
       // Detect queue parameter mismatch error (common when queue exists with different config)
       const errorMessage =
@@ -128,6 +130,4 @@ export class RabbitMQSetupService implements OnModuleInit {
       throw error;
     }
   }
-
 }
-

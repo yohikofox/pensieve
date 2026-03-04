@@ -28,7 +28,9 @@ describe('AdminUserFeaturesController', () => {
       .useValue(mockGuard)
       .compile();
 
-    controller = module.get<AdminUserFeaturesController>(AdminUserFeaturesController);
+    controller = module.get<AdminUserFeaturesController>(
+      AdminUserFeaturesController,
+    );
     jest.clearAllMocks();
   });
 
@@ -38,7 +40,10 @@ describe('AdminUserFeaturesController', () => {
 
   describe('getUserFeatures', () => {
     it('should return resolved features with trace for a user', async () => {
-      const resolved: Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }> = {
+      const resolved: Record<
+        string,
+        { resolved: boolean; sources: Array<{ type: string; value: boolean }> }
+      > = {
         debug_mode: { resolved: false, sources: [] },
         news_tab: { resolved: true, sources: [{ type: 'user', value: true }] },
       };
@@ -55,9 +60,15 @@ describe('AdminUserFeaturesController', () => {
     it('should upsert and return the assignment', async () => {
       const dto: UpsertFeatureAssignmentDto = { value: true };
       const expected = { key: 'news_tab', value: true, source: 'user' };
-      (mockService.upsertUserAssignment as jest.Mock).mockResolvedValue(expected);
+      (mockService.upsertUserAssignment as jest.Mock).mockResolvedValue(
+        expected,
+      );
 
-      const result = await controller.upsertAssignment('user-123', 'news_tab', dto);
+      const result = await controller.upsertAssignment(
+        'user-123',
+        'news_tab',
+        dto,
+      );
 
       expect(result).toEqual(expected);
       expect(mockService.upsertUserAssignment).toHaveBeenCalledWith(
@@ -80,7 +91,9 @@ describe('AdminUserFeaturesController', () => {
 
   describe('deleteAssignment', () => {
     it('should delete the assignment (204 no content)', async () => {
-      (mockService.deleteUserAssignment as jest.Mock).mockResolvedValue(undefined);
+      (mockService.deleteUserAssignment as jest.Mock).mockResolvedValue(
+        undefined,
+      );
 
       await controller.deleteAssignment('user-123', 'news_tab');
 

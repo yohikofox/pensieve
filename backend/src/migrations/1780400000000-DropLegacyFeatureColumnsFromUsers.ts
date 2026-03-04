@@ -17,8 +17,12 @@ export class DropLegacyFeatureColumnsFromUsers1780400000000 implements Migration
   name = 'DropLegacyFeatureColumnsFromUsers1780400000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "debug_mode_access"`);
-    await queryRunner.query(`ALTER TABLE "users" DROP COLUMN IF EXISTS "data_mining_access"`);
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP COLUMN IF EXISTS "debug_mode_access"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "users" DROP COLUMN IF EXISTS "data_mining_access"`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

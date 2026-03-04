@@ -53,7 +53,10 @@ export function buildLoggerConfig(
     transport = {
       targets: [
         { target: 'pino/file', options: { destination: 1 } }, // stdout
-        { target: 'pino/file', options: { destination: logFilePath, mkdir: true } },
+        {
+          target: 'pino/file',
+          options: { destination: logFilePath, mkdir: true },
+        },
       ],
     };
   }

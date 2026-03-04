@@ -35,10 +35,15 @@ export function setEmailService(service: EmailService): void {
   emailServiceRef = service;
 }
 
-type UserProvisioningCallback = (userId: string, email: string) => Promise<void>;
+type UserProvisioningCallback = (
+  userId: string,
+  email: string,
+) => Promise<void>;
 let userProvisioningCallbackRef: UserProvisioningCallback | null = null;
 
-export function setUserProvisioningCallback(callback: UserProvisioningCallback): void {
+export function setUserProvisioningCallback(
+  callback: UserProvisioningCallback,
+): void {
   userProvisioningCallbackRef = callback;
 }
 
@@ -58,8 +63,8 @@ export const auth = betterAuth({
   database: pool,
 
   session: {
-    expiresIn: 7 * 24 * 60 * 60,  // 7 jours — fenêtre absolue de renouvellement (ADR-029)
-    updateAge: 24 * 60 * 60,       // Prolonge la session si la dernière activité > 1j (sliding window)
+    expiresIn: 7 * 24 * 60 * 60, // 7 jours — fenêtre absolue de renouvellement (ADR-029)
+    updateAge: 24 * 60 * 60, // Prolonge la session si la dernière activité > 1j (sliding window)
   },
 
   advanced: {
@@ -109,7 +114,10 @@ export const auth = betterAuth({
               await userProvisioningCallbackRef(user.id, user.email);
             } catch (error) {
               // Ne pas bloquer l'inscription si le provisioning échoue
-              console.error('[AuthConfig] User provisioning hook failed:', error);
+              console.error(
+                '[AuthConfig] User provisioning hook failed:',
+                error,
+              );
             }
           }
         },
@@ -119,8 +127,8 @@ export const auth = betterAuth({
 
   plugins: [
     admin(),
-    bearer(),  // Convertit Authorization: Bearer {token} en cookie de session (ADR-029 — clients mobiles)
-    expo(),    // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
+    bearer(), // Convertit Authorization: Bearer {token} en cookie de session (ADR-029 — clients mobiles)
+    expo(), // Plugin Expo/React Native — bypass vérification d'origine pour les apps mobiles (story 15.2)
     // Enrichit getSession() avec tokenExpiresIn (fin du jour UTC) pour les clients mobiles (ADR-029)
     customSession(async ({ session, user }, ctx) => {
       const clientType = ctx?.getHeader('x-client-type');

@@ -16,9 +16,7 @@
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RenameBaseEntityTimestampColumns1780600000000
-  implements MigrationInterface
-{
+export class RenameBaseEntityTimestampColumns1780600000000 implements MigrationInterface {
   name = 'RenameBaseEntityTimestampColumns1780600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

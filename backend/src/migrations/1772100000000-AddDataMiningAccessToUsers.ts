@@ -14,7 +14,8 @@ export class AddDataMiningAccessToUsers1772100000000 implements MigrationInterfa
         name: 'data_mining_access',
         type: 'boolean',
         default: false,
-        comment: 'Backend permission to access datamining (query builder) features',
+        comment:
+          'Backend permission to access datamining (query builder) features',
       }),
     );
   }

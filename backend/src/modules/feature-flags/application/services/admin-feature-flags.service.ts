@@ -50,7 +50,8 @@ export class AdminFeatureFlagsService {
       description: dto.description,
       defaultValue: dto.defaultValue,
     });
-    if (!feature) throw new NotFoundException(`Feature with id '${id}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature with id '${id}' not found`);
     return feature;
   }
 
@@ -67,12 +68,20 @@ export class AdminFeatureFlagsService {
    */
   async getUserFeatures(
     userId: string,
-  ): Promise<Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }>> {
+  ): Promise<
+    Record<
+      string,
+      { resolved: boolean; sources: Array<{ type: string; value: boolean }> }
+    >
+  > {
     const allFeatures = await this.featureRepository.findAll();
 
-    const rows: Array<{ featureKey: string; value: boolean; sourceType: string }> =
-      await this.dataSource.query(
-        `SELECT f.key AS "featureKey", ufa.value, 'user' AS "sourceType"
+    const rows: Array<{
+      featureKey: string;
+      value: boolean;
+      sourceType: string;
+    }> = await this.dataSource.query(
+      `SELECT f.key AS "featureKey", ufa.value, 'user' AS "sourceType"
          FROM user_feature_assignments ufa
          INNER JOIN features f ON f.id = ufa.feature_id AND f.deleted_at IS NULL
          WHERE ufa.user_id = $1
@@ -95,22 +104,31 @@ export class AdminFeatureFlagsService {
          WHERE pfa.permission_id IN (
            SELECT permission_id FROM user_permissions WHERE user_id = $1
          )`,
-        [userId],
-      );
+      [userId],
+    );
 
-    const sourceMap = new Map<string, Array<{ type: string; value: boolean }>>();
+    const sourceMap = new Map<
+      string,
+      Array<{ type: string; value: boolean }>
+    >();
     for (const f of allFeatures) {
       sourceMap.set(f.key, []);
     }
     for (const row of rows) {
-      sourceMap.get(row.featureKey)?.push({ type: row.sourceType, value: row.value });
+      sourceMap
+        .get(row.featureKey)
+        ?.push({ type: row.sourceType, value: row.value });
     }
 
-    const result: Record<string, { resolved: boolean; sources: Array<{ type: string; value: boolean }> }> = {};
+    const result: Record<
+      string,
+      { resolved: boolean; sources: Array<{ type: string; value: boolean }> }
+    > = {};
     for (const f of allFeatures) {
       const sources = sourceMap.get(f.key) ?? [];
       // Deny-wins: si aucune source, fallback sur defaultValue ; sinon toutes les sources doivent être true
-      const resolved = sources.length === 0 ? f.defaultValue : sources.every((s) => s.value);
+      const resolved =
+        sources.length === 0 ? f.defaultValue : sources.every((s) => s.value);
       result[f.key] = { resolved, sources };
     }
     return result;
@@ -126,14 +144,19 @@ export class AdminFeatureFlagsService {
     value: boolean,
   ): Promise<{ key: string; value: boolean; source: string }> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
     await this.userAssignmentRepo.upsert(userId, feature.id, value);
     return { key: featureKey, value, source: 'user' };
   }
 
-  async deleteUserAssignment(userId: string, featureKey: string): Promise<void> {
+  async deleteUserAssignment(
+    userId: string,
+    featureKey: string,
+  ): Promise<void> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
     await this.userAssignmentRepo.deleteAssignment(userId, feature.id);
   }
 
@@ -153,14 +176,19 @@ export class AdminFeatureFlagsService {
     value: boolean,
   ): Promise<{ key: string; value: boolean; source: string }> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
     await this.roleAssignmentRepo.upsert(roleId, feature.id, value);
     return { key: featureKey, value, source: 'role' };
   }
 
-  async deleteRoleAssignment(roleId: string, featureKey: string): Promise<void> {
+  async deleteRoleAssignment(
+    roleId: string,
+    featureKey: string,
+  ): Promise<void> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
     await this.roleAssignmentRepo.deleteAssignment(roleId, feature.id);
   }
 
@@ -180,7 +208,8 @@ export class AdminFeatureFlagsService {
     value: boolean,
   ): Promise<{ key: string; value: boolean; source: string }> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
     await this.permissionAssignmentRepo.upsert(permissionId, feature.id, value);
     return { key: featureKey, value, source: 'permission' };
   }
@@ -190,7 +219,11 @@ export class AdminFeatureFlagsService {
     featureKey: string,
   ): Promise<void> {
     const feature = await this.featureRepository.findByKey(featureKey);
-    if (!feature) throw new NotFoundException(`Feature '${featureKey}' not found`);
-    await this.permissionAssignmentRepo.deleteAssignment(permissionId, feature.id);
+    if (!feature)
+      throw new NotFoundException(`Feature '${featureKey}' not found`);
+    await this.permissionAssignmentRepo.deleteAssignment(
+      permissionId,
+      feature.id,
+    );
   }
 }

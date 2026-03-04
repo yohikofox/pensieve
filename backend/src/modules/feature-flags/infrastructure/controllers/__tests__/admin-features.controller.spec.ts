@@ -52,7 +52,10 @@ describe('AdminFeaturesController', () => {
 
   describe('listFeatures', () => {
     it('should return the list of features', async () => {
-      const features = [mockFeature(), mockFeature({ key: 'news_tab', id: 'fe-002' })];
+      const features = [
+        mockFeature(),
+        mockFeature({ key: 'news_tab', id: 'fe-002' }),
+      ];
       (mockService.listFeatures as jest.Mock).mockResolvedValue(features);
 
       const result = await controller.listFeatures();
@@ -64,7 +67,11 @@ describe('AdminFeaturesController', () => {
 
   describe('createFeature', () => {
     it('should create and return a feature', async () => {
-      const dto: CreateFeatureDto = { key: 'new_feature', description: 'desc', defaultValue: false };
+      const dto: CreateFeatureDto = {
+        key: 'new_feature',
+        description: 'desc',
+        defaultValue: false,
+      };
       const created = mockFeature({ key: 'new_feature' });
       (mockService.createFeature as jest.Mock).mockResolvedValue(created);
 

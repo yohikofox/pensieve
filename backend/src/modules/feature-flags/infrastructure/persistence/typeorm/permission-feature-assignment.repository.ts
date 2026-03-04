@@ -22,8 +22,9 @@ export class PermissionFeatureAssignmentRepository {
   ) {}
 
   async findByUserId(userId: string): Promise<AssignmentResult[]> {
-    const rows: Array<{ featureKey: string; value: boolean }> = await this.dataSource.query(
-      `SELECT f.key AS "featureKey", pfa.value
+    const rows: Array<{ featureKey: string; value: boolean }> =
+      await this.dataSource.query(
+        `SELECT f.key AS "featureKey", pfa.value
        FROM permission_feature_assignments pfa
        INNER JOIN features f ON f.id = pfa.feature_id AND f.deleted_at IS NULL
        WHERE pfa.permission_id IN (
@@ -31,8 +32,8 @@ export class PermissionFeatureAssignmentRepository {
          FROM user_permissions
          WHERE user_id = $1
        )`,
-      [userId],
-    );
+        [userId],
+      );
     return rows;
   }
 
@@ -40,20 +41,25 @@ export class PermissionFeatureAssignmentRepository {
    * Retourne toutes les assignations features d'une permission (Story 24.2 AC4)
    */
   async findByPermissionId(permissionId: string): Promise<AssignmentResult[]> {
-    const rows: Array<{ featureKey: string; value: boolean }> = await this.dataSource.query(
-      `SELECT f.key AS "featureKey", pfa.value
+    const rows: Array<{ featureKey: string; value: boolean }> =
+      await this.dataSource.query(
+        `SELECT f.key AS "featureKey", pfa.value
        FROM permission_feature_assignments pfa
        INNER JOIN features f ON f.id = pfa.feature_id AND f.deleted_at IS NULL
        WHERE pfa.permission_id = $1`,
-      [permissionId],
-    );
+        [permissionId],
+      );
     return rows;
   }
 
   /**
    * Upsert une assignation permission → feature (Story 24.2 AC4)
    */
-  async upsert(permissionId: string, featureId: string, value: boolean): Promise<void> {
+  async upsert(
+    permissionId: string,
+    featureId: string,
+    value: boolean,
+  ): Promise<void> {
     await this.dataSource.query(
       `INSERT INTO permission_feature_assignments (id, permission_id, feature_id, value, created_at)
        VALUES ($1, $2, $3, $4, NOW())
@@ -65,7 +71,10 @@ export class PermissionFeatureAssignmentRepository {
   /**
    * Supprime une assignation permission → feature (Story 24.2 AC4)
    */
-  async deleteAssignment(permissionId: string, featureId: string): Promise<void> {
+  async deleteAssignment(
+    permissionId: string,
+    featureId: string,
+  ): Promise<void> {
     await this.dataSource.query(
       `DELETE FROM permission_feature_assignments WHERE permission_id = $1 AND feature_id = $2`,
       [permissionId, featureId],

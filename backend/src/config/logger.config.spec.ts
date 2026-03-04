@@ -100,7 +100,11 @@ describe('Logger Configuration (AC1 — Story 14.3)', () => {
     });
 
     it('should configure dual transport (stdout + file) when logFilePath is provided', () => {
-      const config = buildLoggerConfig('info', false, '/var/log/pensine/app.log');
+      const config = buildLoggerConfig(
+        'info',
+        false,
+        '/var/log/pensine/app.log',
+      );
       const transport = config.pinoHttp.transport as { targets: unknown[] };
       expect(transport).toBeDefined();
       expect(Array.isArray(transport.targets)).toBe(true);

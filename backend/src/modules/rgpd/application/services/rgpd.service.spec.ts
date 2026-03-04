@@ -91,8 +91,9 @@ describe('RgpdService', () => {
     auditLogRepository = module.get<Repository<AuditLog>>(
       getRepositoryToken(AuditLog),
     );
-    betterAuthAdminService =
-      module.get<BetterAuthAdminService>(BetterAuthAdminService);
+    betterAuthAdminService = module.get<BetterAuthAdminService>(
+      BetterAuthAdminService,
+    );
     dataSource = module.get<DataSource>(DataSource);
   });
 
@@ -130,7 +131,9 @@ describe('RgpdService', () => {
 
       // Assert
       expect(result).toBeInstanceOf(Buffer);
-      expect(betterAuthAdminService.getUserProfile).toHaveBeenCalledWith(userId);
+      expect(betterAuthAdminService.getUserProfile).toHaveBeenCalledWith(
+        userId,
+      );
       expect(auditLogRepository.save).toHaveBeenCalledWith(
         expect.objectContaining({
           user_id: userId,
@@ -439,9 +442,7 @@ describe('RgpdService', () => {
     });
 
     it('should handle empty user list', async () => {
-      jest
-        .spyOn(betterAuthAdminService, 'listAllUsers')
-        .mockResolvedValue([]);
+      jest.spyOn(betterAuthAdminService, 'listAllUsers').mockResolvedValue([]);
 
       const result = await service.syncUsers();
 

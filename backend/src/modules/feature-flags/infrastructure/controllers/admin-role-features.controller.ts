@@ -49,7 +49,11 @@ export class AdminRoleFeaturesController {
     this.logger.log(
       `Admin upserting feature '${featureKey}' for role ${roleId}: ${dto.value}`,
     );
-    return this.adminService.upsertRoleAssignment(roleId, featureKey, dto.value);
+    return this.adminService.upsertRoleAssignment(
+      roleId,
+      featureKey,
+      dto.value,
+    );
   }
 
   @Delete(':roleId/features/:featureKey')
