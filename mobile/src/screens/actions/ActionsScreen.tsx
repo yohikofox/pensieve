@@ -10,7 +10,7 @@
  * - AC8: Filter and sort state persistence
  * - AC9: Contextual empty states per filter
  * - AC10: Real-time filter counts update with smooth transitions
- * - Animations: FadeIn (300ms), FadeOut (200ms), LinearTransition for reordering
+ * - Animations: FadeIn (300ms), FadeOut (200ms)
  *
  * From Story 5.2:
  * - AC2: Unified list of all todos from all captures
@@ -32,7 +32,7 @@ import {
   Alert,
   ViewToken,
 } from 'react-native';
-import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -56,14 +56,11 @@ import { useManualSync } from '../../hooks/useManualSync';
 
 // Constants
 const MAX_PREVIEW_LENGTH = 50;
-const ESTIMATED_ITEM_HEIGHT = 120;
 const DATE_COLUMN_WIDTH = 72;
 
 // Animation constants (Story 5.3 - Code Review Fix #8)
 const FADE_IN_DURATION = 300;
 const FADE_OUT_DURATION = 200;
-const TRANSITION_DAMPING = 50;
-const TRANSITION_STIFFNESS = 400;
 
 interface EnrichedTodo extends TodoWithSource {
   sourcePreview?: string;
@@ -109,7 +106,8 @@ export const ActionsScreen = () => {
   // Scroll position persistence (Story 5.2 - AC8)
   // Story 5.3 - Fix #9: Track previous list type to reset scroll on switch
   const flatListRef = useRef<FlatList>(null);
-  const [scrollOffset, setScrollOffset] = useState(0);
+  const scrollOffsetRef = useRef(0);
+  const [isScrolled, setIsScrolled] = useState(false);
   const previousIsSections = useRef<boolean>(false);
 
   // Planning view: sticky section tracking
@@ -119,15 +117,15 @@ export const ActionsScreen = () => {
   // Restore scroll position on focus
   useFocusEffect(
     React.useCallback(() => {
-      if (scrollOffset > 0 && flatListRef.current) {
+      if (scrollOffsetRef.current > 0 && flatListRef.current) {
         setTimeout(() => {
           flatListRef.current?.scrollToOffset({
-            offset: scrollOffset,
+            offset: scrollOffsetRef.current,
             animated: false,
           });
         }, 100);
       }
-    }, [scrollOffset])
+    }, [])
   );
 
   // Auto-retour sur 'active' si le filtre 'trash' est restauré mais la corbeille est vide
@@ -219,27 +217,20 @@ export const ActionsScreen = () => {
   // Story 5.3 - Fix #9: Reset scroll offset when switching list type
   React.useEffect(() => {
     if (previousIsSections.current !== isSections) {
-      setScrollOffset(0);
+      scrollOffsetRef.current = 0;
+      setIsScrolled(false);
       previousIsSections.current = isSections;
     }
   }, [isSections]);
 
-  // getItemLayout for performance
-  const getItemLayout = (
-    _data: any,
-    index: number
-  ) => {
-    return {
-      length: ESTIMATED_ITEM_HEIGHT,
-      offset: ESTIMATED_ITEM_HEIGHT * index,
-      index,
-    };
-  };
-
-  // Save scroll position
+  // Save scroll position (ref to avoid re-renders at 60fps)
   const handleScroll = (event: any) => {
     const offset = event.nativeEvent.contentOffset.y;
-    setScrollOffset(offset);
+    scrollOffsetRef.current = offset;
+    const scrolled = offset > 0;
+    if (scrolled !== isScrolled) {
+      setIsScrolled(scrolled);
+    }
   };
 
   // Corbeille: vider définitivement les todos soft-deletés
@@ -400,7 +391,6 @@ export const ActionsScreen = () => {
     <Animated.View
       entering={FadeIn.duration(FADE_IN_DURATION)}
       exiting={FadeOut.duration(FADE_OUT_DURATION)}
-      layout={LinearTransition.springify().damping(TRANSITION_DAMPING).stiffness(TRANSITION_STIFFNESS)}
     >
       <ActionsTodoCard
         todo={todo}
@@ -483,7 +473,7 @@ export const ActionsScreen = () => {
               onViewableItemsChanged={onViewableItemsChanged}
               viewabilityConfig={viewabilityConfig}
             />
-            {currentStickySection && scrollOffset > 0 && (
+            {currentStickySection && isScrolled && (
               <View style={styles.stickyDateOverlay}>
                 <Text style={styles.stickyDateText}>{currentStickySection}</Text>
               </View>
@@ -523,7 +513,6 @@ export const ActionsScreen = () => {
         initialNumToRender={15}
         maxToRenderPerBatch={10}
         removeClippedSubviews
-        getItemLayout={getItemLayout}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       />
