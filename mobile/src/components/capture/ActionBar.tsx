@@ -15,6 +15,7 @@ import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useTextEditor } from "../../hooks/useTextEditor";
 import { useDeleteCapture } from "../../hooks/useDeleteCapture";
+import { isProcessing as isCaptureProcessingGuard } from "../../contexts/capture/utils/capture.guards";
 
 export function ActionBar() {
   // Autonomous - calls hooks directly
@@ -23,7 +24,7 @@ export function ActionBar() {
   const capture = useCaptureDetailStore((state) => state.capture);
   const isInQueue = useCaptureDetailStore((state) => state.isInQueue);
   const { themeColors, isDark } = useCaptureTheme();
-  const isCaptureInProcessing = capture?.state === "processing" || isInQueue;
+  const isCaptureInProcessing = capture ? isCaptureProcessingGuard({ state: capture.state, isInQueue }) : false;
 
   // Direct store access - no wrapper hooks
   const editedText = useCaptureDetailStore((state) => state.editedText);

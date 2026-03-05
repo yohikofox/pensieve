@@ -1,9 +1,10 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { View, Text, TouchableOpacity, ActivityIndicator } from "react-native";
 import { Feather } from "@expo/vector-icons";
 import { useTranslation } from "react-i18next";
 import type { Capture } from "../../contexts/capture/domain/Capture.model";
 import { RetryLimitService } from "../../contexts/Normalization/services/RetryLimitService";
+import type { CaptureWithRetry } from "../../contexts/Normalization/services/RetryLimitService";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useTheme } from "../../hooks/useTheme";
 import { colors } from "../../design-system/tokens";
@@ -17,6 +18,7 @@ import {
 import { PulsingBadge } from "../animations/PulsingBadge";
 import { GerminationBadge } from "../animations/GerminationBadge";
 import { CaptureCardLayout } from "./CaptureCardLayout";
+import { isProcessing as isCaptureProcessing } from "../../contexts/capture/utils/capture.guards";
 
 type CaptureWithQueue = Capture & { isInQueue?: boolean };
 
@@ -61,14 +63,23 @@ export function AudioCaptureCard({
     onDeleteWav,
   } = handlers;
 
-  const isProcessing = item.state === "processing" || item.isInQueue === true;
+  const isProcessing = isCaptureProcessing(item);
   const isStateProcessing = item.state === "processing";
   const isReady = item.state === "ready";
   const isFailed = item.state === "failed";
   const isCaptured = item.state === "captured";
 
-  const retryService = new RetryLimitService();
-  const retryCheck = retryService.canRetry(item as any);
+  // H2/H3: useMemo pour éviter l'instanciation à chaque rendu + typage explicite (Story 16.1 review)
+  const retryCheck = useMemo(() => {
+    const retryService = new RetryLimitService();
+    const captureForRetry: CaptureWithRetry = {
+      id: item.id,
+      retryCount: item.retryCount ?? 0,
+      retryWindowStartAt: item.retryWindowStartAt ?? null,
+      lastRetryAt: item.lastRetryAt ?? null,
+    };
+    return retryService.canRetry(captureForRetry);
+  }, [item.id, item.retryCount, item.retryWindowStartAt, item.lastRetryAt]);
   const canRetry = retryCheck.allowed;
 
   return (
@@ -192,6 +203,7 @@ export function AudioCaptureCard({
 
         {/* Action Buttons */}
         <View className="flex-row items-center gap-2">
+          {/* Stop — accessible pendant le traitement (lecture seule, AC1) */}
           {isPlaying && (
             <TouchableOpacity
               className="w-10 h-10 rounded-lg bg-error-500 items-center justify-center"
@@ -205,6 +217,7 @@ export function AudioCaptureCard({
             </TouchableOpacity>
           )}
 
+          {/* Play/Pause — toujours visible et actif, jamais dégradé visuellement (AC1/AC2, Story 16.1) */}
           <TouchableOpacity
             className="w-10 h-10 rounded-lg bg-success-500 items-center justify-center"
             activeOpacity={0.7}
@@ -221,50 +234,54 @@ export function AudioCaptureCard({
             />
           </TouchableOpacity>
 
-          {isCaptured && !isProcessing && (
-            <TouchableOpacity
-              className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
-              activeOpacity={0.7}
-              onPress={(e) => {
-                e.stopPropagation();
-                onTranscribe();
-              }}
-            >
-              <Feather name="file-text" size={22} color={colors.neutral[0]} />
-            </TouchableOpacity>
-          )}
-
-          {isFailed && (
-            <View>
+          {/* Boutons d'action — opacité réduite pendant le traitement (AC2, Story 16.1) */}
+          <View style={isProcessing ? { opacity: 0.6 } : undefined} className="flex-row items-center gap-2">
+            {isCaptured && !isProcessing && (
               <TouchableOpacity
-                className={`w-10 h-10 rounded-lg items-center justify-center ${
-                  canRetry ? "bg-warning-500" : "bg-neutral-300"
-                }`}
-                activeOpacity={canRetry ? 0.7 : 1}
-                disabled={!canRetry}
+                className="w-10 h-10 rounded-lg bg-primary-500 items-center justify-center"
+                activeOpacity={0.7}
                 onPress={(e) => {
                   e.stopPropagation();
-                  if (canRetry) {
-                    onRetry();
-                  }
+                  onTranscribe();
                 }}
               >
-                <Feather
-                  name="refresh-cw"
-                  size={22}
-                  color={canRetry ? colors.neutral[0] : colors.neutral[500]}
-                />
+                <Feather name="file-text" size={22} color={colors.neutral[0]} />
               </TouchableOpacity>
-              {!canRetry && retryCheck.remainingTime && (
-                <Text
-                  className="text-xs text-error-600 mt-1 text-center"
-                  style={{ maxWidth: 120 }}
+            )}
+
+            {isFailed && (
+              <View>
+                <TouchableOpacity
+                  className={`w-10 h-10 rounded-lg items-center justify-center ${
+                    canRetry ? "bg-warning-500" : "bg-neutral-300"
+                  }`}
+                  activeOpacity={canRetry ? 0.7 : 1}
+                  disabled={!canRetry}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    if (canRetry) {
+                      onRetry();
+                    }
+                  }}
                 >
-                  {`Limite atteinte. ${retryCheck.remainingTime} min`}
-                </Text>
-              )}
-            </View>
-          )}
+                  <Feather
+                    name="refresh-cw"
+                    size={22}
+                    color={canRetry ? colors.neutral[0] : colors.neutral[500]}
+                  />
+                </TouchableOpacity>
+                {/* L2 fix: != null pour gérer remainingTime === 0 */}
+                {!canRetry && retryCheck.remainingTime != null && (
+                  <Text
+                    className="text-xs text-error-600 mt-1 text-center"
+                    style={{ maxWidth: 120 }}
+                  >
+                    {`Limite atteinte. ${retryCheck.remainingTime} min`}
+                  </Text>
+                )}
+              </View>
+            )}
+          </View>
         </View>
       </View>
 

@@ -16,6 +16,7 @@ import { useCaptureDetailStore } from "../../stores/captureDetailStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useCaptureTheme } from "../../hooks/useCaptureTheme";
 import { useReprocessing } from "../../hooks/useReprocessing";
+import { isProcessing as isCaptureProcessingGuard } from "../../contexts/capture/utils/capture.guards";
 
 export function ActionsSection() {
   // Autonomous hook - reads from stores
@@ -26,7 +27,7 @@ export function ActionsSection() {
   const isInQueue = useCaptureDetailStore((state) => state.isInQueue);
   const debugMode = useSettingsStore((state) => state.debugMode);
   const { themeColors, isDark } = useCaptureTheme();
-  const isCaptureInProcessing = capture?.state === "processing" || isInQueue;
+  const isCaptureInProcessing = capture ? isCaptureProcessingGuard({ state: capture.state, isInQueue }) : false;
 
   // Direct store access - no wrapper hooks
   const editedText = useCaptureDetailStore((state) => state.editedText);

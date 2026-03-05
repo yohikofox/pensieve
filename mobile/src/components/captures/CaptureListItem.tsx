@@ -12,6 +12,7 @@ import { AnimatedCaptureCard } from "../animations/AnimatedCaptureCard";
 import { SwipeableCard } from "../cards/SwipeableCard";
 import { CaptureCard } from "./CaptureCard";
 import { CaptureSyncBadge } from "../CaptureSyncBadge";
+import { isProcessing as isCaptureProcessing } from "../../contexts/capture/utils/capture.guards";
 
 type CaptureWithTranscription = Capture & {
   transcriptionStatus?: "pending" | "processing" | "completed" | "failed";
@@ -55,9 +56,7 @@ function CaptureListItemBase({
   handlers,
 }: CaptureListItemProps) {
   const { onLongPress, onDelete, onShare, ...cardHandlers } = handlers;
-  const isProcessing =
-    item.state === "processing" ||
-    (item as CaptureWithQueue).isInQueue === true;
+  const isProcessing = isCaptureProcessing(item as CaptureWithQueue);
 
   const longPressGesture = Gesture.LongPress()
     .minDuration(300)
