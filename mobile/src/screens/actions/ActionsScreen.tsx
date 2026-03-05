@@ -21,7 +21,7 @@
  * Migrated to Zustand (ADR-038) — Story 8.23 extension
  */
 
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
-  ViewToken,
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useFocusEffect } from '@react-navigation/native';
@@ -67,12 +66,9 @@ interface EnrichedTodo extends TodoWithSource {
   sourceTimestamp?: string;
 }
 
-interface FlatTodoItem {
-  todo: EnrichedTodo;
-  sectionTitle: string;
-  isFirstInSection: boolean;
-  isLastInSection: boolean;
-}
+type FlatTodoItemHeader = { type: 'header'; sectionTitle: string };
+type FlatTodoItemCard = { type: 'item'; todo: EnrichedTodo; sectionTitle: string };
+type FlatTodoItem = FlatTodoItemHeader | FlatTodoItemCard;
 
 export const ActionsScreen = () => {
   const { isDark, colorSchemePreference } = useTheme();
@@ -107,12 +103,7 @@ export const ActionsScreen = () => {
   // Story 5.3 - Fix #9: Track previous list type to reset scroll on switch
   const flatListRef = useRef<FlatList>(null);
   const scrollOffsetRef = useRef(0);
-  const [isScrolled, setIsScrolled] = useState(false);
   const previousIsSections = useRef<boolean>(false);
-
-  // Planning view: sticky section tracking
-  const [currentStickySection, setCurrentStickySection] = useState('');
-  const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 50 }).current;
 
   // Restore scroll position on focus
   useFocusEffect(
@@ -179,36 +170,29 @@ export const ActionsScreen = () => {
   // Check if sorted data is sections or flat list
   const isSections = isSectionData(sortedData);
 
-  // Planning view: flatten sections into FlatTodoItem[]
+  // Planning view: flatten sections into FlatTodoItem[] with dedicated header items
   const flatData = useMemo(() => {
     if (!isSections) return null;
 
     const flat: FlatTodoItem[] = [];
     (sortedData as TodoSection[]).forEach((section) => {
-      section.data.forEach((todo, idx) => {
-        flat.push({
-          todo: todo as EnrichedTodo,
-          sectionTitle: section.title,
-          isFirstInSection: idx === 0,
-          isLastInSection: idx === section.data.length - 1,
-        });
+      flat.push({ type: 'header', sectionTitle: section.title });
+      section.data.forEach((todo) => {
+        flat.push({ type: 'item', todo: todo as EnrichedTodo, sectionTitle: section.title });
       });
     });
 
     return flat;
   }, [sortedData, isSections]);
 
-  // Planning view: track visible section for sticky overlay
-  const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: ViewToken[] }) => {
-      if (viewableItems.length > 0) {
-        const first = viewableItems[0].item as FlatTodoItem;
-        if (first?.sectionTitle) {
-          setCurrentStickySection(first.sectionTitle);
-        }
-      }
-    },
-    [],
+  // Indices des headers pour le sticky natif FlatList
+  const stickyHeaderIndices = useMemo(
+    () =>
+      flatData?.reduce<number[]>((acc, item, idx) => {
+        if (item.type === 'header') acc.push(idx);
+        return acc;
+      }, []) ?? [],
+    [flatData],
   );
 
   // Dynamic styles based on theme
@@ -218,19 +202,13 @@ export const ActionsScreen = () => {
   React.useEffect(() => {
     if (previousIsSections.current !== isSections) {
       scrollOffsetRef.current = 0;
-      setIsScrolled(false);
       previousIsSections.current = isSections;
     }
   }, [isSections]);
 
   // Save scroll position (ref to avoid re-renders at 60fps)
   const handleScroll = (event: any) => {
-    const offset = event.nativeEvent.contentOffset.y;
-    scrollOffsetRef.current = offset;
-    const scrolled = offset > 0;
-    if (scrolled !== isScrolled) {
-      setIsScrolled(scrolled);
-    }
+    scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
   };
 
   // Corbeille: vider définitivement les todos soft-deletés
@@ -421,15 +399,10 @@ export const ActionsScreen = () => {
 
   // Render calendar item for planning view
   const renderCalendarItem = ({ item }: { item: FlatTodoItem }) => {
-    if (item.isFirstInSection) {
+    if (item.type === 'header') {
       return (
-        <View style={styles.calendarRow}>
-          <View style={styles.dateColumn}>
-            <Text style={styles.dateLabelText}>{item.sectionTitle}</Text>
-          </View>
-          <View style={styles.cardColumn}>
-            {renderTodoCard(item.todo)}
-          </View>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.dateLabelText}>{item.sectionTitle}</Text>
         </View>
       );
     }
@@ -455,8 +428,11 @@ export const ActionsScreen = () => {
               ref={flatListRef}
               style={styles.list}
               data={flatData}
-              keyExtractor={(item) => item.todo.id}
+              keyExtractor={(item) =>
+                item.type === 'header' ? `header-${item.sectionTitle}` : item.todo.id
+              }
               renderItem={renderCalendarItem}
+              stickyHeaderIndices={stickyHeaderIndices}
               contentContainerStyle={styles.calendarListContent}
               refreshControl={
                 <RefreshControl
@@ -470,14 +446,7 @@ export const ActionsScreen = () => {
               removeClippedSubviews
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              onViewableItemsChanged={onViewableItemsChanged}
-              viewabilityConfig={viewabilityConfig}
             />
-            {currentStickySection && isScrolled && (
-              <View style={styles.stickyDateOverlay}>
-                <Text style={styles.stickyDateText}>{currentStickySection}</Text>
-              </View>
-            )}
           </View>
           <SortMenu
             visible={isSortMenuVisible}
@@ -594,15 +563,12 @@ const createStyles = (isDark: boolean, colorScheme: import('../../design-system/
       fontWeight: '600',
       color: isDark ? colors.error[400] : colors.error[600],
     },
-    calendarRow: {
-      flexDirection: 'row',
-      paddingRight: 16,
-    },
-    dateColumn: {
-      width: DATE_COLUMN_WIDTH,
-      paddingTop: 14,
+    sectionHeader: {
+      paddingTop: 8,
       paddingLeft: 16,
-      paddingRight: 8,
+      paddingRight: 16,
+      paddingBottom: 4,
+      backgroundColor: backgrounds.screen,
     },
     dateLabelText: {
       fontSize: 13,
@@ -622,24 +588,6 @@ const createStyles = (isDark: boolean, colorScheme: import('../../design-system/
       borderRightWidth: StyleSheet.hairlineWidth,
       borderRightColor: isDark ? colors.neutral[600] : colors.neutral[300],
       marginRight: -StyleSheet.hairlineWidth,
-    },
-    stickyDateOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      width: DATE_COLUMN_WIDTH,
-      paddingTop: 14,
-      paddingLeft: 16,
-      paddingRight: 8,
-      paddingBottom: 8,
-      backgroundColor: backgrounds.screen,
-      zIndex: 10,
-    },
-    stickyDateText: {
-      fontSize: 13,
-      fontWeight: '700',
-      color: isDark ? colors.neutral[300] : colors.neutral[600],
-      textTransform: 'uppercase',
     },
     errorFallback: {
       padding: 16,
