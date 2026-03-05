@@ -14,6 +14,7 @@ export const FEATURE_KEYS = {
   NEWS_TAB: 'news_tab',
   PROJECTS_TAB: 'projects_tab',
   CAPTURE_MEDIA_BUTTONS: 'capture_media_buttons',
+  LIVE_TRANSCRIPTION: 'live_transcription',
 } as const;
 
 export type FeatureKey = typeof FEATURE_KEYS[keyof typeof FEATURE_KEYS];
