@@ -119,9 +119,10 @@ export function LLMSettingsScreen() {
   // Global LLM settings (from settingsStore)
   const isEnabled = useSettingsStore((state) => state.llm.isEnabled);
   const isAutoPostProcess = useSettingsStore((state) => state.llm.isAutoPostProcess);
+  const isAutoAnalysis = useSettingsStore((state) => state.llm.isAutoAnalysis);
   const selectedPostProcessingModel = useSettingsStore((state) => state.llm.selectedPostProcessingModel);
   const selectedAnalysisModel = useSettingsStore((state) => state.llm.selectedAnalysisModel);
-  const { setLLMEnabled, setLLMAutoPostProcess, setLLMModelForTask } = useSettingsStore();
+  const { setLLMEnabled, setLLMAutoPostProcess, setLLMAutoAnalysis, setLLMModelForTask } = useSettingsStore();
 
   // Screen-specific UI state (from llmSettingsScreenStore)
   const tpuModels = useLLMSettingsScreenStore((state) => state.tpuModels);
@@ -466,6 +467,13 @@ export function LLMSettingsScreen() {
   };
 
   /**
+   * Toggle automatic analyses after processing
+   */
+  const handleToggleAutoAnalysis = (value: boolean) => {
+    setLLMAutoAnalysis(value);
+  };
+
+  /**
    * Handle model selection for a specific task
    */
   const handleUseModelForTask = useCallback(async (modelId: LLMModelId, task: LLMTask) => {
@@ -619,6 +627,31 @@ export function LLMSettingsScreen() {
             <Switch
               value={isAutoPostProcess}
               onValueChange={handleToggleAutoPostProcess}
+              trackColor={{ false: isDark ? colors.neutral[700] : '#E5E5EA', true: '#34C759' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+        )}
+
+        {/* Auto analysis toggle - only show when IA is enabled */}
+        {isEnabled && (
+          <View style={[
+            styles.toggleRow,
+            styles.toggleRowIndented,
+            {
+              borderTopColor: themeColors.borderDefault,
+              backgroundColor: themeColors.toggleRowIndentedBg,
+            }
+          ]}>
+            <View style={styles.toggleContent}>
+              <Text style={[styles.toggleLabel, { color: themeColors.textPrimary }]}>Analyses automatiques</Text>
+              <Text style={[styles.toggleDescription, { color: themeColors.textTertiary }]}>
+                Lancer automatiquement les analyses IA (résumé, points clés, tâches, idées) après le traitement.
+              </Text>
+            </View>
+            <Switch
+              value={isAutoAnalysis}
+              onValueChange={handleToggleAutoAnalysis}
               trackColor={{ false: isDark ? colors.neutral[700] : '#E5E5EA', true: '#34C759' }}
               thumbColor="#FFFFFF"
             />

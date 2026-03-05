@@ -40,6 +40,9 @@ export interface LLMSettings {
   // Automatic post-processing after transcription
   isAutoPostProcess: boolean;
 
+  // Automatic analyses (summary, highlights, action_items, ideas) after processing
+  isAutoAnalysis: boolean;
+
   // Selected models for each task
   selectedPostProcessingModel: LLMModelId | null;
   selectedAnalysisModel: LLMModelId | null;
@@ -117,6 +120,7 @@ interface SettingsState {
   // LLM Actions
   setLLMEnabled: (enabled: boolean) => void;
   setLLMAutoPostProcess: (enabled: boolean) => void;
+  setLLMAutoAnalysis: (enabled: boolean) => void;
   setLLMModelForTask: (task: LLMTask, modelId: LLMModelId | null) => void;
 }
 
@@ -168,6 +172,7 @@ export const useSettingsStore = create<SettingsState>()(
         llm: {
           isEnabled: false,
           isAutoPostProcess: false,
+          isAutoAnalysis: false,
           selectedPostProcessingModel: null,
           selectedAnalysisModel: null,
         },
@@ -302,6 +307,13 @@ export const useSettingsStore = create<SettingsState>()(
             "[SettingsStore] LLM auto post-process:",
             enabled ? "ON" : "OFF",
           );
+        },
+
+        setLLMAutoAnalysis: (enabled: boolean) => {
+          set((state) => ({
+            llm: { ...state.llm, isAutoAnalysis: enabled },
+          }));
+          console.debug("[SettingsStore] LLM auto analysis:", enabled ? "ON" : "OFF");
         },
 
         setLLMModelForTask: (task: LLMTask, modelId: LLMModelId | null) => {

@@ -146,7 +146,8 @@ describe('TranscriptionWorker', () => {
       mockPostProcessingService,
       mockEngineService,
       mockNativeEngine,
-      mockDeviceCapabilities
+      mockDeviceCapabilities,
+      { enqueue: jest.fn() } as any, // mock AnalysisQueueService
     );
   });
 

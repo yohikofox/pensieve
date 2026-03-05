@@ -52,6 +52,8 @@ import {
 } from '../../../shared/utils/notificationUtils';
 import { useSettingsStore } from '../../../stores/settingsStore';
 import type { TranscriptionEngineType } from '../services/ITranscriptionEngine';
+import { AnalysisQueueService } from '../services/AnalysisQueueService';
+import type { AnalysisType } from '../../capture/domain/CaptureAnalysis.model';
 import { RepositoryResultType } from '../../shared/domain/Result';
 
 /**
@@ -85,6 +87,7 @@ export class TranscriptionWorker {
     nativeEngine: NativeTranscriptionEngine,
     private deviceCapabilities: DeviceCapabilitiesService, // Task 7.3
     private whisperModelService: TranscriptionModelService,
+    private analysisQueueService: AnalysisQueueService,
   ) {
     this.postProcessingService = postProcessingService;
     this.engineService = engineService;
@@ -653,6 +656,16 @@ export class TranscriptionWorker {
 
         // Mark as completed in queue
         await this.queueService.markCompleted(queuedCapture.captureId);
+
+        // Auto-trigger analyses if enabled
+        const autoAnalysisEnabled = useSettingsStore.getState().llm.isAutoAnalysis;
+        if (autoAnalysisEnabled) {
+          const analysisTypes: AnalysisType[] = ['summary', 'highlights', 'action_items', 'ideas'];
+          for (const type of analysisTypes) {
+            this.analysisQueueService.enqueue(queuedCapture.captureId, type);
+          }
+          console.log(`[TranscriptionWorker] 🧠 Auto-analyses enqueued for ${queuedCapture.captureId}`);
+        }
 
         // Send notification (if app backgrounded)
         await showTranscriptionCompleteNotification(queuedCapture.captureId, finalText);
