@@ -1,6 +1,8 @@
 /**
  * Capture Tools Configuration
  * Extracted from CaptureScreen.tsx for testability (Story 8.21).
+ * Story 8.22: Refactoring — chaque outil média est désormais contrôlé par son
+ * propre feature flag (capacité produit), remplaçant le flag bloc capture_media_buttons.
  *
  * Defines capture tool constants and the computation logic for which tools
  * are visible based on feature flags. Pure module — no native dependencies.
@@ -25,8 +27,11 @@ export interface CaptureTool {
  * - Minimalist line icons (Feather)
  * - Consistent visual weight
  *
- * Media tools (photo, url, document, clipboard) are feature-gated.
- * They are only shown when capture_media_buttons feature is enabled (AC5).
+ * Chaque outil média est contrôlé individuellement par son feature flag (Story 8.22) :
+ *   - url_capture      → CAPTURE_TOOLS_URL
+ *   - photo_capture    → CAPTURE_TOOLS_PHOTO
+ *   - document_capture → CAPTURE_TOOLS_DOCUMENT
+ *   - clipboard_capture→ CAPTURE_TOOLS_CLIPBOARD
  *
  * Live transcription tool is feature-gated (Story 8.21).
  * It is only shown when live_transcription feature is enabled (OFF by default).
@@ -59,15 +64,8 @@ export const CAPTURE_TOOLS_LIVE: CaptureTool[] = [
   },
 ];
 
-/** Story 24.3 AC5: Media capture tools — only shown when capture_media_buttons feature is enabled */
-export const CAPTURE_TOOLS_MEDIA: CaptureTool[] = [
-  {
-    id: "photo",
-    labelKey: "capture.tools.photo",
-    iconName: "aperture", // Aperture = photography concept
-    color: colors.info[500],
-    available: false,
-  },
+/** Story 8.22 AC5: URL capture tool — only shown when url_capture feature is enabled */
+export const CAPTURE_TOOLS_URL: CaptureTool[] = [
   {
     id: "url",
     labelKey: "capture.tools.url",
@@ -75,6 +73,21 @@ export const CAPTURE_TOOLS_MEDIA: CaptureTool[] = [
     color: colors.primary[700],
     available: false,
   },
+];
+
+/** Story 8.22 AC5: Photo capture tool — only shown when photo_capture feature is enabled */
+export const CAPTURE_TOOLS_PHOTO: CaptureTool[] = [
+  {
+    id: "photo",
+    labelKey: "capture.tools.photo",
+    iconName: "aperture", // Aperture = photography concept
+    color: colors.info[500],
+    available: false,
+  },
+];
+
+/** Story 8.22 AC5: Document capture tool — only shown when document_capture feature is enabled */
+export const CAPTURE_TOOLS_DOCUMENT: CaptureTool[] = [
   {
     id: "document",
     labelKey: "capture.tools.document",
@@ -82,6 +95,10 @@ export const CAPTURE_TOOLS_MEDIA: CaptureTool[] = [
     color: colors.secondary[700],
     available: false,
   },
+];
+
+/** Story 8.22 AC5: Clipboard capture tool — only shown when clipboard_capture feature is enabled */
+export const CAPTURE_TOOLS_CLIPBOARD: CaptureTool[] = [
   {
     id: "clipboard",
     labelKey: "capture.tools.clipboard",
@@ -95,16 +112,27 @@ export const CAPTURE_TOOLS_MEDIA: CaptureTool[] = [
  * Computes the visible capture tools based on active feature flags.
  * Pure function — safe to test without native dependencies.
  *
- * @param isLiveEnabled - Value of live_transcription feature flag
- * @param showMediaButtons - Value of capture_media_buttons feature flag
+ * Story 8.22: chaque outil média est contrôlé par son propre flag (granularité capacité produit).
+ *
+ * @param isLiveEnabled      - Value of live_transcription feature flag
+ * @param isUrlEnabled       - Value of url_capture feature flag
+ * @param isPhotoEnabled     - Value of photo_capture feature flag
+ * @param isDocumentEnabled  - Value of document_capture feature flag
+ * @param isClipboardEnabled - Value of clipboard_capture feature flag
  */
 export function computeCaptureTools(
   isLiveEnabled: boolean | undefined,
-  showMediaButtons: boolean | undefined
+  isUrlEnabled?: boolean | undefined,
+  isPhotoEnabled?: boolean | undefined,
+  isDocumentEnabled?: boolean | undefined,
+  isClipboardEnabled?: boolean | undefined,
 ): CaptureTool[] {
   return [
     ...CAPTURE_TOOLS_ALWAYS,
-    ...(isLiveEnabled ? CAPTURE_TOOLS_LIVE : []),
-    ...(showMediaButtons ? CAPTURE_TOOLS_MEDIA : []),
+    ...(isLiveEnabled    ? CAPTURE_TOOLS_LIVE      : []),
+    ...(isUrlEnabled     ? CAPTURE_TOOLS_URL        : []),
+    ...(isPhotoEnabled   ? CAPTURE_TOOLS_PHOTO      : []),
+    ...(isDocumentEnabled  ? CAPTURE_TOOLS_DOCUMENT : []),
+    ...(isClipboardEnabled ? CAPTURE_TOOLS_CLIPBOARD : []),
   ];
 }

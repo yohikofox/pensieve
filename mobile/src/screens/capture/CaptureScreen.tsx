@@ -210,11 +210,20 @@ const CaptureScreenContent = () => {
   const navigation = useNavigation();
   const [state, setState] = useState<RecordingState>("idle");
 
-  // Story 24.3 AC5: Show media buttons only when capture_media_buttons feature is enabled
-  const showMediaButtons = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.CAPTURE_MEDIA_BUTTONS));
   // Story 8.21 AC2/AC3: Show Live button only when live_transcription feature is enabled (OFF by default)
   const isLiveTranscriptionEnabled = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.LIVE_TRANSCRIPTION));
-  const captureTools = computeCaptureTools(isLiveTranscriptionEnabled, showMediaButtons);
+  // Story 8.22 AC5: Each media capture tool is gated by its own feature flag (capacité produit)
+  const isUrlCaptureEnabled       = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.URL_CAPTURE));
+  const isPhotoCaptureEnabled     = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.PHOTO_CAPTURE));
+  const isDocumentCaptureEnabled  = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.DOCUMENT_CAPTURE));
+  const isClipboardCaptureEnabled = useSettingsStore((s) => s.getFeature(FEATURE_KEYS.CLIPBOARD_CAPTURE));
+  const captureTools = computeCaptureTools(
+    isLiveTranscriptionEnabled,
+    isUrlCaptureEnabled,
+    isPhotoCaptureEnabled,
+    isDocumentCaptureEnabled,
+    isClipboardCaptureEnabled,
+  );
   const [showTextCapture, setShowTextCapture] = useState(false);
   const [showRecordingOverlay, setShowRecordingOverlay] = useState(false);
   const [showLiveTranscription, setShowLiveTranscription] = useState(false);
@@ -634,7 +643,7 @@ const CaptureScreenContent = () => {
         </Text>
       </View>
 
-      {/* Tools Grid — Story 24.3 AC5: media buttons gated by capture_media_buttons feature */}
+      {/* Tools Grid — Story 8.22 AC5: each media tool gated by its individual feature flag */}
       <View className="flex-row flex-wrap justify-center px-5 gap-4">
         {captureTools.map((tool) => (
           <CaptureToolButton

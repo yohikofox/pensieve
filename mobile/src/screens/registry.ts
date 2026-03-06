@@ -72,8 +72,8 @@ export const tabScreens = {
   News: {
     component: NewsScreen,
     icon: "rss",
-    // Story 24.3 AC3: Tab only visible when news_tab feature is enabled
-    featureKey: FEATURE_KEYS.NEWS_TAB,
+    // Story 8.22 AC3: Tab only visible when news feature is enabled (capacité produit)
+    featureKey: FEATURE_KEYS.NEWS,
     layout: {
       // Header is shown by tab navigator, no need for SafeAreaView
       useSafeArea: false,
@@ -134,8 +134,8 @@ export const tabScreens = {
   Projects: {
     component: ProjectsScreen,
     icon: "folder",
-    // Story 24.3 AC4: Tab only visible when projects_tab feature is enabled
-    featureKey: FEATURE_KEYS.PROJECTS_TAB,
+    // Story 8.22 AC4: Tab only visible when projects feature is enabled (capacité produit)
+    featureKey: FEATURE_KEYS.PROJECTS,
     layout: {
       // Header is shown by tab navigator, no need for SafeAreaView
       useSafeArea: false,
