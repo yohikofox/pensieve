@@ -27,10 +27,14 @@
     "seed:authorization": "ts-node -r tsconfig-paths/register src/scripts/run-seed.ts",
     "seed:admin": "ts-node -r tsconfig-paths/register src/scripts/run-admin-seed.ts",
     "migrate:users": "ts-node -r tsconfig-paths/register src/scripts/migrate-existing-users.ts",
-    "admin:create": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts create",
-    "admin:list": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts list",
-    "admin:delete": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts delete",
-    "admin:reset-password": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts reset-password"
+    "admin:create": "node dist/scripts/admin-cli.js create",
+    "admin:list": "node dist/scripts/admin-cli.js list",
+    "admin:delete": "node dist/scripts/admin-cli.js delete",
+    "admin:reset-password": "node dist/scripts/admin-cli.js reset-password",
+    "admin:create:dev": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts create",
+    "admin:list:dev": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts list",
+    "admin:delete:dev": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts delete",
+    "admin:reset-password:dev": "ts-node -r tsconfig-paths/register src/scripts/admin-cli.ts reset-password"
   },
   "dependencies": {
     "@better-auth/expo": "^1.4.18",
