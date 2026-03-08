@@ -187,12 +187,29 @@ portainer_redeploy() {
 
   stack_file_content=$(echo "${file_resp}" | jq -r '.StackFileContent')
 
-  # 3. Upsert version env vars (preserve all other vars)
-  log "Portainer: updating *_VERSION to '${VERSION}'..."
+  # 3. Upsert version env vars — only for deployed components
+  # Map component names → Portainer env var names
+  local version_vars=()
+  if [ -z "${ONLY_COMPONENTS}" ]; then
+    version_vars=("BACKEND_VERSION" "WEB_VERSION" "ADMIN_VERSION")
+  else
+    echo ",${ONLY_COMPONENTS}," | grep -q ",backend,"   && version_vars+=("BACKEND_VERSION")
+    echo ",${ONLY_COMPONENTS}," | grep -q ",web,"       && version_vars+=("WEB_VERSION")
+    echo ",${ONLY_COMPONENTS}," | grep -q ",admin,"     && version_vars+=("ADMIN_VERSION")
+  fi
+
+  if [ ${#version_vars[@]} -eq 0 ]; then
+    warn "No versioned service in ONLY_COMPONENTS (${ONLY_COMPONENTS}) — skipping Portainer redeploy"
+    return
+  fi
+
+  log "Portainer: updating $(IFS=,; echo "${version_vars[*]}") to '${VERSION}'..."
+  local keys_json
+  keys_json=$(printf '%s\n' "${version_vars[@]}" | jq -R . | jq -s .)
   local updated_env
   updated_env=$(echo "${current_env}" | jq \
     --arg v "${VERSION}" \
-    --argjson keys '["BACKEND_VERSION","WEB_VERSION","ADMIN_VERSION"]' \
+    --argjson keys "${keys_json}" \
     '
     . as $env |
     $keys | reduce .[] as $key (
@@ -206,7 +223,7 @@ portainer_redeploy() {
     ')
 
   # Show what changed
-  for var in BACKEND_VERSION WEB_VERSION ADMIN_VERSION; do
+  for var in "${version_vars[@]}"; do
     local old_val new_val
     old_val=$(echo "${current_env}" | jq -r --arg k "${var}" '.[] | select(.name==$k) | .value // "latest"')
     new_val="${VERSION}"
