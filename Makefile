@@ -108,7 +108,7 @@ release-app-center: build-app-center push-app-center
 # Deploy Commands (build + push + Portainer redeploy)
 # ===========================================
 
-.PHONY: deploy deploy-services deploy-mobile deploy-mobile-appcenter deploy-mobile-googleplay
+.PHONY: deploy deploy-services deploy-backend deploy-web deploy-admin deploy-app-center deploy-mobile deploy-mobile-appcenter deploy-mobile-googleplay
 
 ## Full deploy: build + push all images & APK (App Center mode), then trigger Portainer redeployment
 ## Reads config from deploy.env (copy from deploy.env.example)
@@ -119,6 +119,22 @@ deploy:
 ## Deploy only Docker services (no mobile APK)
 deploy-services:
 	@bash ./deploy.sh --skip-mobile
+
+## Deploy only backend (build + push + Portainer redeploy)
+deploy-backend:
+	@bash ./deploy.sh --only=backend
+
+## Deploy only web (build + push + Portainer redeploy)
+deploy-web:
+	@bash ./deploy.sh --only=web
+
+## Deploy only admin (build + push + Portainer redeploy)
+deploy-admin:
+	@bash ./deploy.sh --only=admin
+
+## Deploy only app-center (build + push + Portainer redeploy)
+deploy-app-center:
+	@bash ./deploy.sh --only=app-center
 
 ## Deploy only mobile (build + push to MinIO) — mode contrôlé par DISTRIBUTION_TARGET (défaut: appcenter)
 deploy-mobile:
@@ -171,6 +187,10 @@ help:
 	@echo "Deploy targets (build + push + Portainer redeploy):"
 	@echo "  deploy                      Full deploy: all images + APK + Portainer webhooks"
 	@echo "  deploy-services             Docker services only (no mobile APK)"
+	@echo "  deploy-backend              Backend uniquement"
+	@echo "  deploy-web                  Web uniquement"
+	@echo "  deploy-admin                Admin uniquement"
+	@echo "  deploy-app-center           App Center uniquement"
 	@echo "  deploy-mobile               Mobile only — DISTRIBUTION_TARGET=$(DISTRIBUTION_TARGET)"
 	@echo "  deploy-mobile-appcenter     Mobile — App Center (multiple APKs par ABI)"
 	@echo "  deploy-mobile-googleplay    Mobile — Google Play (AAB unique)"
@@ -210,9 +230,12 @@ help:
 	@echo "Examples:"
 	@echo "  make deploy                                         # Full deploy (App Center APKs)"
 	@echo "  make deploy DISTRIBUTION_TARGET=googleplay          # Full deploy (Google Play AAB)"
+	@echo "  make deploy-backend                                 # Backend uniquement"
+	@echo "  make deploy-web                                     # Web uniquement"
+	@echo "  make deploy-admin                                   # Admin uniquement"
+	@echo "  make deploy-services                                # Services only, no APK"
 	@echo "  make deploy-mobile-appcenter                        # APKs only → MinIO"
 	@echo "  make deploy-mobile-googleplay                       # AAB only → MinIO"
-	@echo "  make deploy-services                                # Services only, no APK"
 	@echo "  make release REGISTRY=192.168.1.100:5000            # Build + push, no Portainer"
 	@echo "  make tags IMAGE=pensine-backend"
 
