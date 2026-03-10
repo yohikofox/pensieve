@@ -141,6 +141,22 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
         action: PermissionAction.READ,
         isPaidFeature: false,
       },
+
+      // PAT permissions (Story 27.1)
+      {
+        name: 'pat.manage',
+        displayName: 'Manage own Personal Access Tokens',
+        resourceType: 'system',
+        action: PermissionAction.CREATE,
+        isPaidFeature: false,
+      },
+      {
+        name: 'pat.admin',
+        displayName: 'Manage PATs of other users (admin only)',
+        resourceType: 'system',
+        action: PermissionAction.DELETE,
+        isPaidFeature: false,
+      },
     ];
 
     const permissionIds: Record<string, string> = {};
@@ -215,12 +231,12 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
     // Admin: all permissions
     const adminPermissions = Object.values(permissionIds);
 
-    // User: all permissions except thought.share
+    // User: all permissions except thought.share and pat.admin (admin-only cross-user)
     const userPermissions = Object.entries(permissionIds)
-      .filter(([name]) => name !== 'thought.share')
+      .filter(([name]) => name !== 'thought.share' && name !== 'pat.admin')
       .map(([, id]) => id);
 
-    // Guest: only read permissions
+    // Guest: only read permissions (no PAT access)
     const guestPermissions = Object.entries(permissionIds)
       .filter(([name]) => name.endsWith('.read'))
       .map(([, id]) => id);
@@ -290,16 +306,20 @@ export async function seedAuthorization(dataSource: DataSource): Promise<void> {
     // ========================================
     console.log('🔗 Assigning permissions to tiers...');
 
-    // Free: all basic permissions (no thought.share)
+    // Free: all basic permissions (no thought.share, no admin-only perms)
     const freePermissions = Object.entries(permissionIds)
-      .filter(([name]) => name !== 'thought.share')
+      .filter(([name]) => name !== 'thought.share' && name !== 'pat.admin')
       .map(([, id]) => id);
 
-    // Pro: free + thought.share
-    const proPermissions = Object.values(permissionIds);
+    // Pro: free + thought.share (still no pat.admin — subscription ne confère pas de droits admin)
+    const proPermissions = Object.entries(permissionIds)
+      .filter(([name]) => name !== 'pat.admin')
+      .map(([, id]) => id);
 
-    // Enterprise: all permissions
-    const enterprisePermissions = Object.values(permissionIds);
+    // Enterprise: all permissions except admin-only
+    const enterprisePermissions = Object.entries(permissionIds)
+      .filter(([name]) => name !== 'pat.admin')
+      .map(([, id]) => id);
 
     const tierPermissionMappings = [
       { tierId: tierIds.free, permissionIds: freePermissions },

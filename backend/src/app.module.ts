@@ -24,6 +24,7 @@ import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module'; // Story 24.1: Feature Flag System
 import { TraceModule } from './common/trace/trace.module'; // Story 26.1: Distributed Tracing
 import { TraceMiddleware } from './common/trace/trace.middleware';
+import { PatModule } from './modules/pat/pat.module'; // Story 27.1: Personal Access Tokens
 
 @Module({
   imports: [
@@ -81,6 +82,8 @@ import { TraceMiddleware } from './common/trace/trace.middleware';
     FeatureFlagsModule,
     // Distributed tracing module (Story 26.1)
     TraceModule,
+    // PAT module — Personal Access Tokens (Story 27.1)
+    PatModule,
   ],
   controllers: [AppController],
   providers: [],
