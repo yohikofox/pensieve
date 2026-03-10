@@ -22,6 +22,13 @@ export const apiConfig = {
       notificationSettings: `${API_URL}/api/users/notification-settings`,
       features: (userId: string) => `${API_URL}/api/users/${userId}/features`,
     },
+    pat: {
+      list: `${API_URL}/api/auth/pat`,
+      create: `${API_URL}/api/auth/pat`,
+      update: (id: string) => `${API_URL}/api/auth/pat/${id}`,
+      renew: (id: string) => `${API_URL}/api/auth/pat/${id}/renew`,
+      revoke: (id: string) => `${API_URL}/api/auth/pat/${id}`,
+    },
   },
   google: {
     // Google OAuth Client ID for calendar integration

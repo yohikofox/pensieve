@@ -18,4 +18,6 @@ export type SettingsStackParamList = {
   DataMining: undefined;
   QueryBuilder: { queryId?: string };
   ZustandPersistenceTest: undefined;
+  PersonalAccessTokens: undefined;
+  PATCreate: { patId?: string };
 };

@@ -25,6 +25,8 @@ import { DataMiningScreen } from '../screens/__dev__/DataMiningScreen';
 import { QueryBuilderScreen } from '../screens/__dev__/QueryBuilderScreen';
 import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 import { CustomStackHeader } from './components';
+import { PersonalAccessTokensScreen } from '../screens/settings/pat/PersonalAccessTokensScreen';
+import { PATCreateScreen } from '../screens/settings/pat/PATCreateScreen';
 export type { SettingsStackParamList } from './SettingsNavigationTypes';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -143,6 +145,24 @@ export function SettingsStackNavigator() {
         component={ZustandPersistenceTestScreen}
         options={{
           title: 'Zustand Persistence Test',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="PersonalAccessTokens"
+        component={PersonalAccessTokensScreen}
+        options={{
+          title: 'Accès API',
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="PATCreate"
+        component={PATCreateScreen}
+        options={{
+          title: 'Nouveau token',
           headerShown: true,
           header: (props) => <CustomStackHeader {...props} />,
         }}

@@ -689,6 +689,26 @@ export const SettingsScreen = () => {
           </TouchableOpacity>
         </Card>
 
+          {/* Security Section — Story 27.2 */}
+          <Card variant="elevated" className="mx-4 py-2">
+            <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
+              Sécurité
+            </Text>
+            <TouchableOpacity
+              className="flex-row items-center py-3 px-4"
+              onPress={() => navigation.navigate('PersonalAccessTokens')}
+            >
+              <Feather name="key" size={18} color="#6366f1" style={{ marginRight: 10 }} />
+              <View className="flex-1">
+                <Text className="text-lg text-text-primary">Accès API</Text>
+                <Text className="text-xs text-text-tertiary mt-0.5">
+                  Gérer vos Personal Access Tokens
+                </Text>
+              </View>
+              <Feather name="chevron-right" size={18} color="#9ca3af" />
+            </TouchableOpacity>
+          </Card>
+
           {/* Account Section */}
           <Card variant="elevated" className="mx-4 py-2">
           <Text className="text-xs font-semibold text-text-tertiary uppercase ml-4 mb-2 mt-2">
