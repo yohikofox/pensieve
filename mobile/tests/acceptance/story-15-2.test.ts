@@ -48,6 +48,7 @@ const TOKEN_KEYS = {
   ACCESS_TOKEN: 'ba_access_token',
   REFRESH_TOKEN: 'ba_refresh_token',
   EXPIRES_AT: 'ba_token_expires_at',
+  REFRESH_EXPIRES_AT: 'ba_refresh_expires_at',
 };
 
 function resetStore() {
@@ -325,9 +326,10 @@ defineFeature(feature, (test) => {
         ok: true,
         status: 200,
         json: async () => ({
-          accessToken: 'new-access-token',
-          refreshToken: 'new-refresh-token',
-          expiresIn: 3600,
+          session: { token: 'new-access-token', expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+          user: { id: 'user-123' },
+          tokenExpiresIn: 3600,
+          absoluteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         }),
       });
     });
@@ -340,8 +342,8 @@ defineFeature(feature, (test) => {
 
     then('a refresh request is made', () => {
       expect(mockFetch).toHaveBeenCalledWith(
-        expect.stringContaining('/api/auth/token'),
-        expect.objectContaining({ method: 'POST' }),
+        expect.stringContaining('/api/auth/get-session'),
+        expect.objectContaining({ method: 'GET' }),
       );
     });
 
@@ -412,9 +414,10 @@ defineFeature(feature, (test) => {
         ok: true,
         status: 200,
         json: async () => ({
-          accessToken: 'refreshed-access-token',
-          refreshToken: 'refreshed-refresh-token',
-          expiresIn: 3600,
+          session: { token: 'refreshed-access-token', expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() },
+          user: { id: 'user-123' },
+          tokenExpiresIn: 3600,
+          absoluteExpiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         }),
       });
     });
@@ -432,6 +435,106 @@ defineFeature(feature, (test) => {
     and('the new access token is returned', () => {
       expect(result?.type).toBe(RepositoryResultType.SUCCESS);
       expect(result?.data).toBe('refreshed-access-token');
+    });
+  });
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Scénario 9: Token expiré hier — réseau disponible — session < 30 jours
+  // BUG FIX: cross-day refresh
+  // ══════════════════════════════════════════════════════════════════════════
+  test(
+    'Token expiré hier — réseau disponible — session serveur valide (< 30 jours)',
+    ({ given, when, then, and }) => {
+      defineBackground(given);
+
+      given('an expired access token stored in SecureStore (expired yesterday)', () => {
+        secureStore[TOKEN_KEYS.ACCESS_TOKEN] = 'expired-yesterday-token';
+        secureStore[TOKEN_KEYS.REFRESH_TOKEN] = 'old-refresh-token';
+        // Token expiré il y a 24h
+        secureStore[TOKEN_KEYS.EXPIRES_AT] = String(Date.now() - 24 * 3600 * 1000);
+      });
+
+      and('a refresh token stored in SecureStore with expiry in 29 days', () => {
+        secureStore[TOKEN_KEYS.REFRESH_EXPIRES_AT] = String(Date.now() + 29 * 24 * 3600 * 1000);
+      });
+
+      and('the network is available', () => {
+        isNetworkAvailable = true;
+      });
+
+      and('the session endpoint returns a valid session with new tokenExpiresIn', () => {
+        mockFetch.mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          json: async () => ({
+            session: {
+              token: 'cross-day-new-token',
+              expiresAt: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
+            },
+            user: { id: 'user-456' },
+            tokenExpiresIn: 3600,
+            absoluteExpiresAt: new Date(Date.now() + 29 * 24 * 60 * 60 * 1000).toISOString(),
+          }),
+        });
+      });
+
+      when('the app requests a valid token', async () => {
+        const { AuthTokenManager } = require('../../src/infrastructure/auth/AuthTokenManager');
+        const manager = new AuthTokenManager();
+        result = await manager.getValidToken();
+      });
+
+      then('a refresh request is made to the session endpoint', () => {
+        expect(mockFetch).toHaveBeenCalledWith(
+          expect.stringContaining('/api/auth/get-session'),
+          expect.objectContaining({ method: 'GET' }),
+        );
+      });
+
+      and('the new access token is stored in SecureStore', () => {
+        expect(secureStore[TOKEN_KEYS.ACCESS_TOKEN]).toBe('cross-day-new-token');
+      });
+
+      and('the new access token is returned', () => {
+        expect(result?.type).toBe(RepositoryResultType.SUCCESS);
+        expect(result?.data).toBe('cross-day-new-token');
+      });
+    },
+  );
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Scénario 10: Token expiré — refresh token expiré (> 30 jours)
+  // BUG FIX: pas de refresh si la session serveur elle-même est expirée
+  // ══════════════════════════════════════════════════════════════════════════
+  test('Token expiré — refresh token expiré (> 30 jours)', ({ given, when, then, and }) => {
+    defineBackground(given);
+
+    given('an expired access token stored in SecureStore', () => {
+      storeExpiredToken();
+    });
+
+    and('a refresh token stored in SecureStore that is also expired (> 30 days)', () => {
+      // REFRESH_EXPIRES_AT dans le passé (session expirée il y a 1 jour)
+      secureStore[TOKEN_KEYS.REFRESH_EXPIRES_AT] = String(Date.now() - 24 * 3600 * 1000);
+    });
+
+    when('the app requests a valid token', async () => {
+      const { AuthTokenManager } = require('../../src/infrastructure/auth/AuthTokenManager');
+      const manager = new AuthTokenManager();
+      result = await manager.getValidToken();
+    });
+
+    then('an auth error is returned', () => {
+      expect(result?.type).toBe(RepositoryResultType.AUTH_ERROR);
+    });
+
+    and('the tokens are cleared from SecureStore', () => {
+      expect(secureStore[TOKEN_KEYS.ACCESS_TOKEN]).toBeUndefined();
+      expect(secureStore[TOKEN_KEYS.REFRESH_TOKEN]).toBeUndefined();
+    });
+
+    and('no refresh request is made', () => {
+      expect(mockFetch).not.toHaveBeenCalled();
     });
   });
 });

@@ -53,7 +53,7 @@ export class BetterAuthService implements IAuthService {
     }
 
     // Token local invalide ou expiré → tenter renouvellement via authClient.
-    // La session serveur est valide jusqu'à 7 jours après la dernière connexion (ADR-029).
+    // La session serveur est valide jusqu'à 30 jours après la dernière connexion (ADR-029).
     return this.tryGetSessionFromAuthClient();
   }
 
@@ -74,11 +74,19 @@ export class BetterAuthService implements IAuthService {
           return Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
         })();
 
+        const absoluteExpiresAtStr =
+          (response.data as { absoluteExpiresAt?: string }).absoluteExpiresAt ??
+          (response.data.session as { expiresAt?: string })?.expiresAt;
+        const refreshExpiresAt = absoluteExpiresAtStr
+          ? new Date(absoluteExpiresAtStr).getTime()
+          : undefined;
+
         await this.tokenManager.storeTokens(
           sessionData.token,
           sessionData.token,  // session-based auth : pas de refreshToken séparé
           tokenExpiresIn,
           user.id,
+          refreshExpiresAt,
         );
 
         this.currentSession = { accessToken: sessionData.token, userId: user.id };
@@ -124,11 +132,15 @@ export class BetterAuthService implements IAuthService {
         return Math.max(60, Math.floor((endOfToday.getTime() - Date.now()) / 1000));
       })();
 
+      const sessionExpiresAt = (response.data as { session?: { expiresAt?: string } }).session?.expiresAt;
+      const refreshExpiresAt = sessionExpiresAt ? new Date(sessionExpiresAt).getTime() : undefined;
+
       await this.tokenManager.storeTokens(
         token,
         token,  // session-based auth : le session token est le credential de renouvellement
         tokenExpiresIn,
         user?.id,
+        refreshExpiresAt,
       );
 
       this.currentSession = {

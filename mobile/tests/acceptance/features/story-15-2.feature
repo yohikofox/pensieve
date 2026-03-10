@@ -72,3 +72,22 @@ Feature: Better Auth Mobile Client
     When the app requests a valid token
     Then a refresh request is made
     And the new access token is returned
+
+  # === BUG FIX: Cross-day refresh ===
+  Scenario: Token expiré hier — réseau disponible — session serveur valide (< 30 jours)
+    Given an expired access token stored in SecureStore (expired yesterday)
+    And a refresh token stored in SecureStore with expiry in 29 days
+    And the network is available
+    And the session endpoint returns a valid session with new tokenExpiresIn
+    When the app requests a valid token
+    Then a refresh request is made to the session endpoint
+    And the new access token is stored in SecureStore
+    And the new access token is returned
+
+  Scenario: Token expiré — refresh token expiré (> 30 jours)
+    Given an expired access token stored in SecureStore
+    And a refresh token stored in SecureStore that is also expired (> 30 days)
+    When the app requests a valid token
+    Then an auth error is returned
+    And the tokens are cleared from SecureStore
+    And no refresh request is made

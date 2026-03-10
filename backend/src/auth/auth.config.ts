@@ -63,7 +63,7 @@ export const auth = betterAuth({
   database: pool,
 
   session: {
-    expiresIn: 7 * 24 * 60 * 60, // 7 jours — fenêtre absolue de renouvellement (ADR-029)
+    expiresIn: 30 * 24 * 60 * 60, // 30 jours — fenêtre absolue de renouvellement (ADR-029)
     updateAge: 24 * 60 * 60, // Prolonge la session si la dernière activité > 1j (sliding window)
   },
 

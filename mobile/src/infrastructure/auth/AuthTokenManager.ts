@@ -8,13 +8,14 @@
  * ADR-029: Stratégie offline — token valide jusqu'à 23:59 du jour courant
  *
  * Règles de décision :
- * | Situation                                      | Action                         |
- * |------------------------------------------------|--------------------------------|
- * | Token valide                                   | Retourner token directement    |
- * | Token expiré + réseau OK                       | Refresh → retourner nouveau    |
- * | Token expiré + réseau KO + avant 23:59         | Retourner ancien token (offline) |
- * | Token expiré + réseau KO + après 23:59         | Logout → auth error            |
- * | Refresh → 401/403 (révoqué)                    | Logout immédiat (pas de fallback) |
+ * | Situation                                           | Action                           |
+ * |-----------------------------------------------------|----------------------------------|
+ * | Token valide                                        | Retourner token directement      |
+ * | Token expiré + refresh token non expiré + réseau OK | Refresh → retourner nouveau      |
+ * | Token expiré + réseau KO + avant 23:59 du jour J   | Retourner ancien token (offline) |
+ * | Token expiré + réseau KO + après 23:59 du jour J   | Logout → auth error              |
+ * | Token expiré + refresh token expiré (> 30j)         | Logout → auth error              |
+ * | Refresh → 401/403 (révoqué)                         | Logout immédiat (pas de fallback)|
  */
 
 import * as SecureStore from 'expo-secure-store';
@@ -30,6 +31,7 @@ const TOKEN_KEYS = {
   ACCESS_TOKEN: 'ba_access_token',
   REFRESH_TOKEN: 'ba_refresh_token',
   EXPIRES_AT: 'ba_token_expires_at',
+  REFRESH_EXPIRES_AT: 'ba_refresh_expires_at', // Expiry 30j de la session serveur (ADR-029)
   USER_ID: 'ba_user_id',
 } as const;
 
@@ -48,6 +50,15 @@ export class AuthTokenManager {
 
     if (!isExpired) {
       return success(token);
+    }
+
+    // Vérifier si le refresh token lui-même est expiré (session > 30j)
+    const refreshExpiresAtRaw = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_EXPIRES_AT);
+    const refreshExpiresAt = Number(refreshExpiresAtRaw ?? '0');
+
+    if (refreshExpiresAt && Date.now() > refreshExpiresAt) {
+      await this.clearTokens();
+      return authError('Session expirée — reconnexion requise');
     }
 
     const refreshResult = await this.tryRefresh();
@@ -73,12 +84,15 @@ export class AuthTokenManager {
     refreshToken: string,
     expiresIn: number,
     userId?: string,
+    refreshExpiresAt?: number,
   ): Promise<void> {
     const expiresAt = Date.now() + expiresIn * 1000;
+    const refreshExpiry = refreshExpiresAt ?? Date.now() + 30 * 24 * 60 * 60 * 1000;
     const ops: Promise<void>[] = [
       SecureStore.setItemAsync(TOKEN_KEYS.ACCESS_TOKEN, accessToken),
       SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_TOKEN, refreshToken),
       SecureStore.setItemAsync(TOKEN_KEYS.EXPIRES_AT, String(expiresAt)),
+      SecureStore.setItemAsync(TOKEN_KEYS.REFRESH_EXPIRES_AT, String(refreshExpiry)),
     ];
     if (userId) {
       ops.push(SecureStore.setItemAsync(TOKEN_KEYS.USER_ID, userId));
@@ -95,6 +109,7 @@ export class AuthTokenManager {
       SecureStore.deleteItemAsync(TOKEN_KEYS.ACCESS_TOKEN),
       SecureStore.deleteItemAsync(TOKEN_KEYS.REFRESH_TOKEN),
       SecureStore.deleteItemAsync(TOKEN_KEYS.EXPIRES_AT),
+      SecureStore.deleteItemAsync(TOKEN_KEYS.REFRESH_EXPIRES_AT),
       SecureStore.deleteItemAsync(TOKEN_KEYS.USER_ID),
     ]);
   }
@@ -119,23 +134,26 @@ export class AuthTokenManager {
   private async tryRefresh(): Promise<Result<string>> {
     const refreshToken = await SecureStore.getItemAsync(TOKEN_KEYS.REFRESH_TOKEN);
     if (!refreshToken) {
-      // Better Auth utilise des sessions (pas OAuth2) — pas de refresh token séparé.
-      // networkError active le fallback offline (ADR-029) au lieu de clearTokens.
       return networkError('Session-based auth — pas de refresh token séparé');
     }
 
     try {
+      // Better Auth endpoint standard : GET /api/auth/get-session avec Bearer token
+      // Le plugin bearer convertit Authorization: Bearer {token} → lookup session
+      // La session reste valide 30j même si le tokenExpiresIn local est dépassé
       const response = await fetch(
-        `${process.env.EXPO_PUBLIC_BETTER_AUTH_URL ?? ''}/api/auth/token`,
+        `${process.env.EXPO_PUBLIC_BETTER_AUTH_URL ?? ''}/api/auth/get-session`,
         {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken }),
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${refreshToken}`,
+            'x-client-type': 'mobile',
+          },
         },
       );
 
       if (response.status === 401 || response.status === 403) {
-        return authError('Refresh token invalide');
+        return authError('Session révoquée');
       }
 
       if (!response.ok) {
@@ -143,13 +161,26 @@ export class AuthTokenManager {
       }
 
       const data = (await response.json()) as {
-        accessToken: string;
-        refreshToken: string;
-        expiresIn: number;
+        session: { token: string; expiresAt: string };
+        user: { id: string };
+        tokenExpiresIn?: number;
+        absoluteExpiresAt?: string;
       };
 
-      await this.storeTokens(data.accessToken, data.refreshToken, data.expiresIn);
-      return success(data.accessToken);
+      const newToken = data.session?.token;
+      if (!newToken) {
+        return networkError('Réponse de session invalide');
+      }
+
+      const expiresIn = data.tokenExpiresIn ?? 3600;
+      const userId = data.user?.id;
+      const absoluteExpiresAt = data.absoluteExpiresAt ?? data.session?.expiresAt;
+      const refreshExpiresAt = absoluteExpiresAt
+        ? new Date(absoluteExpiresAt).getTime()
+        : undefined;
+
+      await this.storeTokens(newToken, newToken, expiresIn, userId, refreshExpiresAt);
+      return success(newToken);
     } catch {
       return networkError('Réseau indisponible');
     }
