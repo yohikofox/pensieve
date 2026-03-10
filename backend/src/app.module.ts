@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { buildLoggerConfig } from './config/logger.config';
@@ -17,6 +22,8 @@ import { UploadsModule } from './modules/uploads/uploads.module'; // Story 6.2: 
 import { CaptureModule } from './modules/capture/capture.module'; // Story 6.3: Persistance captures backend
 import { AuthModule } from './auth/auth.module'; // Story 15.1: Better Auth self-hosted (ADR-029)
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module'; // Story 24.1: Feature Flag System
+import { TraceModule } from './common/trace/trace.module'; // Story 26.1: Distributed Tracing
+import { TraceMiddleware } from './common/trace/trace.middleware';
 
 @Module({
   imports: [
@@ -72,8 +79,16 @@ import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module
     AuthModule,
     // Feature flags module (Story 24.1: Generic feature flag system)
     FeatureFlagsModule,
+    // Distributed tracing module (Story 26.1)
+    TraceModule,
   ],
   controllers: [AppController],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer
+      .apply(TraceMiddleware)
+      .forRoutes({ path: '*', method: RequestMethod.ALL });
+  }
+}

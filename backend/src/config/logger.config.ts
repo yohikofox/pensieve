@@ -23,6 +23,7 @@
 import { randomUUID } from 'crypto';
 import type { IncomingMessage, ServerResponse } from 'http';
 import type { Options as PinoHttpOptions } from 'pino-http';
+import { TraceContext } from '../common/trace/trace.context';
 
 export interface PinoLoggerConfig {
   pinoHttp: PinoHttpOptions;
@@ -68,6 +69,17 @@ export function buildLoggerConfig(
 
       formatters: {
         level: (label: string) => ({ level: label }),
+      },
+
+      // Enrichit tous les logs avec traceId/source quand on est dans un contexte HTTP
+      // Retourne {} hors contexte (RabbitMQ, bootstrap) — comportement attendu
+      mixin: () => {
+        const traceId = TraceContext.getTraceId();
+        const source = TraceContext.getSource();
+        return {
+          ...(traceId !== undefined ? { traceId } : {}),
+          ...(source !== undefined ? { source } : {}),
+        };
       },
 
       genReqId: (req: IncomingMessage): string => {
