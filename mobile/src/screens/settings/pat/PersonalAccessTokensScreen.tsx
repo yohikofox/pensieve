@@ -110,9 +110,8 @@ export const PersonalAccessTokensScreen: React.FC = () => {
         <View className="flex-row items-center justify-between px-4 pt-6 pb-2">
           <Text className="text-lg font-semibold text-text-primary">Tokens d'accès</Text>
           <TouchableOpacity
-            className={`flex-row items-center px-3 py-2 rounded-lg ${
-              isConnected ? 'bg-indigo-600' : 'bg-gray-300'
-            }`}
+            className="flex-row items-center px-3 py-2 rounded-lg"
+            style={{ backgroundColor: isConnected ? '#4f46e5' : '#d1d5db' }}
             onPress={() => navigation.navigate('PATCreate', {})}
             disabled={!isConnected}
             testID="create-pat-button"

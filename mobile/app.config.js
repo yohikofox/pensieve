@@ -164,7 +164,7 @@ module.exports = {
         backgroundColor: '#ffffff',
       },
       package: IS_DEV ? 'com.pensine.app.dev' : 'com.pensine.app',
-      permissions: ['RECORD_AUDIO'],
+      permissions: ['RECORD_AUDIO', 'ACCESS_NETWORK_STATE'],
       edgeToEdgeEnabled: true,
       predictiveBackGestureEnabled: false,
       intentFilters: [
