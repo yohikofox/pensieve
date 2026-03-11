@@ -291,6 +291,38 @@ export class ApiClient {
   }
 
   // ========================================
+  // PAT Admin (Story 27.3)
+  // ========================================
+
+  async adminGetUserPats(userId: string) {
+    return this.fetch<PatView[]>(`/api/auth/pat?userId=${userId}`);
+  }
+
+  async adminCreateUserPat(userId: string, data: CreatePatAdminDto) {
+    return this.fetch<{ token: string; pat: PatView }>(`/api/auth/pat?userId=${userId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adminRevokeUserPat(userId: string, patId: string) {
+    return this.fetch<{ success: boolean }>(`/api/auth/pat/${patId}?userId=${userId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  async adminRenewUserPat(userId: string, patId: string, data: RenewPatAdminDto) {
+    return this.fetch<{ token: string; pat: PatView }>(`/api/auth/pat/${patId}/renew?userId=${userId}`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async adminGetPatAuditLogs(userId: string) {
+    return this.fetch<PATAuditLogView[]>(`/api/auth/pat/audit?userId=${userId}`);
+  }
+
+  // ========================================
   // Stats & Monitoring
   // ========================================
 
@@ -489,4 +521,36 @@ export interface ContentStats {
 export interface SystemStats {
   database: string;
   timestamp: string;
+}
+
+// Story 27.3: PAT Admin types
+export interface PatView {
+  id: string;
+  userId: string;
+  name: string;
+  prefix: string;
+  scopes: string[];
+  expiresAt: string;
+  lastUsedAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+}
+
+export interface CreatePatAdminDto {
+  name: string;
+  scopes: string[];
+  expiresInDays: number;
+}
+
+export interface RenewPatAdminDto {
+  expiresInDays: number;
+}
+
+export interface PATAuditLogView {
+  id: string;
+  adminId: string;
+  userId: string;
+  patId: string;
+  action: 'create' | 'revoke' | 'renew';
+  createdAt: string;
 }

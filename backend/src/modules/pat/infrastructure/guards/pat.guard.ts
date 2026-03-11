@@ -40,10 +40,7 @@ export class PatGuard implements CanActivate {
     }
 
     const token = authHeader.slice('Bearer '.length);
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const pat = await this.patRepository.findByHash(tokenHash);
 
@@ -65,9 +62,7 @@ export class PatGuard implements CanActivate {
     );
 
     if (requiredScopes && requiredScopes.length > 0) {
-      const hasAllScopes = requiredScopes.every((s) =>
-        pat.scopes.includes(s),
-      );
+      const hasAllScopes = requiredScopes.every((s) => pat.scopes.includes(s));
       if (!hasAllScopes) {
         throw new ForbiddenException(
           `Scopes insuffisants. Requis : ${requiredScopes.join(', ')}`,

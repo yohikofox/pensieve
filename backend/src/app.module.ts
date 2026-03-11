@@ -76,14 +76,16 @@ import { PatModule } from './modules/pat/pat.module'; // Story 27.1: Personal Ac
     SyncModule,
     // Uploads module (Audio file uploads to MinIO - Story 6.2)
     UploadsModule,
+    // PAT module — Personal Access Tokens (Story 27.1)
+    // IMPORTANT: doit être AVANT AuthModule pour que ses routes /api/auth/pat/*
+    // soient enregistrées avant le wildcard @All('{*path}') de AuthController
+    PatModule,
     // Auth module (Better Auth self-hosted - Story 15.1, ADR-029)
     AuthModule,
     // Feature flags module (Story 24.1: Generic feature flag system)
     FeatureFlagsModule,
     // Distributed tracing module (Story 26.1)
     TraceModule,
-    // PAT module — Personal Access Tokens (Story 27.1)
-    PatModule,
   ],
   controllers: [AppController],
   providers: [],

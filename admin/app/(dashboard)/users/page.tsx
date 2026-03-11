@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { ColumnDef } from '@tanstack/react-table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -330,6 +331,9 @@ export default function UsersPage() {
           </Button>
           <Button variant="outline" size="sm" onClick={() => openResetDialog(row.original)}>
             Réinitialiser MDP
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/users/${row.original.id}`}>Accès API</Link>
           </Button>
         </div>
       ),

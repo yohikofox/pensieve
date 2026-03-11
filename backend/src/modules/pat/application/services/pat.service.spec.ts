@@ -14,10 +14,13 @@ import * as crypto from 'crypto';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { PatService } from './pat.service';
 import { PatRepository } from '../../infrastructure/repositories/pat.repository';
+import { PATAuditService } from './pat-audit.service';
 import { PersonalAccessToken } from '../../domain/entities/personal-access-token.entity';
 import { DataSource, EntityManager, QueryRunner } from 'typeorm';
 
-const makePat = (overrides: Partial<PersonalAccessToken> = {}): PersonalAccessToken => {
+const makePat = (
+  overrides: Partial<PersonalAccessToken> = {},
+): PersonalAccessToken => {
   const pat = new PersonalAccessToken();
   pat.id = 'pat-id-1';
   pat.userId = 'user-id-1';
@@ -38,6 +41,7 @@ describe('PatService', () => {
   let mockDataSource: jest.Mocked<DataSource>;
   let mockQueryRunner: jest.Mocked<QueryRunner>;
   let mockManager: jest.Mocked<EntityManager>;
+  let mockAuditService: jest.Mocked<PATAuditService>;
 
   beforeEach(() => {
     mockRepo = {
@@ -65,7 +69,12 @@ describe('PatService', () => {
       createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
     } as unknown as jest.Mocked<DataSource>;
 
-    service = new PatService(mockRepo, mockDataSource);
+    mockAuditService = {
+      log: jest.fn().mockResolvedValue(undefined),
+      findByUserId: jest.fn().mockResolvedValue([]),
+    } as unknown as jest.Mocked<PATAuditService>;
+
+    service = new PatService(mockRepo, mockDataSource, mockAuditService);
   });
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -98,7 +107,7 @@ describe('PatService', () => {
         expiresInDays: 30,
       });
 
-      const savedPat = mockRepo.save.mock.calls[0][0] as PersonalAccessToken;
+      const savedPat = mockRepo.save.mock.calls[0][0];
       expect(savedPat.tokenHash).toMatch(/^[a-f0-9]{64}$/); // SHA-256 hex = 64 chars
       expect(savedPat.tokenHash).not.toMatch(/^pns_/); // jamais le token brut
     });
@@ -113,7 +122,7 @@ describe('PatService', () => {
         expiresInDays: 30,
       });
 
-      const savedPat = mockRepo.save.mock.calls[0][0] as PersonalAccessToken;
+      const savedPat = mockRepo.save.mock.calls[0][0];
       expect(savedPat.prefix).toHaveLength(12);
       expect(savedPat.prefix).toMatch(/^pns_/);
     });
@@ -149,12 +158,16 @@ describe('PatService', () => {
         expiresInDays: 30,
       });
 
-      const savedPat = mockRepo.save.mock.calls[0][0] as PersonalAccessToken;
+      const savedPat = mockRepo.save.mock.calls[0][0];
       // ±25h de tolérance pour gérer les transitions DST
       const expected = before + 30 * 86400_000;
       const toleranceMs = 25 * 3600_000;
-      expect(savedPat.expiresAt.getTime()).toBeGreaterThanOrEqual(expected - toleranceMs);
-      expect(savedPat.expiresAt.getTime()).toBeLessThanOrEqual(expected + toleranceMs);
+      expect(savedPat.expiresAt.getTime()).toBeGreaterThanOrEqual(
+        expected - toleranceMs,
+      );
+      expect(savedPat.expiresAt.getTime()).toBeLessThanOrEqual(
+        expected + toleranceMs,
+      );
     });
   });
 
@@ -199,7 +212,9 @@ describe('PatService', () => {
       mockRepo.findByIdAndUserId.mockResolvedValue(pat);
       mockRepo.update.mockResolvedValue(updated);
 
-      const result = await service.update('pat-id-1', 'user-id-1', { name: 'Nouveau Nom' });
+      const result = await service.update('pat-id-1', 'user-id-1', {
+        name: 'Nouveau Nom',
+      });
 
       expect(result.name).toBe('Nouveau Nom');
       expect(result).not.toHaveProperty('tokenHash');
@@ -218,7 +233,9 @@ describe('PatService', () => {
       mockRepo.findByIdAndUserId.mockResolvedValue(pat);
 
       await expect(
-        service.update('pat-id-1', 'user-id-1', { scopes: ['invalid:scope' as never] }),
+        service.update('pat-id-1', 'user-id-1', {
+          scopes: ['invalid:scope' as never],
+        }),
       ).rejects.toThrow(BadRequestException);
     });
   });
@@ -228,22 +245,24 @@ describe('PatService', () => {
   // ───────────────────────────────────────────────────────────────────────────
 
   describe('renew()', () => {
-    it('AC5 — crée un nouveau token avec un hash différent de l\'ancien', async () => {
+    it("AC5 — crée un nouveau token avec un hash différent de l'ancien", async () => {
       const existing = makePat({ tokenHash: 'old-hash' });
       mockRepo.findByIdAndUserId.mockResolvedValue(existing);
 
       const newPat = makePat({ id: 'new-pat-id', tokenHash: 'new-hash' });
       mockManager.save
         .mockResolvedValueOnce(existing) // révocation ancien
-        .mockResolvedValueOnce(newPat);  // sauvegarde nouveau
+        .mockResolvedValueOnce(newPat); // sauvegarde nouveau
 
-      const result = await service.renew('pat-id-1', 'user-id-1', { expiresInDays: 60 });
+      const result = await service.renew('pat-id-1', 'user-id-1', {
+        expiresInDays: 60,
+      });
 
       expect(result.token).toMatch(/^pns_/);
       expect(result.pat).not.toHaveProperty('tokenHash');
     });
 
-    it('AC5 — révoque l\'ancien PAT dans la même transaction', async () => {
+    it("AC5 — révoque l'ancien PAT dans la même transaction", async () => {
       const existing = makePat();
       mockRepo.findByIdAndUserId.mockResolvedValue(existing);
       mockManager.save.mockResolvedValue(makePat());
@@ -251,19 +270,22 @@ describe('PatService', () => {
       await service.renew('pat-id-1', 'user-id-1', {});
 
       // Premier save = révocation de l'ancien (revoked_at non null)
-      const revokedPat = mockManager.save.mock.calls[0][0] as PersonalAccessToken;
+      const revokedPat = mockManager.save.mock
+        .calls[0][0] as PersonalAccessToken;
       expect(revokedPat.revokedAt).not.toBeNull();
       expect(mockQueryRunner.commitTransaction).toHaveBeenCalledTimes(1);
     });
 
-    it('AC5 — rollback en cas d\'erreur de transaction', async () => {
+    it("AC5 — rollback en cas d'erreur de transaction", async () => {
       const existing = makePat();
       mockRepo.findByIdAndUserId.mockResolvedValue(existing);
       mockManager.save
         .mockResolvedValueOnce(existing)
         .mockRejectedValueOnce(new Error('DB error'));
 
-      await expect(service.renew('pat-id-1', 'user-id-1', {})).rejects.toThrow('DB error');
+      await expect(service.renew('pat-id-1', 'user-id-1', {})).rejects.toThrow(
+        'DB error',
+      );
       expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalledTimes(1);
       expect(mockQueryRunner.release).toHaveBeenCalledTimes(1);
     });
@@ -271,7 +293,9 @@ describe('PatService', () => {
     it('AC5 — lève NotFoundException si PAT introuvable', async () => {
       mockRepo.findByIdAndUserId.mockResolvedValue(null);
 
-      await expect(service.renew('unknown-id', 'user-id-1', {})).rejects.toThrow(NotFoundException);
+      await expect(
+        service.renew('unknown-id', 'user-id-1', {}),
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('AC5 — expiresInDays utilise 30 par défaut si non fourni', async () => {
@@ -284,10 +308,13 @@ describe('PatService', () => {
 
       await service.renew('pat-id-1', 'user-id-1', {});
 
-      const createdPat = mockManager.save.mock.calls[1][0] as PersonalAccessToken;
+      const createdPat = mockManager.save.mock
+        .calls[1][0] as PersonalAccessToken;
       const thirtyDaysFromNow = Date.now() + 30 * 86400_000;
       const toleranceMs = 25 * 3600_000;
-      expect(createdPat.expiresAt.getTime()).toBeGreaterThanOrEqual(thirtyDaysFromNow - toleranceMs);
+      expect(createdPat.expiresAt.getTime()).toBeGreaterThanOrEqual(
+        thirtyDaysFromNow - toleranceMs,
+      );
     });
   });
 
@@ -299,18 +326,23 @@ describe('PatService', () => {
     it('AC6 — set revoked_at sur le PAT', async () => {
       const pat = makePat({ revokedAt: null });
       mockRepo.findByIdAndUserId.mockResolvedValue(pat);
-      mockRepo.update.mockResolvedValue({ ...pat, revokedAt: new Date() } as PersonalAccessToken);
+      mockRepo.update.mockResolvedValue({
+        ...pat,
+        revokedAt: new Date(),
+      } as PersonalAccessToken);
 
       await service.revoke('pat-id-1', 'user-id-1');
 
-      const saved = mockRepo.update.mock.calls[0][0] as PersonalAccessToken;
+      const saved = mockRepo.update.mock.calls[0][0];
       expect(saved.revokedAt).not.toBeNull();
     });
 
     it('AC6 — lève NotFoundException si PAT introuvable', async () => {
       mockRepo.findByIdAndUserId.mockResolvedValue(null);
 
-      await expect(service.revoke('unknown-id', 'user-id-1')).rejects.toThrow(NotFoundException);
+      await expect(service.revoke('unknown-id', 'user-id-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

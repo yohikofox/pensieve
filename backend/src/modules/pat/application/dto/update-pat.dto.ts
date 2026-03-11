@@ -6,7 +6,10 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
-import { VALID_SCOPES, type PATScope } from '../../infrastructure/guards/pat-scopes';
+import {
+  VALID_SCOPES,
+  type PATScope,
+} from '../../infrastructure/guards/pat-scopes';
 
 export class UpdatePatDto {
   @IsOptional()

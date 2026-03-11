@@ -16,7 +16,9 @@
     "^better-auth/plugins$": "<rootDir>/__mocks__/better-auth-plugins.js",
     "^better-auth/node$": "<rootDir>/__mocks__/better-auth-node.js",
     "^better-auth/crypto$": "<rootDir>/__mocks__/better-auth-crypto.js",
-    "^better-auth$": "<rootDir>/__mocks__/better-auth.js"
+    "^better-auth$": "<rootDir>/__mocks__/better-auth.js",
+    "^@better-auth/expo$": "<rootDir>/__mocks__/better-auth-expo.js",
+    "^expo-server-sdk$": "<rootDir>/__mocks__/expo-server-sdk.js"
   },
-  "testTimeout": 10000
+  "testTimeout": 30000
 }

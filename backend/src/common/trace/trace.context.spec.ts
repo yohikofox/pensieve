@@ -58,10 +58,7 @@ describe('TraceContext', () => {
           });
         });
 
-      await Promise.all([
-        task('A', 'trace-for-A'),
-        task('B', 'trace-for-B'),
-      ]);
+      await Promise.all([task('A', 'trace-for-A'), task('B', 'trace-for-B')]);
 
       const resultA = results.find((r) => r.id === 'A');
       const resultB = results.find((r) => r.id === 'B');

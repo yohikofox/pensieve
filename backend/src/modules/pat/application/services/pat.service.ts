@@ -12,6 +12,12 @@ import { VALID_SCOPES } from '../../infrastructure/guards/pat-scopes';
 import type { CreatePatDto } from '../dto/create-pat.dto';
 import type { UpdatePatDto } from '../dto/update-pat.dto';
 import type { RenewPatDto } from '../dto/renew-pat.dto';
+import { PATAuditService } from './pat-audit.service';
+import { PATAuditLog } from '../../domain/entities/pat-audit-log.entity';
+
+export interface AuditInfo {
+  adminId: string;
+}
 
 export interface PatPublicView {
   id: string;
@@ -44,11 +50,13 @@ export class PatService {
   constructor(
     private readonly patRepository: PatRepository,
     private readonly dataSource: DataSource,
+    private readonly patAuditService: PATAuditService,
   ) {}
 
   async generate(
     userId: string,
     dto: CreatePatDto,
+    auditInfo?: AuditInfo,
   ): Promise<{ pat: PatPublicView; token: string }> {
     const invalidScopes = dto.scopes.filter(
       (s) => !(VALID_SCOPES as readonly string[]).includes(s),
@@ -62,10 +70,7 @@ export class PatService {
     const raw = crypto.randomBytes(32).toString('base64url');
     const token = `pns_${raw}`;
     const prefix = token.slice(0, 12);
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + dto.expiresInDays);
@@ -80,6 +85,15 @@ export class PatService {
     pat.expiresAt = expiresAt;
 
     const saved = await this.patRepository.save(pat);
+
+    if (auditInfo) {
+      await this.patAuditService.log(
+        auditInfo.adminId,
+        userId,
+        saved.id,
+        'create',
+      );
+    }
 
     return { pat: toPublicView(saved), token };
   }
@@ -120,6 +134,7 @@ export class PatService {
     id: string,
     userId: string,
     dto: RenewPatDto,
+    auditInfo?: AuditInfo,
   ): Promise<{ pat: PatPublicView; token: string }> {
     const existing = await this.patRepository.findByIdAndUserId(id, userId);
     if (!existing) {
@@ -129,10 +144,7 @@ export class PatService {
     const raw = crypto.randomBytes(32).toString('base64url');
     const token = `pns_${raw}`;
     const prefix = token.slice(0, 12);
-    const tokenHash = crypto
-      .createHash('sha256')
-      .update(token)
-      .digest('hex');
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
 
     const expiresInDays = dto.expiresInDays ?? 30;
     const expiresAt = new Date();
@@ -159,6 +171,17 @@ export class PatService {
 
       const saved = await queryRunner.manager.save(newPat);
 
+      // Audit dans la transaction : garantit qu'il n'y a pas de rotation sans trace
+      if (auditInfo) {
+        const auditEntry = new PATAuditLog();
+        auditEntry.id = uuidv7();
+        auditEntry.adminId = auditInfo.adminId;
+        auditEntry.userId = userId;
+        auditEntry.patId = saved.id;
+        auditEntry.action = 'renew';
+        await queryRunner.manager.insert(PATAuditLog, auditEntry);
+      }
+
       await queryRunner.commitTransaction();
 
       return { pat: toPublicView(saved), token };
@@ -170,7 +193,11 @@ export class PatService {
     }
   }
 
-  async revoke(id: string, userId: string): Promise<void> {
+  async revoke(
+    id: string,
+    userId: string,
+    auditInfo?: AuditInfo,
+  ): Promise<void> {
     const pat = await this.patRepository.findByIdAndUserId(id, userId);
     if (!pat) {
       throw new NotFoundException(`PAT ${id} introuvable`);
@@ -178,6 +205,9 @@ export class PatService {
 
     pat.revokedAt = new Date();
     await this.patRepository.update(pat);
-  }
 
+    if (auditInfo) {
+      await this.patAuditService.log(auditInfo.adminId, userId, id, 'revoke');
+    }
+  }
 }

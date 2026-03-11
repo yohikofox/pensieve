@@ -25,9 +25,7 @@
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class SeedCapacityProductFeatureFlags1780800000000
-  implements MigrationInterface
-{
+export class SeedCapacityProductFeatureFlags1780800000000 implements MigrationInterface {
   name = 'SeedCapacityProductFeatureFlags1780800000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

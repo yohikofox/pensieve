@@ -18,6 +18,7 @@ import { PermissionGuard } from '../../../authorization/infrastructure/guards/pe
 import { RequirePermission } from '../../../authorization/infrastructure/decorators/require-permission.decorator';
 import type { IAuthorizationService } from '../../../authorization/core/interfaces/authorization.interface';
 import { PatService } from '../services/pat.service';
+import { PATAuditService } from '../services/pat-audit.service';
 import { CreatePatDto } from '../dto/create-pat.dto';
 import { UpdatePatDto } from '../dto/update-pat.dto';
 import { RenewPatDto } from '../dto/renew-pat.dto';
@@ -31,9 +32,23 @@ interface AuthenticatedRequest {
 export class PatController {
   constructor(
     private readonly patService: PatService,
+    private readonly patAuditService: PATAuditService,
     @Inject('IAuthorizationService')
     private readonly authService: IAuthorizationService,
   ) {}
+
+  /** GET /api/auth/pat/audit — Consulter les logs d'audit (déclaré avant /:id) */
+  @Get('audit')
+  @RequirePermission('pat.manage')
+  async getAuditLogs(
+    @Request() req: AuthenticatedRequest,
+    @Query('userId') targetUserId?: string,
+    @Query('limit') limitStr?: string,
+  ) {
+    const userId = await this.resolveUserId(req, targetUserId);
+    const limit = limitStr ? Math.min(parseInt(limitStr, 10) || 100, 500) : 100;
+    return this.patAuditService.findByUserId(userId, limit);
+  }
 
   /** POST /api/auth/pat — Générer un nouveau PAT */
   @Post()
@@ -44,7 +59,11 @@ export class PatController {
     @Query('userId') targetUserId?: string,
   ) {
     const userId = await this.resolveUserId(req, targetUserId);
-    return this.patService.generate(userId, dto);
+    const auditInfo =
+      targetUserId && targetUserId !== req.user.id
+        ? { adminId: req.user.id }
+        : undefined;
+    return this.patService.generate(userId, dto, auditInfo);
   }
 
   /** GET /api/auth/pat — Lister les PATs */
@@ -81,7 +100,11 @@ export class PatController {
     @Query('userId') targetUserId?: string,
   ) {
     const userId = await this.resolveUserId(req, targetUserId);
-    return this.patService.renew(id, userId, dto);
+    const auditInfo =
+      targetUserId && targetUserId !== req.user.id
+        ? { adminId: req.user.id }
+        : undefined;
+    return this.patService.renew(id, userId, dto, auditInfo);
   }
 
   /** DELETE /api/auth/pat/:id — Révoquer un PAT */
@@ -93,7 +116,11 @@ export class PatController {
     @Query('userId') targetUserId?: string,
   ) {
     const userId = await this.resolveUserId(req, targetUserId);
-    await this.patService.revoke(id, userId);
+    const auditInfo =
+      targetUserId && targetUserId !== req.user.id
+        ? { adminId: req.user.id }
+        : undefined;
+    await this.patService.revoke(id, userId, auditInfo);
     return { success: true };
   }
 

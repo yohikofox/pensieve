@@ -14,7 +14,11 @@
  */
 
 import * as crypto from 'crypto';
-import { ExecutionContext, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  ExecutionContext,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PatGuard } from './pat.guard';
 import { PatRepository } from '../repositories/pat.repository';
@@ -22,7 +26,9 @@ import { PersonalAccessToken } from '../../domain/entities/personal-access-token
 import { TraceContext } from '../../../../common/trace/trace.context';
 import { SCOPES_KEY } from './require-scopes.decorator';
 
-const makePat = (overrides: Partial<PersonalAccessToken> = {}): PersonalAccessToken => {
+const makePat = (
+  overrides: Partial<PersonalAccessToken> = {},
+): PersonalAccessToken => {
   const pat = new PersonalAccessToken();
   pat.id = 'pat-guard-id';
   pat.userId = 'user-guard-id';
@@ -96,17 +102,23 @@ describe('PATGuard', () => {
   describe('header manquant ou format invalide', () => {
     it('lève UnauthorizedException si header Authorization absent', async () => {
       const ctx = makeContext(undefined);
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('lève UnauthorizedException si Bearer sans pns_', async () => {
       const ctx = makeContext('Bearer regular-jwt-token');
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('lève UnauthorizedException si header non Bearer', async () => {
       const ctx = makeContext('Token pns_something');
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -131,7 +143,10 @@ describe('PATGuard', () => {
       mockRepo.findByHash.mockResolvedValue(pat);
       mockRepo.update.mockResolvedValue(pat);
 
-      const request = { headers: { authorization: `Bearer ${validToken}` }, user: null };
+      const request = {
+        headers: { authorization: `Bearer ${validToken}` },
+        user: null,
+      };
       const ctx = {
         switchToHttp: () => ({ getRequest: () => request }),
         getHandler: () => jest.fn(),
@@ -146,7 +161,9 @@ describe('PATGuard', () => {
       mockRepo.findByHash.mockResolvedValue(null);
 
       const ctx = makeContext(`Bearer ${validToken}`);
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('hashage SHA-256 du token avant recherche en base', async () => {
@@ -165,11 +182,16 @@ describe('PATGuard', () => {
 
   describe('AC6/AC7 — token révoqué ou expiré', () => {
     it('AC6 — lève UnauthorizedException si PAT révoqué', async () => {
-      const pat = makePat({ tokenHash: validHash, revokedAt: new Date('2026-01-01') });
+      const pat = makePat({
+        tokenHash: validHash,
+        revokedAt: new Date('2026-01-01'),
+      });
       mockRepo.findByHash.mockResolvedValue(pat);
 
       const ctx = makeContext(`Bearer ${validToken}`);
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
 
     it('AC7 — lève UnauthorizedException si PAT expiré', async () => {
@@ -180,7 +202,9 @@ describe('PATGuard', () => {
       mockRepo.findByHash.mockResolvedValue(pat);
 
       const ctx = makeContext(`Bearer ${validToken}`);
-      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+      await expect(guard.canActivate(ctx)).rejects.toThrow(
+        UnauthorizedException,
+      );
     });
   });
 
@@ -235,26 +259,35 @@ describe('PATGuard', () => {
 
   describe('AC10 — enrichissement TraceContext', () => {
     it('enrichit TraceContext avec patId et userId si store actif', async () => {
-      const pat = makePat({ tokenHash: validHash, id: 'pat-trace-id', userId: 'user-trace-id' });
+      const pat = makePat({
+        tokenHash: validHash,
+        id: 'pat-trace-id',
+        userId: 'user-trace-id',
+      });
       mockRepo.findByHash.mockResolvedValue(pat);
       mockRepo.update.mockResolvedValue(pat);
 
-      await TraceContext.run({ traceId: 'trace-test', source: 'http' }, async () => {
-        const ctx = makeContext(`Bearer ${validToken}`);
-        await guard.canActivate(ctx);
+      await TraceContext.run(
+        { traceId: 'trace-test', source: 'http' },
+        async () => {
+          const ctx = makeContext(`Bearer ${validToken}`);
+          await guard.canActivate(ctx);
 
-        expect(TraceContext.getPatId()).toBe('pat-trace-id');
-        expect(TraceContext.getUserId()).toBe('user-trace-id');
-      });
+          expect(TraceContext.getPatId()).toBe('pat-trace-id');
+          expect(TraceContext.getUserId()).toBe('user-trace-id');
+        },
+      );
     });
 
-    it('ne bloque pas la requête si le store TraceContext n\'est pas initialisé', async () => {
+    it("ne bloque pas la requête si le store TraceContext n'est pas initialisé", async () => {
       const pat = makePat({ tokenHash: validHash });
       mockRepo.findByHash.mockResolvedValue(pat);
       mockRepo.update.mockResolvedValue(pat);
 
       // Hors d'un TraceContext.run() — enrichPatContext doit juste logger un warning
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleSpy = jest
+        .spyOn(console, 'warn')
+        .mockImplementation(() => {});
       const ctx = makeContext(`Bearer ${validToken}`);
       const result = await guard.canActivate(ctx);
 

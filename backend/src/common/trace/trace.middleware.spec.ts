@@ -36,7 +36,9 @@ function buildMockResponse() {
       setHeaders[name.toLowerCase()] = value;
     },
     _headers: setHeaders,
-  } as unknown as import('express').Response & { _headers: Record<string, string> };
+  } as unknown as import('express').Response & {
+    _headers: Record<string, string>;
+  };
 }
 
 function buildMockLogger() {
@@ -48,7 +50,9 @@ function buildMockLogger() {
 function buildMiddleware() {
   const logger = buildMockLogger();
   // Bypass DI : accès direct à la propriété privée via cast
-  const middleware = new (TraceMiddleware as unknown as new (l: unknown) => TraceMiddleware)(logger);
+  const middleware = new (TraceMiddleware as unknown as new (
+    l: unknown,
+  ) => TraceMiddleware)(logger);
   return { middleware, logger };
 }
 
@@ -124,7 +128,7 @@ describe('TraceMiddleware', () => {
 
         middleware.use(req, res, () => {
           expect(TraceContext.getSource()).toBe(validSource);
-          (done as jest.DoneCallback)();
+          done();
         });
       },
     );
@@ -141,7 +145,7 @@ describe('TraceMiddleware', () => {
     });
   });
 
-  describe('Log d\'ingress (AC4)', () => {
+  describe("Log d'ingress (AC4)", () => {
     it('émet un log avec traceId, source, method, path, ip', (done) => {
       const { middleware, logger } = buildMiddleware();
       const req = {

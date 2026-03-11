@@ -14,9 +14,7 @@
 
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePersonalAccessTokensTable1781000000000
-  implements MigrationInterface
-{
+export class CreatePersonalAccessTokensTable1781000000000 implements MigrationInterface {
   name = 'CreatePersonalAccessTokensTable1781000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -49,8 +47,6 @@ export class CreatePersonalAccessTokensTable1781000000000
   public async down(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_PAT_TOKEN_HASH"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "IDX_PAT_USER_ID"`);
-    await queryRunner.query(
-      `DROP TABLE IF EXISTS "personal_access_tokens"`,
-    );
+    await queryRunner.query(`DROP TABLE IF EXISTS "personal_access_tokens"`);
   }
 }

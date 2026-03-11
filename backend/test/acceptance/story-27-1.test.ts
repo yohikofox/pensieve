@@ -13,12 +13,16 @@
  *
  * Pattern auth: override __mockAuth.api.getSession par scénario
  * IAuthorizationService est mocké pour isoler les tests de la base de permissions
+ *
+ * Note: Les IDs utilisateur sont des UUIDs v7 générés dynamiquement.
+ * Les labels Gherkin (user-pat-*) servent de préfixe email pour le cleanup.
  */
 
 import { loadFeature, defineFeature } from 'jest-cucumber';
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import request from 'supertest';
+import { v7 as uuidv7 } from 'uuid';
 import { AppModule } from '../../src/app.module';
 import { DataSource } from 'typeorm';
 
@@ -49,6 +53,9 @@ defineFeature(feature, (test) => {
   let createdPatId: string;
   let createdToken: string;
 
+  // Map label → UUID généré dynamiquement pour chaque test
+  let userIds: Record<string, string> = {};
+
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppModule],
@@ -77,34 +84,43 @@ defineFeature(feature, (test) => {
       ({ permission }: { permission: string }) =>
         Promise.resolve(permission === 'pat.manage'),
     );
+    userIds = {};
     createdPatId = '';
     createdToken = '';
 
+    // Cleanup par email (évite les problèmes de cast UUID)
     await dataSource.query(
-      `DELETE FROM personal_access_tokens WHERE user_id LIKE 'user-pat-%'`,
+      `DELETE FROM personal_access_tokens WHERE user_id IN (
+        SELECT id FROM users WHERE email LIKE '%@story-27-1.test'
+      )`,
     );
     await dataSource.query(
       `DELETE FROM users WHERE email LIKE '%@story-27-1.test'`,
     );
   });
 
-  const createTestUser = async (userId: string): Promise<void> => {
+  /** Crée un user en base avec un vrai UUID, retourne cet UUID */
+  const createTestUser = async (label: string): Promise<string> => {
+    const dbId = uuidv7();
+    userIds[label] = dbId;
     await dataSource.query(
       `INSERT INTO users (id, email, status, "pushNotificationsEnabled", "localNotificationsEnabled", "hapticFeedbackEnabled")
        VALUES ($1, $2, 'active', true, true, true)
        ON CONFLICT (id) DO NOTHING`,
-      [userId, `${userId}@story-27-1.test`],
+      [dbId, `${label}@story-27-1.test`],
     );
+    return dbId;
   };
 
-  const mockAuthFor = (userId: string): void => {
+  const mockAuthFor = (label: string, role = 'user'): void => {
+    const uuid = userIds[label];
     __mockAuth.api.getSession.mockResolvedValue({
       user: {
-        id: userId,
-        email: `${userId}@story-27-1.test`,
-        role: 'user',
+        id: uuid,
+        email: `${label}@story-27-1.test`,
+        role,
       },
-      session: { token: `mock-token-${userId}` },
+      session: { token: `mock-token-${label}` },
     });
   };
 
@@ -138,7 +154,7 @@ defineFeature(feature, (test) => {
       async () => {
         response = await request(app.getHttpServer())
           .post('/api/auth/pat')
-          .set('Authorization', 'Bearer mock-token')
+          .set('Authorization', 'Bearer mock-token-user-pat-create')
           .send({
             name: 'Mon PAT MCP',
             scopes: ['captures:read', 'thoughts:read'],
@@ -197,7 +213,7 @@ defineFeature(feature, (test) => {
       async () => {
         response = await request(app.getHttpServer())
           .post('/api/auth/pat')
-          .set('Authorization', 'Bearer mock-token')
+          .set('Authorization', 'Bearer mock-token-user-pat-invalid-scope')
           .send({
             name: 'Mauvais scope',
             scopes: ['admin:all'],
@@ -237,7 +253,7 @@ defineFeature(feature, (test) => {
     and('cet utilisateur a déjà un PAT créé', async () => {
       const createResponse = await request(app.getHttpServer())
         .post('/api/auth/pat')
-        .set('Authorization', 'Bearer mock-token')
+        .set('Authorization', 'Bearer mock-token-user-pat-list')
         .send({
           name: 'PAT de test',
           scopes: ['captures:read'],
@@ -250,7 +266,7 @@ defineFeature(feature, (test) => {
     when('il liste ses PATs via GET /api/auth/pat', async () => {
       response = await request(app.getHttpServer())
         .get('/api/auth/pat')
-        .set('Authorization', 'Bearer mock-token');
+        .set('Authorization', 'Bearer mock-token-user-pat-list');
     });
 
     then('la réponse a le statut 200', () => {
@@ -296,7 +312,7 @@ defineFeature(feature, (test) => {
     and('cet utilisateur a déjà un PAT créé', async () => {
       const createResponse = await request(app.getHttpServer())
         .post('/api/auth/pat')
-        .set('Authorization', 'Bearer mock-token')
+        .set('Authorization', 'Bearer mock-token-user-pat-update')
         .send({
           name: 'Ancien Nom',
           scopes: ['captures:read'],
@@ -311,7 +327,7 @@ defineFeature(feature, (test) => {
       async () => {
         response = await request(app.getHttpServer())
           .patch(`/api/auth/pat/${createdPatId}`)
-          .set('Authorization', 'Bearer mock-token')
+          .set('Authorization', 'Bearer mock-token-user-pat-update')
           .send({
             name: 'Nouveau Nom',
             scopes: ['todos:read'],
@@ -360,7 +376,7 @@ defineFeature(feature, (test) => {
     and('cet utilisateur a déjà un PAT créé', async () => {
       const createResponse = await request(app.getHttpServer())
         .post('/api/auth/pat')
-        .set('Authorization', 'Bearer mock-token')
+        .set('Authorization', 'Bearer mock-token-user-pat-renew')
         .send({
           name: 'PAT à renouveler',
           scopes: ['captures:read'],
@@ -374,7 +390,7 @@ defineFeature(feature, (test) => {
     when('il renouvelle ce PAT avec expiresInDays 60', async () => {
       response = await request(app.getHttpServer())
         .post(`/api/auth/pat/${oldPatId}/renew`)
-        .set('Authorization', 'Bearer mock-token')
+        .set('Authorization', 'Bearer mock-token-user-pat-renew')
         .send({ expiresInDays: 60 });
     });
 
@@ -424,7 +440,7 @@ defineFeature(feature, (test) => {
     and('cet utilisateur a déjà un PAT créé', async () => {
       const createResponse = await request(app.getHttpServer())
         .post('/api/auth/pat')
-        .set('Authorization', 'Bearer mock-token')
+        .set('Authorization', 'Bearer mock-token-user-pat-revoke')
         .send({
           name: 'PAT à révoquer',
           scopes: ['captures:read'],
@@ -437,7 +453,7 @@ defineFeature(feature, (test) => {
     when('il révoque ce PAT via DELETE /api/auth/pat/:id', async () => {
       response = await request(app.getHttpServer())
         .delete(`/api/auth/pat/${createdPatId}`)
-        .set('Authorization', 'Bearer mock-token');
+        .set('Authorization', 'Bearer mock-token-user-pat-revoke');
     });
 
     then('la réponse a le statut 200', () => {
@@ -463,6 +479,7 @@ defineFeature(feature, (test) => {
     when,
     then,
   }) => {
+    let adminId: string;
     let targetUserId: string;
 
     given(
@@ -471,21 +488,20 @@ defineFeature(feature, (test) => {
     );
 
     given('un admin authentifié avec l\'ID "admin-pat-test"', async () => {
-      await createTestUser('admin-pat-test');
-      // L'admin a pat.manage ET pat.admin, la cible (user normal) n'a que pat.manage
+      adminId = await createTestUser('admin-pat-test');
       mockAuthorizationService.hasPermission.mockImplementation(
         ({ userId, permission }: { userId: string; permission: string }) => {
           if (permission === 'pat.manage') return Promise.resolve(true);
           if (permission === 'pat.admin') {
             // Seul l'admin a pat.admin — la cible (user normal) ne l'a pas
-            return Promise.resolve(userId === 'admin-pat-test');
+            return Promise.resolve(userId === adminId);
           }
           return Promise.resolve(false);
         },
       );
       __mockAuth.api.getSession.mockResolvedValue({
         user: {
-          id: 'admin-pat-test',
+          id: adminId,
           email: 'admin-pat-test@story-27-1.test',
           role: 'admin',
         },
@@ -494,8 +510,7 @@ defineFeature(feature, (test) => {
     });
 
     and('un utilisateur cible avec l\'ID "target-user-pat"', async () => {
-      targetUserId = 'target-user-pat';
-      await createTestUser(targetUserId);
+      targetUserId = await createTestUser('target-user-pat');
     });
 
     and('cet utilisateur cible a déjà un PAT créé', async () => {
@@ -503,7 +518,7 @@ defineFeature(feature, (test) => {
       __mockAuth.api.getSession.mockResolvedValue({
         user: {
           id: targetUserId,
-          email: `${targetUserId}@story-27-1.test`,
+          email: 'target-user-pat@story-27-1.test',
           role: 'user',
         },
         session: { token: 'mock-token-target' },
@@ -522,7 +537,7 @@ defineFeature(feature, (test) => {
       // Repasser en admin pour la suite
       __mockAuth.api.getSession.mockResolvedValue({
         user: {
-          id: 'admin-pat-test',
+          id: adminId,
           email: 'admin-pat-test@story-27-1.test',
           role: 'admin',
         },
