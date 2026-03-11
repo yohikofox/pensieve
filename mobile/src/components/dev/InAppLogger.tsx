@@ -157,7 +157,7 @@ export const LogsViewer: React.FC = () => {
     setModalState(INITIAL_MODAL_STATE);
   };
 
-  if (!__DEV__) return null;
+  if (!isDebugMode) return null;
 
   return (
     <View style={styles.embeddedContainer}>

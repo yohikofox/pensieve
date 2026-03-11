@@ -21,8 +21,8 @@ import {
   TouchableOpacity,
   Text,
   StyleSheet,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
 import { useCaptureDetailInit } from "../../hooks/useCaptureDetailInit";
 import { StandardLayout } from "../../components/layouts";

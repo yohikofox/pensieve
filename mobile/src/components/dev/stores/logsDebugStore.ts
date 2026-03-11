@@ -66,7 +66,7 @@ export const useLogsDebugStore = create<LogsDebugState>()(
 let isInterceptionSetup = false;
 
 export function setupConsoleInterception(): void {
-  if (isInterceptionSetup || !__DEV__) {
+  if (isInterceptionSetup) {
     return;
   }
 
