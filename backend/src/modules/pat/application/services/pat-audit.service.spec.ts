@@ -106,7 +106,7 @@ describe('PATAuditService', () => {
 
       const result = await service.findByUserId('user-id-1');
 
-      expect(mockRepo.findByUserId).toHaveBeenCalledWith('user-id-1');
+      expect(mockRepo.findByUserId).toHaveBeenCalledWith('user-id-1', 100);
       expect(result).toHaveLength(2);
     });
 

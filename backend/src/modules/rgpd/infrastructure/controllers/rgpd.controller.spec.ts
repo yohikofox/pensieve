@@ -46,9 +46,8 @@ describe('RgpdController', () => {
       // Arrange
       const userId = 'user-123';
       const mockBuffer = Buffer.from('mock-zip-content');
-      const mockRequest = {
-        user: { id: userId, email: 'test@example.com' },
-      } as any;
+      const mockUser = { id: userId, email: 'test@example.com' } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockResponse = {
         set: jest.fn(),
         send: jest.fn(),
@@ -59,7 +58,7 @@ describe('RgpdController', () => {
       jest.spyOn(rgpdService, 'generateExport').mockResolvedValue(mockBuffer);
 
       // Act
-      await controller.exportUserData(mockRequest, mockResponse);
+      await controller.exportUserData(mockUser, mockRequest, mockResponse);
 
       // Assert
       expect(rgpdService.generateExport).toHaveBeenCalledWith(
@@ -77,9 +76,8 @@ describe('RgpdController', () => {
     it('should return 500 error if export fails', async () => {
       // Arrange
       const userId = 'user-123';
-      const mockRequest = {
-        user: { id: userId, email: 'test@example.com' },
-      } as any;
+      const mockUser = { id: userId, email: 'test@example.com' } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockResponse = {
         set: jest.fn(),
         send: jest.fn(),
@@ -92,7 +90,7 @@ describe('RgpdController', () => {
         .mockRejectedValue(new Error('Export failed'));
 
       // Act
-      await controller.exportUserData(mockRequest, mockResponse);
+      await controller.exportUserData(mockUser, mockRequest, mockResponse);
 
       // Assert
       expect(mockResponse.status).toHaveBeenCalledWith(500);
@@ -106,9 +104,8 @@ describe('RgpdController', () => {
       // Arrange
       const userId = 'user-123';
       const mockBuffer = Buffer.from('mock-zip-content');
-      const mockRequest = {
-        user: { id: userId, email: 'test@example.com' },
-      } as any;
+      const mockUser = { id: userId, email: 'test@example.com' } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockResponse = {
         set: jest.fn(),
         send: jest.fn(),
@@ -119,7 +116,7 @@ describe('RgpdController', () => {
       jest.spyOn(rgpdService, 'generateExport').mockResolvedValue(mockBuffer);
 
       // Act
-      await controller.exportUserData(mockRequest, mockResponse);
+      await controller.exportUserData(mockUser, mockRequest, mockResponse);
 
       // Assert
       expect(mockResponse.set).toHaveBeenCalledWith(
@@ -138,16 +135,15 @@ describe('RgpdController', () => {
       const userId = 'user-123';
       const email = 'test@example.com';
       const password = 'ValidPassword123';
-      const mockRequest = {
-        user: { id: userId, email },
-      } as any;
+      const mockUser = { id: userId, email } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockBody = { password };
 
       jest.spyOn(rgpdService, 'verifyPassword').mockResolvedValue(true);
       jest.spyOn(rgpdService, 'deleteUserAccount').mockResolvedValue(undefined);
 
       // Act
-      const result = await controller.deleteUserAccount(mockRequest, mockBody);
+      const result = await controller.deleteUserAccount(mockUser, mockRequest, mockBody);
 
       // Assert
       expect(rgpdService.verifyPassword).toHaveBeenCalledWith(email, password);
@@ -163,16 +159,15 @@ describe('RgpdController', () => {
       const userId = 'user-123';
       const email = 'test@example.com';
       const password = 'WrongPassword';
-      const mockRequest = {
-        user: { id: userId, email },
-      } as any;
+      const mockUser = { id: userId, email } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockBody = { password };
 
       jest.spyOn(rgpdService, 'verifyPassword').mockResolvedValue(false);
 
       // Act & Assert
       await expect(
-        controller.deleteUserAccount(mockRequest, mockBody),
+        controller.deleteUserAccount(mockUser, mockRequest, mockBody),
       ).rejects.toThrow(UnauthorizedException);
       expect(rgpdService.verifyPassword).toHaveBeenCalledWith(email, password);
       expect(rgpdService.deleteUserAccount).not.toHaveBeenCalled();
@@ -183,9 +178,8 @@ describe('RgpdController', () => {
       const userId = 'user-123';
       const email = 'test@example.com';
       const password = 'ValidPassword123';
-      const mockRequest = {
-        user: { id: userId, email },
-      } as any;
+      const mockUser = { id: userId, email } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockBody = { password };
 
       const verifyPasswordSpy = jest
@@ -196,7 +190,7 @@ describe('RgpdController', () => {
         .mockResolvedValue(undefined);
 
       // Act
-      await controller.deleteUserAccount(mockRequest, mockBody);
+      await controller.deleteUserAccount(mockUser, mockRequest, mockBody);
 
       // Assert
       expect(verifyPasswordSpy).toHaveBeenCalledBefore(deleteAccountSpy);
@@ -207,16 +201,15 @@ describe('RgpdController', () => {
       const userId = 'user-123';
       const email = 'specific@example.com';
       const password = 'ValidPassword123';
-      const mockRequest = {
-        user: { id: userId, email },
-      } as any;
+      const mockUser = { id: userId, email } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockBody = { password };
 
       jest.spyOn(rgpdService, 'verifyPassword').mockResolvedValue(true);
       jest.spyOn(rgpdService, 'deleteUserAccount').mockResolvedValue(undefined);
 
       // Act
-      await controller.deleteUserAccount(mockRequest, mockBody);
+      await controller.deleteUserAccount(mockUser, mockRequest, mockBody);
 
       // Assert
       expect(rgpdService.verifyPassword).toHaveBeenCalledWith(email, password);
@@ -227,16 +220,15 @@ describe('RgpdController', () => {
       const userId = 'user-123';
       const email = 'test@example.com';
       const password = 'WrongPassword';
-      const mockRequest = {
-        user: { id: userId, email },
-      } as any;
+      const mockUser = { id: userId, email } as any;
+      const mockRequest = { user: mockUser } as any;
       const mockBody = { password };
 
       jest.spyOn(rgpdService, 'verifyPassword').mockResolvedValue(false);
 
       // Act & Assert
       try {
-        await controller.deleteUserAccount(mockRequest, mockBody);
+        await controller.deleteUserAccount(mockUser, mockRequest, mockBody);
         fail('Should have thrown UnauthorizedException');
       } catch (error) {
         expect(error).toBeInstanceOf(UnauthorizedException);
