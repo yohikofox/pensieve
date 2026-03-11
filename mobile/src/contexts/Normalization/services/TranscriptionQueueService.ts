@@ -18,6 +18,7 @@ export interface QueuedCapture {
   audioDuration?: number;
   status: "pending" | "processing" | "failed";
   retryCount: number;
+  resetCount: number;
   lastError?: string;
   createdAt: Date;
   startedAt?: Date;
@@ -37,6 +38,7 @@ interface QueueRow {
   audio_duration: number | null;
   status: string;
   retry_count: number;
+  reset_count: number;
   last_error: string | null;
   created_at: number;
   started_at: number | null;
@@ -54,6 +56,7 @@ function mapRowToQueuedCapture(row: QueueRow): QueuedCapture {
     audioDuration: row.audio_duration || undefined,
     status: row.status as "pending" | "processing" | "failed",
     retryCount: row.retry_count,
+    resetCount: row.reset_count ?? 0,
     lastError: row.last_error || undefined,
     createdAt: new Date(row.created_at),
     startedAt: row.started_at ? new Date(row.started_at) : undefined,
@@ -464,38 +467,73 @@ export class TranscriptionQueueService {
    * Reset stuck items on startup (crash recovery)
    *
    * Resets:
-   * - 'processing' items back to 'pending' (orphaned from crash/restart)
+   * - 'processing' items: increments reset_count, then either resets to 'pending'
+   *   or marks as permanently 'stuck' if reset_count >= MAX_RESET_COUNT
    * - 'failed' items back to 'pending' if retry count < MAX_RETRIES
    *
-   * Also resets corresponding capture states.
+   * Also resets or marks corresponding capture states.
    *
    * @returns Number of items reset
    */
   async resetStuckItems(): Promise<number> {
     const MAX_RETRIES = 3;
-    let resetCount = 0;
+    const MAX_RESET_COUNT = 3;
+    let totalReset = 0;
 
-    // 1. Reset orphaned 'processing' items (from crash/restart)
+    // 1. Handle orphaned 'processing' items (from crash/restart)
+    //    First, get items that have already hit the reset limit
+    const stuckRows = this.db.executeSync(
+      `SELECT id, capture_id, reset_count FROM transcription_queue
+       WHERE status = 'processing' AND reset_count >= ?`,
+      [MAX_RESET_COUNT],
+    );
+
+    const stuckItems = (stuckRows.rows ?? []) as Array<{ id: string; capture_id: string; reset_count: number }>;
+
+    if (stuckItems.length > 0) {
+      console.log(`[TranscriptionQueueService] 💀 ${stuckItems.length} items permanently stuck (reset_count >= ${MAX_RESET_COUNT})`);
+
+      // Mark queue items as failed with explanation
+      for (const item of stuckItems) {
+        this.db.executeSync(
+          `UPDATE transcription_queue
+           SET status = 'failed', last_error = 'Permanently stuck: transcription engine never completed after ${MAX_RESET_COUNT} resets'
+           WHERE id = ?`,
+          [item.id],
+        );
+
+        // Mark capture as stuck (new state to distinguish from failed)
+        this.db.executeSync(
+          `UPDATE captures SET state = 'stuck', updated_at = ?
+           WHERE id = ? AND state = 'processing'`,
+          [Date.now(), item.capture_id],
+        );
+      }
+    }
+
+    // 2. Reset recoverable 'processing' items (reset_count < MAX_RESET_COUNT)
     const processingResult = this.db.executeSync(
       `UPDATE transcription_queue
-       SET status = 'pending', started_at = NULL
-       WHERE status = 'processing'`,
+       SET status = 'pending', started_at = NULL, reset_count = reset_count + 1
+       WHERE status = 'processing' AND reset_count < ?`,
+      [MAX_RESET_COUNT],
     );
     const processingReset = processingResult.rowsAffected ?? 0;
-    resetCount += processingReset;
+    totalReset += processingReset;
 
     if (processingReset > 0) {
-      console.log(`[TranscriptionQueueService] 🔄 Reset ${processingReset} orphaned 'processing' items`);
+      console.log(`[TranscriptionQueueService] 🔄 Reset ${processingReset} orphaned 'processing' items (will retry)`);
 
-      // Reset corresponding capture states
+      // Reset corresponding capture states back to 'captured' so they can be reprocessed
       this.db.executeSync(
-        `UPDATE captures SET state = 'captured'
+        `UPDATE captures SET state = 'captured', updated_at = ?
          WHERE id IN (SELECT capture_id FROM transcription_queue WHERE status = 'pending')
          AND state = 'processing'`,
+        [Date.now()],
       );
     }
 
-    // 2. Reset 'failed' items with low retry count
+    // 3. Reset 'failed' items with low retry count
     const failedResult = this.db.executeSync(
       `UPDATE transcription_queue
        SET status = 'pending', started_at = NULL
@@ -503,20 +541,21 @@ export class TranscriptionQueueService {
       [MAX_RETRIES],
     );
     const failedReset = failedResult.rowsAffected ?? 0;
-    resetCount += failedReset;
+    totalReset += failedReset;
 
     if (failedReset > 0) {
       console.log(`[TranscriptionQueueService] 🔄 Reset ${failedReset} 'failed' items for retry`);
 
       // Reset corresponding capture states
       this.db.executeSync(
-        `UPDATE captures SET state = 'captured'
+        `UPDATE captures SET state = 'captured', updated_at = ?
          WHERE id IN (SELECT capture_id FROM transcription_queue WHERE status = 'pending')
          AND state = 'failed'`,
+        [Date.now()],
       );
     }
 
-    // 3. Remove completed items (cleanup)
+    // 4. Remove completed items (cleanup)
     const completedResult = this.db.executeSync(
       `DELETE FROM transcription_queue WHERE status = 'completed'`,
     );
@@ -526,7 +565,48 @@ export class TranscriptionQueueService {
       console.log(`[TranscriptionQueueService] 🧹 Cleaned up ${completedRemoved} completed items`);
     }
 
-    return resetCount;
+    return totalReset;
+  }
+
+  /**
+   * Force-mark a capture as stuck and remove it from the queue
+   *
+   * Used when the user manually aborts a stuck transcription from the settings screen.
+   *
+   * @param captureId - Capture ID to abort
+   */
+  async markCaptureAsStuck(captureId: string): Promise<void> {
+    // Mark the queue item as failed with abort reason
+    this.db.executeSync(
+      `UPDATE transcription_queue
+       SET status = 'failed', last_error = 'Manually aborted by user'
+       WHERE capture_id = ? AND status IN ('pending', 'processing')`,
+      [captureId],
+    );
+
+    // Mark the capture as stuck
+    this.db.executeSync(
+      `UPDATE captures SET state = 'stuck', updated_at = ?
+       WHERE id = ?`,
+      [Date.now(), captureId],
+    );
+
+    console.log(`[TranscriptionQueueService] 🛑 Capture ${captureId} marked as stuck (manual abort)`);
+  }
+
+  /**
+   * Get all items currently in the queue (for settings UI)
+   *
+   * @returns Array of all queue items with their current status
+   */
+  getAllQueueItems(): QueuedCapture[] {
+    const result = this.db.executeSync(
+      `SELECT id, capture_id, audio_path, audio_duration, status, retry_count, reset_count,
+              last_error, created_at, started_at, first_retry_at
+       FROM transcription_queue
+       ORDER BY created_at ASC`,
+    );
+    return ((result.rows ?? []) as QueueRow[]).map(mapRowToQueuedCapture);
   }
 
   /**

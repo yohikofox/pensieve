@@ -599,6 +599,19 @@ export const SettingsScreen = () => {
               thumbColor={colors.neutral[0]}
             />
           </View>
+
+          <TouchableOpacity
+            className="flex-row items-center py-3 px-4"
+            onPress={() => navigation.navigate('TranscriptionQueueManagement')}
+          >
+            <View className="flex-1">
+              <Text className="text-lg text-text-primary">File de transcription</Text>
+              <Text className="text-xs text-text-tertiary mt-0.5">
+                Voir et gérer les captures en attente de transcription
+              </Text>
+            </View>
+            <Text className="text-xl text-text-tertiary font-semibold">›</Text>
+          </TouchableOpacity>
         </Card>
 
           {/* Sync Section */}

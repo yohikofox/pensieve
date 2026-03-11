@@ -8,6 +8,7 @@
 export type SettingsStackParamList = {
   SettingsMain: undefined;
   TranscriptionEngineSettings: undefined;
+  TranscriptionQueueManagement: undefined;
   WhisperSettings: undefined;
   LLMSettings: undefined;
   ThemeSettings: undefined;

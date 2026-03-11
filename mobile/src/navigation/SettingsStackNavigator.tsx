@@ -27,6 +27,7 @@ import { useStackScreenOptions } from '../hooks/useNavigationTheme';
 import { CustomStackHeader } from './components';
 import { PersonalAccessTokensScreen } from '../screens/settings/pat/PersonalAccessTokensScreen';
 import { PATCreateScreen } from '../screens/settings/pat/PATCreateScreen';
+import { TranscriptionQueueManagementScreen } from '../screens/settings/TranscriptionQueueManagementScreen';
 export type { SettingsStackParamList } from './SettingsNavigationTypes';
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
@@ -55,6 +56,15 @@ export function SettingsStackNavigator() {
         component={TranscriptionEngineSettingsScreen}
         options={{
           title: t('navigation.headers.transcriptionEngine'),
+          headerShown: true,
+          header: (props) => <CustomStackHeader {...props} />,
+        }}
+      />
+      <Stack.Screen
+        name="TranscriptionQueueManagement"
+        component={TranscriptionQueueManagementScreen}
+        options={{
+          title: 'File de transcription',
           headerShown: true,
           header: (props) => <CustomStackHeader {...props} />,
         }}

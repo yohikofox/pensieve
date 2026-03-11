@@ -31,6 +31,7 @@ export const CAPTURE_STATES = {
   PROCESSING: "processing",
   READY: "ready",
   FAILED: "failed",
+  STUCK: "stuck",
 } as const;
 
 export type CaptureState = (typeof CAPTURE_STATES)[keyof typeof CAPTURE_STATES];

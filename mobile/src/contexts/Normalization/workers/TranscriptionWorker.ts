@@ -178,6 +178,36 @@ export class TranscriptionWorker {
   }
 
   /**
+   * Force-abort the transcription of a specific capture
+   *
+   * Immediately stops the native engine if it's processing this capture,
+   * then marks the capture and queue item as stuck/aborted.
+   *
+   * @param captureId - Capture ID to abort
+   */
+  async forceAbortCapture(captureId: string): Promise<void> {
+    console.log(`[TranscriptionWorker] 🛑 Force-aborting capture ${captureId}`);
+
+    // Cancel any scheduled retry for this capture
+    this.cancelRetry(captureId);
+
+    // Abort the native engine (in case this capture is currently being processed)
+    try {
+      await this.nativeEngine.cancel();
+    } catch (err) {
+      console.warn('[TranscriptionWorker] Failed to abort native engine:', err);
+    }
+
+    // Mark capture + queue item as stuck in DB
+    await this.queueService.markCaptureAsStuck(captureId);
+
+    // If we just aborted the currently processing item, allow new items to be picked up
+    if (this.isProcessing) {
+      this.isProcessing = false;
+    }
+  }
+
+  /**
    * Check if native file transcription is supported
    * Only available on Android 13+ (API 33+)
    */

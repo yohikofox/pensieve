@@ -90,7 +90,7 @@ export const PATCreateContent: React.FC<PATCreateContentProps> = ({ patId, onBac
     <StandardLayout>
       <ScrollView className="flex-1 px-4">
         <Text className="text-2xl font-bold text-text-primary mt-6 mb-6">
-          {isEditing ? 'Modifier le token' : 'Nouveau token d'accès'}
+          {isEditing ? 'Modifier le token' : "Nouveau token d'accès"}
         </Text>
 
         {/* Nom */}

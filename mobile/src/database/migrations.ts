@@ -2116,6 +2116,81 @@ export const migrations: Migration[] = [
       console.warn('[DB] 🔄 Rolling back migration v28 (_changed column cannot be dropped in SQLite)');
     },
   },
+  {
+    version: 29,
+    name: 'Add reset_count to transcription_queue and stuck state to captures',
+    up: (db: DB) => {
+      db.executeSync('PRAGMA foreign_keys = ON');
+
+      console.log('[DB] 🔄 Migration v29: Adding reset_count to transcription_queue + stuck state to captures');
+
+      // 1. Add reset_count column to transcription_queue
+      db.executeSync(`
+        ALTER TABLE transcription_queue
+        ADD COLUMN reset_count INTEGER NOT NULL DEFAULT 0
+      `);
+
+      // 2. Rebuild captures table to add 'stuck' to state CHECK constraint
+      //    Columns as of v28: id, type, state, raw_content, normalized_text, duration, file_size,
+      //    wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data,
+      //    retry_count, retry_window_start_at, last_retry_at, transcription_error,
+      //    _changed, audio_url, audio_local_path, _status
+      db.executeSync(`
+        CREATE TABLE captures_v29 (
+          id TEXT PRIMARY KEY NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('audio', 'text')),
+          state TEXT NOT NULL CHECK(state IN ('recording', 'captured', 'processing', 'ready', 'failed', 'stuck')),
+          raw_content TEXT,
+          normalized_text TEXT,
+          duration INTEGER,
+          file_size INTEGER,
+          wav_path TEXT,
+          created_at INTEGER NOT NULL,
+          updated_at INTEGER NOT NULL,
+          sync_version INTEGER NOT NULL DEFAULT 0,
+          last_sync_at INTEGER,
+          server_id TEXT,
+          conflict_data TEXT,
+          retry_count INTEGER NOT NULL DEFAULT 0,
+          retry_window_start_at INTEGER,
+          last_retry_at INTEGER,
+          transcription_error TEXT,
+          _changed INTEGER NOT NULL DEFAULT 0,
+          audio_url TEXT,
+          audio_local_path TEXT,
+          _status TEXT DEFAULT 'active' CHECK(_status IN ('active', 'deleted'))
+        )
+      `);
+
+      db.executeSync(`
+        INSERT INTO captures_v29 (
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data,
+          retry_count, retry_window_start_at, last_retry_at, transcription_error,
+          _changed, audio_url, audio_local_path, _status
+        )
+        SELECT
+          id, type, state, raw_content, normalized_text, duration, file_size,
+          wav_path, created_at, updated_at, sync_version, last_sync_at, server_id, conflict_data,
+          retry_count, retry_window_start_at, last_retry_at, transcription_error,
+          _changed, audio_url, audio_local_path, _status
+        FROM captures
+      `);
+
+      db.executeSync('DROP TABLE captures');
+      db.executeSync('ALTER TABLE captures_v29 RENAME TO captures');
+
+      // Recreate indexes
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_created_at ON captures(created_at DESC)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_state ON captures(state)');
+      db.executeSync('CREATE INDEX IF NOT EXISTS idx_captures_status_created_at ON captures(_status, created_at DESC)');
+
+      console.log('[DB] ✅ Migration v29: reset_count and stuck state added');
+    },
+    down: (db: DB) => {
+      console.warn('[DB] 🔄 Rolling back migration v29 (reset_count cannot be dropped in SQLite)');
+    },
+  },
 ];
 
 /**
