@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { AdminFeaturesController } from '../admin-features.controller';
 import { AdminFeatureFlagsService } from '../../../application/services/admin-feature-flags.service';
-import { AdminJwtGuard } from '../../../../admin-auth/infrastructure/guards/admin-jwt.guard';
+import { AdminGuard } from '../../../../admin-auth/infrastructure/guards/admin.guard';
 import { CreateFeatureDto } from '../../../application/dtos/create-feature.dto';
 import { UpdateFeatureDto } from '../../../application/dtos/update-feature.dto';
 import { Feature } from '../../../domain/entities/feature.entity';
@@ -35,10 +35,10 @@ describe('AdminFeaturesController', () => {
       controllers: [AdminFeaturesController],
       providers: [
         { provide: AdminFeatureFlagsService, useValue: mockService },
-        { provide: AdminJwtGuard, useValue: mockGuard },
+        { provide: AdminGuard, useValue: mockGuard },
       ],
     })
-      .overrideGuard(AdminJwtGuard)
+      .overrideGuard(AdminGuard)
       .useValue(mockGuard)
       .compile();
 

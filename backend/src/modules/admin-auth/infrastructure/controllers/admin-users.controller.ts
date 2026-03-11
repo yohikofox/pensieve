@@ -8,7 +8,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../guards/admin-jwt.guard';
+import { AdminGuard } from '../guards/admin.guard';
 import { BetterAuthAdminService } from '../../../rgpd/application/services/better-auth-admin.service';
 import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
 import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password.dto';
@@ -19,10 +19,10 @@ import { ResetUserPasswordDto } from '../../application/dtos/reset-user-password
  * Story 8.18: Admin Reset Password
  * Story 24.2: GET/PATCH :userId/features supprimés — délégués à AdminUserFeaturesController
  *
- * Protected by AdminJwtGuard - requires admin authentication
+ * Protected by AdminGuard - requires admin authentication
  */
 @Controller('api/admin/users')
-@UseGuards(AdminJwtGuard)
+@UseGuards(AdminGuard)
 export class AdminUsersController {
   private readonly logger = new Logger(AdminUsersController.name);
 

@@ -54,7 +54,7 @@ export function setUserProvisioningCallback(
  * to avoid coupling Better Auth's query lifecycle to TypeORM transactions.
  * Pool size capped at 5 to limit total connections (TypeORM default: 10).
  */
-const pool = new Pool({
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   max: 5,
 });

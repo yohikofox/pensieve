@@ -10,7 +10,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../../../admin-auth/infrastructure/guards/admin-jwt.guard';
+import { AdminGuard } from '../../../admin-auth/infrastructure/guards/admin.guard';
 import { AdminFeatureFlagsService } from '../../application/services/admin-feature-flags.service';
 import { CreateFeatureDto } from '../../application/dtos/create-feature.dto';
 import { UpdateFeatureDto } from '../../application/dtos/update-feature.dto';
@@ -27,7 +27,7 @@ import { Feature } from '../../domain/entities/feature.entity';
  * Tous les endpoints sont protégés par AdminJwtGuard (AC7).
  */
 @Controller('api/admin/features')
-@UseGuards(AdminJwtGuard)
+@UseGuards(AdminGuard)
 export class AdminFeaturesController {
   private readonly logger = new Logger(AdminFeaturesController.name);
 

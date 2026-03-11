@@ -10,7 +10,7 @@ import {
   Put,
   UseGuards,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../../../admin-auth/infrastructure/guards/admin-jwt.guard';
+import { AdminGuard } from '../../../admin-auth/infrastructure/guards/admin.guard';
 import { AdminFeatureFlagsService } from '../../application/services/admin-feature-flags.service';
 import { UpsertFeatureAssignmentDto } from '../../application/dtos/upsert-feature-assignment.dto';
 
@@ -26,7 +26,7 @@ import { UpsertFeatureAssignmentDto } from '../../application/dtos/upsert-featur
  * Remplace l'ancien GET et PATCH de AdminUsersController (Story 7.1 / legacy).
  */
 @Controller('api/admin/users')
-@UseGuards(AdminJwtGuard)
+@UseGuards(AdminGuard)
 export class AdminUserFeaturesController {
   private readonly logger = new Logger(AdminUserFeaturesController.name);
 

@@ -6,6 +6,8 @@ import {
   UseGuards,
   Request,
   Logger,
+  ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
 import { AdminAuthService } from '../../application/services/admin-auth.service';
 import {
@@ -13,7 +15,7 @@ import {
   ChangePasswordDto,
   CreateAdminDto,
 } from '../../application/dtos/admin-auth.dto';
-import { AdminJwtGuard } from '../guards/admin-jwt.guard';
+import { AdminGuard } from '../guards/admin.guard';
 
 @Controller('api/auth/admin')
 export class AdminAuthController {
@@ -48,56 +50,54 @@ export class AdminAuthController {
    * Requires JWT
    */
   @Post('change-password')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminGuard)
   async changePassword(@Request() req: any, @Body() dto: ChangePasswordDto) {
-    const adminId = req.user.sub;
-    await this.adminAuthService.changePassword(adminId, dto);
-
+    await this.adminAuthService.changePassword(req.user.email, dto);
     this.logger.log(`Admin ${req.user.email} changed password`);
-
     return { message: 'Password changed successfully' };
   }
 
   /**
    * Create a new admin (requires super admin)
    * POST /api/auth/admin/create
-   * Requires JWT + super admin
+   * Requires AdminGuard + isSuperAdmin
    */
   @Post('create')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminGuard)
   async createAdmin(@Request() req: any, @Body() dto: CreateAdminDto) {
-    if (!req.user.isSuperAdmin) {
-      throw new Error('Only super admins can create new admins');
+    const currentAdmin = await this.adminAuthService.getByEmail(req.user.email);
+    if (!currentAdmin) throw new NotFoundException('Admin not found');
+    if (!currentAdmin.isSuperAdmin) {
+      throw new ForbiddenException('Only super admins can create new admins');
     }
 
     const admin = await this.adminAuthService.createAdmin(dto);
-
     this.logger.log(
       `Super admin ${req.user.email} created admin ${admin.email}`,
     );
 
     return {
       message: 'Admin created successfully',
-      admin: {
-        id: admin.id,
-        email: admin.email,
-        name: admin.name,
-      },
+      admin: { id: admin.id, email: admin.email, name: admin.name },
     };
   }
 
   /**
    * Get current admin info
    * GET /api/auth/admin/me
-   * Requires JWT
+   * Requires AdminGuard
    */
   @Get('me')
-  @UseGuards(AdminJwtGuard)
+  @UseGuards(AdminGuard)
   async getCurrentAdmin(@Request() req: any) {
+    const admin = await this.adminAuthService.getByEmail(req.user.email);
+    if (!admin) throw new NotFoundException('Admin not found');
     return {
-      id: req.user.sub,
-      email: req.user.email,
-      isSuperAdmin: req.user.isSuperAdmin,
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      isSuperAdmin: admin.isSuperAdmin,
+      mustChangePassword: admin.mustChangePassword,
     };
   }
 }

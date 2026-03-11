@@ -42,6 +42,11 @@ export class PermissionGuard implements CanActivate {
       throw new UnauthorizedException('User not authenticated');
     }
 
+    // Les admins backoffice (role='admin') ont accès à toutes les ressources
+    if (user.role === 'admin') {
+      return true;
+    }
+
     // Check permission
     const hasPermission = await this.authService.hasPermission({
       userId: user.id,

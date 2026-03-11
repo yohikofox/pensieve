@@ -11,7 +11,7 @@ import {
   NotFoundException,
   ConflictException,
 } from '@nestjs/common';
-import { AdminJwtGuard } from '../../../admin-auth/infrastructure/guards/admin-jwt.guard';
+import { AdminGuard } from '../../../admin-auth/infrastructure/guards/admin.guard';
 import { PermissionRepository } from '../../implementations/postgresql/repositories/permission.repository';
 import { RoleRepository } from '../../implementations/postgresql/repositories/role.repository';
 import { UserRoleRepository } from '../../implementations/postgresql/repositories/user-role.repository';
@@ -34,7 +34,7 @@ import {
 } from '../../core/dtos/admin.dto';
 
 @Controller('api/admin')
-@UseGuards(AdminJwtGuard)
+@UseGuards(AdminGuard)
 export class AdminController {
   constructor(
     private readonly permissionRepo: PermissionRepository,

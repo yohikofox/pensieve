@@ -2,12 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { AdminUsersController } from './admin-users.controller';
 import { BetterAuthAdminService } from '../../../rgpd/application/services/better-auth-admin.service';
 import { RgpdService } from '../../../rgpd/application/services/rgpd.service';
-import { AdminJwtGuard } from '../guards/admin-jwt.guard';
+import { AdminGuard } from '../guards/admin.guard';
 
 describe('AdminUsersController', () => {
   let controller: AdminUsersController;
 
-  const mockAdminJwtGuard = {
+  const mockAdminGuard = {
     canActivate: jest.fn(() => true),
   };
 
@@ -36,13 +36,13 @@ describe('AdminUsersController', () => {
           useValue: mockRgpdService,
         },
         {
-          provide: AdminJwtGuard,
-          useValue: mockAdminJwtGuard,
+          provide: AdminGuard,
+          useValue: mockAdminGuard,
         },
       ],
     })
-      .overrideGuard(AdminJwtGuard)
-      .useValue(mockAdminJwtGuard)
+      .overrideGuard(AdminGuard)
+      .useValue(mockAdminGuard)
       .compile();
 
     controller = module.get<AdminUsersController>(AdminUsersController);

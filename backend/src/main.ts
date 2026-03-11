@@ -22,7 +22,8 @@ async function bootstrap() {
     ) => {
       if (
         req.path.startsWith('/api/auth') &&
-        !req.path.startsWith('/api/auth/admin')
+        !req.path.startsWith('/api/auth/admin') &&
+        !req.path.startsWith('/api/auth/pat')
       )
         return next();
       express.json()(req, res, next);
@@ -36,7 +37,8 @@ async function bootstrap() {
     ) => {
       if (
         req.path.startsWith('/api/auth') &&
-        !req.path.startsWith('/api/auth/admin')
+        !req.path.startsWith('/api/auth/admin') &&
+        !req.path.startsWith('/api/auth/pat')
       )
         return next();
       express.urlencoded({ extended: true })(req, res, next);
