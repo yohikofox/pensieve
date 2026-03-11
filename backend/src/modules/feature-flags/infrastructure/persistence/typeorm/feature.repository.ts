@@ -16,7 +16,7 @@ export class FeatureRepository {
   ) {}
 
   async findAll(): Promise<Feature[]> {
-    return this.repo.find();
+    return this.repo.find({ where: { deprecated: false } });
   }
 
   async findByKey(key: string): Promise<Feature | null> {

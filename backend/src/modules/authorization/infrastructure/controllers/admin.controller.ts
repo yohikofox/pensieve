@@ -31,6 +31,7 @@ import {
   PaginationQueryDto,
   AssignRoleDto,
   GrantPermissionDto,
+  AssignRolePermissionsDto,
 } from '../../core/dtos/admin.dto';
 
 @Controller('api/admin')
@@ -233,6 +234,55 @@ export class AdminController {
       throw new NotFoundException('User permission override not found');
     }
     await this.userPermissionRepo.remove(userPermission);
+    return { message: 'Permission revoked successfully' };
+  }
+
+  @Get('roles/:roleId/permissions')
+  async getRolePermissions(@Param('roleId', ParseUUIDPipe) roleId: string) {
+    const rolePermissions = await this.rolePermissionRepo.findByRoleId(roleId);
+    const permissions = await Promise.all(
+      rolePermissions.map(async (rp) => {
+        const permission = await this.permissionRepo.findById(rp.permissionId);
+        if (!permission) return null;
+        return {
+          id: permission.id,
+          name: permission.name,
+          displayName: permission.displayName,
+          resourceType: permission.resourceType,
+          action: permission.action,
+        };
+      }),
+    );
+    return permissions.filter(Boolean);
+  }
+
+  @Post('roles/:roleId/permissions')
+  async assignRolePermissions(
+    @Param('roleId', ParseUUIDPipe) roleId: string,
+    @Body() dto: AssignRolePermissionsDto,
+  ) {
+    for (const permissionId of dto.permissionIds) {
+      const existing = await this.rolePermissionRepo.findOne({
+        where: { roleId, permissionId },
+      });
+      if (!existing) {
+        const rp = this.rolePermissionRepo.create({ roleId, permissionId });
+        await this.rolePermissionRepo.save(rp);
+      }
+    }
+    return { message: 'Permissions assigned successfully' };
+  }
+
+  @Delete('roles/:roleId/permissions/:permissionId')
+  async revokeRolePermission(
+    @Param('roleId', ParseUUIDPipe) roleId: string,
+    @Param('permissionId', ParseUUIDPipe) permissionId: string,
+  ) {
+    const rp = await this.rolePermissionRepo.findOne({
+      where: { roleId, permissionId },
+    });
+    if (!rp) throw new NotFoundException('Role permission not found');
+    await this.rolePermissionRepo.remove(rp);
     return { message: 'Permission revoked successfully' };
   }
 

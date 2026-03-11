@@ -20,4 +20,7 @@ export class Feature extends AppBaseEntity {
 
   @Column({ type: 'boolean', default: false, name: 'default_value' })
   defaultValue!: boolean;
+
+  @Column({ type: 'boolean', default: false })
+  deprecated: boolean = false;
 }

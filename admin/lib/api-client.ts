@@ -221,6 +221,10 @@ export class ApiClient {
     });
   }
 
+  async getRolePermissions(roleId: string) {
+    return this.fetch<Permission[]>(`/api/admin/roles/${roleId}/permissions`);
+  }
+
   async assignRolePermissions(roleId: string, data: AssignPermissionsDto) {
     return this.fetch<{ message: string }>(
       `/api/admin/roles/${roleId}/permissions`,
@@ -228,6 +232,13 @@ export class ApiClient {
         method: 'POST',
         body: JSON.stringify(data),
       }
+    );
+  }
+
+  async revokeRolePermission(roleId: string, permissionId: string) {
+    return this.fetch<{ message: string }>(
+      `/api/admin/roles/${roleId}/permissions/${permissionId}`,
+      { method: 'DELETE' },
     );
   }
 
