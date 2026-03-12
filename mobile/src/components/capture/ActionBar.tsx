@@ -40,7 +40,10 @@ export function ActionBar() {
 
   const handleSaveAndExit = async () => {
     await handleSave();
-    setIsEditingText(false);
+    // N'exit le mode édition que si la sauvegarde a réussi (hasChanges → false)
+    if (!useCaptureDetailStore.getState().hasTextChanges) {
+      setIsEditingText(false);
+    }
   };
 
   const hasText = editedText.length > 0;
@@ -60,7 +63,7 @@ export function ActionBar() {
             style={[
               styles.actionButton,
               styles.discardButton,
-              { backgroundColor: isDark ? colors.neutral[700] : "#F2F2F7" },
+              { backgroundColor: isDark ? colors.neutral[700] : colors.neutral[100] },
             ]}
             onPress={() => { handleDiscardChanges(); setIsEditingText(false); }}
           >
@@ -82,7 +85,7 @@ export function ActionBar() {
             disabled={isSaving}
           >
             {isSaving ? (
-              <ActivityIndicator size="small" color="#FFFFFF" />
+              <ActivityIndicator size="small" color={colors.neutral[0]} />
             ) : (
               <Feather
                 name={ActionIcons.save}
@@ -172,25 +175,25 @@ const styles = StyleSheet.create({
   },
   deleteButton: {},
   deleteLabel: {
-    color: "#FF3B30",
+    color: colors.error[500],
   },
   disabledButton: {
     opacity: 0.4,
   },
   disabledLabel: {
-    color: "#8E8E93",
+    color: colors.neutral[400],
   },
   discardButton: {
     borderRadius: 8,
     marginHorizontal: 8,
   },
   saveButton: {
-    backgroundColor: "#34C759",
+    backgroundColor: colors.success[500],
     borderRadius: 8,
     marginHorizontal: 8,
   },
   saveLabel: {
-    color: "#FFFFFF",
+    color: colors.neutral[0],
     fontWeight: "600",
   },
 });

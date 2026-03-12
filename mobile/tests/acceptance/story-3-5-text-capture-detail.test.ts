@@ -12,6 +12,7 @@ import {
   createMockTextCapture,
   createMockAudioCapture,
 } from './support/test-context';
+import { useCaptureDetailStore } from '../../src/stores/captureDetailStore';
 
 const feature = loadFeature(
   './tests/acceptance/features/story-3-5-text-capture-detail.feature',
@@ -22,10 +23,12 @@ defineFeature(feature, (test) => {
 
   beforeEach(() => {
     testContext = new TestContext();
+    useCaptureDetailStore.getState().reset();
   });
 
   afterEach(() => {
     testContext.reset();
+    useCaptureDetailStore.getState().reset();
   });
 
   // ──────────────────────────────────────────────────────────────────────────
@@ -100,9 +103,6 @@ defineFeature(feature, (test) => {
   // AC3 - Passage en mode édition
   // ──────────────────────────────────────────────────────────────────────────
   test('AC3 - Passage en mode édition', ({ given, when, then, and }) => {
-    let isEditingText: boolean;
-    let hasChangesOrEditing: boolean;
-
     given('une capture de type texte affichée en mode lecture', async () => {
       await testContext.db.create(
         createMockTextCapture({
@@ -110,23 +110,23 @@ defineFeature(feature, (test) => {
           normalizedText: 'Texte initial',
         }),
       );
-      isEditingText = false;
+      // Le store démarre avec isEditingText=false (reset dans beforeEach)
+      expect(useCaptureDetailStore.getState().isEditingText).toBe(false);
     });
 
     when("l'utilisateur active le mode édition", () => {
-      // Simule le tap sur "Modifier" → setIsEditingText(true)
-      isEditingText = true;
+      // Simule le tap sur "Modifier" → setIsEditingText(true) dans le store
+      useCaptureDetailStore.getState().setIsEditingText(true);
     });
 
     then('le mode édition est actif', () => {
-      expect(isEditingText).toBe(true);
+      expect(useCaptureDetailStore.getState().isEditingText).toBe(true);
     });
 
     and("l'ActionBar affiche Annuler et Enregistrer", () => {
-      // ActionBar affiche Cancel/Save quand isEditingText || hasChanges
-      const hasChanges = false; // aucune modification texte encore
-      hasChangesOrEditing = isEditingText || hasChanges;
-      expect(hasChangesOrEditing).toBe(true);
+      // ActionBar affiche Cancel/Save quand isEditingText || hasTextChanges
+      const { isEditingText, hasTextChanges } = useCaptureDetailStore.getState();
+      expect(isEditingText || hasTextChanges).toBe(true);
     });
   });
 
@@ -134,9 +134,8 @@ defineFeature(feature, (test) => {
   // AC4 - Sauvegarde de la modification
   // ──────────────────────────────────────────────────────────────────────────
   test('AC4 - Sauvegarde de la modification', ({ given, when, then, and }) => {
-    let isEditingText: boolean;
     const captureId = 'text-ac4';
-    const texteModifie = 'Texte corrigé par l\'utilisateur';
+    const texteModifie = "Texte corrigé par l'utilisateur";
 
     given('une capture de type texte en mode édition avec du texte modifié', async () => {
       await testContext.db.create(
@@ -145,15 +144,15 @@ defineFeature(feature, (test) => {
           normalizedText: 'Texte original',
         }),
       );
-      isEditingText = true;
-
+      // Simule le passage en mode édition via le store
+      useCaptureDetailStore.getState().setIsEditingText(true);
       // L'utilisateur a modifié le texte dans le TextInput
       await testContext.db.update(captureId, { normalizedText: texteModifie });
     });
 
     when("l'utilisateur sauvegarde les modifications", () => {
-      // handleSave() → persiste → setIsEditingText(false)
-      isEditingText = false;
+      // handleSave() → persiste → setIsEditingText(false) via handleSaveAndExit
+      useCaptureDetailStore.getState().setIsEditingText(false);
     });
 
     then('le texte modifié est persisté dans la base de données', async () => {
@@ -162,7 +161,7 @@ defineFeature(feature, (test) => {
     });
 
     and('le mode édition est désactivé', () => {
-      expect(isEditingText).toBe(false);
+      expect(useCaptureDetailStore.getState().isEditingText).toBe(false);
     });
   });
 
@@ -170,8 +169,6 @@ defineFeature(feature, (test) => {
   // AC5 - Annulation de la modification
   // ──────────────────────────────────────────────────────────────────────────
   test('AC5 - Annulation de la modification', ({ given, when, then, and }) => {
-    let isEditingText: boolean;
-    let editedText: string;
     const originalText = 'Texte original non modifié';
     const captureId = 'text-ac5';
 
@@ -182,26 +179,29 @@ defineFeature(feature, (test) => {
           normalizedText: originalText,
         }),
       );
-      isEditingText = true;
-      editedText = 'Texte que l\'utilisateur va annuler';
+      // Simule le passage en mode édition + modification du texte
+      useCaptureDetailStore.getState().setIsEditingText(true);
+      useCaptureDetailStore.getState().setEditedText("Texte que l'utilisateur va annuler");
+      useCaptureDetailStore.getState().setHasTextChanges(true);
     });
 
     when("l'utilisateur annule les modifications", () => {
-      // handleDiscardChanges() → restaure + setIsEditingText(false)
-      editedText = originalText;
-      isEditingText = false;
+      // handleDiscardChanges() → restaure editedText + setIsEditingText(false)
+      useCaptureDetailStore.getState().setEditedText(originalText);
+      useCaptureDetailStore.getState().setHasTextChanges(false);
+      useCaptureDetailStore.getState().setIsEditingText(false);
     });
 
     then('le texte original est restauré', () => {
-      expect(editedText).toBe(originalText);
+      expect(useCaptureDetailStore.getState().editedText).toBe(originalText);
     });
 
     and('le mode édition est désactivé', () => {
-      expect(isEditingText).toBe(false);
+      expect(useCaptureDetailStore.getState().isEditingText).toBe(false);
     });
 
     and("aucune modification n'est persistée", async () => {
-      // La base de données contient toujours le texte original
+      // La base de données contient toujours le texte original (pas de db.update appelé)
       const stored = await testContext.db.findById(captureId);
       expect(stored?.normalizedText).toBe(originalText);
     });
