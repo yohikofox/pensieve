@@ -16,6 +16,7 @@ import React from 'react';
 import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { ThemeProvider } from '../contexts/theme/ThemeProvider';
 import { ToastProvider } from '../design-system/components';
 import { NetworkProvider } from '../contexts/NetworkContext';
@@ -29,15 +30,17 @@ export const AppProviders: React.FC<AppProvidersProps> = ({ children }) => {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <QueryProvider>
-          <ThemeProvider>
-            <ToastProvider>
-              <NetworkProvider>
-                {children}
-              </NetworkProvider>
-            </ToastProvider>
-          </ThemeProvider>
-        </QueryProvider>
+        <KeyboardProvider>
+          <QueryProvider>
+            <ThemeProvider>
+              <ToastProvider>
+                <NetworkProvider>
+                  {children}
+                </NetworkProvider>
+              </ToastProvider>
+            </ThemeProvider>
+          </QueryProvider>
+        </KeyboardProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

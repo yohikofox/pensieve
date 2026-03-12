@@ -78,6 +78,7 @@ const initialState = {
   hasTextChanges: false,
   isSavingText: false,
   textCopied: false,
+  isEditingText: false,
 
   // ──────────────────────────────────────────────────────────────────────────
   // Analyses
@@ -146,6 +147,7 @@ type CaptureDetailState = typeof initialState & {
   setHasTextChanges: (hasChanges: boolean) => void;
   setIsSavingText: (isSaving: boolean) => void;
   setTextCopied: (copied: boolean) => void;
+  setIsEditingText: (editing: boolean) => void;
 
   // ──────────────────────────────────────────────────────────────────────────
   // Analyses Actions
@@ -227,6 +229,7 @@ export const useCaptureDetailStore = create<CaptureDetailState>((set) => ({
   setHasTextChanges: (hasChanges) => set({ hasTextChanges: hasChanges }),
   setIsSavingText: (isSaving) => set({ isSavingText: isSaving }),
   setTextCopied: (copied) => set({ textCopied: copied }),
+  setIsEditingText: (editing) => set({ isEditingText: editing }),
 
   // ──────────────────────────────────────────────────────────────────────────
   // Analyses Actions

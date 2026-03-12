@@ -25,3 +25,6 @@ export { CaptureAudioPlayerSection } from "./CaptureAudioPlayerSection";
 export { ContentSection } from "./ContentSection";
 export { NativeRecognitionDebugCard } from "./NativeRecognitionDebugCard";
 export { CaptureDetailTabs } from "./CaptureDetailTabs";
+export { CaptureTextDetailContent } from "./CaptureTextDetailContent";
+export { CaptureAudioDetailContent } from "./CaptureAudioDetailContent";
+export { CaptureDetailShell } from "./CaptureDetailShell";

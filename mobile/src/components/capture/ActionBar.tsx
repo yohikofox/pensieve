@@ -31,8 +31,17 @@ export function ActionBar() {
   const hasChanges = useCaptureDetailStore((state) => state.hasTextChanges);
   const isSaving = useCaptureDetailStore((state) => state.isSavingText);
   const copied = useCaptureDetailStore((state) => state.textCopied);
+  const isEditingText = useCaptureDetailStore((state) => state.isEditingText);
+  const setIsEditingText = useCaptureDetailStore(
+    (state) => state.setIsEditingText,
+  );
 
   const { handleSave, handleCopy, handleShare, handleDiscardChanges } = useTextEditor();
+
+  const handleSaveAndExit = async () => {
+    await handleSave();
+    setIsEditingText(false);
+  };
 
   const hasText = editedText.length > 0;
   return (
@@ -45,7 +54,7 @@ export function ActionBar() {
         },
       ]}
     >
-      {hasChanges ? (
+      {isEditingText || hasChanges ? (
         <>
           <TouchableOpacity
             style={[
@@ -53,7 +62,7 @@ export function ActionBar() {
               styles.discardButton,
               { backgroundColor: isDark ? colors.neutral[700] : "#F2F2F7" },
             ]}
-            onPress={handleDiscardChanges}
+            onPress={() => { handleDiscardChanges(); setIsEditingText(false); }}
           >
             <Feather
               name="rotate-ccw"
@@ -69,7 +78,7 @@ export function ActionBar() {
 
           <TouchableOpacity
             style={[styles.actionButton, styles.saveButton]}
-            onPress={handleSave}
+            onPress={handleSaveAndExit}
             disabled={isSaving}
           >
             {isSaving ? (
